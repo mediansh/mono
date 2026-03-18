@@ -14,13 +14,16 @@ import {
   CheckmarkBadge01Icon,
   Archive01Icon,
   AlertCircleIcon,
+  KanbanIcon,
+  LeftToRightListBulletIcon,
 } from "@hugeicons/core-free-icons"
-import { motion } from "motion/react"
+import { motion, AnimatePresence } from "motion/react"
 
 // Types
 type Priority = "urgent" | "high" | "medium" | "low" | "none"
 type Status = "requests" | "todo" | "in_progress" | "done" | "archive"
 type Label = "feature" | "bug" | "improvement" | "design" | "devops"
+type ViewMode = "board" | "list"
 
 interface Task {
   id: string
@@ -198,50 +201,49 @@ const LABEL_COLORS: Record<Label, string> = {
   devops: "#f59e0b",
 }
 
-function getStatusIcon(status: Status) {
+const STATUS_LABELS: Record<Status, string> = {
+  requests: "Requests",
+  todo: "Todo",
+  in_progress: "In Progress",
+  done: "Done",
+  archive: "Archive",
+}
+
+function getStatusIcon(status: Status, size = 14) {
   switch (status) {
     case "requests":
-      return <HugeiconsIcon icon={Loading03Icon} size={14} className="text-muted-foreground" />
+      return <HugeiconsIcon icon={Loading03Icon} size={size} className="text-muted-foreground" />
     case "todo":
-      return <HugeiconsIcon icon={CircleIcon} size={14} className="text-muted-foreground" />
+      return <HugeiconsIcon icon={CircleIcon} size={size} className="text-muted-foreground" />
     case "in_progress":
-      return <HugeiconsIcon icon={Loading03Icon} size={14} className="text-yellow-500" />
+      return <HugeiconsIcon icon={Loading03Icon} size={size} className="text-yellow-500" />
     case "done":
-      return <HugeiconsIcon icon={CheckmarkBadge01Icon} size={14} className="text-emerald-500" />
+      return <HugeiconsIcon icon={CheckmarkBadge01Icon} size={size} className="text-emerald-500" />
     case "archive":
-      return <HugeiconsIcon icon={Archive01Icon} size={14} className="text-muted-foreground" />
+      return <HugeiconsIcon icon={Archive01Icon} size={size} className="text-muted-foreground" />
   }
 }
 
 function getColumnIcon(status: Status) {
-  switch (status) {
-    case "requests":
-      return <HugeiconsIcon icon={Loading03Icon} size={15} className="text-muted-foreground" />
-    case "todo":
-      return <HugeiconsIcon icon={CircleIcon} size={15} className="text-muted-foreground" />
-    case "in_progress":
-      return <HugeiconsIcon icon={Loading03Icon} size={15} className="text-yellow-500" />
-    case "done":
-      return <HugeiconsIcon icon={CheckmarkBadge01Icon} size={15} className="text-emerald-500" />
-    case "archive":
-      return <HugeiconsIcon icon={Archive01Icon} size={15} className="text-muted-foreground" />
+  return getStatusIcon(status, 15)
+}
+
+function getPriorityIcon(priority: Priority, size = 14) {
+  switch (priority) {
+    case "urgent":
+      return <HugeiconsIcon icon={AlertCircleIcon} size={size} className="text-red-500" />
+    case "high":
+      return <HugeiconsIcon icon={SignalFull02Icon} size={size} className="text-orange-500" />
+    case "medium":
+      return <HugeiconsIcon icon={SignalMedium02Icon} size={size} className="text-yellow-500" />
+    case "low":
+      return <HugeiconsIcon icon={SignalLow02Icon} size={size} className="text-blue-400" />
+    case "none":
+      return <HugeiconsIcon icon={SignalLow02Icon} size={size} className="text-muted-foreground" />
   }
 }
 
-function getPriorityIcon(priority: Priority) {
-  switch (priority) {
-    case "urgent":
-      return <HugeiconsIcon icon={AlertCircleIcon} size={14} className="text-red-500" />
-    case "high":
-      return <HugeiconsIcon icon={SignalFull02Icon} size={14} className="text-orange-500" />
-    case "medium":
-      return <HugeiconsIcon icon={SignalMedium02Icon} size={14} className="text-yellow-500" />
-    case "low":
-      return <HugeiconsIcon icon={SignalLow02Icon} size={14} className="text-blue-400" />
-    case "none":
-      return <HugeiconsIcon icon={SignalLow02Icon} size={14} className="text-muted-foreground" />
-  }
-}
+// ── Board View Components ──
 
 function TaskCard({ task, index }: { task: Task; index: number }) {
   return (
@@ -361,12 +363,11 @@ function KanbanColumn({
   )
 }
 
-export function KanbanBoard() {
-  const [tasks] = useState<Task[]>(MOCK_TASKS)
+function BoardView({ tasks }: { tasks: Task[] }) {
   const boardRef = useRef<HTMLDivElement>(null)
 
   return (
-    <div ref={boardRef} className="flex h-full overflow-x-auto scrollbar-thin pt-4">
+    <div ref={boardRef} className="flex h-full overflow-x-auto scrollbar-thin">
       {COLUMNS.map((column, colIndex) => {
         const columnTasks = tasks.filter((t) => t.status === column.id)
         return (
@@ -379,6 +380,155 @@ export function KanbanBoard() {
           />
         )
       })}
+    </div>
+  )
+}
+
+// ── List View Components ──
+
+function ListRow({ task, index }: { task: Task; index: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.15, delay: index * 0.02, ease: "easeOut" }}
+      className="group flex cursor-pointer items-center gap-3 border-b border-border px-4 py-2.5 transition-colors hover:bg-accent/50"
+    >
+      <div className="shrink-0">{getPriorityIcon(task.priority)}</div>
+      <div className="shrink-0">{getStatusIcon(task.status)}</div>
+      <span className="min-w-0 flex-1 truncate text-sm">{task.title}</span>
+      <div className="flex shrink-0 items-center gap-2">
+        {task.labels.map((label) => (
+          <div
+            key={label}
+            className="flex items-center gap-1.5 rounded-sm border border-border px-1.5 py-0.5"
+          >
+            <div
+              className="size-2 rounded-full"
+              style={{ backgroundColor: LABEL_COLORS[label] }}
+            />
+            <span className="text-[11px] capitalize text-muted-foreground">{label}</span>
+          </div>
+        ))}
+        <span className="text-[11px] text-muted-foreground">{task.createdAt}</span>
+      </div>
+    </motion.div>
+  )
+}
+
+function ListGroup({
+  column,
+  tasks,
+  groupIndex,
+}: {
+  column: (typeof COLUMNS)[number]
+  tasks: Task[]
+  groupIndex: number
+}) {
+  const [collapsed, setCollapsed] = useState(false)
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, delay: groupIndex * 0.05, ease: "easeOut" }}
+    >
+      {/* Group header */}
+      <button
+        onClick={() => setCollapsed(!collapsed)}
+        className="flex w-full items-center gap-2 px-4 py-2 text-left transition-colors hover:bg-accent/30"
+      >
+        <motion.span
+          animate={{ rotate: collapsed ? -90 : 0 }}
+          transition={{ duration: 0.15 }}
+          className="text-xs text-muted-foreground"
+        >
+          ▼
+        </motion.span>
+        {getColumnIcon(column.id)}
+        <span className="text-sm font-medium">{column.label}</span>
+        <span className="text-xs text-muted-foreground">{tasks.length}</span>
+      </button>
+
+      {/* Rows */}
+      <AnimatePresence initial={false}>
+        {!collapsed && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="overflow-hidden"
+          >
+            {tasks.map((task, index) => (
+              <ListRow key={task.id} task={task} index={index} />
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  )
+}
+
+function ListView({ tasks }: { tasks: Task[] }) {
+  return (
+    <div className="h-full overflow-y-auto scrollbar-hide">
+      {COLUMNS.map((column, groupIndex) => {
+        const columnTasks = tasks.filter((t) => t.status === column.id)
+        if (columnTasks.length === 0) return null
+        return (
+          <ListGroup
+            key={column.id}
+            column={column}
+            tasks={columnTasks}
+            groupIndex={groupIndex}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
+// ── Main Component ──
+
+export function KanbanBoard() {
+  const [tasks] = useState<Task[]>(MOCK_TASKS)
+  const [view, setView] = useState<ViewMode>("board")
+
+  return (
+    <div className="flex h-full flex-col">
+      {/* View toggle toolbar */}
+      <div className="flex items-center gap-1 px-4 pt-3 pb-2">
+        <div className="flex items-center rounded-lg border border-border p-0.5">
+          <button
+            onClick={() => setView("board")}
+            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
+              view === "board"
+                ? "bg-accent text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <HugeiconsIcon icon={KanbanIcon} size={14} />
+            Board
+          </button>
+          <button
+            onClick={() => setView("list")}
+            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
+              view === "list"
+                ? "bg-accent text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <HugeiconsIcon icon={LeftToRightListBulletIcon} size={14} />
+            List
+          </button>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="min-h-0 flex-1">
+        {view === "board" ? <BoardView tasks={tasks} /> : <ListView tasks={tasks} />}
+      </div>
     </div>
   )
 }
