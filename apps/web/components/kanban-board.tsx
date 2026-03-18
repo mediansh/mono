@@ -310,10 +310,10 @@ function KanbanColumn({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: colIndex * 0.05, ease: "easeOut" }}
-      className="flex w-80 shrink-0 flex-col"
+      className="flex w-80 shrink-0 flex-col overflow-hidden border-r border-border last:border-r-0"
     >
       {/* Column header */}
-      <div className="flex items-center justify-between px-1 pb-3">
+      <div className="flex items-center justify-between px-4 pb-3 pt-1">
         <div className="flex items-center gap-2">
           {getColumnIcon(column.id)}
           <span className="text-sm font-medium">{column.label}</span>
@@ -329,8 +329,8 @@ function KanbanColumn({
         </div>
       </div>
 
-      {/* Cards */}
-      <div className="flex flex-col gap-2">
+      {/* Cards - independent scroll */}
+      <div className="flex flex-1 flex-col gap-2 overflow-y-auto px-3 pb-4">
         {tasks.map((task, index) => (
           <TaskCard key={task.id} task={task} index={index} />
         ))}
@@ -343,7 +343,7 @@ export function KanbanBoard() {
   const [tasks] = useState<Task[]>(MOCK_TASKS)
 
   return (
-    <div className="flex h-full gap-4 overflow-x-auto p-6">
+    <div className="flex h-full overflow-x-auto pt-4">
       {COLUMNS.map((column, colIndex) => {
         const columnTasks = tasks.filter((t) => t.status === column.id)
         return (

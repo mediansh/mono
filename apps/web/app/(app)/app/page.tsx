@@ -15,7 +15,7 @@ export default async function AppPage() {
   }
 
   return (
-    <main className="h-full min-h-screen overflow-hidden">
+    <main className="h-screen overflow-hidden">
       <KanbanBoard />
     </main>
   )
