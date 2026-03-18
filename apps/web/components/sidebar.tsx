@@ -373,12 +373,12 @@ export function AppSidebar() {
                       {user?.firstName?.charAt(0) ?? "?"}
                     </div>
                   )}
-                  <div className="flex min-w-0 flex-col leading-tight group-data-[collapsible=icon]:hidden">
-                    <span className="truncate text-sm font-medium leading-snug">
+                  <div className="flex min-w-0 flex-1 flex-col justify-center group-data-[collapsible=icon]:hidden">
+                    <span className="truncate text-left text-sm font-medium">
                       {user?.fullName}
                     </span>
                     {currentWorkspace && (
-                      <span className="truncate text-xs leading-snug text-muted-foreground">
+                      <span className="truncate text-left text-xs text-muted-foreground">
                         {currentWorkspace.name}
                       </span>
                     )}
