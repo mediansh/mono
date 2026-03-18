@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useMutation } from "convex/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Image01Icon } from "@hugeicons/core-free-icons"
+import { motion, AnimatePresence } from "motion/react"
 import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
 import {
@@ -110,14 +111,25 @@ export default function WorkspaceSettingsPage() {
 
   return (
     <div className="mx-auto w-full max-w-2xl px-8 py-10">
-      <h1 className="text-lg font-semibold">Workspace settings</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Manage your workspace details and preferences.
-      </p>
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+      >
+        <h1 className="text-lg font-semibold">Workspace settings</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Manage your workspace details and preferences.
+        </p>
+      </motion.div>
 
       <form onSubmit={handleSave} className="mt-8">
         {/* General section */}
-        <div className="border-b border-border pb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.05, ease: "easeOut" }}
+          className="border-b border-border pb-8"
+        >
           <h2 className="text-sm font-medium">General</h2>
 
           <div className="mt-5 flex flex-col gap-5">
@@ -173,10 +185,15 @@ export default function WorkspaceSettingsPage() {
               />
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Save button */}
-        <div className="mt-5 flex items-center gap-3">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.1, ease: "easeOut" }}
+          className="mt-5 flex items-center gap-3"
+        >
           <button
             type="submit"
             disabled={saving || !hasChanges || !name.trim()}
@@ -184,14 +201,29 @@ export default function WorkspaceSettingsPage() {
           >
             {saving ? "Saving..." : saved ? "Saved" : "Save changes"}
           </button>
-          {saved && (
-            <span className="text-sm text-muted-foreground">Changes saved</span>
-          )}
-        </div>
+          <AnimatePresence>
+            {saved && (
+              <motion.span
+                initial={{ opacity: 0, x: -4 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -4 }}
+                transition={{ duration: 0.2 }}
+                className="text-sm text-muted-foreground"
+              >
+                Changes saved
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </motion.div>
       </form>
 
       {/* Danger zone */}
-      <div className="mt-10 rounded-lg border border-destructive/30 p-5">
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.15, ease: "easeOut" }}
+        className="mt-10 rounded-lg border border-destructive/30 p-5"
+      >
         <h2 className="text-sm font-medium text-destructive">Danger zone</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Permanently delete this workspace and all of its data. This action cannot
@@ -204,7 +236,7 @@ export default function WorkspaceSettingsPage() {
         >
           Delete workspace
         </button>
-      </div>
+      </motion.div>
 
       {/* Delete confirmation modal */}
       <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
