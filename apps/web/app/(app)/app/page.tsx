@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { auth } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
+import { KanbanBoard } from "@/components/kanban-board"
 
 export const metadata: Metadata = {
   title: "Home",
@@ -14,6 +15,8 @@ export default async function AppPage() {
   }
 
   return (
-    <main className="min-h-screen" />
+    <main className="h-full min-h-screen">
+      <KanbanBoard />
+    </main>
   )
 }
