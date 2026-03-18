@@ -212,15 +212,15 @@ const STATUS_LABELS: Record<Status, string> = {
 function getStatusIcon(status: Status, size = 14) {
   switch (status) {
     case "requests":
-      return <HugeiconsIcon icon={Loading03Icon} size={size} className="text-muted-foreground" />
+      return <HugeiconsIcon icon={Loading03Icon} size={size} className="text-violet-500" />
     case "todo":
-      return <HugeiconsIcon icon={CircleIcon} size={size} className="text-muted-foreground" />
+      return <HugeiconsIcon icon={CircleIcon} size={size} className="text-blue-400" />
     case "in_progress":
       return <HugeiconsIcon icon={Loading03Icon} size={size} className="text-yellow-500" />
     case "done":
       return <HugeiconsIcon icon={CheckmarkBadge01Icon} size={size} className="text-emerald-500" />
     case "archive":
-      return <HugeiconsIcon icon={Archive01Icon} size={size} className="text-muted-foreground" />
+      return <HugeiconsIcon icon={Archive01Icon} size={size} className="text-orange-400" />
   }
 }
 
