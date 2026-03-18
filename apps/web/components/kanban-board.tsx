@@ -251,18 +251,8 @@ function TaskCard({ task, index }: { task: Task; index: number }) {
       transition={{ duration: 0.2, delay: index * 0.03, ease: "easeOut" }}
       className="group cursor-pointer rounded-lg border border-border bg-card p-3 transition-colors hover:bg-accent/50"
     >
-      {/* Header row: ID + assignee avatar */}
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">{task.id}</span>
-        {task.assignee && (
-          <div className="flex size-6 items-center justify-center rounded-full bg-[#0496FF] text-[10px] font-medium text-white">
-            {task.assignee.name.charAt(0)}
-          </div>
-        )}
-      </div>
-
       {/* Title row with status icon */}
-      <div className="mt-1.5 flex items-start gap-2">
+      <div className="flex items-start gap-2">
         <div className="mt-0.5 shrink-0">{getStatusIcon(task.status)}</div>
         <span className="text-sm font-medium leading-snug">{task.title}</span>
       </div>
