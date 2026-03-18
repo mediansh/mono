@@ -330,7 +330,7 @@ function KanbanColumn({
       </div>
 
       {/* Cards - independent scroll */}
-      <div className="flex flex-1 flex-col gap-2 overflow-y-auto px-3 pb-4">
+      <div className="flex flex-1 flex-col gap-2 overflow-y-auto scrollbar-hide px-3 pb-4">
         {tasks.map((task, index) => (
           <TaskCard key={task.id} task={task} index={index} />
         ))}
@@ -343,7 +343,7 @@ export function KanbanBoard() {
   const [tasks] = useState<Task[]>(MOCK_TASKS)
 
   return (
-    <div className="flex h-full overflow-x-auto pt-4">
+    <div className="flex h-full overflow-x-auto scrollbar-hide pt-4">
       {COLUMNS.map((column, colIndex) => {
         const columnTasks = tasks.filter((t) => t.status === column.id)
         return (
