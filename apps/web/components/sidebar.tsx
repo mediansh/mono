@@ -359,6 +359,20 @@ export function AppSidebar() {
           >
           <SidebarMenu>
             <SidebarMenuItem>
+              <SidebarMenuButton
+                render={<Link href="/app/settings" />}
+                isActive={pathname.startsWith("/app/settings")}
+                className={
+                  pathname.startsWith("/app/settings")
+                    ? "data-active:bg-[#0496FF]/10 data-active:text-[#0496FF]"
+                    : undefined
+                }
+              >
+                <HugeiconsIcon icon={Settings01Icon} size={16} strokeWidth={2} />
+                <span>Settings</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
               {mounted ? (
               <DropdownMenu>
                 <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-md p-1.5 outline-none transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring">
