@@ -15,7 +15,8 @@ import type { Id } from "@/convex/_generated/dataModel"
 type Workspace = {
   _id: Id<"workspaces">
   name: string
-  icon: string
+  iconId: Id<"_storage">
+  iconUrl: string | null
   ownerId: string
   role: string
 }

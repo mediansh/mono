@@ -1,33 +1,56 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useMutation } from "convex/react"
 import { motion } from "motion/react"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { Image01Icon } from "@hugeicons/core-free-icons"
 import { api } from "@/convex/_generated/api"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Logo } from "@/components/logo"
 
-const WORKSPACE_ICONS = [
-  "🏠", "🚀", "💼", "🎯", "⚡", "🔥", "💎", "🌟",
-  "🎨", "📦", "🛠️", "🧪", "📊", "🏗️", "🌐", "🤖",
-  "📝", "🎵", "📸", "🎮", "🧩", "🔬", "🌿", "☕",
-]
-
 export default function WorkspaceSetupPage() {
   const router = useRouter()
   const createWorkspace = useMutation(api.workspaces.createWorkspace)
+  const generateUploadUrl = useMutation(api.workspaces.generateUploadUrl)
 
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [name, setName] = useState("")
-  const [icon, setIcon] = useState("🚀")
+  const [iconFile, setIconFile] = useState<File | null>(null)
+  const [iconPreview, setIconPreview] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState("")
 
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith("image/")) {
+      setError("Please upload an image file")
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Image must be under 5MB")
+      return
+    }
+
+    setIconFile(file)
+    setIconPreview(URL.createObjectURL(file))
+    if (error) setError("")
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+
     if (!name.trim()) {
       setError("Workspace name is required")
+      return
+    }
+    if (!iconFile) {
+      setError("Please upload a logo")
       return
     }
 
@@ -35,7 +58,15 @@ export default function WorkspaceSetupPage() {
     setError("")
 
     try {
-      await createWorkspace({ name: name.trim(), icon })
+      const uploadUrl = await generateUploadUrl()
+      const result = await fetch(uploadUrl, {
+        method: "POST",
+        headers: { "Content-Type": iconFile.type },
+        body: iconFile,
+      })
+      const { storageId } = await result.json()
+
+      await createWorkspace({ name: name.trim(), iconId: storageId })
       router.push("/app")
     } catch {
       setError("Failed to create workspace. Please try again.")
@@ -58,7 +89,7 @@ export default function WorkspaceSetupPage() {
               Create your workspace
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Pick an icon and name to get started.
+              Upload a logo and name your workspace to get started.
             </p>
           </div>
         </div>
@@ -66,24 +97,48 @@ export default function WorkspaceSetupPage() {
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <div className="flex flex-col gap-2">
             <label className="text-xs font-medium text-muted-foreground">
-              Icon
+              Logo
             </label>
-            <div className="grid grid-cols-8 gap-1.5">
-              {WORKSPACE_ICONS.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => setIcon(emoji)}
-                  className={`flex size-9 items-center justify-center rounded-lg text-lg transition-colors ${
-                    icon === emoji
-                      ? "bg-[#0496FF]/10 ring-1.5 ring-[#0496FF]"
-                      : "hover:bg-muted"
-                  }`}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="group flex size-20 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-border transition-colors hover:border-[#0496FF]/50 hover:bg-[#0496FF]/5"
+            >
+              {iconPreview ? (
+                <img
+                  src={iconPreview}
+                  alt="Workspace logo"
+                  className="size-full object-cover"
+                />
+              ) : (
+                <HugeiconsIcon
+                  icon={Image01Icon}
+                  size={24}
+                  strokeWidth={1.5}
+                  className="text-muted-foreground transition-colors group-hover:text-[#0496FF]"
+                />
+              )}
+            </button>
+            {iconPreview && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIconFile(null)
+                  setIconPreview(null)
+                  if (fileInputRef.current) fileInputRef.current.value = ""
+                }}
+                className="w-fit text-xs text-muted-foreground hover:text-foreground"
+              >
+                Remove
+              </button>
+            )}
           </div>
 
           <div className="flex flex-col gap-2">
@@ -110,7 +165,7 @@ export default function WorkspaceSetupPage() {
 
           <Button
             type="submit"
-            disabled={isCreating || !name.trim()}
+            disabled={isCreating || !name.trim() || !iconFile}
             className="h-9 w-full bg-[#0496FF] text-white hover:bg-[#0496FF]/90"
           >
             {isCreating ? "Creating..." : "Create workspace"}

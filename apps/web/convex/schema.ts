@@ -4,7 +4,7 @@ import { v } from "convex/values"
 export default defineSchema({
   workspaces: defineTable({
     name: v.string(),
-    icon: v.string(),
+    iconId: v.id("_storage"),
     ownerId: v.string(),
   }).index("by_owner", ["ownerId"]),
 

@@ -5,7 +5,6 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useClerk, useUser } from "@clerk/nextjs"
 import { useTheme } from "next-themes"
-import { useMutation } from "convex/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Home01Icon,
@@ -22,11 +21,8 @@ import {
   Tick02Icon,
 } from "@hugeicons/core-free-icons"
 import { motion } from "motion/react"
-import { api } from "@/convex/_generated/api"
 import { Logo } from "@/components/logo"
 import { useWorkspace } from "@/components/workspace-provider"
-import { Button } from "@workspace/ui/components/button"
-import { Input } from "@workspace/ui/components/input"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,11 +48,6 @@ import {
   SidebarSeparator,
 } from "@workspace/ui/components/sidebar"
 
-const WORKSPACE_ICONS = [
-  "🏠", "🚀", "💼", "🎯", "⚡", "🔥", "💎", "🌟",
-  "🎨", "📦", "🛠️", "🧪", "📊", "🏗️", "🌐", "🤖",
-]
-
 const mainNav = [
   { label: "Home", href: "/app", icon: Home01Icon },
   { label: "Inbox", href: "/app/inbox", icon: InboxIcon },
@@ -71,22 +62,8 @@ export function AppSidebar() {
   const { user } = useUser()
   const { theme, setTheme } = useTheme()
   const { workspaces, currentWorkspace, switchWorkspace } = useWorkspace()
-  const createWorkspace = useMutation(api.workspaces.createWorkspace)
-
-  const [isCreating, setIsCreating] = useState(false)
-  const [newName, setNewName] = useState("")
-  const [newIcon, setNewIcon] = useState("🚀")
 
   useEffect(() => setMounted(true), [])
-
-  async function handleCreateWorkspace() {
-    if (!newName.trim()) return
-    const id = await createWorkspace({ name: newName.trim(), icon: newIcon })
-    switchWorkspace(id)
-    setNewName("")
-    setNewIcon("🚀")
-    setIsCreating(false)
-  }
 
   return (
     <Sidebar collapsible="icon">
@@ -198,7 +175,13 @@ export function AppSidebar() {
             {mounted ? (
             <DropdownMenu>
               <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-md p-1.5 outline-none transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring">
-                {user?.imageUrl ? (
+                {currentWorkspace?.iconUrl ? (
+                  <img
+                    src={currentWorkspace.iconUrl}
+                    alt={currentWorkspace.name}
+                    className="size-7 shrink-0 rounded-md object-cover"
+                  />
+                ) : user?.imageUrl ? (
                   <img
                     src={user.imageUrl}
                     alt={user.fullName ?? "Profile"}
@@ -211,13 +194,11 @@ export function AppSidebar() {
                 )}
                 <div className="flex min-w-0 flex-col group-data-[collapsible=icon]:hidden">
                   <span className="truncate text-sm font-medium">
-                    {user?.fullName}
+                    {currentWorkspace?.name ?? user?.fullName}
                   </span>
-                  {currentWorkspace && (
-                    <span className="truncate text-xs text-muted-foreground">
-                      {currentWorkspace.icon} {currentWorkspace.name}
-                    </span>
-                  )}
+                  <span className="truncate text-xs text-muted-foreground">
+                    {user?.primaryEmailAddress?.emailAddress}
+                  </span>
                 </div>
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" align="start" className="w-56 duration-150">
@@ -241,7 +222,15 @@ export function AppSidebar() {
                           key={ws._id}
                           onClick={() => switchWorkspace(ws._id)}
                         >
-                          <span className="text-base leading-none">{ws.icon}</span>
+                          {ws.iconUrl ? (
+                            <img
+                              src={ws.iconUrl}
+                              alt={ws.name}
+                              className="size-4 shrink-0 rounded object-cover"
+                            />
+                          ) : (
+                            <div className="size-4 shrink-0 rounded bg-muted" />
+                          )}
                           <span className="truncate">{ws.name}</span>
                           {ws._id === currentWorkspace?._id && (
                             <HugeiconsIcon
@@ -258,82 +247,14 @@ export function AppSidebar() {
                   </>
                 )}
 
-                {/* Create workspace inline */}
+                {/* Create workspace */}
                 <DropdownMenuGroup>
-                  {isCreating ? (
-                    <div className="flex flex-col gap-2 p-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger className="flex size-7 shrink-0 items-center justify-center rounded-md text-base hover:bg-muted">
-                            {newIcon}
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent side="right" align="start" className="w-auto">
-                            <div className="grid grid-cols-4 gap-1 p-1">
-                              {WORKSPACE_ICONS.map((emoji) => (
-                                <button
-                                  key={emoji}
-                                  type="button"
-                                  onClick={() => setNewIcon(emoji)}
-                                  className={`flex size-8 items-center justify-center rounded-md text-base transition-colors ${
-                                    newIcon === emoji
-                                      ? "bg-[#0496FF]/10"
-                                      : "hover:bg-muted"
-                                  }`}
-                                >
-                                  {emoji}
-                                </button>
-                              ))}
-                            </div>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                        <Input
-                          placeholder="Workspace name"
-                          value={newName}
-                          onChange={(e) => setNewName(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") handleCreateWorkspace()
-                            if (e.key === "Escape") {
-                              setIsCreating(false)
-                              setNewName("")
-                            }
-                          }}
-                          className="h-7 text-xs"
-                          autoFocus
-                        />
-                      </div>
-                      <div className="flex gap-1.5">
-                        <Button
-                          size="xs"
-                          variant="ghost"
-                          className="flex-1"
-                          onClick={() => {
-                            setIsCreating(false)
-                            setNewName("")
-                          }}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          size="xs"
-                          className="flex-1 bg-[#0496FF] text-white hover:bg-[#0496FF]/90"
-                          disabled={!newName.trim()}
-                          onClick={handleCreateWorkspace}
-                        >
-                          Create
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <DropdownMenuItem
-                      onClick={(e) => {
-                        e.preventDefault()
-                        setIsCreating(true)
-                      }}
-                    >
-                      <HugeiconsIcon icon={Add01Icon} size={14} strokeWidth={2} />
-                      New workspace
-                    </DropdownMenuItem>
-                  )}
+                  <DropdownMenuItem
+                    onClick={() => router.push("/app/setup")}
+                  >
+                    <HugeiconsIcon icon={Add01Icon} size={14} strokeWidth={2} />
+                    New workspace
+                  </DropdownMenuItem>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
 

@@ -15,7 +15,9 @@ export const getUserWorkspaces = query({
     const workspaces = await Promise.all(
       memberships.map(async (m) => {
         const workspace = await ctx.db.get(m.workspaceId)
-        return workspace ? { ...workspace, role: m.role } : null
+        if (!workspace) return null
+        const iconUrl = await ctx.storage.getUrl(workspace.iconId)
+        return { ...workspace, iconUrl, role: m.role }
       })
     )
 
@@ -23,10 +25,19 @@ export const getUserWorkspaces = query({
   },
 })
 
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity) throw new Error("Not authenticated")
+    return await ctx.storage.generateUploadUrl()
+  },
+})
+
 export const createWorkspace = mutation({
   args: {
     name: v.string(),
-    icon: v.string(),
+    iconId: v.id("_storage"),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
@@ -34,7 +45,7 @@ export const createWorkspace = mutation({
 
     const workspaceId = await ctx.db.insert("workspaces", {
       name: args.name,
-      icon: args.icon,
+      iconId: args.iconId,
       ownerId: identity.subject,
     })
 
