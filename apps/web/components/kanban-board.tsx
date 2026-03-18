@@ -343,7 +343,7 @@ export function KanbanBoard() {
   const [tasks] = useState<Task[]>(MOCK_TASKS)
 
   return (
-    <div className="flex h-full overflow-x-auto scrollbar-hide pt-4">
+    <div className="flex h-full overflow-x-auto scrollbar-thin pt-4">
       {COLUMNS.map((column, colIndex) => {
         const columnTasks = tasks.filter((t) => t.status === column.id)
         return (
