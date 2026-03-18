@@ -456,7 +456,7 @@ export function AppSidebar() {
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
 
-                  <DropdownMenuItem render={<Link href="/app/settings" />}>
+                  <DropdownMenuItem render={<Link href="/settings" />}>
                     <HugeiconsIcon icon={Settings01Icon} size={14} strokeWidth={2} />
                     Settings
                   </DropdownMenuItem>
