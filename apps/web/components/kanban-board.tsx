@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useCallback } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Add01Icon,
@@ -290,11 +290,39 @@ function KanbanColumn({
   column,
   tasks,
   colIndex,
+  boardRef,
 }: {
   column: (typeof COLUMNS)[number]
   tasks: Task[]
   colIndex: number
+  boardRef: React.RefObject<HTMLDivElement | null>
 }) {
+  const cardsRef = useRef<HTMLDivElement>(null)
+
+  const handleWheel = useCallback(
+    (e: React.WheelEvent) => {
+      const el = cardsRef.current
+      if (!el || !boardRef.current) return
+
+      const canScrollVertically = el.scrollHeight > el.clientHeight
+      const atTop = el.scrollTop <= 0
+      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1
+
+      const scrollingDown = e.deltaY > 0
+      const scrollingUp = e.deltaY < 0
+
+      if (
+        !canScrollVertically ||
+        (scrollingDown && atBottom) ||
+        (scrollingUp && atTop)
+      ) {
+        e.preventDefault()
+        boardRef.current.scrollLeft += e.deltaY
+      }
+    },
+    [boardRef]
+  )
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -320,7 +348,11 @@ function KanbanColumn({
       </div>
 
       {/* Cards - independent scroll */}
-      <div className="flex flex-1 flex-col gap-2 overflow-y-auto scrollbar-hide px-3 pb-4">
+      <div
+        ref={cardsRef}
+        onWheel={handleWheel}
+        className="flex flex-1 flex-col gap-2 overflow-y-auto scrollbar-hide px-3 pb-4"
+      >
         {tasks.map((task, index) => (
           <TaskCard key={task.id} task={task} index={index} />
         ))}
@@ -331,9 +363,10 @@ function KanbanColumn({
 
 export function KanbanBoard() {
   const [tasks] = useState<Task[]>(MOCK_TASKS)
+  const boardRef = useRef<HTMLDivElement>(null)
 
   return (
-    <div className="flex h-full overflow-x-auto scrollbar-thin pt-4">
+    <div ref={boardRef} className="flex h-full overflow-x-auto scrollbar-thin pt-4">
       {COLUMNS.map((column, colIndex) => {
         const columnTasks = tasks.filter((t) => t.status === column.id)
         return (
@@ -342,6 +375,7 @@ export function KanbanBoard() {
             column={column}
             tasks={columnTasks}
             colIndex={colIndex}
+            boardRef={boardRef}
           />
         )
       })}
