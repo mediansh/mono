@@ -175,13 +175,7 @@ export function AppSidebar() {
             {mounted ? (
             <DropdownMenu>
               <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-md p-1.5 outline-none transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring">
-                {currentWorkspace?.iconUrl ? (
-                  <img
-                    src={currentWorkspace.iconUrl}
-                    alt={currentWorkspace.name}
-                    className="size-7 shrink-0 rounded-md object-cover"
-                  />
-                ) : user?.imageUrl ? (
+                {user?.imageUrl ? (
                   <img
                     src={user.imageUrl}
                     alt={user.fullName ?? "Profile"}
@@ -194,11 +188,13 @@ export function AppSidebar() {
                 )}
                 <div className="flex min-w-0 flex-col group-data-[collapsible=icon]:hidden">
                   <span className="truncate text-sm font-medium">
-                    {currentWorkspace?.name ?? user?.fullName}
+                    {user?.fullName}
                   </span>
-                  <span className="truncate text-xs text-muted-foreground">
-                    {user?.primaryEmailAddress?.emailAddress}
-                  </span>
+                  {currentWorkspace && (
+                    <span className="truncate text-xs text-muted-foreground">
+                      {currentWorkspace.name}
+                    </span>
+                  )}
                 </div>
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" align="start" className="w-56 duration-150">

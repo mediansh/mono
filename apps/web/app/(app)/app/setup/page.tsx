@@ -175,7 +175,7 @@ export default function WorkspaceSetupPage() {
             <button
               type="submit"
               disabled={loading || !name.trim() || !iconFile}
-              className="mt-1 h-10 rounded-lg bg-[#0496FF] text-sm font-medium text-white transition-colors hover:bg-[#0496FF]/90 disabled:opacity-50"
+              className="mt-1 flex h-10 items-center justify-center rounded-lg bg-[#0496FF] text-sm font-medium text-white transition-colors hover:bg-[#0496FF]/90 disabled:opacity-50"
             >
               {loading ? <Spinner /> : "Create workspace"}
             </button>
