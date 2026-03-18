@@ -1,0 +1,6 @@
+- Always use pnpm
+- Never run the dev servers
+- Always use Hugeicons
+- Keep the UI/branding consistent
+- Ensure your components are reusable
+- When you complete a task, always commit it to git

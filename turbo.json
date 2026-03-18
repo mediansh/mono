@@ -1,6 +1,17 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
+  "globalEnv": [
+    "CLERK_JWT_ISSUER_DOMAIN",
+    "CLERK_SECRET_KEY",
+    "CONVEX_DEPLOYMENT",
+    "NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL",
+    "NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL",
+    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+    "NEXT_PUBLIC_CLERK_SIGN_IN_URL",
+    "NEXT_PUBLIC_CLERK_SIGN_UP_URL",
+    "NEXT_PUBLIC_CONVEX_URL"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -17,6 +28,10 @@
       "dependsOn": ["^typecheck"]
     },
     "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "dev:convex": {
       "cache": false,
       "persistent": true
     }
