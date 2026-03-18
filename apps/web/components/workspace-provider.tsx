@@ -48,8 +48,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     if (match) {
       setCurrentId(match._id)
     } else {
-      setCurrentId(workspaces[0]._id)
-      localStorage.setItem(STORAGE_KEY, workspaces[0]._id)
+      const first = workspaces[0]
+      if (first) {
+        setCurrentId(first._id)
+        localStorage.setItem(STORAGE_KEY, first._id)
+      }
     }
   }, [workspaces])
 
