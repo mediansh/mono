@@ -249,7 +249,7 @@ function TaskCard({ task, index }: { task: Task; index: number }) {
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2, delay: index * 0.03, ease: "easeOut" }}
-      className="group cursor-pointer rounded-lg border border-border bg-card p-3 transition-colors hover:bg-accent/50"
+      className="group cursor-pointer rounded-lg border border-border bg-sidebar p-3 transition-colors hover:bg-accent/50 dark:bg-card"
     >
       {/* Title row with status icon */}
       <div className="flex items-start gap-2">
