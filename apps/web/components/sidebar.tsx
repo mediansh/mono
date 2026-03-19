@@ -23,6 +23,7 @@ import {
   Image01Icon,
 } from "@hugeicons/core-free-icons"
 import { motion } from "motion/react"
+import { NewTaskModal } from "@/components/new-task-modal"
 import { api } from "@/convex/_generated/api"
 import { Logo } from "@/components/logo"
 import { useWorkspace } from "@/components/workspace-provider"
@@ -243,6 +244,7 @@ function CreateWorkspaceModal({
 export function AppSidebar() {
   const [mounted, setMounted] = useState(false)
   const [createModalOpen, setCreateModalOpen] = useState(false)
+  const [newTaskOpen, setNewTaskOpen] = useState(false)
   const pathname = usePathname()
   const { signOut } = useClerk()
   const { user } = useUser()
@@ -250,6 +252,26 @@ export function AppSidebar() {
   const { workspaces, currentWorkspace, switchWorkspace } = useWorkspace()
 
   useEffect(() => setMounted(true), [])
+
+  // "C" keybind to open new task modal
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (
+        e.key === "c" &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey &&
+        !(e.target instanceof HTMLInputElement) &&
+        !(e.target instanceof HTMLTextAreaElement) &&
+        !(e.target as HTMLElement)?.isContentEditable
+      ) {
+        e.preventDefault()
+        setNewTaskOpen(true)
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [])
 
   return (
     <>
@@ -300,7 +322,10 @@ export function AppSidebar() {
                   transition={{ duration: 0.25, delay: 0.08, ease: "easeOut" }}
                 >
                   <SidebarMenuItem>
-                    <SidebarMenuButton className="bg-[#0496FF] text-white hover:bg-[#0496FF]/85 hover:text-white active:bg-[#0496FF]/70 active:text-white data-active:bg-[#0496FF] data-active:text-white">
+                    <SidebarMenuButton
+                      onClick={() => setNewTaskOpen(true)}
+                      className="bg-[#0496FF] text-white hover:bg-[#0496FF]/85 hover:text-white active:bg-[#0496FF]/70 active:text-white data-active:bg-[#0496FF] data-active:text-white"
+                    >
                       <HugeiconsIcon icon={QuillWrite01Icon} size={16} strokeWidth={2} />
                       <span>New</span>
                       <kbd className="ml-auto hidden rounded border border-white/25 bg-white/10 px-1.5 py-0.5 font-mono text-[10px] text-white/70 group-data-[collapsible=icon]:hidden lg:inline">
@@ -505,6 +530,11 @@ export function AppSidebar() {
       <CreateWorkspaceModal
         open={createModalOpen}
         onOpenChange={setCreateModalOpen}
+      />
+
+      <NewTaskModal
+        open={newTaskOpen}
+        onOpenChange={setNewTaskOpen}
       />
     </>
   )
