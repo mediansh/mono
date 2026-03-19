@@ -197,7 +197,7 @@ const COLUMNS: { id: Status; label: string }[] = [
 const LABEL_COLORS: Record<Label, string> = {
   feature: "#a855f7",
   bug: "#ef4444",
-  improvement: "#22c55e",
+  improvement: "#06b6d4",
   design: "#3b82f6",
   devops: "#f59e0b",
 }

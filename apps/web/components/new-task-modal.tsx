@@ -53,7 +53,7 @@ const PRIORITY_OPTIONS: { id: Priority; label: string }[] = [
 const LABEL_OPTIONS: { id: Label; label: string; color: string }[] = [
   { id: "feature", label: "Feature", color: "#a855f7" },
   { id: "bug", label: "Bug", color: "#ef4444" },
-  { id: "improvement", label: "Improvement", color: "#22c55e" },
+  { id: "improvement", label: "Improvement", color: "#06b6d4" },
   { id: "design", label: "Design", color: "#3b82f6" },
   { id: "devops", label: "DevOps", color: "#f59e0b" },
 ]
