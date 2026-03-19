@@ -328,14 +328,14 @@ export function NewTaskModal({ open, onOpenChange, defaultStatus = "requests" }:
               className="flex items-center gap-2 text-xs text-muted-foreground"
             >
               <div
-                className={`relative h-4 w-7 rounded-full transition-colors ${
+                className={`relative h-5 w-8 rounded-full transition-colors ${
                   createMore ? "bg-[#0496FF]" : "bg-accent"
                 }`}
               >
                 <motion.div
-                  animate={{ x: createMore ? 12 : 1 }}
+                  animate={{ x: createMore ? 18 : 2 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute top-0.5 size-3 rounded-full bg-white shadow-sm"
+                  className="absolute top-1 size-3 rounded-full bg-white shadow-sm"
                 />
               </div>
               Create more
