@@ -8,7 +8,7 @@ import {
   useCallback,
   type ReactNode,
 } from "react"
-import { useQuery } from "convex/react"
+import { useConvexAuth, useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
 
@@ -34,10 +34,15 @@ const STORAGE_KEY = "median_current_workspace"
 const HAS_WORKSPACE_COOKIE = "median_has_workspace"
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
-  const workspaces = useQuery(api.workspaces.getUserWorkspaces) as
+  const { isLoading: isAuthLoading, isAuthenticated } = useConvexAuth()
+  const workspaces = useQuery(
+    api.workspaces.getUserWorkspaces,
+    isAuthenticated ? {} : "skip"
+  ) as
     | Workspace[]
     | undefined
   const [currentId, setCurrentId] = useState<Id<"workspaces"> | null>(null)
+  const isLoading = isAuthLoading || (isAuthenticated && workspaces === undefined)
 
   useEffect(() => {
     if (!workspaces || workspaces.length === 0) return
@@ -59,6 +64,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   }, [workspaces])
 
   useEffect(() => {
+    if (isAuthLoading || !isAuthenticated) return
     if (workspaces === undefined) return
 
     document.cookie = `${HAS_WORKSPACE_COOKIE}=${workspaces.length > 0 ? "1" : "0"}; Path=/; Max-Age=31536000; SameSite=Lax`
@@ -86,7 +92,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         workspaces: workspaces ?? [],
         currentWorkspace,
         switchWorkspace,
-        isLoading: workspaces === undefined,
+        isLoading,
       }}
     >
       {children}
