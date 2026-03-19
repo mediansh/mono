@@ -7,6 +7,7 @@ import { useMutation } from "convex/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Image01Icon } from "@hugeicons/core-free-icons"
 import { api } from "@/convex/_generated/api"
+import { useWorkspace } from "@/components/workspace-provider"
 
 function Spinner() {
   return (
@@ -21,6 +22,7 @@ export default function WorkspaceSetupPage() {
   const router = useRouter()
   const createWorkspace = useMutation(api.workspaces.createWorkspace)
   const generateUploadUrl = useMutation(api.workspaces.generateUploadUrl)
+  const { workspaces, isLoading } = useWorkspace()
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [name, setName] = useState("")
@@ -78,6 +80,18 @@ export default function WorkspaceSetupPage() {
       setError("Failed to create workspace. Please try again.")
       setLoading(false)
     }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="size-5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-foreground" />
+      </div>
+    )
+  }
+
+  if (workspaces.length > 0) {
+    return null
   }
 
   return (
