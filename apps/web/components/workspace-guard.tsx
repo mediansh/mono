@@ -8,13 +8,21 @@ export function WorkspaceGuard({ children }: { children: React.ReactNode }) {
   const { workspaces, isLoading } = useWorkspace()
   const router = useRouter()
   const pathname = usePathname()
+  const isSetupPage = pathname === "/app/setup"
+  const hasWorkspaces = workspaces.length > 0
 
   useEffect(() => {
     if (isLoading) return
-    if (workspaces.length === 0 && pathname !== "/app/setup") {
+
+    if (!hasWorkspaces && !isSetupPage) {
       router.replace("/app/setup")
+      return
     }
-  }, [workspaces, isLoading, pathname, router])
+
+    if (hasWorkspaces && isSetupPage) {
+      router.replace("/app")
+    }
+  }, [hasWorkspaces, isLoading, isSetupPage, router])
 
   if (isLoading) {
     return (
@@ -24,7 +32,7 @@ export function WorkspaceGuard({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (workspaces.length === 0 && pathname !== "/app/setup") {
+  if ((!hasWorkspaces && !isSetupPage) || (hasWorkspaces && isSetupPage)) {
     return null
   }
 
