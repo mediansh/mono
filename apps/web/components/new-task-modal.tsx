@@ -183,14 +183,7 @@ export function NewTaskModal({ open, onOpenChange, defaultStatus = "requests" }:
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <div className="flex items-center gap-2 text-sm">
-            <div className="flex items-center gap-1.5 rounded-md bg-accent px-2 py-1">
-              <div className="size-3.5 rounded-sm bg-[#0496FF]" />
-              <span className="text-xs font-medium">MED</span>
-            </div>
-            <span className="text-muted-foreground">›</span>
-            <span className="font-medium">New task</span>
-          </div>
+          <span className="text-sm font-medium">New task</span>
           <div className="flex items-center gap-1">
             <button className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
               <HugeiconsIcon icon={ArrowExpandDiagonal01Icon} size={14} />
@@ -223,106 +216,108 @@ export function NewTaskModal({ open, onOpenChange, defaultStatus = "requests" }:
           />
         </div>
 
-        {/* Toolbar pills */}
-        <div className="flex flex-wrap items-center gap-2 px-5 pb-4">
-          {/* Status */}
-          <div className="relative">
-            <button
-              onClick={() => {
-                closeAllDropdowns()
-                setStatusDropdown(!statusDropdown)
-              }}
-              className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent"
-            >
-              {getStatusIcon(status)}
-              {statusLabel}
-            </button>
-            <Dropdown open={statusDropdown} onClose={() => setStatusDropdown(false)}>
-              {STATUS_OPTIONS.map((opt) => (
-                <button
-                  key={opt.id}
-                  onClick={() => {
-                    setStatus(opt.id)
-                    setStatusDropdown(false)
-                  }}
-                  className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-xs transition-colors hover:bg-accent ${
-                    status === opt.id ? "text-foreground" : "text-muted-foreground"
-                  }`}
-                >
-                  {getStatusIcon(opt.id)}
-                  {opt.label}
-                </button>
-              ))}
-            </Dropdown>
-          </div>
-
-          {/* Priority */}
-          <div className="relative">
-            <button
-              onClick={() => {
-                closeAllDropdowns()
-                setPriorityDropdown(!priorityDropdown)
-              }}
-              className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent"
-            >
-              {getPriorityIcon(priority)}
-              {priorityLabel}
-            </button>
-            <Dropdown open={priorityDropdown} onClose={() => setPriorityDropdown(false)}>
-              {PRIORITY_OPTIONS.map((opt) => (
-                <button
-                  key={opt.id}
-                  onClick={() => {
-                    setPriority(opt.id)
-                    setPriorityDropdown(false)
-                  }}
-                  className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-xs transition-colors hover:bg-accent ${
-                    priority === opt.id ? "text-foreground" : "text-muted-foreground"
-                  }`}
-                >
-                  {getPriorityIcon(opt.id)}
-                  {opt.label}
-                </button>
-              ))}
-            </Dropdown>
-          </div>
-
-          {/* Labels */}
-          <div className="relative">
-            <button
-              onClick={() => {
-                closeAllDropdowns()
-                setLabelsDropdown(!labelsDropdown)
-              }}
-              className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent"
-            >
-              <HugeiconsIcon icon={Tag01Icon} size={14} className="text-muted-foreground" />
-              {labels.length > 0
-                ? labels.map((l) => LABEL_OPTIONS.find((o) => o.id === l)?.label).join(", ")
-                : "Labels"}
-            </button>
-            <Dropdown open={labelsDropdown} onClose={() => setLabelsDropdown(false)}>
-              {LABEL_OPTIONS.map((opt) => (
-                <button
-                  key={opt.id}
-                  onClick={() => toggleLabel(opt.id)}
-                  className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-xs transition-colors hover:bg-accent ${
-                    labels.includes(opt.id) ? "text-foreground" : "text-muted-foreground"
-                  }`}
-                >
-                  <div
-                    className="size-2.5 rounded-full"
-                    style={{ backgroundColor: opt.color }}
-                  />
-                  {opt.label}
-                </button>
-              ))}
-            </Dropdown>
-          </div>
-        </div>
-
         {/* Footer */}
-        <div className="flex items-center justify-between border-t border-border px-4 py-3">
+        <div className="flex flex-col gap-3 border-t border-border px-4 py-3">
+          {/* Toolbar pills */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Status */}
+            <div className="relative">
+              <button
+                onClick={() => {
+                  closeAllDropdowns()
+                  setStatusDropdown(!statusDropdown)
+                }}
+                className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent"
+              >
+                {getStatusIcon(status)}
+                {statusLabel}
+              </button>
+              <Dropdown open={statusDropdown} onClose={() => setStatusDropdown(false)}>
+                {STATUS_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    onClick={() => {
+                      setStatus(opt.id)
+                      setStatusDropdown(false)
+                    }}
+                    className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-xs transition-colors hover:bg-accent ${
+                      status === opt.id ? "text-foreground" : "text-muted-foreground"
+                    }`}
+                  >
+                    {getStatusIcon(opt.id)}
+                    {opt.label}
+                  </button>
+                ))}
+              </Dropdown>
+            </div>
+
+            {/* Priority */}
+            <div className="relative">
+              <button
+                onClick={() => {
+                  closeAllDropdowns()
+                  setPriorityDropdown(!priorityDropdown)
+                }}
+                className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent"
+              >
+                {getPriorityIcon(priority)}
+                {priorityLabel}
+              </button>
+              <Dropdown open={priorityDropdown} onClose={() => setPriorityDropdown(false)}>
+                {PRIORITY_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    onClick={() => {
+                      setPriority(opt.id)
+                      setPriorityDropdown(false)
+                    }}
+                    className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-xs transition-colors hover:bg-accent ${
+                      priority === opt.id ? "text-foreground" : "text-muted-foreground"
+                    }`}
+                  >
+                    {getPriorityIcon(opt.id)}
+                    {opt.label}
+                  </button>
+                ))}
+              </Dropdown>
+            </div>
+
+            {/* Labels */}
+            <div className="relative">
+              <button
+                onClick={() => {
+                  closeAllDropdowns()
+                  setLabelsDropdown(!labelsDropdown)
+                }}
+                className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent"
+              >
+                <HugeiconsIcon icon={Tag01Icon} size={14} className="text-muted-foreground" />
+                {labels.length > 0
+                  ? labels.map((l) => LABEL_OPTIONS.find((o) => o.id === l)?.label).join(", ")
+                  : "Labels"}
+              </button>
+              <Dropdown open={labelsDropdown} onClose={() => setLabelsDropdown(false)}>
+                {LABEL_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    onClick={() => toggleLabel(opt.id)}
+                    className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-xs transition-colors hover:bg-accent ${
+                      labels.includes(opt.id) ? "text-foreground" : "text-muted-foreground"
+                    }`}
+                  >
+                    <div
+                      className="size-2.5 rounded-full"
+                      style={{ backgroundColor: opt.color }}
+                    />
+                    {opt.label}
+                  </button>
+                ))}
+              </Dropdown>
+            </div>
+          </div>
+
+          {/* Actions row */}
+          <div className="flex items-center justify-between">
           <button className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
             <HugeiconsIcon icon={Attachment01Icon} size={16} />
           </button>
@@ -354,6 +349,7 @@ export function NewTaskModal({ open, onOpenChange, defaultStatus = "requests" }:
             >
               Create task
             </button>
+          </div>
           </div>
         </div>
       </DialogContent>
