@@ -4,7 +4,6 @@ import { useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Cancel01Icon,
-  ArrowExpandDiagonal01Icon,
   Loading03Icon,
   CircleIcon,
   CheckmarkBadge01Icon,
@@ -185,9 +184,6 @@ export function NewTaskModal({ open, onOpenChange, defaultStatus = "requests" }:
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <span className="text-sm font-medium">New task</span>
           <div className="flex items-center gap-1">
-            <button className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
-              <HugeiconsIcon icon={ArrowExpandDiagonal01Icon} size={14} />
-            </button>
             <button
               onClick={() => onOpenChange(false)}
               className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
