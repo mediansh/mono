@@ -260,13 +260,9 @@ function TaskCard({ task, index }: { task: Task; index: number }) {
         <span className="text-sm font-medium leading-snug">{task.title}</span>
       </div>
 
-      {/* Bottom row: priority + project + labels */}
+      {/* Bottom row: priority + labels */}
       <div className="mt-3 flex items-center gap-2">
         <div className="shrink-0">{getPriorityIcon(task.priority)}</div>
-        <div className="flex items-center gap-1.5 rounded-sm border border-border px-1.5 py-0.5">
-          <div className="size-3 rounded-sm bg-[#0496FF]" />
-          <span className="text-[11px] text-muted-foreground">{task.project}</span>
-        </div>
         {task.labels.map((label) => (
           <div
             key={label}
