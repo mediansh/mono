@@ -18,6 +18,7 @@ import {
   LeftToRightListBulletIcon,
 } from "@hugeicons/core-free-icons"
 import { motion, AnimatePresence } from "motion/react"
+import { NewTaskModal } from "@/components/new-task-modal"
 
 // Types
 type Priority = "urgent" | "high" | "medium" | "low" | "none"
@@ -293,11 +294,13 @@ function KanbanColumn({
   tasks,
   colIndex,
   boardRef,
+  onAddTask,
 }: {
   column: (typeof COLUMNS)[number]
   tasks: Task[]
   colIndex: number
   boardRef: React.RefObject<HTMLDivElement | null>
+  onAddTask: (status: Status) => void
 }) {
   const cardsRef = useRef<HTMLDivElement>(null)
 
@@ -343,7 +346,10 @@ function KanbanColumn({
           <button className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
             <HugeiconsIcon icon={MoreHorizontalIcon} size={16} />
           </button>
-          <button className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+          <button
+            onClick={() => onAddTask(column.id)}
+            className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
             <HugeiconsIcon icon={Add01Icon} size={16} />
           </button>
         </div>
@@ -363,7 +369,7 @@ function KanbanColumn({
   )
 }
 
-function BoardView({ tasks }: { tasks: Task[] }) {
+function BoardView({ tasks, onAddTask }: { tasks: Task[]; onAddTask: (status: Status) => void }) {
   const boardRef = useRef<HTMLDivElement>(null)
 
   return (
@@ -377,6 +383,7 @@ function BoardView({ tasks }: { tasks: Task[] }) {
             tasks={columnTasks}
             colIndex={colIndex}
             boardRef={boardRef}
+            onAddTask={onAddTask}
           />
         )
       })}
@@ -494,6 +501,13 @@ function ListView({ tasks }: { tasks: Task[] }) {
 export function KanbanBoard() {
   const [tasks] = useState<Task[]>(MOCK_TASKS)
   const [view, setView] = useState<ViewMode>("board")
+  const [modalOpen, setModalOpen] = useState(false)
+  const [modalDefaultStatus, setModalDefaultStatus] = useState<Status>("requests")
+
+  function handleAddTask(status: Status) {
+    setModalDefaultStatus(status)
+    setModalOpen(true)
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -527,8 +541,19 @@ export function KanbanBoard() {
 
       {/* Content */}
       <div className="min-h-0 flex-1">
-        {view === "board" ? <BoardView tasks={tasks} /> : <ListView tasks={tasks} />}
+        {view === "board" ? (
+          <BoardView tasks={tasks} onAddTask={handleAddTask} />
+        ) : (
+          <ListView tasks={tasks} />
+        )}
       </div>
+
+      {/* New task modal */}
+      <NewTaskModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        defaultStatus={modalDefaultStatus}
+      />
     </div>
   )
 }
