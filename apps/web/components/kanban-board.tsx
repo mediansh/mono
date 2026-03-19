@@ -212,15 +212,15 @@ const STATUS_LABELS: Record<Status, string> = {
 function getStatusIcon(status: Status, size = 14) {
   switch (status) {
     case "requests":
-      return <HugeiconsIcon icon={Loading03Icon} size={size} className="text-violet-500" />
+      return <HugeiconsIcon icon={Loading03Icon} size={size} className="text-muted-foreground" />
     case "todo":
-      return <HugeiconsIcon icon={CircleIcon} size={size} className="text-blue-400" />
+      return <HugeiconsIcon icon={CircleIcon} size={size} className="text-muted-foreground" />
     case "in_progress":
       return <HugeiconsIcon icon={Loading03Icon} size={size} className="text-yellow-500" />
     case "done":
       return <HugeiconsIcon icon={CheckmarkBadge01Icon} size={size} className="text-emerald-500" />
     case "archive":
-      return <HugeiconsIcon icon={Archive01Icon} size={size} className="text-orange-400" />
+      return <HugeiconsIcon icon={Archive01Icon} size={size} className="text-muted-foreground" />
   }
 }
 
@@ -436,7 +436,7 @@ function ListGroup({
       {/* Group header */}
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="flex w-full items-center gap-2 px-4 py-2 text-left transition-colors hover:bg-accent/30"
+        className="flex w-full items-center gap-2 bg-sidebar px-4 py-2 text-left transition-colors hover:bg-accent/50 dark:bg-accent/40"
       >
         <motion.span
           animate={{ rotate: collapsed ? -90 : 0 }}
