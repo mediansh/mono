@@ -31,6 +31,7 @@ type WorkspaceContextValue = {
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null)
 
 const STORAGE_KEY = "median_current_workspace"
+const HAS_WORKSPACE_COOKIE = "median_has_workspace"
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const workspaces = useQuery(api.workspaces.getUserWorkspaces) as
@@ -54,6 +55,17 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         setCurrentId(first._id)
         localStorage.setItem(STORAGE_KEY, first._id)
       }
+    }
+  }, [workspaces])
+
+  useEffect(() => {
+    if (workspaces === undefined) return
+
+    document.cookie = `${HAS_WORKSPACE_COOKIE}=${workspaces.length > 0 ? "1" : "0"}; Path=/; Max-Age=31536000; SameSite=Lax`
+
+    if (workspaces.length === 0) {
+      localStorage.removeItem(STORAGE_KEY)
+      setCurrentId(null)
     }
   }, [workspaces])
 
