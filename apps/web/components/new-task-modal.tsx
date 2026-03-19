@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Cancel01Icon,
@@ -100,7 +100,11 @@ export function NewTaskModal({ open, onOpenChange, defaultStatus = "requests" }:
   const [status, setStatus] = useState<Status>(defaultStatus)
   const [priority, setPriority] = useState<Priority>("none")
   const [labels, setLabels] = useState<Label[]>([])
+  const [attachments, setAttachments] = useState<File[]>([])
   const [createMore, setCreateMore] = useState(false)
+
+  const descriptionRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   function handleCreate() {
     if (!title.trim()) return
@@ -110,6 +114,7 @@ export function NewTaskModal({ open, onOpenChange, defaultStatus = "requests" }:
       setDescription("")
       setPriority("none")
       setLabels([])
+      setAttachments([])
     } else {
       onOpenChange(false)
     }
@@ -123,6 +128,7 @@ export function NewTaskModal({ open, onOpenChange, defaultStatus = "requests" }:
       setStatus(defaultStatus)
       setPriority("none")
       setLabels([])
+      setAttachments([])
     }
   }
 
@@ -130,6 +136,24 @@ export function NewTaskModal({ open, onOpenChange, defaultStatus = "requests" }:
     setLabels((prev) =>
       prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]
     )
+  }
+
+  function handleTitleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.preventDefault()
+      descriptionRef.current?.focus()
+    }
+  }
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files
+    if (!files) return
+    setAttachments((prev) => [...prev, ...Array.from(files)])
+    e.target.value = ""
+  }
+
+  function removeAttachment(index: number) {
+    setAttachments((prev) => prev.filter((_, i) => i !== index))
   }
 
   const statusLabel = STATUS_OPTIONS.find((s) => s.id === status)?.label ?? "Status"
@@ -166,17 +190,40 @@ export function NewTaskModal({ open, onOpenChange, defaultStatus = "requests" }:
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+            onKeyDown={handleTitleKeyDown}
             placeholder="Task title"
             autoFocus
             className="w-full bg-transparent text-lg font-medium outline-none placeholder:text-muted-foreground/50"
           />
           <textarea
+            ref={descriptionRef}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Add description..."
             rows={4}
             className="mt-2 w-full resize-none bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
           />
+
+          {/* Attachments preview */}
+          {attachments.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {attachments.map((file, i) => (
+                <div
+                  key={`${file.name}-${i}`}
+                  className="flex items-center gap-1.5 rounded-lg border border-border bg-accent/50 px-2.5 py-1.5 text-xs"
+                >
+                  <HugeiconsIcon icon={Attachment01Icon} size={12} className="text-muted-foreground" />
+                  <span className="max-w-[150px] truncate">{file.name}</span>
+                  <button
+                    onClick={() => removeAttachment(i)}
+                    className="ml-0.5 text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <HugeiconsIcon icon={Cancel01Icon} size={12} strokeWidth={2} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -223,7 +270,7 @@ export function NewTaskModal({ open, onOpenChange, defaultStatus = "requests" }:
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Labels */}
+            {/* Labels (multi-select) */}
             <DropdownMenu>
               <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent">
                 <HugeiconsIcon icon={Tag01Icon} size={14} className="text-muted-foreground" />
@@ -236,10 +283,7 @@ export function NewTaskModal({ open, onOpenChange, defaultStatus = "requests" }:
                   <DropdownMenuCheckboxItem
                     key={opt.id}
                     checked={labels.includes(opt.id)}
-                    onClick={(e) => {
-                      e.preventDefault()
-                      toggleLabel(opt.id)
-                    }}
+                    onCheckedChange={() => toggleLabel(opt.id)}
                   >
                     <div
                       className="size-2.5 rounded-full"
@@ -254,9 +298,22 @@ export function NewTaskModal({ open, onOpenChange, defaultStatus = "requests" }:
 
           {/* Actions row */}
           <div className="flex items-center justify-between">
-            <button className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
-              <HugeiconsIcon icon={Attachment01Icon} size={16} />
-            </button>
+            <div className="flex items-center gap-1">
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <HugeiconsIcon icon={Attachment01Icon} size={14} />
+                Attach
+              </button>
+            </div>
             <div className="flex items-center gap-3">
               {/* Create more toggle */}
               <button
