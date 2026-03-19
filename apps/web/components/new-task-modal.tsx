@@ -285,8 +285,8 @@ export function NewTaskModal({ open, onOpenChange, defaultStatus = "requests" }:
                     checked={labels.includes(opt.id)}
                     onCheckedChange={() => toggleLabel(opt.id)}
                   >
-                    <div
-                      className="size-2.5 rounded-full"
+                    <span
+                      className="inline-block size-2.5 shrink-0 rounded-full"
                       style={{ backgroundColor: opt.color }}
                     />
                     {opt.label}
