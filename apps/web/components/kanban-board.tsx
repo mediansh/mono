@@ -254,15 +254,16 @@ function TaskCard({ task, index }: { task: Task; index: number }) {
       transition={{ duration: 0.2, delay: index * 0.03, ease: "easeOut" }}
       className="group cursor-pointer rounded-lg border border-border bg-sidebar p-3 transition-colors hover:bg-accent/50 dark:bg-card"
     >
-      {/* Title row with status icon */}
+      {/* Title row with status icon + priority */}
       <div className="flex items-start gap-2">
         <div className="mt-0.5 shrink-0">{getStatusIcon(task.status)}</div>
-        <span className="text-sm font-medium leading-snug">{task.title}</span>
+        <span className="min-w-0 flex-1 text-sm font-medium leading-snug">{task.title}</span>
+        <div className="mt-0.5 shrink-0">{getPriorityIcon(task.priority)}</div>
       </div>
 
-      {/* Bottom row: priority + labels */}
+      {/* Labels */}
+      {task.labels.length > 0 && (
       <div className="mt-3 flex items-center gap-2">
-        <div className="shrink-0">{getPriorityIcon(task.priority)}</div>
         {task.labels.map((label) => (
           <div
             key={label}
@@ -276,6 +277,7 @@ function TaskCard({ task, index }: { task: Task; index: number }) {
           </div>
         ))}
       </div>
+      )}
 
       {/* Created date */}
       <div className="mt-2.5">
