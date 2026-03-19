@@ -11,18 +11,24 @@ import {
   MoreHorizontalIcon,
   Attachment01Icon,
   Tag01Icon,
-  UserMultipleIcon,
-  Globe02Icon,
   SignalFull02Icon,
   SignalMedium02Icon,
   SignalLow02Icon,
   AlertCircleIcon,
+  Tick02Icon,
 } from "@hugeicons/core-free-icons"
-import { motion, AnimatePresence } from "motion/react"
+import { motion } from "motion/react"
 import {
   Dialog,
   DialogContent,
 } from "@workspace/ui/components/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuCheckboxItem,
+} from "@workspace/ui/components/dropdown-menu"
 
 type Priority = "urgent" | "high" | "medium" | "low" | "none"
 type Status = "requests" | "todo" | "in_progress" | "done" | "archive"
@@ -82,35 +88,6 @@ function getPriorityIcon(priority: Priority) {
   }
 }
 
-function Dropdown({
-  open,
-  onClose,
-  children,
-}: {
-  open: boolean
-  onClose: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <AnimatePresence>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-50" onClick={onClose} />
-          <motion.div
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 4 }}
-            transition={{ duration: 0.12 }}
-            className="absolute top-full left-0 z-50 mt-1 min-w-[160px] rounded-lg border border-border bg-popover p-1 shadow-lg"
-          >
-            {children}
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
-  )
-}
-
 interface NewTaskModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -124,16 +101,6 @@ export function NewTaskModal({ open, onOpenChange, defaultStatus = "requests" }:
   const [priority, setPriority] = useState<Priority>("none")
   const [labels, setLabels] = useState<Label[]>([])
   const [createMore, setCreateMore] = useState(false)
-
-  const [statusDropdown, setStatusDropdown] = useState(false)
-  const [priorityDropdown, setPriorityDropdown] = useState(false)
-  const [labelsDropdown, setLabelsDropdown] = useState(false)
-
-  function closeAllDropdowns() {
-    setStatusDropdown(false)
-    setPriorityDropdown(false)
-    setLabelsDropdown(false)
-  }
 
   function handleCreate() {
     if (!title.trim()) return
@@ -217,135 +184,108 @@ export function NewTaskModal({ open, onOpenChange, defaultStatus = "requests" }:
           {/* Toolbar pills */}
           <div className="flex flex-wrap items-center gap-2">
             {/* Status */}
-            <div className="relative">
-              <button
-                onClick={() => {
-                  closeAllDropdowns()
-                  setStatusDropdown(!statusDropdown)
-                }}
-                className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent"
-              >
+            <DropdownMenu>
+              <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent">
                 {getStatusIcon(status)}
                 {statusLabel}
-              </button>
-              <Dropdown open={statusDropdown} onClose={() => setStatusDropdown(false)}>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" sideOffset={6}>
                 {STATUS_OPTIONS.map((opt) => (
-                  <button
+                  <DropdownMenuItem
                     key={opt.id}
-                    onClick={() => {
-                      setStatus(opt.id)
-                      setStatusDropdown(false)
-                    }}
-                    className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-xs transition-colors hover:bg-accent ${
-                      status === opt.id ? "text-foreground" : "text-muted-foreground"
-                    }`}
+                    onClick={() => setStatus(opt.id)}
+                    className={status === opt.id ? "text-foreground" : "text-muted-foreground"}
                   >
                     {getStatusIcon(opt.id)}
                     {opt.label}
-                  </button>
+                  </DropdownMenuItem>
                 ))}
-              </Dropdown>
-            </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             {/* Priority */}
-            <div className="relative">
-              <button
-                onClick={() => {
-                  closeAllDropdowns()
-                  setPriorityDropdown(!priorityDropdown)
-                }}
-                className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent"
-              >
+            <DropdownMenu>
+              <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent">
                 {getPriorityIcon(priority)}
                 {priorityLabel}
-              </button>
-              <Dropdown open={priorityDropdown} onClose={() => setPriorityDropdown(false)}>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" sideOffset={6}>
                 {PRIORITY_OPTIONS.map((opt) => (
-                  <button
+                  <DropdownMenuItem
                     key={opt.id}
-                    onClick={() => {
-                      setPriority(opt.id)
-                      setPriorityDropdown(false)
-                    }}
-                    className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-xs transition-colors hover:bg-accent ${
-                      priority === opt.id ? "text-foreground" : "text-muted-foreground"
-                    }`}
+                    onClick={() => setPriority(opt.id)}
+                    className={priority === opt.id ? "text-foreground" : "text-muted-foreground"}
                   >
                     {getPriorityIcon(opt.id)}
                     {opt.label}
-                  </button>
+                  </DropdownMenuItem>
                 ))}
-              </Dropdown>
-            </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             {/* Labels */}
-            <div className="relative">
-              <button
-                onClick={() => {
-                  closeAllDropdowns()
-                  setLabelsDropdown(!labelsDropdown)
-                }}
-                className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent"
-              >
+            <DropdownMenu>
+              <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent">
                 <HugeiconsIcon icon={Tag01Icon} size={14} className="text-muted-foreground" />
                 {labels.length > 0
                   ? labels.map((l) => LABEL_OPTIONS.find((o) => o.id === l)?.label).join(", ")
                   : "Labels"}
-              </button>
-              <Dropdown open={labelsDropdown} onClose={() => setLabelsDropdown(false)}>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" sideOffset={6}>
                 {LABEL_OPTIONS.map((opt) => (
-                  <button
+                  <DropdownMenuCheckboxItem
                     key={opt.id}
-                    onClick={() => toggleLabel(opt.id)}
-                    className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-xs transition-colors hover:bg-accent ${
-                      labels.includes(opt.id) ? "text-foreground" : "text-muted-foreground"
-                    }`}
+                    checked={labels.includes(opt.id)}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      toggleLabel(opt.id)
+                    }}
                   >
                     <div
                       className="size-2.5 rounded-full"
                       style={{ backgroundColor: opt.color }}
                     />
                     {opt.label}
-                  </button>
+                  </DropdownMenuCheckboxItem>
                 ))}
-              </Dropdown>
-            </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {/* Actions row */}
           <div className="flex items-center justify-between">
-          <button className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
-            <HugeiconsIcon icon={Attachment01Icon} size={16} />
-          </button>
-          <div className="flex items-center gap-3">
-            {/* Create more toggle */}
-            <button
-              onClick={() => setCreateMore(!createMore)}
-              className="flex items-center gap-2 text-xs text-muted-foreground"
-            >
-              <div
-                className={`relative h-5 w-8 rounded-full transition-colors ${
-                  createMore ? "bg-[#0496FF]" : "bg-accent"
-                }`}
+            <button className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+              <HugeiconsIcon icon={Attachment01Icon} size={16} />
+            </button>
+            <div className="flex items-center gap-3">
+              {/* Create more toggle */}
+              <button
+                onClick={() => setCreateMore(!createMore)}
+                className="flex items-center gap-2 text-xs text-muted-foreground"
               >
-                <motion.div
-                  animate={{ x: createMore ? 18 : 2 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute top-1 size-3 rounded-full bg-white shadow-sm"
-                />
-              </div>
-              Create more
-            </button>
+                <div
+                  className={`relative h-5 w-8 rounded-full transition-colors ${
+                    createMore ? "bg-[#0496FF]" : "bg-accent"
+                  }`}
+                >
+                  <motion.div
+                    animate={{ x: createMore ? 18 : 2 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute top-1 size-3 rounded-full bg-white shadow-sm"
+                  />
+                </div>
+                Create more
+              </button>
 
-            {/* Create button */}
-            <button
-              onClick={handleCreate}
-              disabled={!title.trim()}
-              className="flex items-center rounded-lg bg-[#0496FF] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0496FF]/90 disabled:opacity-50"
-            >
-              Create task
-            </button>
-          </div>
+              {/* Create button */}
+              <button
+                onClick={handleCreate}
+                disabled={!title.trim()}
+                className="flex items-center rounded-lg bg-[#0496FF] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0496FF]/90 disabled:opacity-50"
+              >
+                Create task
+              </button>
+            </div>
           </div>
         </div>
       </DialogContent>
