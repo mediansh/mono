@@ -278,7 +278,7 @@ export function NewTaskModal({ open, onOpenChange, defaultStatus = "requests" }:
                   ? labels.map((l) => LABEL_OPTIONS.find((o) => o.id === l)?.label).join(", ")
                   : "Labels"}
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" sideOffset={6}>
+              <DropdownMenuContent align="start" sideOffset={6} className="w-auto min-w-[180px]">
                 {LABEL_OPTIONS.map((opt) => (
                   <DropdownMenuCheckboxItem
                     key={opt.id}
