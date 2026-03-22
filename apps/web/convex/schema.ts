@@ -4,9 +4,18 @@ import { v } from "convex/values"
 export default defineSchema({
   workspaces: defineTable({
     name: v.string(),
-    iconId: v.id("_storage"),
+    prefix: v.optional(v.string()),
+    iconId: v.optional(v.id("_storage")),
     ownerId: v.string(),
     taskCounter: v.optional(v.number()),
+    labels: v.optional(
+      v.array(
+        v.object({
+          name: v.string(),
+          color: v.string(),
+        })
+      )
+    ),
   }).index("by_owner", ["ownerId"]),
 
   workspaceMembers: defineTable({
@@ -39,15 +48,7 @@ export default defineSchema({
       v.literal("low"),
       v.literal("none")
     ),
-    labels: v.array(
-      v.union(
-        v.literal("feature"),
-        v.literal("bug"),
-        v.literal("improvement"),
-        v.literal("design"),
-        v.literal("devops")
-      )
-    ),
+    labels: v.array(v.string()),
     order: v.number(),
     project: v.string(),
     assignee: v.optional(

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { useMutation } from "convex/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Image01Icon } from "@hugeicons/core-free-icons"
+import { Facehash } from "facehash"
 import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
 
@@ -57,24 +58,25 @@ export default function WorkspaceSetupPage() {
       setError("Workspace name is required")
       return
     }
-    if (!iconFile) {
-      setError("Please upload a logo")
-      return
-    }
 
     setLoading(true)
     setError("")
 
     try {
-      const uploadUrl = await generateUploadUrl()
-      const result = await fetch(uploadUrl, {
-        method: "POST",
-        headers: { "Content-Type": iconFile.type },
-        body: iconFile,
-      })
-      const { storageId } = await result.json()
+      let iconId: string | undefined
 
-      await createWorkspace({ name: name.trim(), iconId: storageId })
+      if (iconFile) {
+        const uploadUrl = await generateUploadUrl()
+        const result = await fetch(uploadUrl, {
+          method: "POST",
+          headers: { "Content-Type": iconFile.type },
+          body: iconFile,
+        })
+        const data = await result.json()
+        iconId = data.storageId
+      }
+
+      await createWorkspace({ name: name.trim(), iconId: iconId as any })
       router.push("/app")
     } catch {
       setError("Failed to create workspace. Please try again.")
@@ -114,13 +116,13 @@ export default function WorkspaceSetupPage() {
 
           <h1 className="text-2xl font-semibold tracking-tight">Create your workspace</h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Upload a logo and name your workspace to get started
+            Name your workspace to get started. You can optionally upload a logo.
           </p>
 
           <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium">
-                Logo
+                Logo <span className="text-muted-foreground font-normal">(optional)</span>
               </label>
               <input
                 ref={fileInputRef}
@@ -140,6 +142,8 @@ export default function WorkspaceSetupPage() {
                     alt="Workspace logo"
                     className="size-full object-cover"
                   />
+                ) : name.trim() ? (
+                  <Facehash name={name.trim()} size={64} />
                 ) : (
                   <HugeiconsIcon
                     icon={Image01Icon}
@@ -188,7 +192,7 @@ export default function WorkspaceSetupPage() {
 
             <button
               type="submit"
-              disabled={loading || !name.trim() || !iconFile}
+              disabled={loading || !name.trim()}
               className="mt-1 flex h-10 items-center justify-center rounded-lg bg-[#0496FF] text-sm font-medium text-white transition-colors hover:bg-[#0496FF]/90 disabled:opacity-50"
             >
               {loading ? <Spinner /> : "Create workspace"}

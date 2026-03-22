@@ -1,6 +1,7 @@
 "use client"
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react"
+import { createPortal } from "react-dom"
 import { useConvex, useConvexAuth, useMutation } from "convex/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -18,6 +19,8 @@ import {
   CheckmarkCircle02Icon,
   Cancel02Icon,
   LinkSquare02Icon,
+  Delete02Icon,
+  Tag01Icon,
 } from "@hugeicons/core-free-icons"
 import { motion, AnimatePresence } from "motion/react"
 import { NewTaskModal } from "@/components/new-task-modal"
@@ -32,6 +35,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuSeparator,
+  DropdownMenuCheckboxItem,
 } from "@workspace/ui/components/dropdown-menu"
 import { Cancel01Icon } from "@hugeicons/core-free-icons"
 import {
@@ -59,6 +67,7 @@ import { useWorkspace } from "@/components/workspace-provider"
 import {
   STATUS_ORDER,
   TASK_STATUS_LABELS,
+  DEFAULT_WORKSPACE_LABELS,
   formatTaskDate,
   isDemoTaskSet,
   type RequestSource,
@@ -88,14 +97,20 @@ const COLUMNS: { id: Status; label: string }[] = [
   { id: "archive", label: "Archive" },
 ]
 
-// Label colors
-const LABEL_COLORS: Record<Label, string> = {
-  feature: "#a855f7",
-  bug: "#ef4444",
-  improvement: "#06b6d4",
-  design: "#3b82f6",
-  devops: "#f59e0b",
+// Label colors — built from workspace config
+function buildLabelColors(workspaceLabels?: { name: string; color: string }[]): Record<string, string> {
+  const labels = workspaceLabels ?? DEFAULT_WORKSPACE_LABELS
+  const map: Record<string, string> = {}
+  for (const l of labels) map[l.name] = l.color
+  return map
 }
+
+type LabelConfig = { names: string[]; colors: Record<string, string> }
+const LabelConfigContext = createContext<LabelConfig>({
+  names: DEFAULT_WORKSPACE_LABELS.map((l) => l.name),
+  colors: buildLabelColors(),
+})
+function useLabelConfig() { return useContext(LabelConfigContext) }
 
 const STATUS_LABELS = TASK_STATUS_LABELS
 
@@ -426,6 +441,7 @@ const RequestRow = memo(function RequestRow({
 }) {
   const source = task.source
   const config = source ? SOURCE_CONFIG[source.platform] : null
+  const { colors: labelColors } = useLabelConfig()
 
   return (
     <div onClick={() => onSelect(task)} className="cursor-pointer rounded-lg border border-border bg-background p-3 transition-colors hover:border-border/80 hover:bg-accent/20 dark:bg-card">
@@ -454,8 +470,8 @@ const RequestRow = memo(function RequestRow({
               key={label}
               className="rounded-full px-2 py-0.5 text-[10px] font-medium capitalize"
               style={{
-                backgroundColor: LABEL_COLORS[label] + "18",
-                color: LABEL_COLORS[label],
+                backgroundColor: (labelColors[label] ?? "#6b7280") + "18",
+                color: labelColors[label] ?? "#6b7280",
               }}
             >
               {label}
@@ -562,11 +578,124 @@ function RequestsGroup({
   )
 }
 
+// ── Context Menu ──
+
+function TaskContextMenu({
+  task,
+  position,
+  onClose,
+  onUpdate,
+  onDelete,
+}: {
+  task: Task
+  position: { x: number; y: number }
+  onClose: () => void
+  onUpdate: (taskId: string, updates: Partial<Task>) => void
+  onDelete: (taskId: string) => void
+}) {
+  const labelConfig = useLabelConfig()
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClick(e: globalThis.MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        onClose()
+      }
+    }
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose()
+    }
+    document.addEventListener("mousedown", handleClick)
+    document.addEventListener("keydown", handleEscape)
+    return () => {
+      document.removeEventListener("mousedown", handleClick)
+      document.removeEventListener("keydown", handleEscape)
+    }
+  }, [onClose])
+
+  function toggleLabel(label: Label) {
+    const has = task.labels.includes(label)
+    const updated = has ? task.labels.filter((l) => l !== label) : [...task.labels, label]
+    onUpdate(task.id, { labels: updated })
+  }
+
+  return createPortal(
+    <div
+      ref={menuRef}
+      className="fixed z-[100] min-w-[200px] rounded-lg p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 bg-popover/70 before:pointer-events-none before:absolute before:inset-0 before:-z-1 before:rounded-[inherit] before:backdrop-blur-2xl before:backdrop-saturate-150"
+      style={{ top: position.y, left: position.x }}
+    >
+      {/* Status */}
+      <div className="px-1.5 py-1 text-xs font-medium text-muted-foreground">Status</div>
+      {ALL_STATUSES.map((s) => (
+        <button
+          key={s}
+          onClick={() => { onUpdate(task.id, { status: s }); onClose() }}
+          className={`flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-sm transition-colors hover:bg-accent ${task.status === s ? "font-medium" : ""}`}
+        >
+          {getStatusIcon(s, 14)}
+          <span>{STATUS_LABELS[s]}</span>
+          {task.status === s && <span className="ml-auto text-xs text-primary">✓</span>}
+        </button>
+      ))}
+
+      <div className="-mx-1 my-1 h-px bg-border" />
+
+      {/* Priority */}
+      <div className="px-1.5 py-1 text-xs font-medium text-muted-foreground">Priority</div>
+      {ALL_PRIORITIES.map((p) => (
+        <button
+          key={p}
+          onClick={() => { onUpdate(task.id, { priority: p }); onClose() }}
+          className={`flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-sm transition-colors hover:bg-accent ${task.priority === p ? "font-medium" : ""}`}
+        >
+          {getPriorityIcon(p, 14)}
+          <span>{PRIORITY_LABELS[p]}</span>
+          {task.priority === p && <span className="ml-auto text-xs text-primary">✓</span>}
+        </button>
+      ))}
+
+      <div className="-mx-1 my-1 h-px bg-border" />
+
+      {/* Labels */}
+      <div className="px-1.5 py-1 text-xs font-medium text-muted-foreground">Labels</div>
+      {labelConfig.names.map((label) => (
+        <button
+          key={label}
+          onClick={() => toggleLabel(label)}
+          className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-sm capitalize transition-colors hover:bg-accent"
+        >
+          <div
+            className="size-2.5 rounded-full"
+            style={{ backgroundColor: labelConfig.colors[label] ?? "#888" }}
+          />
+          <span>{label}</span>
+          {task.labels.includes(label) && <span className="ml-auto text-xs text-primary">✓</span>}
+        </button>
+      ))}
+
+      <div className="-mx-1 my-1 h-px bg-border" />
+
+      {/* Delete */}
+      <button
+        onClick={() => { onDelete(task.id); onClose() }}
+        className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-sm text-destructive transition-colors hover:bg-destructive/10"
+      >
+        <HugeiconsIcon icon={Delete02Icon} size={14} />
+        <span>Delete task</span>
+      </button>
+    </div>,
+    document.body
+  )
+}
+
 // ── List View Components ──
 
 const ListRowContent = memo(function ListRowContent({ task }: { task: Task }) {
+  const { colors: labelColors } = useLabelConfig()
   return (
     <>
+      <span className="shrink-0 font-mono text-[11px] text-muted-foreground/50">{task.taskCode}</span>
       <div className="shrink-0">{getPriorityIcon(task.priority)}</div>
       <div className="shrink-0">{getStatusIcon(task.status)}</div>
       <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground/90">{task.title}</span>
@@ -576,8 +705,8 @@ const ListRowContent = memo(function ListRowContent({ task }: { task: Task }) {
             key={label}
             className="rounded-full px-2 py-0.5 text-[10px] font-medium capitalize"
             style={{
-              backgroundColor: LABEL_COLORS[label] + "18",
-              color: LABEL_COLORS[label],
+              backgroundColor: (labelColors[label] ?? "#888") + "18",
+              color: labelColors[label] ?? "#888",
             }}
           >
             {label}
@@ -592,10 +721,15 @@ const ListRowContent = memo(function ListRowContent({ task }: { task: Task }) {
 const SortableListRow = memo(function SortableListRow({
   task,
   onSelect,
+  onUpdate,
+  onDelete,
 }: {
   task: Task
   onSelect: (task: Task) => void
+  onUpdate: (taskId: string, updates: Partial<Task>) => void
+  onDelete: (taskId: string) => void
 }) {
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
   const {
     attributes,
     listeners,
@@ -618,17 +752,34 @@ const SortableListRow = memo(function SortableListRow({
     onSelect(task)
   }, [onSelect, task])
 
+  const handleContextMenu = useCallback((e: ReactMouseEvent) => {
+    e.preventDefault()
+    setContextMenu({ x: e.clientX, y: e.clientY })
+  }, [])
+
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      onClick={handleClick}
-      className={`group flex cursor-pointer touch-none items-center gap-3 border-b border-l-2 border-border bg-background px-4 py-2 select-none transition-all duration-150 hover:bg-accent/40 active:cursor-grabbing ${PRIORITY_ACCENT[task.priority]}`}
-    >
-      <ListRowContent task={task} />
-    </div>
+    <>
+      <div
+        ref={setNodeRef}
+        style={style}
+        {...attributes}
+        {...listeners}
+        onClick={handleClick}
+        onContextMenu={handleContextMenu}
+        className={`group flex cursor-pointer touch-none items-center gap-3 border-b border-l-2 border-border bg-background px-4 py-2 select-none transition-all duration-150 hover:bg-accent/40 active:cursor-grabbing ${PRIORITY_ACCENT[task.priority]}`}
+      >
+        <ListRowContent task={task} />
+      </div>
+      {contextMenu && (
+        <TaskContextMenu
+          task={task}
+          position={contextMenu}
+          onClose={() => setContextMenu(null)}
+          onUpdate={onUpdate}
+          onDelete={onDelete}
+        />
+      )}
+    </>
   )
 })
 
@@ -647,12 +798,16 @@ function ListGroup({
   groupIndex,
   isDropTarget,
   onSelectTask,
+  onUpdateTask,
+  onDeleteTask,
 }: {
   column: (typeof COLUMNS)[number]
   tasks: Task[]
   groupIndex: number
   isDropTarget?: boolean
   onSelectTask: (task: Task) => void
+  onUpdateTask: (taskId: string, updates: Partial<Task>) => void
+  onDeleteTask: (taskId: string) => void
 }) {
   const [collapsed, setCollapsed] = useState(false)
   const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks])
@@ -702,7 +857,7 @@ function ListGroup({
             <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
               {tasks.length === 0 ? null : (
                 tasks.map((task) => (
-                  <SortableListRow key={task.id} task={task} onSelect={onSelectTask} />
+                  <SortableListRow key={task.id} task={task} onSelect={onSelectTask} onUpdate={onUpdateTask} onDelete={onDeleteTask} />
                 ))
               )}
             </SortableContext>
@@ -718,7 +873,7 @@ function ListGroup({
 // "requests" excluded — requests are user-submitted and managed via accept/deny only
 const ALL_STATUSES: Status[] = ["todo", "in_progress", "ready", "shipped", "archive"]
 const ALL_PRIORITIES: Priority[] = ["urgent", "high", "medium", "low", "none"]
-const ALL_LABELS: Label[] = ["feature", "bug", "improvement", "design", "devops"]
+// ALL_LABELS is now dynamic from workspace config via LabelConfigContext
 
 const PRIORITY_LABELS: Record<Priority, string> = {
   urgent: "Urgent",
@@ -732,11 +887,14 @@ function TaskDetailModal({
   task,
   onClose,
   onUpdate,
+  onDelete,
 }: {
   task: Task | null
   onClose: () => void
   onUpdate: (taskId: string, updates: Partial<Task>) => void
+  onDelete: (taskId: string) => void
 }) {
+  const labelConfig = useLabelConfig()
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleValue, setTitleValue] = useState("")
   const [editingDesc, setEditingDesc] = useState(false)
@@ -771,6 +929,8 @@ function TaskDetailModal({
             {/* Top bar */}
             <div className="flex items-center justify-between border-b border-border px-5 py-3">
               <div className="flex items-center gap-2.5">
+                <span className="font-mono text-xs font-medium text-muted-foreground">{task.taskCode}</span>
+                <span className="text-muted-foreground/30">·</span>
                 <span className="text-xs text-muted-foreground/60">{task.createdAt}</span>
                 {task.source && (() => {
                   const cfg = SOURCE_CONFIG[task.source!.platform]
@@ -792,12 +952,21 @@ function TaskDetailModal({
                   )
                 })()}
               </div>
-              <button
-                onClick={onClose}
-                className="rounded-md p-1 text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
-              >
-                <HugeiconsIcon icon={Cancel01Icon} size={14} />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => onDelete(task.id)}
+                  className="rounded-md p-1 text-muted-foreground/60 transition-colors hover:bg-destructive/10 hover:text-destructive"
+                  title="Delete task"
+                >
+                  <HugeiconsIcon icon={Delete02Icon} size={14} />
+                </button>
+                <button
+                  onClick={onClose}
+                  className="rounded-md p-1 text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <HugeiconsIcon icon={Cancel01Icon} size={14} />
+                </button>
+              </div>
             </div>
 
             {/* Content */}
@@ -880,7 +1049,7 @@ function TaskDetailModal({
                             <div
                               key={label}
                               className="size-2.5 rounded-full ring-1 ring-background"
-                              style={{ backgroundColor: LABEL_COLORS[label] }}
+                              style={{ backgroundColor: labelConfig.colors[label] ?? "#888" }}
                             />
                           ))}
                         </div>
@@ -891,7 +1060,7 @@ function TaskDetailModal({
                     )}
                   </DropdownMenuTrigger>
                   <DropdownMenuContent side="bottom" align="start">
-                    {ALL_LABELS.map((label) => (
+                    {labelConfig.names.map((label) => (
                       <DropdownMenuItem
                         key={label}
                         onSelect={() => toggleLabel(label)}
@@ -899,7 +1068,7 @@ function TaskDetailModal({
                         <div className="flex w-full items-center gap-2 capitalize">
                           <div
                             className="size-2.5 rounded-full"
-                            style={{ backgroundColor: LABEL_COLORS[label] }}
+                            style={{ backgroundColor: labelConfig.colors[label] ?? "#888" }}
                           />
                           <span>{label}</span>
                           {task.labels.includes(label) && (
@@ -954,6 +1123,7 @@ function ListView({
   hiddenColumns,
   onMoveTask,
   onUpdateTask,
+  onDeleteTask,
   onAcceptRequest,
   onDenyRequest,
 }: {
@@ -961,6 +1131,7 @@ function ListView({
   hiddenColumns: Status[]
   onMoveTask: (taskId: string, toStatus: Status, toIndex: number) => void
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void
+  onDeleteTask: (taskId: string) => void
   onAcceptRequest: (task: Task) => void
   onDenyRequest: (task: Task) => void
 }) {
@@ -1112,6 +1283,8 @@ function ListView({
               groupIndex={showRequests ? groupIndex + 1 : groupIndex}
               isDropTarget={overColumn === column.id && activeTaskSource !== null && activeTaskSource !== column.id}
               onSelectTask={handleSelectTask}
+              onUpdateTask={onUpdateTask}
+              onDeleteTask={onDeleteTask}
             />
           )
         })}
@@ -1125,6 +1298,7 @@ function ListView({
       task={selectedTask}
       onClose={() => setSelectedTaskId(null)}
       onUpdate={onUpdateTask}
+      onDelete={(taskId) => { onDeleteTask(taskId); setSelectedTaskId(null) }}
     />
   </>
   )
@@ -1288,6 +1462,16 @@ export function KanbanBoard() {
     })
   }
 
+  function handleDeleteTask(taskId: string) {
+    if (!workspaceId || !taskDocs || taskId.startsWith("optimistic:")) return
+
+    updateWorkspaceTasks(workspaceId, (tasks) =>
+      tasks.filter((t) => t._id !== taskId)
+    )
+
+    void deleteTask({ taskId: taskId as Id<"tasks"> })
+  }
+
   function handleMoveTask(taskId: string, toStatus: Status, toIndex: number) {
     if (!workspaceId || !taskDocs || taskId.startsWith("optimistic:")) return
 
@@ -1303,6 +1487,15 @@ export function KanbanBoard() {
     })
   }
 
+  const labelConfig = useMemo<LabelConfig>(() => {
+    const wsLabels = currentWorkspace?.labels
+    const labels = wsLabels && wsLabels.length > 0 ? wsLabels : DEFAULT_WORKSPACE_LABELS
+    return {
+      names: labels.map((l) => l.name),
+      colors: buildLabelColors(labels),
+    }
+  }, [currentWorkspace?.labels])
+
   if (
     !workspaceId ||
     (taskDocs === undefined && (isAuthLoading || !hasFetchedTasks || isCleaningDemoTasks))
@@ -1311,6 +1504,7 @@ export function KanbanBoard() {
   }
 
   return (
+    <LabelConfigContext.Provider value={labelConfig}>
     <div className="flex h-full flex-col">
       {/* Toolbar - only render when there are hidden columns */}
       <AnimatePresence>
@@ -1338,6 +1532,7 @@ export function KanbanBoard() {
           hiddenColumns={hiddenColumns}
           onMoveTask={handleMoveTask}
           onUpdateTask={handleUpdateTask}
+          onDeleteTask={handleDeleteTask}
           onAcceptRequest={handleAcceptRequest}
           onDenyRequest={handleDenyRequest}
         />
@@ -1350,5 +1545,6 @@ export function KanbanBoard() {
         defaultStatus={modalDefaultStatus}
       />
     </div>
+    </LabelConfigContext.Provider>
   )
 }

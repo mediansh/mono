@@ -1,13 +1,14 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { useRouter } from "next/navigation"
 import { useMutation } from "convex/react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Image01Icon } from "@hugeicons/core-free-icons"
+import { Image01Icon, Delete02Icon } from "@hugeicons/core-free-icons"
 import { motion, AnimatePresence } from "motion/react"
+import { Facehash } from "facehash"
 import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
+import { useRouter } from "next/navigation"
 import {
   Dialog,
   DialogContent,
@@ -16,7 +17,7 @@ import {
   DialogDescription,
 } from "@workspace/ui/components/dialog"
 
-export default function WorkspaceSettingsPage() {
+export default function GeneralSettingsPage() {
   const router = useRouter()
   const { currentWorkspace, workspaces, switchWorkspace } = useWorkspace()
   const updateWorkspace = useMutation(api.workspaces.updateWorkspace)
@@ -54,12 +55,9 @@ export default function WorkspaceSettingsPage() {
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     if (!currentWorkspace || !name.trim()) return
-
     setSaving(true)
-
     try {
       let newIconId: undefined | string = undefined
-
       if (iconFile) {
         const uploadUrl = await generateUploadUrl()
         const result = await fetch(uploadUrl, {
@@ -70,13 +68,11 @@ export default function WorkspaceSettingsPage() {
         const { storageId } = await result.json()
         newIconId = storageId
       }
-
       await updateWorkspace({
         workspaceId: currentWorkspace._id,
         name: name.trim(),
         ...(newIconId ? { iconId: newIconId as any } : {}),
       })
-
       setIconFile(null)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
@@ -90,11 +86,8 @@ export default function WorkspaceSettingsPage() {
   async function handleDelete() {
     if (!currentWorkspace) return
     setDeleting(true)
-
     try {
       await deleteWorkspace({ workspaceId: currentWorkspace._id })
-
-      // Switch to another workspace or go to setup
       const remaining = workspaces.filter((w) => w._id !== currentWorkspace._id)
       if (remaining[0]) {
         switchWorkspace(remaining[0]._id)
@@ -110,133 +103,141 @@ export default function WorkspaceSettingsPage() {
   const hasChanges = name.trim() !== currentWorkspace.name || iconFile !== null
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-8 py-10">
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: "easeOut" }}
-      >
-        <h1 className="text-lg font-semibold">Workspace settings</h1>
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, ease: "easeOut" }}
+      className="mx-auto w-full max-w-2xl px-8 py-8"
+    >
+      {/* Header */}
+      <div className="mb-8">
+        <h2 className="text-lg font-semibold">General</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Manage your workspace details and preferences.
+          Manage your workspace profile and settings.
         </p>
-      </motion.div>
+      </div>
 
-      <form onSubmit={handleSave} className="mt-8">
-        {/* General section */}
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.05, ease: "easeOut" }}
-          className="border-b border-border pb-8"
-        >
-          <h2 className="text-sm font-medium">General</h2>
-
-          <div className="mt-5 flex flex-col gap-5">
-            {/* Logo */}
-            <div className="flex items-start gap-4">
-              <div className="w-28 shrink-0 pt-1 text-sm text-muted-foreground">
-                Logo
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileSelect}
-                  className="hidden"
+      {/* Workspace profile card */}
+      <form onSubmit={handleSave}>
+        <div className="rounded-lg border border-border bg-card">
+          {/* Logo section */}
+          <div className="flex items-center gap-4 border-b border-border p-5">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="group relative flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-muted/50 transition-all hover:border-foreground/20 hover:shadow-sm"
+            >
+              {iconPreview ? (
+                <img
+                  src={iconPreview}
+                  alt="Workspace logo"
+                  className="size-full object-cover"
                 />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="group flex size-14 items-center justify-center overflow-hidden rounded-lg border border-border bg-card transition-colors hover:bg-muted"
-                >
-                  {iconPreview ? (
-                    <img
-                      src={iconPreview}
-                      alt="Workspace logo"
-                      className="size-full object-cover"
-                    />
-                  ) : (
-                    <HugeiconsIcon
-                      icon={Image01Icon}
-                      size={20}
-                      strokeWidth={1.5}
-                      className="text-muted-foreground transition-colors group-hover:text-foreground"
-                    />
-                  )}
-                </button>
-                <span className="text-xs text-muted-foreground">
-                  Click to change
-                </span>
+              ) : name.trim() ? (
+                <Facehash name={name.trim()} size={64} />
+              ) : (
+                <HugeiconsIcon
+                  icon={Image01Icon}
+                  size={22}
+                  strokeWidth={1.5}
+                  className="text-muted-foreground transition-colors group-hover:text-foreground"
+                />
+              )}
+              <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/10">
+                <HugeiconsIcon
+                  icon={Image01Icon}
+                  size={16}
+                  strokeWidth={2}
+                  className="text-white opacity-0 transition-opacity group-hover:opacity-100"
+                />
               </div>
-            </div>
-
-            {/* Name */}
-            <div className="flex items-center gap-4">
-              <div className="w-28 shrink-0 text-sm text-muted-foreground">
-                Name
-              </div>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="h-10 w-full max-w-xs rounded-lg border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
-              />
+            </button>
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-medium">Workspace logo</span>
+              <span className="text-xs text-muted-foreground">
+                Upload an image or use the auto-generated avatar. Max 5MB.
+              </span>
             </div>
           </div>
-        </motion.div>
 
-        {/* Save button */}
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.1, ease: "easeOut" }}
-          className="mt-5 flex items-center gap-3"
-        >
-          <button
-            type="submit"
-            disabled={saving || !hasChanges || !name.trim()}
-            className="flex h-9 items-center justify-center rounded-lg bg-[#0496FF] px-4 text-sm font-medium text-white transition-colors hover:bg-[#0496FF]/90 disabled:opacity-50"
-          >
-            {saving ? "Saving..." : saved ? "Saved" : "Save changes"}
-          </button>
-          <AnimatePresence>
-            {saved && (
-              <motion.span
-                initial={{ opacity: 0, x: -4 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -4 }}
-                transition={{ duration: 0.2 }}
-                className="text-sm text-muted-foreground"
+          {/* Name section */}
+          <div className="p-5">
+            <label
+              htmlFor="workspace-name"
+              className="mb-2 block text-sm font-medium"
+            >
+              Workspace name
+            </label>
+            <input
+              id="workspace-name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="My Workspace"
+              className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
+            />
+          </div>
+
+          {/* Save bar */}
+          <div className="flex items-center justify-between border-t border-border bg-muted/30 px-5 py-3">
+            <p className="text-xs text-muted-foreground">
+              This is your workspace&apos;s visible name.
+            </p>
+            <div className="flex items-center gap-2">
+              <AnimatePresence>
+                {saved && (
+                  <motion.span
+                    initial={{ opacity: 0, x: 4 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 4 }}
+                    transition={{ duration: 0.15 }}
+                    className="text-xs text-emerald-500"
+                  >
+                    Saved
+                  </motion.span>
+                )}
+              </AnimatePresence>
+              <button
+                type="submit"
+                disabled={saving || !hasChanges || !name.trim()}
+                className="flex h-8 items-center justify-center rounded-md bg-[#0496FF] px-3.5 text-xs font-medium text-white transition-colors hover:bg-[#0496FF]/90 disabled:opacity-40"
               >
-                Changes saved
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </motion.div>
+                {saving ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
       </form>
 
       {/* Danger zone */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.15, ease: "easeOut" }}
-        className="mt-10 rounded-lg border border-destructive/30 p-5"
-      >
-        <h2 className="text-sm font-medium text-destructive">Danger zone</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Permanently delete this workspace and all of its data. This action cannot
-          be undone.
-        </p>
-        <button
-          type="button"
-          onClick={() => setDeleteModalOpen(true)}
-          className="mt-4 flex h-9 items-center justify-center rounded-lg bg-destructive/10 px-4 text-sm font-medium text-destructive transition-colors hover:bg-destructive/20"
-        >
-          Delete workspace
-        </button>
-      </motion.div>
+      <div className="mt-8">
+        <h3 className="mb-3 text-sm font-medium text-destructive">Danger zone</h3>
+        <div className="rounded-lg border border-destructive/20 bg-card">
+          <div className="flex items-center justify-between p-5">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm font-medium">Delete workspace</span>
+              <span className="text-xs text-muted-foreground">
+                Permanently delete this workspace and all of its data.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setDeleteModalOpen(true)}
+              className="flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-destructive/30 px-3 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
+            >
+              <HugeiconsIcon icon={Delete02Icon} size={13} strokeWidth={1.5} />
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Delete confirmation modal */}
       <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
@@ -251,11 +252,14 @@ export default function WorkspaceSettingsPage() {
               and all of its data. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
-
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
               <label className="text-sm text-muted-foreground">
-                Type <span className="font-medium text-foreground">{currentWorkspace.name}</span> to confirm
+                Type{" "}
+                <span className="font-medium text-foreground">
+                  {currentWorkspace.name}
+                </span>{" "}
+                to confirm
               </label>
               <input
                 type="text"
@@ -288,6 +292,6 @@ export default function WorkspaceSettingsPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </motion.div>
   )
 }

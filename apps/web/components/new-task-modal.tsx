@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState, useCallback } from "react"
+import { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import { useMutation } from "convex/react"
 import { useUser } from "@clerk/nextjs"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -35,7 +35,7 @@ import {
 import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
 import type { Doc, Id } from "@/convex/_generated/dataModel"
-import { getTaskNumber, type TaskLabel as Label, type TaskPriority as Priority, type TaskStatus as Status } from "@/lib/task-board"
+import { getTaskNumber, DEFAULT_WORKSPACE_LABELS, type TaskLabel as Label, type TaskPriority as Priority, type TaskStatus as Status } from "@/lib/task-board"
 import {
   setWorkspaceTasks,
   updateWorkspaceTasks,
@@ -59,13 +59,7 @@ const PRIORITY_OPTIONS: { id: Priority; label: string }[] = [
   { id: "none", label: "None" },
 ]
 
-const LABEL_OPTIONS: { id: Label; label: string; color: string }[] = [
-  { id: "feature", label: "Feature", color: "#a855f7" },
-  { id: "bug", label: "Bug", color: "#ef4444" },
-  { id: "improvement", label: "Improvement", color: "#06b6d4" },
-  { id: "design", label: "Design", color: "#3b82f6" },
-  { id: "devops", label: "DevOps", color: "#f59e0b" },
-]
+// labelOptions is now built dynamically from workspace config
 
 function getStatusIcon(status: Status) {
   switch (status) {
@@ -120,6 +114,12 @@ export function NewTaskModal({ open, onOpenChange, defaultStatus = "todo" }: New
     { storageId: string; name: string; type: string; size: number }[]
   >([])
   const [uploading, setUploading] = useState(false)
+
+  const labelOptions = useMemo(() => {
+    const wsLabels = currentWorkspace?.labels
+    const labels = wsLabels && wsLabels.length > 0 ? wsLabels : DEFAULT_WORKSPACE_LABELS
+    return labels.map((l) => ({ id: l.name as Label, label: l.name.charAt(0).toUpperCase() + l.name.slice(1), color: l.color }))
+  }, [currentWorkspace?.labels])
 
   const descriptionRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -195,7 +195,7 @@ export function NewTaskModal({ open, onOpenChange, defaultStatus = "todo" }: New
       _id: optimisticId,
       _creationTime: Date.now(),
       workspaceId: currentWorkspace._id,
-      taskCode: `MED-${nextTaskNumber}`,
+      taskCode: `${currentWorkspace?.prefix || "MED"}-${nextTaskNumber}`,
       taskNumber: nextTaskNumber,
       title: title.trim(),
       description: description.trim() || undefined,
@@ -369,11 +369,11 @@ export function NewTaskModal({ open, onOpenChange, defaultStatus = "todo" }: New
               <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent">
                 <HugeiconsIcon icon={Tag01Icon} size={14} className="text-muted-foreground" />
                 {labels.length > 0
-                  ? labels.map((l) => LABEL_OPTIONS.find((o) => o.id === l)?.label).join(", ")
+                  ? labels.map((l) => labelOptions.find((o) => o.id === l)?.label).join(", ")
                   : "Labels"}
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" sideOffset={6} className="w-auto min-w-[180px]">
-                {LABEL_OPTIONS.map((opt) => (
+                {labelOptions.map((opt) => (
                   <DropdownMenuCheckboxItem
                     key={opt.id}
                     checked={labels.includes(opt.id)}

@@ -19,15 +19,19 @@ export const TASK_LABELS = [
   "feature",
   "bug",
   "improvement",
-  "design",
-  "devops",
 ] as const
+
+export const DEFAULT_WORKSPACE_LABELS: { name: string; color: string }[] = [
+  { name: "feature", color: "#a855f7" },
+  { name: "bug", color: "#ef4444" },
+  { name: "improvement", color: "#06b6d4" },
+]
 
 export const REQUEST_SOURCES = ["discord", "slack", "x"] as const
 
 export type TaskStatus = (typeof TASK_STATUSES)[number]
 export type TaskPriority = (typeof TASK_PRIORITIES)[number]
-export type TaskLabel = (typeof TASK_LABELS)[number]
+export type TaskLabel = string
 export type RequestSource = (typeof REQUEST_SOURCES)[number]
 
 export type TaskSource = {
@@ -166,7 +170,7 @@ export const INITIAL_TASKS: TaskSeed[] = [
     title: "CI/CD pipeline for staging environment",
     status: "in_progress",
     priority: "high",
-    labels: ["devops"],
+    labels: ["improvement"],
     project: "Median V1",
     createdAtLabel: "Mar 15",
     assignee: { name: "Abdul", avatar: "" },
@@ -206,7 +210,7 @@ export const INITIAL_TASKS: TaskSeed[] = [
     title: "Landing page redesign",
     status: "shipped",
     priority: "high",
-    labels: ["design"],
+    labels: ["improvement"],
     project: "Median V1",
     createdAtLabel: "Jan 28",
     assignee: { name: "Abdul", avatar: "" },
@@ -266,7 +270,7 @@ export const INITIAL_TASKS: TaskSeed[] = [
     title: "Initial project scaffolding",
     status: "archive",
     priority: "medium",
-    labels: ["devops"],
+    labels: ["improvement"],
     project: "Median V1",
     createdAtLabel: "Jan 15",
     assignee: { name: "Abdul", avatar: "" },

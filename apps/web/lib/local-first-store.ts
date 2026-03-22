@@ -6,11 +6,13 @@ import type { Doc, Id } from "@/convex/_generated/dataModel"
 export type WorkspaceRecord = {
   _id: Id<"workspaces">
   name: string
-  iconId: Id<"_storage">
+  prefix?: string
+  iconId?: Id<"_storage">
   iconUrl: string | null
   ownerId: string
   role: string
   taskCounter?: number
+  labels?: { name: string; color: string }[]
 }
 
 export type LocalTaskDoc = Omit<Doc<"tasks">, "_id"> & {

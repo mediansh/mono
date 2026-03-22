@@ -21,6 +21,7 @@ import {
   Image01Icon,
 } from "@hugeicons/core-free-icons"
 import { motion } from "motion/react"
+import { Facehash } from "facehash"
 import { NewTaskModal } from "@/components/new-task-modal"
 import { api } from "@/convex/_generated/api"
 import { Logo } from "@/components/logo"
@@ -110,23 +111,25 @@ function CreateWorkspaceModal({
       setError("Workspace name is required")
       return
     }
-    if (!iconFile) {
-      setError("Please upload a logo")
-      return
-    }
 
     setLoading(true)
     setError("")
 
     try {
-      const uploadUrl = await generateUploadUrl()
-      const result = await fetch(uploadUrl, {
-        method: "POST",
-        headers: { "Content-Type": iconFile.type },
-        body: iconFile,
-      })
-      const { storageId } = await result.json()
-      const id = await createWorkspace({ name: name.trim(), iconId: storageId })
+      let iconId: string | undefined
+
+      if (iconFile) {
+        const uploadUrl = await generateUploadUrl()
+        const result = await fetch(uploadUrl, {
+          method: "POST",
+          headers: { "Content-Type": iconFile.type },
+          body: iconFile,
+        })
+        const data = await result.json()
+        iconId = data.storageId
+      }
+
+      const id = await createWorkspace({ name: name.trim(), iconId: iconId as any })
       switchWorkspace(id)
       reset()
       onOpenChange(false)
@@ -148,13 +151,13 @@ function CreateWorkspaceModal({
         <DialogHeader>
           <DialogTitle>Create workspace</DialogTitle>
           <DialogDescription>
-            Upload a logo and name your new workspace.
+            Name your workspace. You can optionally upload a logo.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium">Logo</label>
+            <label className="text-sm font-medium">Logo <span className="text-muted-foreground font-normal">(optional)</span></label>
             <input
               ref={fileInputRef}
               type="file"
@@ -173,6 +176,8 @@ function CreateWorkspaceModal({
                   alt="Workspace logo"
                   className="size-full object-cover"
                 />
+              ) : name.trim() ? (
+                <Facehash name={name.trim()} size={56} />
               ) : (
                 <HugeiconsIcon
                   icon={Image01Icon}
@@ -219,7 +224,7 @@ function CreateWorkspaceModal({
 
           <button
             type="submit"
-            disabled={loading || !name.trim() || !iconFile}
+            disabled={loading || !name.trim()}
             className="flex h-10 items-center justify-center rounded-lg bg-[#0496FF] text-sm font-medium text-white transition-colors hover:bg-[#0496FF]/90 disabled:opacity-50"
           >
             {loading ? (
@@ -448,7 +453,9 @@ export function AppSidebar() {
                                 className="!h-4 !w-4 shrink-0 rounded object-cover"
                               />
                             ) : (
-                              <div className="h-4 w-4 shrink-0 rounded bg-muted" />
+                              <div className="flex h-4 w-4 shrink-0 items-center justify-center overflow-hidden rounded">
+                                <Facehash name={ws.name} size={16} />
+                              </div>
                             )}
                             <span className="truncate">{ws.name}</span>
                             {ws._id === currentWorkspace?._id && (

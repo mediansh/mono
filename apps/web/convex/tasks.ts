@@ -70,15 +70,7 @@ export const createTask = mutation({
       v.literal("low"),
       v.literal("none")
     ),
-    labels: v.array(
-      v.union(
-        v.literal("feature"),
-        v.literal("bug"),
-        v.literal("improvement"),
-        v.literal("design"),
-        v.literal("devops")
-      )
-    ),
+    labels: v.array(v.string()),
     attachments: v.optional(
       v.array(
         v.object({
@@ -107,7 +99,7 @@ export const createTask = mutation({
 
     const taskId = await ctx.db.insert("tasks", {
       workspaceId: args.workspaceId,
-      taskCode: `MED-${nextTaskNumber}`,
+      taskCode: `${workspace.prefix || "MED"}-${nextTaskNumber}`,
       taskNumber: nextTaskNumber,
       title: args.title.trim(),
       description: args.description?.trim() || undefined,
@@ -153,17 +145,7 @@ export const updateTask = mutation({
         v.literal("none")
       )
     ),
-    labels: v.optional(
-      v.array(
-        v.union(
-          v.literal("feature"),
-          v.literal("bug"),
-          v.literal("improvement"),
-          v.literal("design"),
-          v.literal("devops")
-        )
-      )
-    ),
+    labels: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     const task = await ctx.db.get(args.taskId)
