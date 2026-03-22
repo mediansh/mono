@@ -16,6 +16,7 @@ import {
   SignalLow02Icon,
   AlertCircleIcon,
   Tick02Icon,
+  Rocket01Icon,
 } from "@hugeicons/core-free-icons"
 import { motion } from "motion/react"
 import {
@@ -31,14 +32,15 @@ import {
 } from "@workspace/ui/components/dropdown-menu"
 
 type Priority = "urgent" | "high" | "medium" | "low" | "none"
-type Status = "requests" | "todo" | "in_progress" | "done" | "archive"
+type Status = "requests" | "todo" | "in_progress" | "ready" | "shipped" | "archive"
 type Label = "feature" | "bug" | "improvement" | "design" | "devops"
 
 const STATUS_OPTIONS: { id: Status; label: string }[] = [
   { id: "requests", label: "Requests" },
   { id: "todo", label: "Todo" },
   { id: "in_progress", label: "In Progress" },
-  { id: "done", label: "Done" },
+  { id: "ready", label: "Ready" },
+  { id: "shipped", label: "Shipped" },
   { id: "archive", label: "Archive" },
 ]
 
@@ -66,8 +68,10 @@ function getStatusIcon(status: Status) {
       return <HugeiconsIcon icon={CircleIcon} size={14} className="text-muted-foreground" />
     case "in_progress":
       return <HugeiconsIcon icon={Loading03Icon} size={14} className="text-yellow-500" />
-    case "done":
+    case "ready":
       return <HugeiconsIcon icon={CheckmarkBadge01Icon} size={14} className="text-emerald-500" />
+    case "shipped":
+      return <HugeiconsIcon icon={Rocket01Icon} size={14} className="text-blue-500" />
     case "archive":
       return <HugeiconsIcon icon={Archive01Icon} size={14} className="text-muted-foreground" />
   }

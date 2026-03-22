@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useMemo, useState } from "react"
+import { memo, useCallback, useMemo, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   SignalFull02Icon,
@@ -23,6 +23,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workspace/ui/components/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@workspace/ui/components/dropdown-menu"
+import { Cancel01Icon } from "@hugeicons/core-free-icons"
 import {
   DndContext,
   DragOverlay,
@@ -50,6 +57,7 @@ type Label = "feature" | "bug" | "improvement" | "design" | "devops"
 interface Task {
   id: string
   title: string
+  description?: string
   status: Status
   priority: Priority
   labels: Label[]
@@ -299,10 +307,7 @@ const STATUS_LABELS: Record<Status, string> = {
   archive: "Archive",
 }
 
-const SORTABLE_TRANSITION = {
-  duration: 180,
-  easing: "cubic-bezier(0.2, 0, 0, 1)",
-}
+const SORTABLE_TRANSITION = null
 
 function getStatusIcon(status: Status, size = 14) {
   switch (status) {
@@ -453,13 +458,18 @@ const ListRowContent = memo(function ListRowContent({ task }: { task: Task }) {
   )
 })
 
-const SortableListRow = memo(function SortableListRow({ task }: { task: Task }) {
+const SortableListRow = memo(function SortableListRow({
+  task,
+  onSelect,
+}: {
+  task: Task
+  onSelect: (task: Task) => void
+}) {
   const {
     attributes,
     listeners,
     setNodeRef,
     transform,
-    transition,
     isDragging,
   } = useSortable({
     id: task.id,
@@ -469,10 +479,13 @@ const SortableListRow = memo(function SortableListRow({ task }: { task: Task }) 
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: isDragging ? "none" : transition,
     opacity: isDragging ? 0.35 : 1,
     willChange: transform ? "transform" : undefined,
   }
+
+  const handleClick = useCallback(() => {
+    onSelect(task)
+  }, [onSelect, task])
 
   return (
     <div
@@ -480,7 +493,8 @@ const SortableListRow = memo(function SortableListRow({ task }: { task: Task }) 
       style={style}
       {...attributes}
       {...listeners}
-      className="group flex touch-none items-center gap-3 border-b border-border bg-background px-4 py-2.5 select-none transition-colors hover:bg-accent/50 active:cursor-grabbing"
+      onClick={handleClick}
+      className="group flex cursor-pointer touch-none items-center gap-3 border-b border-border bg-background px-4 py-2.5 select-none transition-colors hover:bg-accent/50 active:cursor-grabbing"
     >
       <ListRowContent task={task} />
     </div>
@@ -489,8 +503,9 @@ const SortableListRow = memo(function SortableListRow({ task }: { task: Task }) 
 
 function DragOverlayListRow({ task }: { task: Task }) {
   return (
-    <div className="flex scale-[1.01] items-center gap-3 rounded-md border border-border bg-background px-4 py-2.5 shadow-2xl ring-1 ring-foreground/8">
-      <ListRowContent task={task} />
+    <div className="flex w-fit max-w-xs items-center gap-2 rounded-lg border border-border/60 bg-background px-3 py-1.5 shadow-xl ring-1 ring-foreground/5">
+      <div className="shrink-0">{getStatusIcon(task.status, 12)}</div>
+      <span className="truncate text-xs font-medium">{task.title}</span>
     </div>
   )
 }
@@ -500,11 +515,13 @@ function ListGroup({
   tasks,
   groupIndex,
   isDropTarget,
+  onSelectTask,
 }: {
   column: (typeof COLUMNS)[number]
   tasks: Task[]
   groupIndex: number
   isDropTarget?: boolean
+  onSelectTask: (task: Task) => void
 }) {
   const [collapsed, setCollapsed] = useState(false)
   const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks])
@@ -545,7 +562,7 @@ function ListGroup({
           >
             <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
               {tasks.map((task) => (
-                <SortableListRow key={task.id} task={task} />
+                <SortableListRow key={task.id} task={task} onSelect={onSelectTask} />
               ))}
             </SortableContext>
           </motion.div>
@@ -555,18 +572,238 @@ function ListGroup({
   )
 }
 
+// ── Task Detail Modal ──
+
+const ALL_STATUSES: Status[] = ["requests", "todo", "in_progress", "ready", "shipped", "archive"]
+const ALL_PRIORITIES: Priority[] = ["urgent", "high", "medium", "low", "none"]
+const ALL_LABELS: Label[] = ["feature", "bug", "improvement", "design", "devops"]
+
+function TaskDetailModal({
+  task,
+  onClose,
+  onUpdate,
+}: {
+  task: Task | null
+  onClose: () => void
+  onUpdate: (taskId: string, updates: Partial<Task>) => void
+}) {
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [titleValue, setTitleValue] = useState("")
+  const [editingDesc, setEditingDesc] = useState(false)
+  const [descValue, setDescValue] = useState("")
+
+  function handleTitleSave() {
+    if (task && titleValue.trim() && titleValue !== task.title) {
+      onUpdate(task.id, { title: titleValue.trim() })
+    }
+    setEditingTitle(false)
+  }
+
+  function handleDescSave() {
+    if (task && descValue !== (task.description ?? "")) {
+      onUpdate(task.id, { description: descValue })
+    }
+    setEditingDesc(false)
+  }
+
+  function toggleLabel(label: Label) {
+    if (!task) return
+    const has = task.labels.includes(label)
+    const updated = has ? task.labels.filter((l) => l !== label) : [...task.labels, label]
+    onUpdate(task.id, { labels: updated })
+  }
+
+  return (
+    <Dialog open={task !== null} onOpenChange={(open) => { if (!open) { setEditingTitle(false); setEditingDesc(false); onClose() } }}>
+      <DialogContent showCloseButton={false} className="max-h-[85vh] max-w-2xl overflow-hidden p-0">
+        {task && (
+          <div className="flex h-full">
+            {/* Left side – title & content */}
+            <div className="flex min-w-0 flex-1 flex-col p-6">
+              <DialogHeader className="mb-4">
+                <DialogTitle className="sr-only">{task.title}</DialogTitle>
+                {editingTitle ? (
+                  <input
+                    autoFocus
+                    value={titleValue}
+                    onChange={(e) => setTitleValue(e.target.value)}
+                    onBlur={handleTitleSave}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleTitleSave(); if (e.key === "Escape") { setTitleValue(task.title); setEditingTitle(false) } }}
+                    className="w-full rounded-md border border-border bg-transparent px-2 py-1 text-lg font-semibold leading-snug outline-none focus:ring-1 focus:ring-primary"
+                  />
+                ) : (
+                  <h2
+                    onClick={() => { setTitleValue(task.title); setEditingTitle(true) }}
+                    className="cursor-text rounded-md px-2 py-1 text-lg font-semibold leading-snug transition-colors hover:bg-accent/50"
+                  >
+                    {task.title}
+                  </h2>
+                )}
+              </DialogHeader>
+              <div className="flex-1">
+                {editingDesc ? (
+                  <textarea
+                    autoFocus
+                    value={descValue}
+                    onChange={(e) => setDescValue(e.target.value)}
+                    onBlur={handleDescSave}
+                    onKeyDown={(e) => { if (e.key === "Escape") { setDescValue(task.description ?? ""); setEditingDesc(false) } }}
+                    placeholder="Add a description..."
+                    className="min-h-[120px] w-full resize-none rounded-md border border-border bg-transparent px-2 py-1.5 text-sm leading-relaxed outline-none focus:ring-1 focus:ring-primary"
+                  />
+                ) : (
+                  <p
+                    onClick={() => { setDescValue(task.description ?? ""); setEditingDesc(true) }}
+                    className="cursor-text rounded-md px-2 py-1.5 text-sm leading-relaxed transition-colors hover:bg-accent/50"
+                  >
+                    {task.description ? (
+                      <span className="text-foreground">{task.description}</span>
+                    ) : (
+                      <span className="text-muted-foreground">Add a description...</span>
+                    )}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Right side – properties */}
+            <div className="flex w-52 shrink-0 flex-col gap-4 border-l border-border bg-sidebar/50 p-5 dark:bg-accent/20">
+              {/* Close button */}
+              <div className="flex justify-end -mt-1 -mr-1">
+                <button
+                  onClick={onClose}
+                  className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <HugeiconsIcon icon={Cancel01Icon} size={14} />
+                </button>
+              </div>
+
+              {/* Status */}
+              <div>
+                <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Status</span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="mt-1.5 flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-sm transition-colors hover:bg-accent">
+                    {getStatusIcon(task.status, 14)}
+                    <span>{STATUS_LABELS[task.status]}</span>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent side="bottom" align="start">
+                    {ALL_STATUSES.map((s) => (
+                      <DropdownMenuItem
+                        key={s}
+                        className={task.status === s ? "font-medium" : ""}
+                        onSelect={() => onUpdate(task.id, { status: s })}
+                      >
+                        <div className="flex items-center gap-2">
+                          {getStatusIcon(s, 14)}
+                          <span>{STATUS_LABELS[s]}</span>
+                        </div>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              {/* Priority */}
+              <div>
+                <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Priority</span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="mt-1.5 flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-sm capitalize transition-colors hover:bg-accent">
+                    {getPriorityIcon(task.priority, 14)}
+                    <span>{task.priority}</span>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent side="bottom" align="start">
+                    {ALL_PRIORITIES.map((p) => (
+                      <DropdownMenuItem
+                        key={p}
+                        className={task.priority === p ? "font-medium" : ""}
+                        onSelect={() => onUpdate(task.id, { priority: p })}
+                      >
+                        <div className="flex items-center gap-2 capitalize">
+                          {getPriorityIcon(p, 14)}
+                          <span>{p}</span>
+                        </div>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              {/* Labels */}
+              <div>
+                <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Labels</span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="mt-1.5 flex w-full flex-wrap items-center gap-1.5 rounded-md px-1.5 py-1 text-sm transition-colors hover:bg-accent">
+                    {task.labels.length > 0 ? task.labels.map((label) => (
+                      <div
+                        key={label}
+                        className="flex items-center gap-1.5 rounded-sm border border-border px-1.5 py-0.5"
+                      >
+                        <div
+                          className="size-2 rounded-full"
+                          style={{ backgroundColor: LABEL_COLORS[label] }}
+                        />
+                        <span className="text-[11px] capitalize text-muted-foreground">{label}</span>
+                      </div>
+                    )) : (
+                      <span className="text-muted-foreground">None</span>
+                    )}
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent side="bottom" align="start">
+                    {ALL_LABELS.map((label) => (
+                      <DropdownMenuItem
+                        key={label}
+                        onSelect={() => toggleLabel(label)}
+                      >
+                        <div className="flex items-center gap-2 capitalize">
+                          <div
+                            className="size-2 rounded-full"
+                            style={{ backgroundColor: LABEL_COLORS[label] }}
+                          />
+                          <span>{label}</span>
+                          {task.labels.includes(label) && (
+                            <span className="ml-auto text-xs text-primary">&#10003;</span>
+                          )}
+                        </div>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              {/* Created */}
+              <div>
+                <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Created</span>
+                <div className="mt-1.5 px-1.5 text-sm text-muted-foreground">{task.createdAt}</div>
+              </div>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function ListView({
   tasks,
   hiddenColumns,
   onMoveTask,
+  onUpdateTask,
 }: {
   tasks: Task[]
   hiddenColumns: Status[]
   onMoveTask: (taskId: string, toStatus: Status, toIndex: number) => void
+  onUpdateTask: (taskId: string, updates: Partial<Task>) => void
 }) {
   const visibleColumns = COLUMNS.filter((c) => !hiddenColumns.includes(c.id))
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [overColumn, setOverColumn] = useState<Status | null>(null)
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+
+  const selectedTask = selectedTaskId ? tasks.find((t) => t.id === selectedTaskId) ?? null : null
+
+  const handleSelectTask = useCallback((task: Task) => {
+    setSelectedTaskId(task.id)
+  }, [])
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -645,6 +882,7 @@ function handleDragOver(event: DragOverEvent) {
   const activeTaskSource = activeTask ? activeTask.status : null
 
   return (
+  <>
     <DndContext
       sensors={sensors}
       collisionDetection={(args) => {
@@ -669,19 +907,22 @@ function handleDragOver(event: DragOverEvent) {
               tasks={columnTasks}
               groupIndex={groupIndex}
               isDropTarget={overColumn === column.id && activeTaskSource !== null && activeTaskSource !== column.id}
+              onSelectTask={handleSelectTask}
             />
           )
         })}
       </div>
-      <DragOverlay
-        dropAnimation={{
-          duration: 220,
-          easing: "cubic-bezier(0.2, 0, 0, 1)",
-        }}
-      >
+      <DragOverlay dropAnimation={null}>
         {activeTask ? <DragOverlayListRow task={activeTask} /> : null}
       </DragOverlay>
     </DndContext>
+
+    <TaskDetailModal
+      task={selectedTask}
+      onClose={() => setSelectedTaskId(null)}
+      onUpdate={onUpdateTask}
+    />
+  </>
   )
 }
 
@@ -700,6 +941,12 @@ export function KanbanBoard() {
 
   function handleShowColumn(status: Status) {
     setHiddenColumns((prev) => prev.filter((s) => s !== status))
+  }
+
+  function handleUpdateTask(taskId: string, updates: Partial<Task>) {
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, ...updates } : t))
+    )
   }
 
   function handleMoveTask(taskId: string, toStatus: Status, toIndex: number) {
@@ -776,6 +1023,7 @@ export function KanbanBoard() {
           tasks={tasks}
           hiddenColumns={hiddenColumns}
           onMoveTask={handleMoveTask}
+          onUpdateTask={handleUpdateTask}
         />
       </div>
 

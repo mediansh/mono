@@ -9,8 +9,6 @@ import { useMutation } from "convex/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Home01Icon,
-  InboxIcon,
-  Folder01Icon,
   Search01Icon,
   Logout01Icon,
   Settings01Icon,
@@ -61,8 +59,6 @@ import {
 
 const mainNav = [
   { label: "Home", href: "/app", icon: Home01Icon },
-  { label: "Inbox", href: "/app/inbox", icon: InboxIcon },
-  { label: "Projects", href: "/app/projects", icon: Folder01Icon },
 ]
 
 function CreateWorkspaceModal({
