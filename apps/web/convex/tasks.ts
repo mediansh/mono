@@ -2,7 +2,7 @@ import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import type { MutationCtx, QueryCtx } from "./_generated/server"
 import type { Doc, Id } from "./_generated/dataModel"
-import { INITIAL_TASKS, STATUS_ORDER, getTaskNumber } from "../lib/task-board"
+import { STATUS_ORDER, isDemoTaskSet } from "../lib/task-board"
 
 async function requireWorkspaceAccess(
   ctx: QueryCtx | MutationCtx,
@@ -47,49 +47,6 @@ export const listByWorkspace = query({
   handler: async (ctx, args) => {
     await requireWorkspaceAccess(ctx, args.workspaceId)
     return await getWorkspaceTasks(ctx, args.workspaceId)
-  },
-})
-
-export const ensureSeeded = mutation({
-  args: {
-    workspaceId: v.id("workspaces"),
-  },
-  handler: async (ctx, args) => {
-    await requireWorkspaceAccess(ctx, args.workspaceId)
-
-    const existing = await getWorkspaceTasks(ctx, args.workspaceId)
-    if (existing.length > 0) return false
-
-    const workspace = await ctx.db.get(args.workspaceId)
-    if (!workspace) throw new Error("Workspace not found")
-
-    const orderByStatus = new Map<string, number>()
-    for (const task of INITIAL_TASKS) {
-      const order = orderByStatus.get(task.status) ?? 0
-      orderByStatus.set(task.status, order + 1)
-
-      await ctx.db.insert("tasks", {
-        workspaceId: args.workspaceId,
-        taskCode: task.taskCode,
-        taskNumber: getTaskNumber(task.taskCode),
-        title: task.title,
-        description: task.description,
-        status: task.status,
-        priority: task.priority,
-        labels: task.labels,
-        order,
-        project: task.project,
-        assignee: task.assignee,
-        source: task.source,
-        createdAtLabel: task.createdAtLabel,
-      })
-    }
-
-    await ctx.db.patch(args.workspaceId, {
-      taskCounter: Math.max(...INITIAL_TASKS.map((task) => getTaskNumber(task.taskCode))),
-    })
-
-    return true
   },
 })
 
@@ -261,5 +218,26 @@ export const deleteTask = mutation({
 
     await requireWorkspaceAccess(ctx, task.workspaceId)
     await ctx.db.delete(args.taskId)
+  },
+})
+
+export const clearDemoTasks = mutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args) => {
+    await requireWorkspaceAccess(ctx, args.workspaceId)
+
+    const tasks = await getWorkspaceTasks(ctx, args.workspaceId)
+    if (!isDemoTaskSet(tasks)) {
+      return false
+    }
+
+    for (const task of tasks) {
+      await ctx.db.delete(task._id)
+    }
+
+    await ctx.db.patch(args.workspaceId, { taskCounter: 0 })
+    return true
   },
 })

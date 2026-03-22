@@ -278,6 +278,20 @@ export function getTaskNumber(taskCode: string) {
   return match ? Number(match[1]) : 0
 }
 
+export const DEMO_TASK_SIGNATURE = new Map(
+  INITIAL_TASKS.map((task) => [task.taskCode, task.title])
+)
+
+export function isDemoTaskSet(
+  tasks: Array<{ taskCode: string; title: string }>
+) {
+  if (tasks.length !== INITIAL_TASKS.length) return false
+
+  return tasks.every(
+    (task) => DEMO_TASK_SIGNATURE.get(task.taskCode) === task.title
+  )
+}
+
 export function formatTaskDate(createdAt: number, createdAtLabel?: string) {
   if (createdAtLabel) return createdAtLabel
   return new Intl.DateTimeFormat("en-US", {

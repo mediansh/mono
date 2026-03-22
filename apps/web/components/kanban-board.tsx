@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { memo, useCallback, useEffect, useMemo, useState } from "react"
 import { useMutation, useQuery } from "convex/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -60,6 +60,7 @@ import {
   STATUS_ORDER,
   TASK_STATUS_LABELS,
   formatTaskDate,
+  isDemoTaskSet,
   type RequestSource,
   type TaskLabel as Label,
   type TaskPriority as Priority,
@@ -220,6 +221,33 @@ function BoardLoadingState() {
           </div>
         </motion.div>
       ))}
+    </div>
+  )
+}
+
+function EmptyBoardState({ onCreateTask }: { onCreateTask: () => void }) {
+  return (
+    <div className="flex h-full items-center justify-center px-6">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.24, ease: "easeOut" }}
+        className="w-full max-w-md rounded-[28px] border border-border/70 bg-gradient-to-b from-background to-sidebar/40 p-8 text-center shadow-[0_24px_80px_rgba(0,0,0,0.12)]"
+      >
+        <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-2xl bg-[#0496FF]/10 text-[#0496FF]">
+          <HugeiconsIcon icon={CheckmarkBadge01Icon} size={22} />
+        </div>
+        <h2 className="text-pretty text-xl font-semibold tracking-tight">No tasks yet</h2>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          This workspace starts empty now. Create your first task and the board will fill in immediately.
+        </p>
+        <button
+          onClick={onCreateTask}
+          className="mt-6 inline-flex h-11 items-center justify-center rounded-xl bg-[#0496FF] px-5 text-sm font-medium text-white transition-colors hover:bg-[#0496FF]/90"
+        >
+          Create first task
+        </button>
+      </motion.div>
     </div>
   )
 }
@@ -1083,8 +1111,8 @@ export function KanbanBoard() {
   const [modalOpen, setModalOpen] = useState(false)
   const [modalDefaultStatus, setModalDefaultStatus] = useState<Status>("todo")
   const [hiddenColumns, setHiddenColumns] = useState<Status[]>([])
-  const [isSeeding, setIsSeeding] = useState(false)
-  const seededWorkspaceIds = useRef(new Set<string>())
+  const [isCleaningDemoTasks, setIsCleaningDemoTasks] = useState(false)
+  const cleanedWorkspaceIds = useState(() => new Set<string>())[0]
 
   const workspaceId = currentWorkspace?._id
   const taskDocs = useQuery(
@@ -1092,7 +1120,15 @@ export function KanbanBoard() {
     workspaceId ? { workspaceId } : "skip"
   )
 
-  const ensureSeeded = useMutation(api.tasks.ensureSeeded)
+  const clearDemoTasks = useMutation(api.tasks.clearDemoTasks).withOptimisticUpdate((localStore, args) => {
+    const currentTasks = localStore.getQuery(api.tasks.listByWorkspace, {
+      workspaceId: args.workspaceId,
+    }) as TaskDoc[] | undefined
+
+    if (!currentTasks || !isDemoTaskSet(currentTasks)) return
+
+    localStore.setQuery(api.tasks.listByWorkspace, { workspaceId: args.workspaceId }, [])
+  })
   const updateTask = useMutation(api.tasks.updateTask).withOptimisticUpdate((localStore, args) => {
     const currentTasks = localStore.getQuery(api.tasks.listByWorkspace, {
       workspaceId: workspaceId!,
@@ -1145,24 +1181,24 @@ export function KanbanBoard() {
   })
 
   useEffect(() => {
-    if (!workspaceId || taskDocs === undefined || taskDocs.length > 0) {
-      setIsSeeding(false)
+    if (!workspaceId || taskDocs === undefined || !isDemoTaskSet(taskDocs)) {
+      setIsCleaningDemoTasks(false)
       return
     }
 
-    if (seededWorkspaceIds.current.has(workspaceId)) return
-    seededWorkspaceIds.current.add(workspaceId)
+    if (cleanedWorkspaceIds.has(workspaceId)) return
+    cleanedWorkspaceIds.add(workspaceId)
 
     let cancelled = false
-    setIsSeeding(true)
-    void ensureSeeded({ workspaceId }).finally(() => {
-      if (!cancelled) setIsSeeding(false)
+    setIsCleaningDemoTasks(true)
+    void clearDemoTasks({ workspaceId }).finally(() => {
+      if (!cancelled) setIsCleaningDemoTasks(false)
     })
 
     return () => {
       cancelled = true
     }
-  }, [ensureSeeded, taskDocs, workspaceId])
+  }, [cleanedWorkspaceIds, clearDemoTasks, taskDocs, workspaceId])
 
   const tasks = useMemo(() => (taskDocs ?? []).map(mapTaskDoc), [taskDocs])
 
@@ -1238,8 +1274,12 @@ export function KanbanBoard() {
     })
   }
 
-  if (!workspaceId || taskDocs === undefined || isSeeding) {
+  if (!workspaceId || taskDocs === undefined || isCleaningDemoTasks) {
     return <BoardLoadingState />
+  }
+
+  if (tasks.length === 0) {
+    return <EmptyBoardState onCreateTask={() => handleAddTask("todo")} />
   }
 
   return (
