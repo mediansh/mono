@@ -1,6 +1,7 @@
 "use client"
 
-import { memo, useCallback, useMemo, useState } from "react"
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useMutation, useQuery } from "convex/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   SignalFull02Icon,
@@ -14,6 +15,9 @@ import {
   Rocket01Icon,
   ViewOffIcon,
   ViewIcon,
+  CheckmarkCircle02Icon,
+  Cancel02Icon,
+  LinkSquare02Icon,
 } from "@hugeicons/core-free-icons"
 import { motion, AnimatePresence } from "motion/react"
 import { NewTaskModal } from "@/components/new-task-modal"
@@ -34,6 +38,7 @@ import {
   DndContext,
   DragOverlay,
   PointerSensor,
+  useDroppable,
   useSensor,
   useSensors,
   closestCenter,
@@ -48,236 +53,23 @@ import {
   useSortable,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
+import { api } from "@/convex/_generated/api"
+import type { Doc, Id } from "@/convex/_generated/dataModel"
+import { useWorkspace } from "@/components/workspace-provider"
+import {
+  STATUS_ORDER,
+  TASK_STATUS_LABELS,
+  formatTaskDate,
+  type RequestSource,
+  type TaskLabel as Label,
+  type TaskPriority as Priority,
+  type TaskStatus as Status,
+} from "@/lib/task-board"
 
-// Types
-type Priority = "urgent" | "high" | "medium" | "low" | "none"
-type Status = "requests" | "todo" | "in_progress" | "ready" | "shipped" | "archive"
-type Label = "feature" | "bug" | "improvement" | "design" | "devops"
-
-interface Task {
+interface Task extends Doc<"tasks"> {
   id: string
-  title: string
-  description?: string
-  status: Status
-  priority: Priority
-  labels: Label[]
-  project: string
   createdAt: string
-  assignee?: {
-    name: string
-    avatar: string
-  }
 }
-
-// Mock data
-const MOCK_TASKS: Task[] = [
-  // ── Requests ──
-  {
-    id: "MED-225",
-    title: "Preview Code Feature (Similar to Lovable - Image Attached)",
-    status: "requests",
-    priority: "medium",
-    labels: ["feature"],
-    project: "Median V1",
-    createdAt: "Mar 11",
-    assignee: { name: "Abdul", avatar: "" },
-  },
-  {
-    id: "MED-226",
-    title: "Have the ability to view the generated file tree in real time as it builds",
-    status: "requests",
-    priority: "low",
-    labels: ["feature"],
-    project: "Median V1",
-    createdAt: "Mar 11",
-    assignee: { name: "Abdul", avatar: "" },
-  },
-  {
-    id: "MED-230",
-    title: "Multi-language support for generated components",
-    status: "requests",
-    priority: "low",
-    labels: ["feature"],
-    project: "Median V1",
-    createdAt: "Mar 12",
-    assignee: { name: "Abdul", avatar: "" },
-  },
-  // ── Todo ──
-  {
-    id: "MED-196",
-    title: "Export with GitHub Repository Integration",
-    status: "todo",
-    priority: "medium",
-    labels: ["feature"],
-    project: "Median V1",
-    createdAt: "Mar 5",
-    assignee: { name: "Abdul", avatar: "" },
-  },
-  {
-    id: "MED-219",
-    title: "Add Style Selection for UI Generation",
-    status: "todo",
-    priority: "medium",
-    labels: ["feature"],
-    project: "Median V1",
-    createdAt: "Mar 10",
-    assignee: { name: "Abdul", avatar: "" },
-  },
-  {
-    id: "MED-221",
-    title: "Plan Feature",
-    status: "todo",
-    priority: "medium",
-    labels: ["feature"],
-    project: "Median V1",
-    createdAt: "Mar 10",
-    assignee: { name: "Abdul", avatar: "" },
-  },
-  {
-    id: "MED-240",
-    title: "Add keyboard shortcuts for common actions",
-    status: "todo",
-    priority: "low",
-    labels: ["improvement"],
-    project: "Median V1",
-    createdAt: "Mar 12",
-    assignee: { name: "Abdul", avatar: "" },
-  },
-  // ── In Progress ──
-  {
-    id: "MED-262",
-    title: "Add \"See Median in Action\" Demo Button to Landing",
-    status: "in_progress",
-    priority: "medium",
-    labels: [],
-    project: "Median V1",
-    createdAt: "Mar 14",
-    assignee: { name: "Abdul", avatar: "" },
-  },
-  {
-    id: "MED-30",
-    title: "Preview refreshes after theme change",
-    status: "in_progress",
-    priority: "high",
-    labels: ["bug"],
-    project: "Median V1",
-    createdAt: "Feb 1",
-    assignee: { name: "Abdul", avatar: "" },
-  },
-  {
-    id: "MED-270",
-    title: "CI/CD pipeline for staging environment",
-    status: "in_progress",
-    priority: "high",
-    labels: ["devops"],
-    project: "Median V1",
-    createdAt: "Mar 15",
-    assignee: { name: "Abdul", avatar: "" },
-  },
-  // ── Ready ──
-  {
-    id: "MED-54",
-    title: "WAITLIST SECURITY",
-    status: "ready",
-    priority: "urgent",
-    labels: ["bug"],
-    project: "Median V1",
-    createdAt: "Feb 13",
-    assignee: { name: "Abdul", avatar: "" },
-  },
-  {
-    id: "MED-217",
-    title: "Issue: Sidebar Dragging (Videos Attached)",
-    status: "ready",
-    priority: "medium",
-    labels: ["bug"],
-    project: "Median V1",
-    createdAt: "Mar 10",
-    assignee: { name: "Abdul", avatar: "" },
-  },
-  {
-    id: "MED-249",
-    title: "Specific prompts sometimes generate full pages",
-    status: "ready",
-    priority: "medium",
-    labels: ["bug"],
-    project: "Median V1",
-    createdAt: "Mar 13",
-    assignee: { name: "Abdul", avatar: "" },
-  },
-  // ── Shipped ──
-  {
-    id: "MED-40",
-    title: "Landing page redesign",
-    status: "shipped",
-    priority: "high",
-    labels: ["design"],
-    project: "Median V1",
-    createdAt: "Jan 28",
-    assignee: { name: "Abdul", avatar: "" },
-  },
-  {
-    id: "MED-35",
-    title: "User authentication flow",
-    status: "shipped",
-    priority: "urgent",
-    labels: ["feature"],
-    project: "Median V1",
-    createdAt: "Jan 25",
-    assignee: { name: "Abdul", avatar: "" },
-  },
-  {
-    id: "MED-52",
-    title: "Create Waitlist",
-    status: "shipped",
-    priority: "medium",
-    labels: [],
-    project: "Median V1",
-    createdAt: "Feb 12",
-    assignee: { name: "Abdul", avatar: "" },
-  },
-  {
-    id: "MED-222",
-    title: "Further improve mic voice-to-text (Web Speech API)",
-    status: "shipped",
-    priority: "medium",
-    labels: ["improvement"],
-    project: "Median V1",
-    createdAt: "Mar 10",
-    assignee: { name: "Abdul", avatar: "" },
-  },
-  {
-    id: "MED-29",
-    title: "Theme changes save to globals.css",
-    status: "shipped",
-    priority: "high",
-    labels: [],
-    project: "Median V1",
-    createdAt: "Feb 1",
-    assignee: { name: "Abdul", avatar: "" },
-  },
-  // ── Archive ──
-  {
-    id: "MED-64",
-    title: "Waitlist Spam Issue",
-    status: "archive",
-    priority: "low",
-    labels: [],
-    project: "Median V1",
-    createdAt: "Feb 14",
-    assignee: { name: "Abdul", avatar: "" },
-  },
-  {
-    id: "MED-18",
-    title: "Initial project scaffolding",
-    status: "archive",
-    priority: "medium",
-    labels: ["devops"],
-    project: "Median V1",
-    createdAt: "Jan 15",
-    assignee: { name: "Abdul", avatar: "" },
-  },
-]
 
 // Column config
 const COLUMNS: { id: Status; label: string }[] = [
@@ -298,14 +90,7 @@ const LABEL_COLORS: Record<Label, string> = {
   devops: "#f59e0b",
 }
 
-const STATUS_LABELS: Record<Status, string> = {
-  requests: "Requests",
-  todo: "Todo",
-  in_progress: "In Progress",
-  ready: "Ready",
-  shipped: "Shipped",
-  archive: "Archive",
-}
+const STATUS_LABELS = TASK_STATUS_LABELS
 
 const SORTABLE_TRANSITION = null
 
@@ -343,6 +128,100 @@ function getPriorityIcon(priority: Priority, size = 14) {
     case "none":
       return <HugeiconsIcon icon={SignalLow02Icon} size={size} className="text-muted-foreground" />
   }
+}
+
+type TaskDoc = Doc<"tasks">
+
+function sortTaskDocs(tasks: TaskDoc[]) {
+  return [...tasks].sort((a, b) => {
+    const statusDiff = STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
+    if (statusDiff !== 0) return statusDiff
+    return a.order - b.order
+  })
+}
+
+function normalizeTaskOrders(tasks: TaskDoc[]) {
+  const orderByStatus = new Map<Status, number>()
+  return sortTaskDocs(tasks).map((task) => {
+    const order = orderByStatus.get(task.status) ?? 0
+    orderByStatus.set(task.status, order + 1)
+    return task.order === order ? task : { ...task, order }
+  })
+}
+
+function moveTaskDocs(tasks: TaskDoc[], taskId: string, toStatus: Status, toIndex: number) {
+  const task = tasks.find((item) => item._id === taskId)
+  if (!task) return tasks
+
+  const withoutTask = tasks.filter((item) => item._id !== taskId)
+  const targetTasks = withoutTask.filter((item) => item.status === toStatus)
+  const clampedIndex = Math.min(toIndex, targetTasks.length)
+
+  const targetIds = targetTasks.map((item) => item._id)
+  targetIds.splice(clampedIndex, 0, task._id)
+
+  const updated = withoutTask.map((item) => item)
+  const insertedTask = { ...task, status: toStatus }
+
+  const result: TaskDoc[] = []
+  for (const column of COLUMNS) {
+    if (column.id === toStatus) {
+      for (const id of targetIds) {
+        result.push(id === task._id ? insertedTask : updated.find((item) => item._id === id)!)
+      }
+      continue
+    }
+
+    for (const item of updated) {
+      if (item.status === column.id) {
+        result.push(item)
+      }
+    }
+  }
+
+  return normalizeTaskOrders(result)
+}
+
+function patchTaskDocs(
+  tasks: TaskDoc[],
+  taskId: string,
+  updates: Partial<Pick<TaskDoc, "title" | "description" | "priority" | "labels">>
+) {
+  return tasks.map((task) => (task._id === taskId ? { ...task, ...updates } : task))
+}
+
+function mapTaskDoc(task: TaskDoc): Task {
+  return {
+    ...task,
+    id: task._id,
+    createdAt: formatTaskDate(task._creationTime, task.createdAtLabel),
+  }
+}
+
+function BoardLoadingState() {
+  return (
+    <div className="flex h-full flex-col gap-3 px-4 py-3">
+      {Array.from({ length: 5 }).map((_, index) => (
+        <motion.div
+          key={index}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.22, delay: index * 0.04, ease: "easeOut" }}
+          className="overflow-hidden rounded-[20px] border border-border/70 bg-sidebar/45 shadow-[0_1px_0_rgba(255,255,255,0.04)_inset]"
+        >
+          <div className="flex items-center gap-2 border-b border-border/60 px-4 py-2.5">
+            <div className="size-3 rounded-full bg-muted/80" />
+            <div className="h-3 w-24 rounded-full bg-muted/80" />
+            <div className="h-4 w-6 rounded-full bg-muted/60" />
+          </div>
+          <div className="space-y-2 px-4 py-3">
+            <div className="h-12 rounded-xl bg-muted/60" />
+            <div className="h-12 rounded-xl bg-muted/40" />
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  )
 }
 
 // ── Hidden Columns Toolbar ──
@@ -417,7 +296,7 @@ function HiddenColumnsToolbar({
                 {selectedTasks.map((task, index) => (
                   <div
                     key={task.id}
-                    className="flex items-center gap-3 border-b border-border px-2 py-2.5 transition-colors hover:bg-accent/50 last:border-b-0"
+                    className={`flex items-center gap-3 border-b border-l-2 border-border px-3 py-2 transition-colors hover:bg-accent/40 last:border-b-0 ${PRIORITY_ACCENT[task.priority]}`}
                   >
                     <ListRowContent task={task} />
                   </div>
@@ -431,6 +310,200 @@ function HiddenColumnsToolbar({
   )
 }
 
+// ── Priority accent colors for left border ──
+const PRIORITY_ACCENT: Record<Priority, string> = {
+  urgent: "border-l-red-500",
+  high: "border-l-orange-500",
+  medium: "border-l-yellow-500",
+  low: "border-l-blue-400",
+  none: "border-l-transparent",
+}
+
+// ── Platform source config ──
+const SOURCE_CONFIG: Record<RequestSource, { label: string; color: string; bg: string }> = {
+  discord: { label: "Discord", color: "#5865F2", bg: "#5865F218" },
+  slack: { label: "Slack", color: "#E01E5A", bg: "#E01E5A18" },
+  x: { label: "X", color: "#8b8b8b", bg: "#8b8b8b18" },
+}
+
+function SourceIcon({ platform, size = 14 }: { platform: RequestSource; size?: number }) {
+  const s = size
+  if (platform === "discord") {
+    return (
+      <svg width={s} height={s} viewBox="0 0 24 24" fill="#5865F2">
+        <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.947 2.418-2.157 2.418z"/>
+      </svg>
+    )
+  }
+  if (platform === "slack") {
+    return (
+      <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+        <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313z" fill="#E01E5A"/>
+        <path d="M8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312z" fill="#36C5F0"/>
+        <path d="M18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zm-1.27 0a2.528 2.528 0 0 1-2.522 2.521 2.528 2.528 0 0 1-2.52-2.521V2.522A2.528 2.528 0 0 1 15.165 0a2.528 2.528 0 0 1 2.521 2.522v6.312z" fill="#2EB67D"/>
+        <path d="M15.165 18.956a2.528 2.528 0 0 1 2.521 2.522A2.528 2.528 0 0 1 15.165 24a2.528 2.528 0 0 1-2.52-2.522v-2.522h2.52zm0-1.27a2.528 2.528 0 0 1-2.52-2.522 2.528 2.528 0 0 1 2.52-2.52h6.313A2.528 2.528 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.521h-6.313z" fill="#ECB22E"/>
+      </svg>
+    )
+  }
+  // X (Twitter)
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="currentColor" className="text-foreground">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+    </svg>
+  )
+}
+
+// ── Request Row Component ──
+
+const RequestRow = memo(function RequestRow({
+  task,
+  onAccept,
+  onDeny,
+  onSelect,
+}: {
+  task: Task
+  onAccept: (task: Task) => void
+  onDeny: (task: Task) => void
+  onSelect: (task: Task) => void
+}) {
+  const source = task.source
+  const config = source ? SOURCE_CONFIG[source.platform] : null
+
+  return (
+    <div onClick={() => onSelect(task)} className="cursor-pointer rounded-lg border border-border bg-background p-3 transition-colors hover:border-border/80 hover:bg-accent/20 dark:bg-card">
+      {/* Top row: source + date */}
+      <div className="mb-2 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {source && config ? (
+            <a
+              href={source.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center gap-1.5 rounded-full py-0.5 pl-1.5 pr-2.5 text-[10px] font-medium transition-opacity hover:opacity-80"
+              style={{ backgroundColor: config.bg, color: config.color }}
+              title={`View on ${config.label}`}
+            >
+              <SourceIcon platform={source.platform} size={12} />
+              {source.author}
+              <HugeiconsIcon icon={LinkSquare02Icon} size={9} className="opacity-60" />
+            </a>
+          ) : (
+            <span className="text-[11px] text-muted-foreground/60">Request</span>
+          )}
+          {task.labels.map((label) => (
+            <span
+              key={label}
+              className="rounded-full px-2 py-0.5 text-[10px] font-medium capitalize"
+              style={{
+                backgroundColor: LABEL_COLORS[label] + "18",
+                color: LABEL_COLORS[label],
+              }}
+            >
+              {label}
+            </span>
+          ))}
+        </div>
+        <span className="text-[11px] text-muted-foreground/50">{task.createdAt}</span>
+      </div>
+
+      {/* Title */}
+      <p
+        className="mb-3 text-[13px] font-medium leading-snug text-foreground/90"
+      >
+        {task.title}
+      </p>
+
+      {/* Actions — always visible */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={(e) => { e.stopPropagation(); onAccept(task) }}
+          className="flex items-center gap-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 dark:text-emerald-400"
+        >
+          <HugeiconsIcon icon={CheckmarkCircle02Icon} size={12} />
+          Accept
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onDeny(task) }}
+          className="flex items-center gap-1.5 rounded-md border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-[11px] font-medium text-red-600 transition-colors hover:bg-red-500/20 dark:text-red-400"
+        >
+          <HugeiconsIcon icon={Cancel02Icon} size={12} />
+          Deny
+        </button>
+      </div>
+    </div>
+  )
+})
+
+// ── Requests Group (non-draggable, distinct design) ──
+
+function RequestsGroup({
+  tasks,
+  groupIndex,
+  onAccept,
+  onDeny,
+  onSelectTask,
+}: {
+  tasks: Task[]
+  groupIndex: number
+  onAccept: (task: Task) => void
+  onDeny: (task: Task) => void
+  onSelectTask: (task: Task) => void
+}) {
+  const [collapsed, setCollapsed] = useState(false)
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2, delay: groupIndex * 0.04, ease: "easeOut" }}
+    >
+      {/* Group header — distinct style */}
+      <button
+        onClick={() => setCollapsed(!collapsed)}
+        className="flex w-full items-center gap-2.5 border-b border-dashed border-border bg-sidebar/40 px-4 py-2 text-left transition-colors hover:bg-sidebar/70 dark:bg-accent/20 dark:hover:bg-accent/40"
+      >
+        <motion.span
+          animate={{ rotate: collapsed ? -90 : 0 }}
+          transition={{ duration: 0.15 }}
+          className="text-[10px] text-muted-foreground/60"
+        >
+          ▼
+        </motion.span>
+        {getColumnIcon("requests")}
+        <span className="text-[13px] font-semibold tracking-tight">Requests</span>
+        <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">{tasks.length}</span>
+        <span className="ml-1 text-[11px] text-muted-foreground/50">from users</span>
+      </button>
+
+      {/* Cards — no drag, no sortable context */}
+      <AnimatePresence initial={false}>
+        {!collapsed && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="overflow-hidden"
+          >
+            <div className="grid grid-cols-1 gap-2 px-4 py-3 sm:grid-cols-2 lg:grid-cols-3">
+              {tasks.map((task) => (
+                <RequestRow
+                  key={task.id}
+                  task={task}
+                  onAccept={onAccept}
+                  onDeny={onDeny}
+                  onSelect={onSelectTask}
+                />
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  )
+}
+
 // ── List View Components ──
 
 const ListRowContent = memo(function ListRowContent({ task }: { task: Task }) {
@@ -438,21 +511,21 @@ const ListRowContent = memo(function ListRowContent({ task }: { task: Task }) {
     <>
       <div className="shrink-0">{getPriorityIcon(task.priority)}</div>
       <div className="shrink-0">{getStatusIcon(task.status)}</div>
-      <span className="min-w-0 flex-1 truncate text-sm">{task.title}</span>
-      <div className="flex shrink-0 items-center gap-2">
+      <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground/90">{task.title}</span>
+      <div className="flex shrink-0 items-center gap-1.5">
         {task.labels.map((label) => (
-          <div
+          <span
             key={label}
-            className="flex items-center gap-1.5 rounded-sm border border-border px-1.5 py-0.5"
+            className="rounded-full px-2 py-0.5 text-[10px] font-medium capitalize"
+            style={{
+              backgroundColor: LABEL_COLORS[label] + "18",
+              color: LABEL_COLORS[label],
+            }}
           >
-            <div
-              className="size-2 rounded-full"
-              style={{ backgroundColor: LABEL_COLORS[label] }}
-            />
-            <span className="text-[11px] capitalize text-muted-foreground">{label}</span>
-          </div>
+            {label}
+          </span>
         ))}
-        <span className="text-[11px] text-muted-foreground">{task.createdAt}</span>
+        <span className="ml-1 text-[11px] text-muted-foreground/60">{task.createdAt}</span>
       </div>
     </>
   )
@@ -479,7 +552,7 @@ const SortableListRow = memo(function SortableListRow({
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    opacity: isDragging ? 0.35 : 1,
+    opacity: isDragging ? 0.3 : 1,
     willChange: transform ? "transform" : undefined,
   }
 
@@ -494,7 +567,7 @@ const SortableListRow = memo(function SortableListRow({
       {...attributes}
       {...listeners}
       onClick={handleClick}
-      className="group flex cursor-pointer touch-none items-center gap-3 border-b border-border bg-background px-4 py-2.5 select-none transition-colors hover:bg-accent/50 active:cursor-grabbing"
+      className={`group flex cursor-pointer touch-none items-center gap-3 border-b border-l-2 border-border bg-background px-4 py-2 select-none transition-all duration-150 hover:bg-accent/40 active:cursor-grabbing ${PRIORITY_ACCENT[task.priority]}`}
     >
       <ListRowContent task={task} />
     </div>
@@ -503,9 +576,9 @@ const SortableListRow = memo(function SortableListRow({
 
 function DragOverlayListRow({ task }: { task: Task }) {
   return (
-    <div className="flex w-fit max-w-xs items-center gap-2 rounded-lg border border-border/60 bg-background px-3 py-1.5 shadow-xl ring-1 ring-foreground/5">
-      <div className="shrink-0">{getStatusIcon(task.status, 12)}</div>
-      <span className="truncate text-xs font-medium">{task.title}</span>
+    <div className="flex w-fit max-w-sm items-center gap-2.5 rounded-lg border border-border/50 bg-background/95 px-3.5 py-2 shadow-2xl ring-1 ring-foreground/5 backdrop-blur-sm">
+      <div className="shrink-0">{getStatusIcon(task.status, 13)}</div>
+      <span className="truncate text-[13px] font-medium">{task.title}</span>
     </div>
   )
 }
@@ -525,29 +598,37 @@ function ListGroup({
 }) {
   const [collapsed, setCollapsed] = useState(false)
   const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks])
+  const { setNodeRef } = useDroppable({
+    id: column.id,
+    data: {
+      type: "column",
+      columnId: column.id,
+    },
+  })
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      ref={setNodeRef}
+      initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, delay: groupIndex * 0.05, ease: "easeOut" }}
+      transition={{ duration: 0.2, delay: groupIndex * 0.04, ease: "easeOut" }}
       style={isDropTarget ? { outline: "2px solid var(--primary)", outlineOffset: "-2px", borderRadius: "6px" } : undefined}
     >
       {/* Group header */}
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="flex w-full items-center gap-2 bg-sidebar px-4 py-2 text-left transition-colors hover:bg-accent/50 dark:bg-accent/40"
+        className="flex w-full items-center gap-2.5 bg-sidebar/60 px-4 py-2 text-left transition-colors hover:bg-sidebar dark:bg-accent/30 dark:hover:bg-accent/50"
       >
         <motion.span
           animate={{ rotate: collapsed ? -90 : 0 }}
           transition={{ duration: 0.15 }}
-          className="text-xs text-muted-foreground"
+          className="text-[10px] text-muted-foreground/60"
         >
           ▼
         </motion.span>
         {getColumnIcon(column.id)}
-        <span className="text-sm font-medium">{column.label}</span>
-        <span className="text-xs text-muted-foreground">{tasks.length}</span>
+        <span className="text-[13px] font-semibold tracking-tight">{column.label}</span>
+        <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">{tasks.length}</span>
       </button>
 
       {/* Rows */}
@@ -561,9 +642,15 @@ function ListGroup({
             className="overflow-hidden"
           >
             <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
-              {tasks.map((task) => (
-                <SortableListRow key={task.id} task={task} onSelect={onSelectTask} />
-              ))}
+              {tasks.length === 0 ? (
+                <div className="px-4 py-6 text-sm text-muted-foreground/60">
+                  Drop a task here
+                </div>
+              ) : (
+                tasks.map((task) => (
+                  <SortableListRow key={task.id} task={task} onSelect={onSelectTask} />
+                ))
+              )}
             </SortableContext>
           </motion.div>
         )}
@@ -574,9 +661,18 @@ function ListGroup({
 
 // ── Task Detail Modal ──
 
-const ALL_STATUSES: Status[] = ["requests", "todo", "in_progress", "ready", "shipped", "archive"]
+// "requests" excluded — requests are user-submitted and managed via accept/deny only
+const ALL_STATUSES: Status[] = ["todo", "in_progress", "ready", "shipped", "archive"]
 const ALL_PRIORITIES: Priority[] = ["urgent", "high", "medium", "low", "none"]
 const ALL_LABELS: Label[] = ["feature", "bug", "improvement", "design", "devops"]
+
+const PRIORITY_LABELS: Record<Priority, string> = {
+  urgent: "Urgent",
+  high: "High",
+  medium: "Medium",
+  low: "Low",
+  none: "No priority",
+}
 
 function TaskDetailModal({
   task,
@@ -615,12 +711,45 @@ function TaskDetailModal({
 
   return (
     <Dialog open={task !== null} onOpenChange={(open) => { if (!open) { setEditingTitle(false); setEditingDesc(false); onClose() } }}>
-      <DialogContent showCloseButton={false} className="max-h-[85vh] max-w-2xl overflow-hidden p-0">
+      <DialogContent showCloseButton={false} className="max-h-[85vh] max-w-xl overflow-hidden p-0">
         {task && (
-          <div className="flex h-full">
-            {/* Left side – title & content */}
-            <div className="flex min-w-0 flex-1 flex-col p-6">
-              <DialogHeader className="mb-4">
+          <div className="flex flex-col">
+            {/* Top bar */}
+            <div className="flex items-center justify-between border-b border-border px-5 py-3">
+              <div className="flex items-center gap-2.5">
+                <span className="text-xs text-muted-foreground/60">{task.createdAt}</span>
+                {task.source && (() => {
+                  const cfg = SOURCE_CONFIG[task.source!.platform]
+                  return (
+                    <>
+                      <span className="text-muted-foreground/30">·</span>
+                      <a
+                        href={task.source!.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 rounded-full py-0.5 pl-1.5 pr-2.5 text-[10px] font-medium transition-opacity hover:opacity-80"
+                        style={{ backgroundColor: cfg.bg, color: cfg.color }}
+                      >
+                        <SourceIcon platform={task.source!.platform} size={11} />
+                        <span>{task.source!.author}</span>
+                        <HugeiconsIcon icon={LinkSquare02Icon} size={10} />
+                      </a>
+                    </>
+                  )
+                })()}
+              </div>
+              <button
+                onClick={onClose}
+                className="rounded-md p-1 text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <HugeiconsIcon icon={Cancel01Icon} size={14} />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex flex-col gap-5 px-5 pt-5 pb-6">
+              {/* Title */}
+              <DialogHeader>
                 <DialogTitle className="sr-only">{task.title}</DialogTitle>
                 {editingTitle ? (
                   <input
@@ -629,61 +758,24 @@ function TaskDetailModal({
                     onChange={(e) => setTitleValue(e.target.value)}
                     onBlur={handleTitleSave}
                     onKeyDown={(e) => { if (e.key === "Enter") handleTitleSave(); if (e.key === "Escape") { setTitleValue(task.title); setEditingTitle(false) } }}
-                    className="w-full rounded-md border border-border bg-transparent px-2 py-1 text-lg font-semibold leading-snug outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full rounded-md border border-border bg-transparent px-1 py-0.5 text-base font-semibold leading-snug tracking-tight outline-none focus:ring-1 focus:ring-primary"
                   />
                 ) : (
                   <h2
                     onClick={() => { setTitleValue(task.title); setEditingTitle(true) }}
-                    className="cursor-text rounded-md px-2 py-1 text-lg font-semibold leading-snug transition-colors hover:bg-accent/50"
+                    className="-mx-1 cursor-text rounded-md px-1 py-0.5 text-base font-semibold leading-snug tracking-tight transition-colors hover:bg-accent/50"
                   >
                     {task.title}
                   </h2>
                 )}
               </DialogHeader>
-              <div className="flex-1">
-                {editingDesc ? (
-                  <textarea
-                    autoFocus
-                    value={descValue}
-                    onChange={(e) => setDescValue(e.target.value)}
-                    onBlur={handleDescSave}
-                    onKeyDown={(e) => { if (e.key === "Escape") { setDescValue(task.description ?? ""); setEditingDesc(false) } }}
-                    placeholder="Add a description..."
-                    className="min-h-[120px] w-full resize-none rounded-md border border-border bg-transparent px-2 py-1.5 text-sm leading-relaxed outline-none focus:ring-1 focus:ring-primary"
-                  />
-                ) : (
-                  <p
-                    onClick={() => { setDescValue(task.description ?? ""); setEditingDesc(true) }}
-                    className="cursor-text rounded-md px-2 py-1.5 text-sm leading-relaxed transition-colors hover:bg-accent/50"
-                  >
-                    {task.description ? (
-                      <span className="text-foreground">{task.description}</span>
-                    ) : (
-                      <span className="text-muted-foreground">Add a description...</span>
-                    )}
-                  </p>
-                )}
-              </div>
-            </div>
 
-            {/* Right side – properties */}
-            <div className="flex w-52 shrink-0 flex-col gap-4 border-l border-border bg-sidebar/50 p-5 dark:bg-accent/20">
-              {/* Close button */}
-              <div className="flex justify-end -mt-1 -mr-1">
-                <button
-                  onClick={onClose}
-                  className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                >
-                  <HugeiconsIcon icon={Cancel01Icon} size={14} />
-                </button>
-              </div>
-
-              {/* Status */}
-              <div>
-                <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Status</span>
+              {/* Properties row */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Status */}
                 <DropdownMenu>
-                  <DropdownMenuTrigger className="mt-1.5 flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-sm transition-colors hover:bg-accent">
-                    {getStatusIcon(task.status, 14)}
+                  <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent">
+                    {getStatusIcon(task.status, 13)}
                     <span>{STATUS_LABELS[task.status]}</span>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent side="bottom" align="start">
@@ -701,15 +793,12 @@ function TaskDetailModal({
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
-              </div>
 
-              {/* Priority */}
-              <div>
-                <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Priority</span>
+                {/* Priority */}
                 <DropdownMenu>
-                  <DropdownMenuTrigger className="mt-1.5 flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-sm capitalize transition-colors hover:bg-accent">
-                    {getPriorityIcon(task.priority, 14)}
-                    <span>{task.priority}</span>
+                  <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent">
+                    {getPriorityIcon(task.priority, 13)}
+                    <span>{PRIORITY_LABELS[task.priority]}</span>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent side="bottom" align="start">
                     {ALL_PRIORITIES.map((p) => (
@@ -718,34 +807,33 @@ function TaskDetailModal({
                         className={task.priority === p ? "font-medium" : ""}
                         onSelect={() => onUpdate(task.id, { priority: p })}
                       >
-                        <div className="flex items-center gap-2 capitalize">
+                        <div className="flex items-center gap-2">
                           {getPriorityIcon(p, 14)}
-                          <span>{p}</span>
+                          <span>{PRIORITY_LABELS[p]}</span>
                         </div>
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
-              </div>
 
-              {/* Labels */}
-              <div>
-                <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Labels</span>
+                {/* Labels */}
                 <DropdownMenu>
-                  <DropdownMenuTrigger className="mt-1.5 flex w-full flex-wrap items-center gap-1.5 rounded-md px-1.5 py-1 text-sm transition-colors hover:bg-accent">
-                    {task.labels.length > 0 ? task.labels.map((label) => (
-                      <div
-                        key={label}
-                        className="flex items-center gap-1.5 rounded-sm border border-border px-1.5 py-0.5"
-                      >
-                        <div
-                          className="size-2 rounded-full"
-                          style={{ backgroundColor: LABEL_COLORS[label] }}
-                        />
-                        <span className="text-[11px] capitalize text-muted-foreground">{label}</span>
+                  <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent">
+                    {task.labels.length > 0 ? (
+                      <div className="flex items-center gap-1.5">
+                        <div className="flex -space-x-0.5">
+                          {task.labels.map((label) => (
+                            <div
+                              key={label}
+                              className="size-2.5 rounded-full ring-1 ring-background"
+                              style={{ backgroundColor: LABEL_COLORS[label] }}
+                            />
+                          ))}
+                        </div>
+                        <span>{task.labels.length === 1 ? task.labels[0] : `${task.labels.length} labels`}</span>
                       </div>
-                    )) : (
-                      <span className="text-muted-foreground">None</span>
+                    ) : (
+                      <span className="text-muted-foreground">Add label</span>
                     )}
                   </DropdownMenuTrigger>
                   <DropdownMenuContent side="bottom" align="start">
@@ -754,14 +842,14 @@ function TaskDetailModal({
                         key={label}
                         onSelect={() => toggleLabel(label)}
                       >
-                        <div className="flex items-center gap-2 capitalize">
+                        <div className="flex w-full items-center gap-2 capitalize">
                           <div
-                            className="size-2 rounded-full"
+                            className="size-2.5 rounded-full"
                             style={{ backgroundColor: LABEL_COLORS[label] }}
                           />
                           <span>{label}</span>
                           {task.labels.includes(label) && (
-                            <span className="ml-auto text-xs text-primary">&#10003;</span>
+                            <span className="ml-auto text-xs text-primary">✓</span>
                           )}
                         </div>
                       </DropdownMenuItem>
@@ -770,10 +858,34 @@ function TaskDetailModal({
                 </DropdownMenu>
               </div>
 
-              {/* Created */}
+              {/* Divider */}
+              <div className="h-px bg-border" />
+
+              {/* Description */}
               <div>
-                <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Created</span>
-                <div className="mt-1.5 px-1.5 text-sm text-muted-foreground">{task.createdAt}</div>
+                <span className="mb-2 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">Description</span>
+                {editingDesc ? (
+                  <textarea
+                    autoFocus
+                    value={descValue}
+                    onChange={(e) => setDescValue(e.target.value)}
+                    onBlur={handleDescSave}
+                    onKeyDown={(e) => { if (e.key === "Escape") { setDescValue(task.description ?? ""); setEditingDesc(false) } }}
+                    placeholder="Write something..."
+                    className="min-h-[100px] w-full resize-none rounded-md border border-border bg-transparent px-2 py-1.5 text-sm leading-relaxed outline-none focus:ring-1 focus:ring-primary"
+                  />
+                ) : (
+                  <div
+                    onClick={() => { setDescValue(task.description ?? ""); setEditingDesc(true) }}
+                    className="-mx-2 cursor-text rounded-md px-2 py-1.5 text-sm leading-relaxed transition-colors hover:bg-accent/40"
+                  >
+                    {task.description ? (
+                      <span className="text-foreground/80">{task.description}</span>
+                    ) : (
+                      <span className="text-muted-foreground/50">Write something...</span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -788,13 +900,19 @@ function ListView({
   hiddenColumns,
   onMoveTask,
   onUpdateTask,
+  onAcceptRequest,
+  onDenyRequest,
 }: {
   tasks: Task[]
   hiddenColumns: Status[]
   onMoveTask: (taskId: string, toStatus: Status, toIndex: number) => void
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void
+  onAcceptRequest: (task: Task) => void
+  onDenyRequest: (task: Task) => void
 }) {
-  const visibleColumns = COLUMNS.filter((c) => !hiddenColumns.includes(c.id))
+  // Non-request columns only for DnD
+  const visibleColumns = COLUMNS.filter((c) => !hiddenColumns.includes(c.id) && c.id !== "requests")
+  const showRequests = !hiddenColumns.includes("requests")
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [overColumn, setOverColumn] = useState<Status | null>(null)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
@@ -840,7 +958,7 @@ function ListView({
     if (task) setActiveTask(task)
   }
 
-function handleDragOver(event: DragOverEvent) {
+  function handleDragOver(event: DragOverEvent) {
     const { active, over } = event
     if (!over) {
       setOverColumn(null)
@@ -848,7 +966,17 @@ function handleDragOver(event: DragOverEvent) {
     }
 
     const overId = over.id as string
-    const targetCol = findColumnOfTask(overId)
+    const targetCol =
+      over.data.current?.type === "column"
+        ? (over.id as Status)
+        : findColumnOfTask(overId)
+
+    // Block dragging into requests
+    if (targetCol === "requests") {
+      setOverColumn(null)
+      return
+    }
+
     setOverColumn((current) => (current === targetCol ? current : targetCol))
   }
 
@@ -863,9 +991,20 @@ function handleDragOver(event: DragOverEvent) {
     const overId = over.id as string
 
     const activeColumn = findColumnOfTask(activeId)
-    let targetColumn = findColumnOfTask(overId)
+    const targetColumn =
+      over.data.current?.type === "column"
+        ? (over.id as Status)
+        : findColumnOfTask(overId)
 
     if (!activeColumn || !targetColumn) return
+
+    // Block dragging into requests
+    if (targetColumn === "requests") return
+
+    if (over.data.current?.type === "column") {
+      onMoveTask(activeId, targetColumn, tasksByColumn[targetColumn].length)
+      return
+    }
 
     if (activeColumn === targetColumn) {
       const columnTasks = tasksByColumn[activeColumn]
@@ -897,15 +1036,26 @@ function handleDragOver(event: DragOverEvent) {
       onDragEnd={handleDragEnd}
     >
       <div className="h-full overflow-y-auto scrollbar-hide">
+        {/* Requests group — rendered separately, outside DnD sortable */}
+        {showRequests && tasksByColumn.requests.length > 0 && (
+          <RequestsGroup
+            tasks={tasksByColumn.requests}
+            groupIndex={0}
+            onAccept={onAcceptRequest}
+            onDeny={onDenyRequest}
+            onSelectTask={handleSelectTask}
+          />
+        )}
+
+        {/* Regular columns with DnD */}
         {visibleColumns.map((column, groupIndex) => {
           const columnTasks = tasksByColumn[column.id]
-          if (columnTasks.length === 0) return null
           return (
             <ListGroup
               key={column.id}
               column={column}
               tasks={columnTasks}
-              groupIndex={groupIndex}
+              groupIndex={showRequests ? groupIndex + 1 : groupIndex}
               isDropTarget={overColumn === column.id && activeTaskSource !== null && activeTaskSource !== column.id}
               onSelectTask={handleSelectTask}
             />
@@ -929,10 +1079,92 @@ function handleDragOver(event: DragOverEvent) {
 // ── Main Component ──
 
 export function KanbanBoard() {
-  const [tasks, setTasks] = useState<Task[]>(MOCK_TASKS)
+  const { currentWorkspace } = useWorkspace()
   const [modalOpen, setModalOpen] = useState(false)
-  const [modalDefaultStatus, setModalDefaultStatus] = useState<Status>("requests")
+  const [modalDefaultStatus, setModalDefaultStatus] = useState<Status>("todo")
   const [hiddenColumns, setHiddenColumns] = useState<Status[]>([])
+  const [isSeeding, setIsSeeding] = useState(false)
+  const seededWorkspaceIds = useRef(new Set<string>())
+
+  const workspaceId = currentWorkspace?._id
+  const taskDocs = useQuery(
+    api.tasks.listByWorkspace,
+    workspaceId ? { workspaceId } : "skip"
+  )
+
+  const ensureSeeded = useMutation(api.tasks.ensureSeeded)
+  const updateTask = useMutation(api.tasks.updateTask).withOptimisticUpdate((localStore, args) => {
+    const currentTasks = localStore.getQuery(api.tasks.listByWorkspace, {
+      workspaceId: workspaceId!,
+    }) as TaskDoc[] | undefined
+
+    if (!currentTasks) return
+
+    localStore.setQuery(
+      api.tasks.listByWorkspace,
+      { workspaceId: workspaceId! },
+      patchTaskDocs(currentTasks, args.taskId, {
+        title: args.title,
+        description: args.description,
+        priority: args.priority,
+        labels: args.labels,
+      })
+    )
+  })
+  const deleteTask = useMutation(api.tasks.deleteTask).withOptimisticUpdate((localStore, args) => {
+    const currentTasks = localStore.getQuery(api.tasks.listByWorkspace, {
+      workspaceId: workspaceId!,
+    }) as TaskDoc[] | undefined
+
+    if (!currentTasks) return
+
+    localStore.setQuery(
+      api.tasks.listByWorkspace,
+      { workspaceId: workspaceId! },
+      currentTasks.filter((task) => task._id !== args.taskId)
+    )
+  })
+  const reorderTasks = useMutation(api.tasks.reorderTasks).withOptimisticUpdate((localStore, args) => {
+    const currentTasks = localStore.getQuery(api.tasks.listByWorkspace, {
+      workspaceId: args.workspaceId,
+    }) as TaskDoc[] | undefined
+
+    if (!currentTasks) return
+
+    const changesById = new Map(args.changes.map((change) => [change.taskId, change]))
+    localStore.setQuery(
+      api.tasks.listByWorkspace,
+      { workspaceId: args.workspaceId },
+      sortTaskDocs(
+        currentTasks.map((task) => {
+          const change = changesById.get(task._id as Id<"tasks">)
+          return change ? { ...task, status: change.status, order: change.order } : task
+        })
+      )
+    )
+  })
+
+  useEffect(() => {
+    if (!workspaceId || taskDocs === undefined || taskDocs.length > 0) {
+      setIsSeeding(false)
+      return
+    }
+
+    if (seededWorkspaceIds.current.has(workspaceId)) return
+    seededWorkspaceIds.current.add(workspaceId)
+
+    let cancelled = false
+    setIsSeeding(true)
+    void ensureSeeded({ workspaceId }).finally(() => {
+      if (!cancelled) setIsSeeding(false)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [ensureSeeded, taskDocs, workspaceId])
+
+  const tasks = useMemo(() => (taskDocs ?? []).map(mapTaskDoc), [taskDocs])
 
   function handleAddTask(status: Status) {
     setModalDefaultStatus(status)
@@ -943,57 +1175,71 @@ export function KanbanBoard() {
     setHiddenColumns((prev) => prev.filter((s) => s !== status))
   }
 
+  function handleAcceptRequest(task: Task) {
+    if (!workspaceId || !taskDocs) return
+    const nextTasks = moveTaskDocs(taskDocs, task.id, "todo", 0)
+    void reorderTasks({
+      workspaceId,
+      changes: nextTasks.map((item) => ({
+        taskId: item._id,
+        status: item.status,
+        order: item.order,
+      })),
+    })
+  }
+
+  function handleDenyRequest(task: Task) {
+    if (task.id.startsWith("optimistic:")) return
+    void deleteTask({ taskId: task.id as Id<"tasks"> })
+  }
+
   function handleUpdateTask(taskId: string, updates: Partial<Task>) {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, ...updates } : t))
-    )
+    if (!workspaceId || !taskDocs) return
+
+    if (updates.status) {
+      const currentTask = taskDocs.find((task) => task._id === taskId)
+      if (!currentTask) return
+
+      const targetIndex = taskDocs.filter((task) => task.status === updates.status).length
+      const nextTasks = moveTaskDocs(taskDocs, taskId, updates.status, targetIndex)
+      void reorderTasks({
+        workspaceId,
+        changes: nextTasks.map((item) => ({
+          taskId: item._id,
+          status: item.status,
+          order: item.order,
+        })),
+      })
+      return
+    }
+
+    if (taskId.startsWith("optimistic:")) return
+
+    void updateTask({
+      taskId: taskId as Id<"tasks">,
+      title: updates.title,
+      description: updates.description,
+      priority: updates.priority,
+      labels: updates.labels,
+    })
   }
 
   function handleMoveTask(taskId: string, toStatus: Status, toIndex: number) {
-    setTasks((prev) => {
-      const taskIndex = prev.findIndex((t) => t.id === taskId)
-      if (taskIndex === -1) return prev
+    if (!workspaceId || !taskDocs || taskId.startsWith("optimistic:")) return
 
-      const task = prev[taskIndex]!
-
-      // Build the new task with updated status
-      const updatedTask = { ...task, status: toStatus }
-
-      // Remove from old position
-      const without = prev.filter((t) => t.id !== taskId)
-
-      // Find tasks in the target column to determine insertion point
-      const columnTasks = without.filter((t) => t.status === toStatus)
-      const clampedIndex = Math.min(toIndex, columnTasks.length)
-
-      // Find the global index to insert at
-      let globalInsertIndex: number
-      if (clampedIndex >= columnTasks.length) {
-        // Insert after the last task in target column
-        const lastInColumn = columnTasks[columnTasks.length - 1]
-        if (lastInColumn) {
-          globalInsertIndex = without.indexOf(lastInColumn) + 1
-        } else {
-          // Empty column - find where tasks of this column would go based on column order
-          const colOrder = COLUMNS.map((c) => c.id)
-          const targetColIdx = colOrder.indexOf(toStatus)
-          // Find the first task that belongs to a column after the target
-          const afterIdx = without.findIndex((t) => {
-            const tColIdx = colOrder.indexOf(t.status)
-            return tColIdx > targetColIdx
-          })
-          globalInsertIndex = afterIdx === -1 ? without.length : afterIdx
-        }
-      } else {
-        // Insert at the position of the task currently at toIndex in the column
-        const taskAtIndex = columnTasks[clampedIndex]
-        globalInsertIndex = taskAtIndex ? without.indexOf(taskAtIndex) : without.length
-      }
-
-      const result = [...without]
-      result.splice(globalInsertIndex, 0, updatedTask)
-      return result
+    const nextTasks = moveTaskDocs(taskDocs, taskId, toStatus, toIndex)
+    void reorderTasks({
+      workspaceId,
+      changes: nextTasks.map((item) => ({
+        taskId: item._id,
+        status: item.status,
+        order: item.order,
+      })),
     })
+  }
+
+  if (!workspaceId || taskDocs === undefined || isSeeding) {
+    return <BoardLoadingState />
   }
 
   return (
@@ -1024,6 +1270,8 @@ export function KanbanBoard() {
           hiddenColumns={hiddenColumns}
           onMoveTask={handleMoveTask}
           onUpdateTask={handleUpdateTask}
+          onAcceptRequest={handleAcceptRequest}
+          onDenyRequest={handleDenyRequest}
         />
       </div>
 

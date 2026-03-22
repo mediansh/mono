@@ -103,6 +103,7 @@ export const createWorkspace = mutation({
       name: args.name,
       iconId: args.iconId,
       ownerId: identity.subject,
+      taskCounter: 0,
     })
 
     await ctx.db.insert("workspaceMembers", {
