@@ -1,7 +1,7 @@
 "use client"
 
-import { memo, useCallback, useEffect, useMemo, useState } from "react"
-import { useMutation, useQuery } from "convex/react"
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useConvex, useConvexAuth, useMutation } from "convex/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   SignalFull02Icon,
@@ -66,8 +66,14 @@ import {
   type TaskPriority as Priority,
   type TaskStatus as Status,
 } from "@/lib/task-board"
+import {
+  setWorkspaceTasks,
+  updateWorkspaceTasks,
+  useLocalFirstStore,
+  type LocalTaskDoc as TaskDoc,
+} from "@/lib/local-first-store"
 
-interface Task extends Doc<"tasks"> {
+interface Task extends Omit<TaskDoc, "_syncStatus"> {
   id: string
   createdAt: string
 }
@@ -130,8 +136,6 @@ function getPriorityIcon(priority: Priority, size = 14) {
       return <HugeiconsIcon icon={SignalLow02Icon} size={size} className="text-muted-foreground" />
   }
 }
-
-type TaskDoc = Doc<"tasks">
 
 function sortTaskDocs(tasks: TaskDoc[]) {
   return [...tasks].sort((a, b) => {
@@ -199,27 +203,53 @@ function mapTaskDoc(task: TaskDoc): Task {
   }
 }
 
+const SKELETON_GROUPS: { label: string; rows: number[] }[] = [
+  { label: "Todo", rows: [180, 240, 150] },
+  { label: "In Progress", rows: [200, 260] },
+  { label: "Ready", rows: [170] },
+  { label: "Shipped", rows: [220, 190] },
+  { label: "Archive", rows: [] },
+]
+
 function BoardLoadingState() {
   return (
-    <div className="flex h-full flex-col gap-3 px-4 py-3">
-      {Array.from({ length: 5 }).map((_, index) => (
-        <motion.div
-          key={index}
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.22, delay: index * 0.04, ease: "easeOut" }}
-          className="overflow-hidden rounded-[20px] border border-border/70 bg-sidebar/45 shadow-[0_1px_0_rgba(255,255,255,0.04)_inset]"
-        >
-          <div className="flex items-center gap-2 border-b border-border/60 px-4 py-2.5">
-            <div className="size-3 rounded-full bg-muted/80" />
-            <div className="h-3 w-24 rounded-full bg-muted/80" />
-            <div className="h-4 w-6 rounded-full bg-muted/60" />
+    <div className="h-full overflow-hidden">
+      {SKELETON_GROUPS.map((group, gi) => (
+        <div key={gi}>
+          {/* Group header skeleton — matches ListGroup header */}
+          <div className="flex items-center gap-2.5 bg-sidebar/60 px-4 py-2 dark:bg-accent/30">
+            <span className="text-[10px] text-muted-foreground/60">▼</span>
+            <div className="size-3.5 rounded-full bg-muted/70 animate-pulse" />
+            <div className="h-3 rounded bg-muted/70 animate-pulse" style={{ width: group.label.length * 8 }} />
+            <div className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-muted px-1.5">
+              <div className="h-2 w-2 rounded bg-muted-foreground/20" />
+            </div>
           </div>
-          <div className="space-y-2 px-4 py-3">
-            <div className="h-12 rounded-xl bg-muted/60" />
-            <div className="h-12 rounded-xl bg-muted/40" />
-          </div>
-        </motion.div>
+
+          {/* Row skeletons — matches SortableListRow layout */}
+          {group.rows.map((titleWidth, ri) => (
+            <div
+              key={ri}
+              className="flex items-center gap-3 border-b border-l-2 border-border border-l-transparent px-4 py-2"
+            >
+              {/* Priority icon placeholder */}
+              <div className="size-3.5 shrink-0 rounded bg-muted/60 animate-pulse" />
+              {/* Status icon placeholder */}
+              <div className="size-3.5 shrink-0 rounded-full bg-muted/60 animate-pulse" />
+              {/* Title placeholder */}
+              <div
+                className="h-3 flex-1 rounded bg-muted/60 animate-pulse"
+                style={{ maxWidth: titleWidth }}
+              />
+              {/* Label pill placeholder */}
+              {ri % 2 === 0 && (
+                <div className="h-4 w-14 shrink-0 rounded-full bg-muted/40 animate-pulse" />
+              )}
+              {/* Date placeholder */}
+              <div className="h-2.5 w-12 shrink-0 rounded bg-muted/30 animate-pulse" />
+            </div>
+          ))}
+        </div>
       ))}
     </div>
   )
@@ -670,11 +700,7 @@ function ListGroup({
             className="overflow-hidden"
           >
             <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
-              {tasks.length === 0 ? (
-                <div className="px-4 py-6 text-sm text-muted-foreground/60">
-                  Drop a task here
-                </div>
-              ) : (
+              {tasks.length === 0 ? null : (
                 tasks.map((task) => (
                   <SortableListRow key={task.id} task={task} onSelect={onSelectTask} />
                 ))
@@ -1107,78 +1133,65 @@ function ListView({
 // ── Main Component ──
 
 export function KanbanBoard() {
+  const convex = useConvex()
+  const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth()
   const { currentWorkspace } = useWorkspace()
+  const { tasksByWorkspace } = useLocalFirstStore()
   const [modalOpen, setModalOpen] = useState(false)
   const [modalDefaultStatus, setModalDefaultStatus] = useState<Status>("todo")
   const [hiddenColumns, setHiddenColumns] = useState<Status[]>([])
   const [isCleaningDemoTasks, setIsCleaningDemoTasks] = useState(false)
+  const [hasFetchedTasks, setHasFetchedTasks] = useState(false)
   const cleanedWorkspaceIds = useState(() => new Set<string>())[0]
+  const lastLoadedWorkspaceIdRef = useRef<string | null>(null)
 
   const workspaceId = currentWorkspace?._id
-  const taskDocs = useQuery(
-    api.tasks.listByWorkspace,
-    workspaceId ? { workspaceId } : "skip"
-  )
+  const taskDocs = workspaceId ? tasksByWorkspace[workspaceId] : undefined
 
-  const clearDemoTasks = useMutation(api.tasks.clearDemoTasks).withOptimisticUpdate((localStore, args) => {
-    const currentTasks = localStore.getQuery(api.tasks.listByWorkspace, {
-      workspaceId: args.workspaceId,
-    }) as TaskDoc[] | undefined
+  const clearDemoTasks = useMutation(api.tasks.clearDemoTasks)
+  const updateTask = useMutation(api.tasks.updateTask)
+  const deleteTask = useMutation(api.tasks.deleteTask)
+  const reorderTasks = useMutation(api.tasks.reorderTasks)
 
-    if (!currentTasks || !isDemoTaskSet(currentTasks)) return
+  useEffect(() => {
+    if (workspaceId !== lastLoadedWorkspaceIdRef.current) {
+      setHasFetchedTasks(false)
+      lastLoadedWorkspaceIdRef.current = workspaceId ?? null
+    }
+  }, [workspaceId])
 
-    localStore.setQuery(api.tasks.listByWorkspace, { workspaceId: args.workspaceId }, [])
-  })
-  const updateTask = useMutation(api.tasks.updateTask).withOptimisticUpdate((localStore, args) => {
-    const currentTasks = localStore.getQuery(api.tasks.listByWorkspace, {
-      workspaceId: workspaceId!,
-    }) as TaskDoc[] | undefined
+  useEffect(() => {
+    if (!workspaceId || isAuthLoading || !isAuthenticated) {
+      return
+    }
 
-    if (!currentTasks) return
+    const activeWorkspaceId = workspaceId
+    let cancelled = false
 
-    localStore.setQuery(
-      api.tasks.listByWorkspace,
-      { workspaceId: workspaceId! },
-      patchTaskDocs(currentTasks, args.taskId, {
-        title: args.title,
-        description: args.description,
-        priority: args.priority,
-        labels: args.labels,
-      })
-    )
-  })
-  const deleteTask = useMutation(api.tasks.deleteTask).withOptimisticUpdate((localStore, args) => {
-    const currentTasks = localStore.getQuery(api.tasks.listByWorkspace, {
-      workspaceId: workspaceId!,
-    }) as TaskDoc[] | undefined
+    async function refreshTasks() {
+      try {
+        const nextTasks = (await convex.query(api.tasks.listByWorkspace, {
+          workspaceId: activeWorkspaceId,
+        })) as Doc<"tasks">[]
 
-    if (!currentTasks) return
+        if (cancelled) {
+          return
+        }
 
-    localStore.setQuery(
-      api.tasks.listByWorkspace,
-      { workspaceId: workspaceId! },
-      currentTasks.filter((task) => task._id !== args.taskId)
-    )
-  })
-  const reorderTasks = useMutation(api.tasks.reorderTasks).withOptimisticUpdate((localStore, args) => {
-    const currentTasks = localStore.getQuery(api.tasks.listByWorkspace, {
-      workspaceId: args.workspaceId,
-    }) as TaskDoc[] | undefined
+        setWorkspaceTasks(activeWorkspaceId, nextTasks)
+      } finally {
+        if (!cancelled) {
+          setHasFetchedTasks(true)
+        }
+      }
+    }
 
-    if (!currentTasks) return
+    void refreshTasks()
 
-    const changesById = new Map(args.changes.map((change) => [change.taskId, change]))
-    localStore.setQuery(
-      api.tasks.listByWorkspace,
-      { workspaceId: args.workspaceId },
-      sortTaskDocs(
-        currentTasks.map((task) => {
-          const change = changesById.get(task._id as Id<"tasks">)
-          return change ? { ...task, status: change.status, order: change.order } : task
-        })
-      )
-    )
-  })
+    return () => {
+      cancelled = true
+    }
+  }, [convex, isAuthLoading, isAuthenticated, workspaceId])
 
   useEffect(() => {
     if (!workspaceId || taskDocs === undefined || !isDemoTaskSet(taskDocs)) {
@@ -1191,6 +1204,7 @@ export function KanbanBoard() {
 
     let cancelled = false
     setIsCleaningDemoTasks(true)
+    setWorkspaceTasks(workspaceId, [])
     void clearDemoTasks({ workspaceId }).finally(() => {
       if (!cancelled) setIsCleaningDemoTasks(false)
     })
@@ -1214,10 +1228,11 @@ export function KanbanBoard() {
   function handleAcceptRequest(task: Task) {
     if (!workspaceId || !taskDocs) return
     const nextTasks = moveTaskDocs(taskDocs, task.id, "todo", 0)
+    setWorkspaceTasks(workspaceId, nextTasks)
     void reorderTasks({
       workspaceId,
       changes: nextTasks.map((item) => ({
-        taskId: item._id,
+        taskId: item._id as Id<"tasks">,
         status: item.status,
         order: item.order,
       })),
@@ -1226,6 +1241,9 @@ export function KanbanBoard() {
 
   function handleDenyRequest(task: Task) {
     if (task.id.startsWith("optimistic:")) return
+    if (workspaceId) {
+      updateWorkspaceTasks(workspaceId, (tasks) => tasks.filter((item) => item._id !== task.id))
+    }
     void deleteTask({ taskId: task.id as Id<"tasks"> })
   }
 
@@ -1238,10 +1256,11 @@ export function KanbanBoard() {
 
       const targetIndex = taskDocs.filter((task) => task.status === updates.status).length
       const nextTasks = moveTaskDocs(taskDocs, taskId, updates.status, targetIndex)
+      setWorkspaceTasks(workspaceId, nextTasks)
       void reorderTasks({
         workspaceId,
         changes: nextTasks.map((item) => ({
-          taskId: item._id,
+          taskId: item._id as Id<"tasks">,
           status: item.status,
           order: item.order,
         })),
@@ -1250,6 +1269,15 @@ export function KanbanBoard() {
     }
 
     if (taskId.startsWith("optimistic:")) return
+
+    updateWorkspaceTasks(workspaceId, (tasks) =>
+      patchTaskDocs(tasks, taskId, {
+        title: updates.title,
+        description: updates.description,
+        priority: updates.priority,
+        labels: updates.labels,
+      })
+    )
 
     void updateTask({
       taskId: taskId as Id<"tasks">,
@@ -1264,22 +1292,22 @@ export function KanbanBoard() {
     if (!workspaceId || !taskDocs || taskId.startsWith("optimistic:")) return
 
     const nextTasks = moveTaskDocs(taskDocs, taskId, toStatus, toIndex)
+    setWorkspaceTasks(workspaceId, nextTasks)
     void reorderTasks({
       workspaceId,
       changes: nextTasks.map((item) => ({
-        taskId: item._id,
+        taskId: item._id as Id<"tasks">,
         status: item.status,
         order: item.order,
       })),
     })
   }
 
-  if (!workspaceId || taskDocs === undefined || isCleaningDemoTasks) {
+  if (
+    !workspaceId ||
+    (taskDocs === undefined && (isAuthLoading || !hasFetchedTasks || isCleaningDemoTasks))
+  ) {
     return <BoardLoadingState />
-  }
-
-  if (tasks.length === 0) {
-    return <EmptyBoardState onCreateTask={() => handleAddTask("todo")} />
   }
 
   return (

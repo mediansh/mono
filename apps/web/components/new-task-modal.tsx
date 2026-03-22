@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useCallback } from "react"
 import { useMutation } from "convex/react"
 import { useUser } from "@clerk/nextjs"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -18,6 +18,7 @@ import {
   AlertCircleIcon,
   Tick02Icon,
   Rocket01Icon,
+  Attachment01Icon,
 } from "@hugeicons/core-free-icons"
 import { motion } from "motion/react"
 import {
@@ -33,8 +34,14 @@ import {
 } from "@workspace/ui/components/dropdown-menu"
 import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
-import type { Id } from "@/convex/_generated/dataModel"
+import type { Doc, Id } from "@/convex/_generated/dataModel"
 import { getTaskNumber, type TaskLabel as Label, type TaskPriority as Priority, type TaskStatus as Status } from "@/lib/task-board"
+import {
+  setWorkspaceTasks,
+  updateWorkspaceTasks,
+  useLocalFirstStore,
+  type LocalTaskDoc,
+} from "@/lib/local-first-store"
 
 const STATUS_OPTIONS: { id: Status; label: string }[] = [
   { id: "todo", label: "Todo" },
@@ -101,6 +108,7 @@ interface NewTaskModalProps {
 export function NewTaskModal({ open, onOpenChange, defaultStatus = "todo" }: NewTaskModalProps) {
   const { user } = useUser()
   const { currentWorkspace } = useWorkspace()
+  const { tasksByWorkspace } = useLocalFirstStore()
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [status, setStatus] = useState<Status>(defaultStatus)
@@ -108,40 +116,65 @@ export function NewTaskModal({ open, onOpenChange, defaultStatus = "todo" }: New
   const [labels, setLabels] = useState<Label[]>([])
   const [createMore, setCreateMore] = useState(false)
   const [error, setError] = useState("")
+  const [attachments, setAttachments] = useState<
+    { storageId: string; name: string; type: string; size: number }[]
+  >([])
+  const [uploading, setUploading] = useState(false)
 
   const descriptionRef = useRef<HTMLTextAreaElement>(null)
-  const createTask = useMutation(api.tasks.createTask).withOptimisticUpdate((localStore, args) => {
-    const existing = (localStore.getQuery(api.tasks.listByWorkspace, {
-      workspaceId: args.workspaceId,
-    }) ?? []) as Array<any>
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const createTask = useMutation(api.tasks.createTask)
 
-    const nextTaskNumber =
-      Math.max(0, ...existing.map((task) => task.taskNumber ?? getTaskNumber(task.taskCode ?? ""))) + 1
-    const order = existing.filter((task) => task.status === args.status).length
-    const now = Date.now()
+  const generateUploadUrl = useMutation(api.workspaces.generateUploadUrl)
 
-    localStore.setQuery(api.tasks.listByWorkspace, { workspaceId: args.workspaceId }, [
-      ...existing,
-      {
-        _id: `optimistic:${nextTaskNumber}`,
-        _creationTime: now,
-        workspaceId: args.workspaceId,
-        taskCode: `MED-${nextTaskNumber}`,
-        taskNumber: nextTaskNumber,
-        title: args.title.trim(),
-        description: args.description?.trim() || undefined,
-        status: args.status,
-        priority: args.priority,
-        labels: args.labels,
-        order,
-        project: currentWorkspace?.name ?? "Median",
-        assignee: {
-          name: user?.fullName ?? user?.firstName ?? "You",
-          avatar: user?.imageUrl ?? "",
-        },
-      },
-    ])
-  })
+  const handleFileSelect = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files
+      if (!files || files.length === 0) return
+
+      setUploading(true)
+      setError("")
+
+      try {
+        const newAttachments: typeof attachments = []
+
+        for (const file of Array.from(files)) {
+          if (file.size > 10 * 1024 * 1024) {
+            setError(`File "${file.name}" exceeds 10MB limit.`)
+            continue
+          }
+
+          const uploadUrl = await generateUploadUrl()
+          const result = await fetch(uploadUrl, {
+            method: "POST",
+            headers: { "Content-Type": file.type },
+            body: file,
+          })
+
+          if (!result.ok) {
+            setError(`Failed to upload "${file.name}".`)
+            continue
+          }
+
+          const { storageId } = await result.json()
+          newAttachments.push({
+            storageId,
+            name: file.name,
+            type: file.type,
+            size: file.size,
+          })
+        }
+
+        setAttachments((prev) => [...prev, ...newAttachments])
+      } catch {
+        setError("Upload failed. Try again.")
+      } finally {
+        setUploading(false)
+        if (fileInputRef.current) fileInputRef.current.value = ""
+      }
+    },
+    [generateUploadUrl]
+  )
 
   useEffect(() => {
     if (open) {
@@ -154,6 +187,33 @@ export function NewTaskModal({ open, onOpenChange, defaultStatus = "todo" }: New
 
     setError("")
 
+    const existingTasks = tasksByWorkspace[currentWorkspace._id] ?? []
+    const nextTaskNumber =
+      Math.max(0, ...existingTasks.map((task) => task.taskNumber ?? getTaskNumber(task.taskCode ?? ""))) + 1
+    const optimisticId = `optimistic:${nextTaskNumber}`
+    const optimisticTask: LocalTaskDoc = {
+      _id: optimisticId,
+      _creationTime: Date.now(),
+      workspaceId: currentWorkspace._id,
+      taskCode: `MED-${nextTaskNumber}`,
+      taskNumber: nextTaskNumber,
+      title: title.trim(),
+      description: description.trim() || undefined,
+      status,
+      priority,
+      labels,
+      order: existingTasks.filter((task) => task.status === status).length,
+      project: currentWorkspace.name,
+      assignee: {
+        name: user?.fullName ?? user?.firstName ?? "You",
+        avatar: user?.imageUrl ?? "",
+      },
+      attachments: attachments.length > 0 ? attachments as any : undefined,
+      _syncStatus: "pending",
+    }
+
+    setWorkspaceTasks(currentWorkspace._id, [...existingTasks, optimisticTask])
+
     const payload = {
       workspaceId: currentWorkspace._id,
       title,
@@ -161,6 +221,7 @@ export function NewTaskModal({ open, onOpenChange, defaultStatus = "todo" }: New
       status,
       priority,
       labels,
+      attachments: attachments.length > 0 ? attachments as any : undefined,
     }
 
     if (createMore) {
@@ -171,8 +232,16 @@ export function NewTaskModal({ open, onOpenChange, defaultStatus = "todo" }: New
     }
 
     try {
-      await createTask(payload)
+      const createdTask = await createTask(payload) as Doc<"tasks">
+      updateWorkspaceTasks(currentWorkspace._id, (tasks) =>
+        tasks.map((task) =>
+          task._id === optimisticId ? createdTask : task
+        )
+      )
     } catch {
+      updateWorkspaceTasks(currentWorkspace._id, (tasks) =>
+        tasks.filter((task) => task._id !== optimisticId)
+      )
       setError("Task creation failed. Try again.")
     }
   }
@@ -183,6 +252,7 @@ export function NewTaskModal({ open, onOpenChange, defaultStatus = "todo" }: New
     setStatus(options?.nextStatus ?? defaultStatus)
     setPriority("none")
     setLabels([])
+    setAttachments([])
     if (!options?.keepOpen) {
       setError("")
     }
@@ -320,9 +390,47 @@ export function NewTaskModal({ open, onOpenChange, defaultStatus = "todo" }: New
             </DropdownMenu>
           </div>
 
+          {/* Attachments */}
+          {attachments.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {attachments.map((file, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-1.5 rounded-lg border border-border bg-accent/50 px-2.5 py-1 text-xs"
+                >
+                  <HugeiconsIcon icon={Attachment01Icon} size={12} className="text-muted-foreground" />
+                  <span className="max-w-[150px] truncate">{file.name}</span>
+                  <button
+                    onClick={() => setAttachments((prev) => prev.filter((_, idx) => idx !== i))}
+                    className="ml-0.5 text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <HugeiconsIcon icon={Cancel01Icon} size={10} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Actions row */}
           <div className="flex items-center justify-between">
-            <div className="text-xs text-muted-foreground">{error || "Ships straight into your workspace board."}</div>
+            <div className="flex items-center gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+              >
+                <HugeiconsIcon icon={uploading ? Loading03Icon : Attachment01Icon} size={14} className={uploading ? "animate-spin" : ""} />
+                {uploading ? "Uploading..." : "Attach"}
+              </button>
+              {error && <span className="text-xs text-red-500">{error}</span>}
+            </div>
             <div className="flex items-center gap-3">
               {/* Create more toggle */}
               <button

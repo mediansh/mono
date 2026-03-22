@@ -64,5 +64,15 @@ export default defineSchema({
       })
     ),
     createdAtLabel: v.optional(v.string()),
+    attachments: v.optional(
+      v.array(
+        v.object({
+          storageId: v.id("_storage"),
+          name: v.string(),
+          type: v.string(),
+          size: v.number(),
+        })
+      )
+    ),
   }).index("by_workspace", ["workspaceId"]),
 })

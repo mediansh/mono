@@ -79,6 +79,16 @@ export const createTask = mutation({
         v.literal("devops")
       )
     ),
+    attachments: v.optional(
+      v.array(
+        v.object({
+          storageId: v.id("_storage"),
+          name: v.string(),
+          type: v.string(),
+          size: v.number(),
+        })
+      )
+    ),
   },
   handler: async (ctx, args) => {
     await requireWorkspaceAccess(ctx, args.workspaceId)
@@ -110,6 +120,7 @@ export const createTask = mutation({
         name: "Abdul",
         avatar: "",
       },
+      attachments: args.attachments ?? undefined,
     })
 
     await ctx.db.patch(args.workspaceId, { taskCounter: nextTaskNumber })

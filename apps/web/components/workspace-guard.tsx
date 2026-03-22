@@ -24,12 +24,10 @@ export function WorkspaceGuard({ children }: { children: React.ReactNode }) {
     }
   }, [hasWorkspaces, isLoading, isSetupPage, router])
 
+  // While loading, render children immediately — the sidebar is static
+  // and the board already handles its own loading skeleton
   if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="size-5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-foreground" />
-      </div>
-    )
+    return <>{children}</>
   }
 
   if ((!hasWorkspaces && !isSetupPage) || (hasWorkspaces && isSetupPage)) {
