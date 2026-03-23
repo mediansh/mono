@@ -2,19 +2,13 @@
 
 import { HugeiconsIcon } from "@hugeicons/react"
 import { UserMultiple02Icon } from "@hugeicons/core-free-icons"
-import { motion } from "motion/react"
 
 export default function MembersSettingsPage() {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, ease: "easeOut" }}
-      className="mx-auto w-full max-w-2xl px-8 py-8"
-    >
+    <div className="mx-auto w-full max-w-2xl px-10 py-10">
       {/* Header */}
       <div className="mb-8">
-        <h2 className="text-lg font-semibold">Members</h2>
+        <h2 className="text-base font-semibold">Members</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Manage who has access to this workspace.
         </p>
@@ -38,6 +32,6 @@ export default function MembersSettingsPage() {
           </p>
         </div>
       </div>
-    </motion.div>
+    </div>
   )
 }

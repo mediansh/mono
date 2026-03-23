@@ -103,15 +103,10 @@ export default function GeneralSettingsPage() {
   const hasChanges = name.trim() !== currentWorkspace.name || iconFile !== null
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, ease: "easeOut" }}
-      className="mx-auto w-full max-w-2xl px-8 py-8"
-    >
+    <div className="mx-auto w-full max-w-2xl px-10 py-10">
       {/* Header */}
       <div className="mb-8">
-        <h2 className="text-lg font-semibold">General</h2>
+        <h2 className="text-base font-semibold">General</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Manage your workspace profile and settings.
         </p>
@@ -292,6 +287,6 @@ export default function GeneralSettingsPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </motion.div>
+    </div>
   )
 }

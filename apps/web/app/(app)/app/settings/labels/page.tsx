@@ -64,15 +64,10 @@ export default function LabelsSettingsPage() {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, ease: "easeOut" }}
-      className="mx-auto w-full max-w-2xl px-8 py-8"
-    >
+    <div className="mx-auto w-full max-w-2xl px-10 py-10">
       {/* Header */}
       <div className="mb-8">
-        <h2 className="text-lg font-semibold">Labels</h2>
+        <h2 className="text-base font-semibold">Labels</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Manage the labels available for tasks in this workspace.
         </p>
@@ -82,15 +77,9 @@ export default function LabelsSettingsPage() {
       <div className="rounded-lg border border-border bg-card">
         <div className="p-5">
           <div className="flex flex-col gap-2">
-            <AnimatePresence initial={false}>
               {labels.map((label, index) => (
-                <motion.div
+                <div
                   key={label.key}
-                  layout
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.15 }}
                   className="group flex items-center gap-2.5"
                 >
                   <input
@@ -126,9 +115,8 @@ export default function LabelsSettingsPage() {
                       strokeWidth={1.5}
                     />
                   </button>
-                </motion.div>
+                </div>
               ))}
-            </AnimatePresence>
           </div>
 
           <button
@@ -171,6 +159,6 @@ export default function LabelsSettingsPage() {
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   )
 }
