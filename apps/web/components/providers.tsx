@@ -26,7 +26,7 @@ export function Providers({
               <ErrorTracker />
               {children}
             </TooltipProvider>
-            <Toaster richColors position="top-right" />
+            <Toaster richColors position="bottom-right" />
           </ThemeProvider>
         </ConvexProviderWithClerk>
       ) : (
@@ -35,7 +35,7 @@ export function Providers({
             <ErrorTracker />
             {children}
           </TooltipProvider>
-          <Toaster richColors position="top-right" />
+          <Toaster richColors position="bottom-right" />
         </ThemeProvider>
       )}
     </ClerkProvider>
