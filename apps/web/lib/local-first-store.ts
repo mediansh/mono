@@ -153,7 +153,11 @@ export function updateLocalFirstStore(
   updater: (current: LocalFirstStore) => LocalFirstStore
 ) {
   const current = getLocalFirstStoreSnapshot()
-  writeStore(updater(current))
+  const next = updater(current)
+  if (next === current) {
+    return
+  }
+  writeStore(next)
 }
 
 export function setCachedWorkspaces(workspaces: WorkspaceRecord[]) {
@@ -192,13 +196,19 @@ export function setCurrentWorkspaceId(workspaceId: string | null) {
 }
 
 export function setWorkspaceTasks(workspaceId: string, tasks: LocalTaskDoc[]) {
-  updateLocalFirstStore((current) => ({
-    ...current,
-    tasksByWorkspace: {
-      ...current.tasksByWorkspace,
-      [workspaceId]: tasks,
-    },
-  }))
+  updateLocalFirstStore((current) => {
+    if (current.tasksByWorkspace[workspaceId] === tasks) {
+      return current
+    }
+
+    return {
+      ...current,
+      tasksByWorkspace: {
+        ...current.tasksByWorkspace,
+        [workspaceId]: tasks,
+      },
+    }
+  })
 }
 
 export function setCollapsedWorkspaceColumns(
@@ -218,11 +228,20 @@ export function updateWorkspaceTasks(
   workspaceId: string,
   updater: (tasks: LocalTaskDoc[]) => LocalTaskDoc[]
 ) {
-  updateLocalFirstStore((current) => ({
-    ...current,
-    tasksByWorkspace: {
-      ...current.tasksByWorkspace,
-      [workspaceId]: updater(current.tasksByWorkspace[workspaceId] ?? []),
-    },
-  }))
+  updateLocalFirstStore((current) => {
+    const currentTasks = current.tasksByWorkspace[workspaceId] ?? []
+    const nextTasks = updater(currentTasks)
+
+    if (nextTasks === currentTasks) {
+      return current
+    }
+
+    return {
+      ...current,
+      tasksByWorkspace: {
+        ...current.tasksByWorkspace,
+        [workspaceId]: nextTasks,
+      },
+    }
+  })
 }

@@ -2,7 +2,7 @@
 
 import { createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react"
 import { createPortal } from "react-dom"
-import { useConvex, useConvexAuth, useMutation } from "convex/react"
+import { useConvexAuth, useMutation, useQuery } from "convex/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { toast } from "sonner"
 import {
@@ -215,6 +215,44 @@ function patchTaskDocs(
     Object.entries(updates).filter(([, v]) => v !== undefined)
   )
   return tasks.map((task) => (task._id === taskId ? { ...task, ...defined } : task))
+}
+
+function mergeLiveTaskDocs(currentTasks: TaskDoc[] | undefined, liveTasks: Doc<"tasks">[]) {
+  const pendingTasks = (currentTasks ?? []).filter((task) => task._syncStatus === "pending")
+  return sortTaskDocs([...liveTasks, ...pendingTasks])
+}
+
+function areTaskDocListsEqual(left: TaskDoc[] | undefined, right: TaskDoc[]) {
+  if (!left || left.length !== right.length) return false
+
+  for (let index = 0; index < left.length; index += 1) {
+    const current = left[index]
+    const next = right[index]
+    if (!current || !next) return false
+
+    if (
+      current._id !== next._id ||
+      current._creationTime !== next._creationTime ||
+      current.title !== next.title ||
+      current.description !== next.description ||
+      current.status !== next.status ||
+      current.priority !== next.priority ||
+      current.order !== next.order ||
+      current.taskCode !== next.taskCode ||
+      current.taskNumber !== next.taskNumber ||
+      current.project !== next.project ||
+      current.createdAtLabel !== next.createdAtLabel ||
+      current._syncStatus !== next._syncStatus ||
+      JSON.stringify(current.assignee ?? null) !== JSON.stringify(next.assignee ?? null) ||
+      JSON.stringify(current.source ?? null) !== JSON.stringify(next.source ?? null) ||
+      JSON.stringify(current.attachments ?? null) !== JSON.stringify(next.attachments ?? null) ||
+      JSON.stringify(current.labels) !== JSON.stringify(next.labels)
+    ) {
+      return false
+    }
+  }
+
+  return true
 }
 
 function mapTaskDoc(task: TaskDoc): Task {
@@ -1692,7 +1730,6 @@ function ListView({
 // ── Main Component ──
 
 export function KanbanBoard() {
-  const convex = useConvex()
   const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth()
   const { currentWorkspace } = useWorkspace()
   const { tasksByWorkspace, collapsedColumnsByWorkspace } = useLocalFirstStore()
@@ -1707,6 +1744,10 @@ export function KanbanBoard() {
   const workspaceId = currentWorkspace?._id
   const canManageTasks = hasTaskWritePermission(currentWorkspace?.role)
   const taskDocs = workspaceId ? tasksByWorkspace[workspaceId] : undefined
+  const liveTaskDocs = useQuery(
+    api.tasks.listByWorkspace,
+    workspaceId ? { workspaceId } : "skip"
+  )
   const collapsedColumns = useMemo(
     () => (workspaceId ? (collapsedColumnsByWorkspace[workspaceId] ?? []) as Status[] : []),
     [collapsedColumnsByWorkspace, workspaceId]
@@ -1731,33 +1772,16 @@ export function KanbanBoard() {
       return
     }
 
-    const activeWorkspaceId = workspaceId
-    let cancelled = false
-
-    async function refreshTasks() {
-      try {
-        const nextTasks = (await convex.query(api.tasks.listByWorkspace, {
-          workspaceId: activeWorkspaceId,
-        })) as Doc<"tasks">[]
-
-        if (cancelled) {
-          return
-        }
-
-        setWorkspaceTasks(activeWorkspaceId, nextTasks)
-      } finally {
-        if (!cancelled) {
-          setHasFetchedTasks(true)
-        }
-      }
+    if (liveTaskDocs === undefined) {
+      return
     }
 
-    void refreshTasks()
-
-    return () => {
-      cancelled = true
-    }
-  }, [convex, isAuthLoading, isAuthenticated, workspaceId])
+    updateWorkspaceTasks(workspaceId, (currentTasks) => {
+      const mergedTasks = mergeLiveTaskDocs(currentTasks, liveTaskDocs)
+      return areTaskDocListsEqual(currentTasks, mergedTasks) ? currentTasks : mergedTasks
+    })
+    setHasFetchedTasks(true)
+  }, [isAuthLoading, isAuthenticated, liveTaskDocs, workspaceId])
 
   useEffect(() => {
     if (!workspaceId || taskDocs === undefined || !isDemoTaskSet(taskDocs)) {
