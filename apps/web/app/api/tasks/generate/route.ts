@@ -1,5 +1,5 @@
 import { auth } from "@clerk/nextjs/server"
-import { generateObject } from "ai"
+import { generateText } from "ai"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 
@@ -25,6 +25,17 @@ const generatedTasksSchema = z.object({
     .min(1)
     .max(12),
 })
+
+function extractJsonObject(text: string) {
+  const start = text.indexOf("{")
+  const end = text.lastIndexOf("}")
+
+  if (start === -1 || end === -1 || end <= start) {
+    throw new Error("Model did not return a JSON object.")
+  }
+
+  return text.slice(start, end + 1)
+}
 
 export async function POST(request: Request) {
   const { userId } = await auth()
@@ -54,9 +65,8 @@ export async function POST(request: Request) {
         ? availableLabels.join(", ")
         : "No predefined labels available."
 
-    const { object } = await generateObject({
+    const { text } = await generateText({
       model: "arcee-ai/trinity-mini",
-      schema: generatedTasksSchema,
       system: [
         "You generate actionable task objects for a project management app.",
         `Workspace: ${workspaceName}.`,
@@ -71,12 +81,16 @@ export async function POST(request: Request) {
         "Descriptions should be plain text.",
         "Only use labels from the allowed labels list.",
         "Use sensible defaults when the user does not specify status or priority.",
-        "Do not include markdown, commentary, or fields outside the schema.",
+        "Return valid JSON only. No markdown. No code fences. No commentary.",
+        'The JSON format must be: {"tasks":[{"title":"...","description":null,"status":"todo","priority":"none","labels":[]}]}',
       ].join(" "),
       prompt,
     })
 
-    const normalizedTasks = object.tasks.map((task) => ({
+    const rawObject = JSON.parse(extractJsonObject(text))
+    const validatedObject = generatedTasksSchema.parse(rawObject)
+
+    const normalizedTasks = validatedObject.tasks.map((task) => ({
       title: task.title,
       description: task.description ?? undefined,
       status: task.status ?? undefined,
