@@ -47,6 +47,9 @@ importers:
       '@hugeicons/react':
         specifier: ^1.1.6
         version: 1.1.6(react@19.2.4)
+      '@inboundemail/sdk':
+        specifier: ^4.4.0
+        version: 4.4.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@workspace/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -1009,6 +1012,14 @@ packages:
     engines: {node: ^18.17.0 || ^20.3.0 || >=21.0.0}
     cpu: [x64]
     os: [win32]
+
+  '@inboundemail/sdk@4.4.0':
+    resolution: {integrity: sha512-DChj0xIMeTZCgoTJ+iQm1r8JadqOj/5+EmGCK7pG9mtP2Q6mfG6OsCa8E4q/0nu4lTSrgl/OQdDHZzwWdcfA4g==}
+    engines: {node: '>=16.0.0'}
+    deprecated: 'This package has been deprecated. Please use ''inboundemail'' instead: npm install inboundemail'
+    peerDependencies:
+      react: '>=16.8.0'
+      react-dom: '>=16.8.0'
 
   '@inquirer/ansi@1.0.2':
     resolution: {integrity: sha512-S8qNSZiYzFd0wAcyG5AXCvUHC5Sr7xpZ9wZ2py9XR88jUz8wooStVx5M6dRzczbBWjic9NP7+rY0Xi7qqK/aMQ==}
@@ -4749,6 +4760,11 @@ snapshots:
 
   '@img/sharp-win32-x64@0.34.5':
     optional: true
+
+  '@inboundemail/sdk@4.4.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+    dependencies:
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
 
   '@inquirer/ansi@1.0.2': {}
 

@@ -22,6 +22,7 @@ import {
   LinkSquare02Icon,
   Delete02Icon,
   Tag01Icon,
+  Tick02Icon,
 } from "@hugeicons/core-free-icons"
 import { motion, AnimatePresence } from "motion/react"
 import { NewTaskModal } from "@/components/new-task-modal"
@@ -83,6 +84,7 @@ import {
   useLocalFirstStore,
   type LocalTaskDoc as TaskDoc,
 } from "@/lib/local-first-store"
+import { hasTaskWritePermission } from "@/lib/workspace-permissions"
 
 interface Task extends Omit<TaskDoc, "_syncStatus"> {
   id: string
@@ -438,11 +440,13 @@ const RequestRow = memo(function RequestRow({
   onAccept,
   onDeny,
   onSelect,
+  canManageTasks,
 }: {
   task: Task
   onAccept: (task: Task) => void
   onDeny: (task: Task) => void
   onSelect: (task: Task) => void
+  canManageTasks: boolean
 }) {
   const source = task.source
   const config = source ? SOURCE_CONFIG[source.platform] : null
@@ -496,15 +500,17 @@ const RequestRow = memo(function RequestRow({
       {/* Actions — always visible */}
       <div className="flex items-center gap-2">
         <button
+          disabled={!canManageTasks}
           onClick={(e) => { e.stopPropagation(); onAccept(task) }}
-          className="flex items-center gap-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 dark:text-emerald-400"
+          className="flex items-center gap-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
         >
           <HugeiconsIcon icon={CheckmarkCircle02Icon} size={12} />
           Accept
         </button>
         <button
+          disabled={!canManageTasks}
           onClick={(e) => { e.stopPropagation(); onDeny(task) }}
-          className="flex items-center gap-1.5 rounded-md border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-[11px] font-medium text-red-600 transition-colors hover:bg-red-500/20 dark:text-red-400"
+          className="flex items-center gap-1.5 rounded-md border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-[11px] font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
         >
           <HugeiconsIcon icon={Cancel02Icon} size={12} />
           Deny
@@ -520,6 +526,7 @@ function RequestsGroup({
   tasks,
   groupIndex,
   collapsed,
+  canManageTasks,
   onToggleCollapsed,
   onAccept,
   onDeny,
@@ -528,6 +535,7 @@ function RequestsGroup({
   tasks: Task[]
   groupIndex: number
   collapsed: boolean
+  canManageTasks: boolean
   onToggleCollapsed: () => void
   onAccept: (task: Task) => void
   onDeny: (task: Task) => void
@@ -572,6 +580,7 @@ function RequestsGroup({
                 <RequestRow
                   key={task.id}
                   task={task}
+                  canManageTasks={canManageTasks}
                   onAccept={onAccept}
                   onDeny={onDeny}
                   onSelect={onSelectTask}
@@ -637,12 +646,14 @@ function TaskContextMenu({
   onClose,
   onUpdate,
   onDelete,
+  canManageTasks,
 }: {
   task: Task
   position: { x: number; y: number }
   onClose: () => void
   onUpdate: (taskId: string, updates: Partial<Task>) => void
   onDelete: (taskId: string) => void
+  canManageTasks: boolean
 }) {
   const labelConfig = useLabelConfig()
   const menuRef = useRef<HTMLDivElement>(null)
@@ -677,11 +688,18 @@ function TaskContextMenu({
       className="fixed z-[100] min-w-[200px] rounded-lg p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 bg-popover/70 before:pointer-events-none before:absolute before:inset-0 before:-z-1 before:rounded-[inherit] before:backdrop-blur-2xl before:backdrop-saturate-150"
       style={{ top: position.y, left: position.x }}
     >
+      {!canManageTasks ? (
+        <div className="px-2 py-1.5 text-xs text-muted-foreground">
+          Guests can only view tasks.
+        </div>
+      ) : null}
+
       {/* Status submenu */}
       <ContextSubmenu label="Status" icon={getStatusIcon(task.status, 14)}>
         {ALL_STATUSES.map((s) => (
           <button
             key={s}
+            disabled={!canManageTasks}
             onClick={() => { onUpdate(task.id, { status: s }); onClose() }}
             className={`flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-sm transition-colors hover:bg-accent ${task.status === s ? "font-medium" : ""}`}
           >
@@ -697,6 +715,7 @@ function TaskContextMenu({
         {ALL_PRIORITIES.map((p) => (
           <button
             key={p}
+            disabled={!canManageTasks}
             onClick={() => { onUpdate(task.id, { priority: p }); onClose() }}
             className={`flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-sm transition-colors hover:bg-accent ${task.priority === p ? "font-medium" : ""}`}
           >
@@ -712,6 +731,7 @@ function TaskContextMenu({
         {labelConfig.names.map((label) => (
           <button
             key={label}
+            disabled={!canManageTasks}
             onClick={() => toggleLabel(label)}
             className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-sm capitalize transition-colors hover:bg-accent"
           >
@@ -729,6 +749,7 @@ function TaskContextMenu({
 
       {/* Delete */}
       <button
+        disabled={!canManageTasks}
         onClick={() => { onDelete(task.id); onClose() }}
         className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-sm text-destructive transition-colors hover:bg-destructive/10"
       >
@@ -771,12 +792,20 @@ const ListRowContent = memo(function ListRowContent({ task }: { task: Task }) {
 
 const SortableListRow = memo(function SortableListRow({
   task,
+  isSelected,
+  hasSelection,
+  canManageTasks,
   onSelect,
+  onToggleSelect,
   onUpdate,
   onDelete,
 }: {
   task: Task
+  isSelected: boolean
+  hasSelection: boolean
+  canManageTasks: boolean
   onSelect: (task: Task) => void
+  onToggleSelect: (taskId: string, shiftKey: boolean) => void
   onUpdate: (taskId: string, updates: Partial<Task>) => void
   onDelete: (taskId: string) => void
 }) {
@@ -791,6 +820,7 @@ const SortableListRow = memo(function SortableListRow({
     id: task.id,
     data: { type: "task", task },
     transition: SORTABLE_TRANSITION,
+    disabled: !canManageTasks,
   })
 
   const style = {
@@ -799,14 +829,24 @@ const SortableListRow = memo(function SortableListRow({
     willChange: transform ? "transform" : undefined,
   }
 
-  const handleClick = useCallback(() => {
+  const handleClick = useCallback((e: ReactMouseEvent) => {
+    if (hasSelection) {
+      e.preventDefault()
+      onToggleSelect(task.id, e.shiftKey)
+      return
+    }
     onSelect(task)
-  }, [onSelect, task])
+  }, [onSelect, onToggleSelect, task, hasSelection])
 
   const handleContextMenu = useCallback((e: ReactMouseEvent) => {
     e.preventDefault()
     setContextMenu({ x: e.clientX, y: e.clientY })
   }, [])
+
+  const handleCheckboxClick = useCallback((e: ReactMouseEvent) => {
+    e.stopPropagation()
+    onToggleSelect(task.id, e.shiftKey)
+  }, [onToggleSelect, task.id])
 
   return (
     <>
@@ -817,8 +857,19 @@ const SortableListRow = memo(function SortableListRow({
         {...listeners}
         onClick={handleClick}
         onContextMenu={handleContextMenu}
-        className={`group flex cursor-pointer touch-none items-center gap-3 border-b border-l-2 border-border bg-background px-4 py-2 select-none transition-all duration-150 hover:bg-accent/40 active:cursor-grabbing ${PRIORITY_ACCENT[task.priority]}`}
+        className={`group flex cursor-pointer touch-none items-center gap-3 border-b border-l-2 border-border px-4 py-2 select-none transition-all duration-150 hover:bg-accent/40 active:cursor-grabbing ${PRIORITY_ACCENT[task.priority]} ${isSelected ? "bg-primary/[0.06] hover:bg-primary/[0.10]" : "bg-background"}`}
       >
+        {/* Checkbox */}
+        <div
+          onClick={handleCheckboxClick}
+          className={`flex size-4 shrink-0 items-center justify-center rounded border transition-all ${
+            isSelected
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border bg-background opacity-0 group-hover:opacity-100"
+          } ${hasSelection ? "!opacity-100" : ""}`}
+        >
+          {isSelected && <HugeiconsIcon icon={Tick02Icon} size={10} strokeWidth={3} />}
+        </div>
         <ListRowContent task={task} />
       </div>
       {contextMenu && (
@@ -828,6 +879,7 @@ const SortableListRow = memo(function SortableListRow({
           onClose={() => setContextMenu(null)}
           onUpdate={onUpdate}
           onDelete={onDelete}
+          canManageTasks={canManageTasks}
         />
       )}
     </>
@@ -849,8 +901,11 @@ function ListGroup({
   groupIndex,
   isDropTarget,
   collapsed,
+  selectedTaskIds,
+  canManageTasks,
   onToggleCollapsed,
   onSelectTask,
+  onToggleSelectTask,
   onUpdateTask,
   onDeleteTask,
 }: {
@@ -859,12 +914,16 @@ function ListGroup({
   groupIndex: number
   isDropTarget?: boolean
   collapsed: boolean
+  selectedTaskIds: Set<string>
+  canManageTasks: boolean
   onToggleCollapsed: () => void
   onSelectTask: (task: Task) => void
+  onToggleSelectTask: (taskId: string, shiftKey: boolean) => void
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void
   onDeleteTask: (taskId: string) => void
 }) {
   const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks])
+  const hasSelection = selectedTaskIds.size > 0
   const { setNodeRef } = useDroppable({
     id: column.id,
     data: {
@@ -911,7 +970,7 @@ function ListGroup({
             <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
               {tasks.length === 0 ? null : (
                 tasks.map((task) => (
-                  <SortableListRow key={task.id} task={task} onSelect={onSelectTask} onUpdate={onUpdateTask} onDelete={onDeleteTask} />
+                  <SortableListRow key={task.id} task={task} isSelected={selectedTaskIds.has(task.id)} hasSelection={hasSelection} canManageTasks={canManageTasks} onSelect={onSelectTask} onToggleSelect={onToggleSelectTask} onUpdate={onUpdateTask} onDelete={onDeleteTask} />
                 ))
               )}
             </SortableContext>
@@ -942,11 +1001,13 @@ function TaskDetailModal({
   onClose,
   onUpdate,
   onDelete,
+  canManageTasks,
 }: {
   task: Task | null
   onClose: () => void
   onUpdate: (taskId: string, updates: Partial<Task>) => void
   onDelete: (taskId: string) => void
+  canManageTasks: boolean
 }) {
   const labelConfig = useLabelConfig()
   const [editingTitle, setEditingTitle] = useState(false)
@@ -1009,6 +1070,7 @@ function TaskDetailModal({
               </div>
               <div className="flex items-center gap-1">
                 <button
+                  disabled={!canManageTasks}
                   onClick={() => onDelete(task.id)}
                   className="rounded-md p-1 text-muted-foreground/60 transition-colors hover:bg-destructive/10 hover:text-destructive"
                   title="Delete task"
@@ -1040,8 +1102,12 @@ function TaskDetailModal({
                   />
                 ) : (
                   <h2
-                    onClick={() => { setTitleValue(task.title); setEditingTitle(true) }}
-                    className="-mx-1 cursor-text rounded-md px-1 py-0.5 text-base font-semibold leading-snug tracking-tight transition-colors hover:bg-accent/50"
+                    onClick={() => {
+                      if (!canManageTasks) return
+                      setTitleValue(task.title)
+                      setEditingTitle(true)
+                    }}
+                    className={`-mx-1 rounded-md px-1 py-0.5 text-base font-semibold leading-snug tracking-tight transition-colors ${canManageTasks ? "cursor-text hover:bg-accent/50" : ""}`}
                   >
                     {task.title}
                   </h2>
@@ -1052,7 +1118,10 @@ function TaskDetailModal({
               <div className="flex flex-wrap items-center gap-2">
                 {/* Status */}
                 <DropdownMenu>
-                  <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent">
+                  <DropdownMenuTrigger
+                    disabled={!canManageTasks}
+                    className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                  >
                     {getStatusIcon(task.status, 13)}
                     <span>{STATUS_LABELS[task.status]}</span>
                   </DropdownMenuTrigger>
@@ -1074,7 +1143,10 @@ function TaskDetailModal({
 
                 {/* Priority */}
                 <DropdownMenu>
-                  <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent">
+                  <DropdownMenuTrigger
+                    disabled={!canManageTasks}
+                    className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                  >
                     {getPriorityIcon(task.priority, 13)}
                     <span>{PRIORITY_LABELS[task.priority]}</span>
                   </DropdownMenuTrigger>
@@ -1096,7 +1168,10 @@ function TaskDetailModal({
 
                 {/* Labels */}
                 <DropdownMenu>
-                  <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent">
+                  <DropdownMenuTrigger
+                    disabled={!canManageTasks}
+                    className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                  >
                     {(task.labels ?? []).length > 0 ? (
                       <div className="flex items-center gap-1.5">
                         <div className="flex -space-x-0.5">
@@ -1154,8 +1229,12 @@ function TaskDetailModal({
                   />
                 ) : (
                   <div
-                    onClick={() => { setDescValue(task.description ?? ""); setEditingDesc(true) }}
-                    className="-mx-2 cursor-text rounded-md px-2 py-1.5 text-sm leading-relaxed transition-colors hover:bg-accent/40"
+                    onClick={() => {
+                      if (!canManageTasks) return
+                      setDescValue(task.description ?? "")
+                      setEditingDesc(true)
+                    }}
+                    className={`-mx-2 rounded-md px-2 py-1.5 text-sm leading-relaxed transition-colors ${canManageTasks ? "cursor-text hover:bg-accent/40" : ""}`}
                   >
                     {task.description ? (
                       <span className="text-foreground/80">{task.description}</span>
@@ -1173,24 +1252,149 @@ function TaskDetailModal({
   )
 }
 
+// ── Bulk Action Toolbar ──
+
+function BulkActionToolbar({
+  selectedCount,
+  onChangeStatus,
+  onChangePriority,
+  onChangeLabels,
+  onDelete,
+  onClearSelection,
+}: {
+  selectedCount: number
+  onChangeStatus: (status: Status) => void
+  onChangePriority: (priority: Priority) => void
+  onChangeLabels: (labels: string[]) => void
+  onDelete: () => void
+  onClearSelection: () => void
+}) {
+  const labelConfig = useLabelConfig()
+
+  return createPortal(
+    <motion.div
+      initial={{ opacity: 0, y: 20, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 20, scale: 0.96 }}
+      transition={{ duration: 0.18, ease: "easeOut" }}
+      className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1.5 rounded-xl border border-border bg-popover/80 px-3 py-2 shadow-2xl ring-1 ring-foreground/5 backdrop-blur-2xl backdrop-saturate-150"
+    >
+      {/* Selection count & clear */}
+      <div className="flex items-center gap-2 pr-2 border-r border-border mr-1">
+        <span className="text-xs font-semibold tabular-nums text-foreground">{selectedCount} selected</span>
+        <button
+          onClick={onClearSelection}
+          className="rounded-md p-0.5 text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
+          title="Clear selection"
+        >
+          <HugeiconsIcon icon={Cancel01Icon} size={13} />
+        </button>
+      </div>
+
+      {/* Status */}
+      <DropdownMenu>
+        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
+          {getStatusIcon("todo", 13)}
+          <span>Status</span>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent side="top" align="center">
+          {ALL_STATUSES.map((s) => (
+            <DropdownMenuItem key={s} onClick={() => onChangeStatus(s)}>
+              <div className="flex items-center gap-2">
+                {getStatusIcon(s, 14)}
+                <span>{STATUS_LABELS[s]}</span>
+              </div>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Priority */}
+      <DropdownMenu>
+        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
+          {getPriorityIcon("medium", 13)}
+          <span>Priority</span>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent side="top" align="center">
+          {ALL_PRIORITIES.map((p) => (
+            <DropdownMenuItem key={p} onClick={() => onChangePriority(p)}>
+              <div className="flex items-center gap-2">
+                {getPriorityIcon(p, 14)}
+                <span>{PRIORITY_LABELS[p]}</span>
+              </div>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Labels */}
+      <DropdownMenu>
+        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
+          <HugeiconsIcon icon={Tag01Icon} size={13} />
+          <span>Label</span>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent side="top" align="center">
+          {labelConfig.names.map((label) => (
+            <DropdownMenuItem key={label} onClick={() => onChangeLabels([label])}>
+              <div className="flex items-center gap-2 capitalize">
+                <div
+                  className="size-2.5 rounded-full"
+                  style={{ backgroundColor: labelConfig.colors[label] ?? "#888" }}
+                />
+                <span>{label}</span>
+              </div>
+            </DropdownMenuItem>
+          ))}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => onChangeLabels([])}>
+            <div className="flex items-center gap-2">
+              <HugeiconsIcon icon={Cancel02Icon} size={12} className="text-muted-foreground" />
+              <span>Clear labels</span>
+            </div>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Divider */}
+      <div className="mx-0.5 h-5 w-px bg-border" />
+
+      {/* Delete */}
+      <button
+        onClick={onDelete}
+        className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
+      >
+        <HugeiconsIcon icon={Delete02Icon} size={13} />
+        <span>Delete</span>
+      </button>
+    </motion.div>,
+    document.body
+  )
+}
+
 function ListView({
   tasks,
   hiddenColumns,
   collapsedColumns,
+  canManageTasks,
   onToggleCollapsedColumn,
   onMoveTask,
   onUpdateTask,
   onDeleteTask,
+  onBulkUpdateTasks,
+  onBulkDeleteTasks,
   onAcceptRequest,
   onDenyRequest,
 }: {
   tasks: Task[]
   hiddenColumns: Status[]
   collapsedColumns: Status[]
+  canManageTasks: boolean
   onToggleCollapsedColumn: (status: Status) => void
   onMoveTask: (taskId: string, toStatus: Status, toIndex: number) => void
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void
   onDeleteTask: (taskId: string) => void
+  onBulkUpdateTasks: (taskIds: string[], updates: Partial<Pick<Task, "status" | "priority" | "labels">>) => void
+  onBulkDeleteTasks: (taskIds: string[]) => void
   onAcceptRequest: (task: Task) => void
   onDenyRequest: (task: Task) => void
 }) {
@@ -1200,12 +1404,108 @@ function ListView({
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [overColumn, setOverColumn] = useState<Status | null>(null)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
+  const lastToggledTaskIdRef = useRef<string | null>(null)
 
   const selectedTask = selectedTaskId ? tasks.find((t) => t.id === selectedTaskId) ?? null : null
+
+  // Build ordered flat list of non-request tasks for shift-click range selection
+  const orderedTaskIds = useMemo(() => {
+    const nonRequestCols = COLUMNS.filter((c) => c.id !== "requests" && !hiddenColumns.includes(c.id))
+    const ids: string[] = []
+    for (const col of nonRequestCols) {
+      if (!collapsedColumns.includes(col.id)) {
+        for (const task of tasks) {
+          if (task.status === col.id) ids.push(task.id)
+        }
+      }
+    }
+    return ids
+  }, [tasks, hiddenColumns, collapsedColumns])
 
   const handleSelectTask = useCallback((task: Task) => {
     setSelectedTaskId(task.id)
   }, [])
+
+  const handleToggleSelectTask = useCallback((taskId: string, shiftKey: boolean) => {
+    if (!canManageTasks) return
+    setSelectedTaskIds((prev) => {
+      const next = new Set(prev)
+      if (shiftKey && lastToggledTaskIdRef.current) {
+        // Range select
+        const lastIdx = orderedTaskIds.indexOf(lastToggledTaskIdRef.current)
+        const currentIdx = orderedTaskIds.indexOf(taskId)
+        if (lastIdx !== -1 && currentIdx !== -1) {
+          const start = Math.min(lastIdx, currentIdx)
+          const end = Math.max(lastIdx, currentIdx)
+          for (let i = start; i <= end; i++) {
+            const id = orderedTaskIds[i]
+            if (id) next.add(id)
+          }
+          return next
+        }
+      }
+      if (next.has(taskId)) {
+        next.delete(taskId)
+      } else {
+        next.add(taskId)
+      }
+      lastToggledTaskIdRef.current = taskId
+      return next
+    })
+  }, [canManageTasks, orderedTaskIds])
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedTaskIds(new Set())
+    lastToggledTaskIdRef.current = null
+  }, [])
+
+  // Keyboard shortcuts for selection
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape" && selectedTaskIds.size > 0) {
+        handleClearSelection()
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "a" && selectedTaskIds.size > 0) {
+        e.preventDefault()
+        setSelectedTaskIds(new Set(orderedTaskIds))
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [selectedTaskIds.size, orderedTaskIds, handleClearSelection])
+
+  // Clean up stale selections when tasks change
+  useEffect(() => {
+    const taskIdSet = new Set(tasks.map((t) => t.id))
+    setSelectedTaskIds((prev) => {
+      const next = new Set<string>()
+      for (const id of prev) {
+        if (taskIdSet.has(id)) next.add(id)
+      }
+      return next.size === prev.size ? prev : next
+    })
+  }, [tasks])
+
+  const handleBulkChangeStatus = useCallback((status: Status) => {
+    onBulkUpdateTasks(Array.from(selectedTaskIds), { status })
+    handleClearSelection()
+  }, [selectedTaskIds, onBulkUpdateTasks, handleClearSelection])
+
+  const handleBulkChangePriority = useCallback((priority: Priority) => {
+    onBulkUpdateTasks(Array.from(selectedTaskIds), { priority })
+    handleClearSelection()
+  }, [selectedTaskIds, onBulkUpdateTasks, handleClearSelection])
+
+  const handleBulkChangeLabels = useCallback((labels: string[]) => {
+    onBulkUpdateTasks(Array.from(selectedTaskIds), { labels })
+    handleClearSelection()
+  }, [selectedTaskIds, onBulkUpdateTasks, handleClearSelection])
+
+  const handleBulkDelete = useCallback(() => {
+    onBulkDeleteTasks(Array.from(selectedTaskIds))
+    handleClearSelection()
+  }, [selectedTaskIds, onBulkDeleteTasks, handleClearSelection])
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -1238,11 +1538,13 @@ function ListView({
   }
 
   function handleDragStart(event: DragStartEvent) {
+    if (!canManageTasks) return
     const task = event.active.data.current?.task as Task | undefined
     if (task) setActiveTask(task)
   }
 
   function handleDragOver(event: DragOverEvent) {
+    if (!canManageTasks) return
     const { active, over } = event
     if (!over) {
       setOverColumn(null)
@@ -1265,6 +1567,7 @@ function ListView({
   }
 
   function handleDragEnd(event: DragEndEvent) {
+    if (!canManageTasks) return
     const { active, over } = event
     setActiveTask(null)
     setOverColumn(null)
@@ -1326,6 +1629,7 @@ function ListView({
             tasks={tasksByColumn.requests}
             groupIndex={0}
             collapsed={collapsedColumns.includes("requests")}
+            canManageTasks={canManageTasks}
             onToggleCollapsed={() => onToggleCollapsedColumn("requests")}
             onAccept={onAcceptRequest}
             onDeny={onDenyRequest}
@@ -1344,8 +1648,11 @@ function ListView({
               groupIndex={showRequests ? groupIndex + 1 : groupIndex}
               isDropTarget={overColumn === column.id && activeTaskSource !== null && activeTaskSource !== column.id}
               collapsed={collapsedColumns.includes(column.id)}
+              selectedTaskIds={selectedTaskIds}
+              canManageTasks={canManageTasks}
               onToggleCollapsed={() => onToggleCollapsedColumn(column.id)}
               onSelectTask={handleSelectTask}
+              onToggleSelectTask={handleToggleSelectTask}
               onUpdateTask={onUpdateTask}
               onDeleteTask={onDeleteTask}
             />
@@ -1362,7 +1669,22 @@ function ListView({
       onClose={() => setSelectedTaskId(null)}
       onUpdate={onUpdateTask}
       onDelete={(taskId) => { onDeleteTask(taskId); setSelectedTaskId(null) }}
+      canManageTasks={canManageTasks}
     />
+
+    {/* Bulk action toolbar */}
+    <AnimatePresence>
+      {canManageTasks && selectedTaskIds.size > 0 && (
+        <BulkActionToolbar
+          selectedCount={selectedTaskIds.size}
+          onChangeStatus={handleBulkChangeStatus}
+          onChangePriority={handleBulkChangePriority}
+          onChangeLabels={handleBulkChangeLabels}
+          onDelete={handleBulkDelete}
+          onClearSelection={handleClearSelection}
+        />
+      )}
+    </AnimatePresence>
   </>
   )
 }
@@ -1383,6 +1705,7 @@ export function KanbanBoard() {
   const lastLoadedWorkspaceIdRef = useRef<string | null>(null)
 
   const workspaceId = currentWorkspace?._id
+  const canManageTasks = hasTaskWritePermission(currentWorkspace?.role)
   const taskDocs = workspaceId ? tasksByWorkspace[workspaceId] : undefined
   const collapsedColumns = useMemo(
     () => (workspaceId ? (collapsedColumnsByWorkspace[workspaceId] ?? []) as Status[] : []),
@@ -1393,6 +1716,8 @@ export function KanbanBoard() {
   const updateTask = useMutation(api.tasks.updateTask)
   const deleteTask = useMutation(api.tasks.deleteTask)
   const reorderTasks = useMutation(api.tasks.reorderTasks)
+  const bulkUpdateTasks = useMutation(api.tasks.bulkUpdateTasks)
+  const bulkDeleteTasks = useMutation(api.tasks.bulkDeleteTasks)
 
   useEffect(() => {
     if (workspaceId !== lastLoadedWorkspaceIdRef.current) {
@@ -1458,6 +1783,10 @@ export function KanbanBoard() {
   const tasks = useMemo(() => (taskDocs ?? []).map(mapTaskDoc), [taskDocs])
 
   function handleAddTask(status: Status) {
+    if (!canManageTasks) {
+      toast.error("Guests can only view tasks.")
+      return
+    }
     setModalDefaultStatus(status)
     setModalOpen(true)
   }
@@ -1477,7 +1806,7 @@ export function KanbanBoard() {
   }
 
   function handleAcceptRequest(task: Task) {
-    if (!workspaceId || !taskDocs) return
+    if (!workspaceId || !taskDocs || !canManageTasks) return
     const nextTasks = moveTaskDocs(taskDocs, task.id, "todo", 0)
     setWorkspaceTasks(workspaceId, nextTasks)
     void reorderTasks({
@@ -1491,7 +1820,7 @@ export function KanbanBoard() {
   }
 
   function handleDenyRequest(task: Task) {
-    if (task.id.startsWith("optimistic:")) return
+    if (!canManageTasks || task.id.startsWith("optimistic:")) return
     if (workspaceId) {
       updateWorkspaceTasks(workspaceId, (tasks) => tasks.filter((item) => item._id !== task.id))
     }
@@ -1499,7 +1828,7 @@ export function KanbanBoard() {
   }
 
   function handleUpdateTask(taskId: string, updates: Partial<Task>) {
-    if (!workspaceId || !taskDocs) return
+    if (!workspaceId || !taskDocs || !canManageTasks) return
 
     if (updates.status) {
       const currentTask = taskDocs.find((task) => task._id === taskId)
@@ -1540,7 +1869,7 @@ export function KanbanBoard() {
   }
 
   function handleDeleteTask(taskId: string) {
-    if (!workspaceId || !taskDocs || taskId.startsWith("optimistic:")) return
+    if (!workspaceId || !taskDocs || !canManageTasks || taskId.startsWith("optimistic:")) return
 
     const deletedTask = taskDocs.find((task) => task._id === taskId)
     if (!deletedTask) return
@@ -1563,7 +1892,7 @@ export function KanbanBoard() {
   }
 
   function handleMoveTask(taskId: string, toStatus: Status, toIndex: number) {
-    if (!workspaceId || !taskDocs || taskId.startsWith("optimistic:")) return
+    if (!workspaceId || !taskDocs || !canManageTasks || taskId.startsWith("optimistic:")) return
 
     const nextTasks = moveTaskDocs(taskDocs, taskId, toStatus, toIndex)
     setWorkspaceTasks(workspaceId, nextTasks)
@@ -1575,6 +1904,74 @@ export function KanbanBoard() {
         order: item.order,
       })),
     })
+  }
+
+  function handleBulkUpdateTasks(taskIds: string[], updates: Partial<Pick<Task, "status" | "priority" | "labels">>) {
+    if (!workspaceId || !taskDocs || !canManageTasks) return
+
+    const validIds = taskIds.filter((id) => !id.startsWith("optimistic:"))
+    if (validIds.length === 0) return
+
+    // Optimistic update
+    if (updates.status) {
+      let current = taskDocs
+      for (const id of validIds) {
+        const targetIndex = current.filter((t) => t.status === updates.status).length
+        current = moveTaskDocs(current, id, updates.status!, targetIndex)
+      }
+      setWorkspaceTasks(workspaceId, current)
+      void reorderTasks({
+        workspaceId,
+        changes: current.map((item) => ({
+          taskId: item._id as Id<"tasks">,
+          status: item.status,
+          order: item.order,
+        })),
+      }).then(() => {
+        toast.success(`Updated ${validIds.length} task${validIds.length > 1 ? "s" : ""}.`)
+      })
+    } else {
+      updateWorkspaceTasks(workspaceId, (tasks) =>
+        tasks.map((task) =>
+          validIds.includes(task._id)
+            ? { ...task, ...Object.fromEntries(Object.entries(updates).filter(([, v]) => v !== undefined)) }
+            : task
+        )
+      )
+      void bulkUpdateTasks({
+        workspaceId,
+        taskIds: validIds as Id<"tasks">[],
+        priority: updates.priority,
+        labels: updates.labels,
+      }).then(() => {
+        toast.success(`Updated ${validIds.length} task${validIds.length > 1 ? "s" : ""}.`)
+      })
+    }
+  }
+
+  function handleBulkDeleteTasks(taskIds: string[]) {
+    if (!workspaceId || !taskDocs || !canManageTasks) return
+
+    const validIds = taskIds.filter((id) => !id.startsWith("optimistic:"))
+    if (validIds.length === 0) return
+
+    const deletedTasks = taskDocs.filter((t) => validIds.includes(t._id))
+
+    updateWorkspaceTasks(workspaceId, (tasks) =>
+      tasks.filter((t) => !validIds.includes(t._id))
+    )
+
+    void bulkDeleteTasks({
+      workspaceId,
+      taskIds: validIds as Id<"tasks">[],
+    })
+      .then(() => {
+        toast.success(`Deleted ${validIds.length} task${validIds.length > 1 ? "s" : ""}.`)
+      })
+      .catch(() => {
+        updateWorkspaceTasks(workspaceId, (tasks) => sortTaskDocs([...tasks, ...deletedTasks]))
+        toast.error("Bulk deletion failed. Try again.")
+      })
   }
 
   const labelConfig = useMemo<LabelConfig>(() => {
@@ -1596,6 +1993,17 @@ export function KanbanBoard() {
   return (
     <LabelConfigContext.Provider value={labelConfig}>
     <div className="flex h-full flex-col">
+      {!canManageTasks ? (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.18, ease: "easeOut" }}
+          className="mx-4 mt-4 rounded-2xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground"
+        >
+          You’re in guest mode. Tasks are read-only in this workspace.
+        </motion.div>
+      ) : null}
+
       {/* Toolbar - only render when there are hidden columns */}
       <AnimatePresence>
         {hiddenColumns.length > 0 && (
@@ -1621,10 +2029,13 @@ export function KanbanBoard() {
           tasks={tasks}
           hiddenColumns={hiddenColumns}
           collapsedColumns={collapsedColumns}
+          canManageTasks={canManageTasks}
           onToggleCollapsedColumn={handleToggleCollapsedColumn}
           onMoveTask={handleMoveTask}
           onUpdateTask={handleUpdateTask}
           onDeleteTask={handleDeleteTask}
+          onBulkUpdateTasks={handleBulkUpdateTasks}
+          onBulkDeleteTasks={handleBulkDeleteTasks}
           onAcceptRequest={handleAcceptRequest}
           onDenyRequest={handleDenyRequest}
         />

@@ -3,6 +3,10 @@ import { mutation, query } from "./_generated/server"
 import type { MutationCtx, QueryCtx } from "./_generated/server"
 import type { Doc, Id } from "./_generated/dataModel"
 import { STATUS_ORDER, isDemoTaskSet } from "../lib/task-board"
+import {
+  requireTaskWriteAccess,
+  requireWorkspaceAccess,
+} from "./permissions"
 
 const taskStatusValidator = v.union(
   v.literal("requests"),
@@ -36,25 +40,6 @@ const taskInputValidator = v.object({
   labels: v.array(v.string()),
   attachments: v.optional(v.array(attachmentValidator)),
 })
-
-async function requireWorkspaceAccess(
-  ctx: QueryCtx | MutationCtx,
-  workspaceId: Id<"workspaces">
-) {
-  const identity = await ctx.auth.getUserIdentity()
-  if (!identity) throw new Error("Not authenticated")
-
-  const membership = await ctx.db
-    .query("workspaceMembers")
-    .withIndex("by_user_workspace", (q) =>
-      q.eq("userId", identity.subject).eq("workspaceId", workspaceId)
-    )
-    .unique()
-
-  if (!membership) throw new Error("Not authorized")
-
-  return identity
-}
 
 function sortTasks<T extends { status: keyof typeof STATUS_ORDER; order: number }>(tasks: T[]) {
   return tasks.sort((a, b) => {
@@ -90,7 +75,7 @@ async function createTasksForWorkspace(
     }[]
   }[]
 ) {
-  await requireWorkspaceAccess(ctx, workspaceId)
+  await requireTaskWriteAccess(ctx, workspaceId)
 
   const workspace = await ctx.db.get(workspaceId)
   if (!workspace) throw new Error("Workspace not found")
@@ -209,7 +194,7 @@ export const updateTask = mutation({
     const task = await ctx.db.get(args.taskId)
     if (!task) throw new Error("Task not found")
 
-    await requireWorkspaceAccess(ctx, task.workspaceId)
+    await requireTaskWriteAccess(ctx, task.workspaceId)
 
     const updates: Partial<Doc<"tasks">> = {}
     if (args.title !== undefined) updates.title = args.title.trim()
@@ -241,7 +226,7 @@ export const reorderTasks = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    await requireWorkspaceAccess(ctx, args.workspaceId)
+    await requireTaskWriteAccess(ctx, args.workspaceId)
 
     for (const change of args.changes) {
       const task = await ctx.db.get(change.taskId)
@@ -267,8 +252,52 @@ export const deleteTask = mutation({
     const task = await ctx.db.get(args.taskId)
     if (!task) throw new Error("Task not found")
 
-    await requireWorkspaceAccess(ctx, task.workspaceId)
+    await requireTaskWriteAccess(ctx, task.workspaceId)
     await ctx.db.delete(args.taskId)
+  },
+})
+
+export const bulkUpdateTasks = mutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    taskIds: v.array(v.id("tasks")),
+    status: v.optional(taskStatusValidator),
+    priority: v.optional(taskPriorityValidator),
+    labels: v.optional(v.array(v.string())),
+  },
+  handler: async (ctx, args) => {
+    await requireTaskWriteAccess(ctx, args.workspaceId)
+
+    const updates: Partial<Doc<"tasks">> = {}
+    if (args.status !== undefined) updates.status = args.status
+    if (args.priority !== undefined) updates.priority = args.priority
+    if (args.labels !== undefined) updates.labels = args.labels
+
+    for (const taskId of args.taskIds) {
+      const task = await ctx.db.get(taskId)
+      if (!task || task.workspaceId !== args.workspaceId) {
+        throw new Error("Task not found")
+      }
+      await ctx.db.patch(taskId, updates)
+    }
+  },
+})
+
+export const bulkDeleteTasks = mutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    taskIds: v.array(v.id("tasks")),
+  },
+  handler: async (ctx, args) => {
+    await requireTaskWriteAccess(ctx, args.workspaceId)
+
+    for (const taskId of args.taskIds) {
+      const task = await ctx.db.get(taskId)
+      if (!task || task.workspaceId !== args.workspaceId) {
+        throw new Error("Task not found")
+      }
+      await ctx.db.delete(taskId)
+    }
   },
 })
 
@@ -277,7 +306,7 @@ export const clearDemoTasks = mutation({
     workspaceId: v.id("workspaces"),
   },
   handler: async (ctx, args) => {
-    await requireWorkspaceAccess(ctx, args.workspaceId)
+    await requireTaskWriteAccess(ctx, args.workspaceId)
 
     const tasks = await getWorkspaceTasks(ctx, args.workspaceId)
     if (!isDemoTaskSet(tasks)) {

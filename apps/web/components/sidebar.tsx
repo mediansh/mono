@@ -26,6 +26,7 @@ import { NewTaskModal } from "@/components/new-task-modal"
 import { api } from "@/convex/_generated/api"
 import { Logo } from "@/components/logo"
 import { useWorkspace } from "@/components/workspace-provider"
+import { hasTaskWritePermission } from "@/lib/workspace-permissions"
 import {
   Dialog,
   DialogContent,
@@ -251,12 +252,17 @@ export function AppSidebar() {
   const { user } = useUser()
   const { theme, setTheme } = useTheme()
   const { workspaces, currentWorkspace, switchWorkspace } = useWorkspace()
+  const canManageTasks = hasTaskWritePermission(currentWorkspace?.role)
 
   useEffect(() => setMounted(true), [])
 
   // "C" keybind to open new task modal
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      if (!canManageTasks) {
+        return
+      }
+
       if (
         e.key === "c" &&
         !e.metaKey &&
@@ -272,7 +278,7 @@ export function AppSidebar() {
     }
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [])
+  }, [canManageTasks])
 
   return (
     <>
@@ -324,7 +330,11 @@ export function AppSidebar() {
                 >
                   <SidebarMenuItem>
                     <SidebarMenuButton
-                      onClick={() => setNewTaskOpen(true)}
+                      onClick={() => {
+                        if (!canManageTasks) return
+                        setNewTaskOpen(true)
+                      }}
+                      disabled={!canManageTasks}
                       className="bg-[#0496FF] text-white hover:bg-[#0496FF]/85 hover:text-white active:bg-[#0496FF]/70 active:text-white data-active:bg-[#0496FF] data-active:text-white"
                     >
                       <HugeiconsIcon icon={QuillWrite01Icon} size={16} strokeWidth={2} />

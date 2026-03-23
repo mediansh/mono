@@ -8,6 +8,8 @@ import { DEFAULT_WORKSPACE_LABELS } from "@/lib/task-board"
 import { motion, AnimatePresence } from "motion/react"
 import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
+import { hasWorkspaceAdminPermission } from "@/lib/workspace-permissions"
+import { SettingsAccessState } from "@/components/settings-access-state"
 
 export default function LabelsSettingsPage() {
   const { currentWorkspace } = useWorkspace()
@@ -29,6 +31,13 @@ export default function LabelsSettingsPage() {
   }, [currentWorkspace, baseId])
 
   if (!currentWorkspace) return null
+  if (!hasWorkspaceAdminPermission(currentWorkspace.role)) {
+    return (
+      <div className="mx-auto w-full max-w-2xl px-10 py-10">
+        <SettingsAccessState />
+      </div>
+    )
+  }
 
   function addLabel() {
     const nextKey = keyCounter + 1

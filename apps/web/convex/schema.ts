@@ -21,11 +21,35 @@ export default defineSchema({
   workspaceMembers: defineTable({
     workspaceId: v.id("workspaces"),
     userId: v.string(),
-    role: v.union(v.literal("owner"), v.literal("admin"), v.literal("member")),
+    role: v.union(
+      v.literal("owner"),
+      v.literal("admin"),
+      v.literal("member"),
+      v.literal("guest")
+    ),
+    name: v.optional(v.string()),
+    email: v.optional(v.string()),
+    imageUrl: v.optional(v.string()),
   })
     .index("by_user", ["userId"])
     .index("by_workspace", ["workspaceId"])
     .index("by_user_workspace", ["userId", "workspaceId"]),
+
+  workspaceInvites: defineTable({
+    workspaceId: v.id("workspaces"),
+    createdByUserId: v.string(),
+    token: v.string(),
+    inviteType: v.union(v.literal("link"), v.literal("email")),
+    role: v.union(v.literal("guest"), v.literal("member"), v.literal("admin")),
+    invitedEmail: v.optional(v.string()),
+    status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("revoked")),
+    expiresAt: v.number(),
+    acceptedAt: v.optional(v.number()),
+    acceptedByUserId: v.optional(v.string()),
+  })
+    .index("by_token", ["token"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_workspace_status", ["workspaceId", "status"]),
 
   tasks: defineTable({
     workspaceId: v.id("workspaces"),

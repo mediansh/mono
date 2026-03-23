@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as permissions from "../permissions.js";
 import type * as tasks from "../tasks.js";
 import type * as workspaces from "../workspaces.js";
 
@@ -18,6 +19,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  permissions: typeof permissions;
   tasks: typeof tasks;
   workspaces: typeof workspaces;
 }>;

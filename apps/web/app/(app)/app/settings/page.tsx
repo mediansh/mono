@@ -9,6 +9,8 @@ import { Facehash } from "facehash"
 import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
 import { useRouter } from "next/navigation"
+import { hasWorkspaceAdminPermission } from "@/lib/workspace-permissions"
+import { SettingsAccessState } from "@/components/settings-access-state"
 import {
   Dialog,
   DialogContent,
@@ -42,6 +44,13 @@ export default function GeneralSettingsPage() {
   }, [currentWorkspace])
 
   if (!currentWorkspace) return null
+  if (!hasWorkspaceAdminPermission(currentWorkspace.role)) {
+    return (
+      <div className="mx-auto w-full max-w-2xl px-10 py-10">
+        <SettingsAccessState />
+      </div>
+    )
+  }
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -212,27 +221,29 @@ export default function GeneralSettingsPage() {
       </form>
 
       {/* Danger zone */}
-      <div className="mt-8">
-        <h3 className="mb-3 text-sm font-medium text-destructive">Danger zone</h3>
-        <div className="rounded-lg border border-destructive/20 bg-card">
-          <div className="flex items-center justify-between p-5">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium">Delete workspace</span>
-              <span className="text-xs text-muted-foreground">
-                Permanently delete this workspace and all of its data.
-              </span>
+      {currentWorkspace.role === "owner" ? (
+        <div className="mt-8">
+          <h3 className="mb-3 text-sm font-medium text-destructive">Danger zone</h3>
+          <div className="rounded-lg border border-destructive/20 bg-card">
+            <div className="flex items-center justify-between p-5">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium">Delete workspace</span>
+                <span className="text-xs text-muted-foreground">
+                  Permanently delete this workspace and all of its data.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeleteModalOpen(true)}
+                className="flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-destructive/30 px-3 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
+              >
+                <HugeiconsIcon icon={Delete02Icon} size={13} strokeWidth={1.5} />
+                Delete
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setDeleteModalOpen(true)}
-              className="flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-destructive/30 px-3 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
-            >
-              <HugeiconsIcon icon={Delete02Icon} size={13} strokeWidth={1.5} />
-              Delete
-            </button>
           </div>
         </div>
-      </div>
+      ) : null}
 
       {/* Delete confirmation modal */}
       <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>

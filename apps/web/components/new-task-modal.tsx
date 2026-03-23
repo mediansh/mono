@@ -35,6 +35,7 @@ import {
 import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
 import type { Doc } from "@/convex/_generated/dataModel"
+import { hasTaskWritePermission } from "@/lib/workspace-permissions"
 import {
   getTaskNumber,
   DEFAULT_WORKSPACE_LABELS,
@@ -200,6 +201,7 @@ export function NewTaskModal({
 }: NewTaskModalProps) {
   const { user } = useUser()
   const { currentWorkspace } = useWorkspace()
+  const canManageTasks = hasTaskWritePermission(currentWorkspace?.role)
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [status, setStatus] = useState<Status>(defaultStatus)
@@ -235,6 +237,11 @@ export function NewTaskModal({
 
   const handleFileSelect = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!canManageTasks) {
+        toast.error("Guests can only view tasks.")
+        return
+      }
+
       const files = e.target.files
       if (!files || files.length === 0) return
 
@@ -279,7 +286,7 @@ export function NewTaskModal({
         if (fileInputRef.current) fileInputRef.current.value = ""
       }
     },
-    [generateUploadUrl]
+    [canManageTasks, generateUploadUrl]
   )
 
   useEffect(() => {
@@ -370,6 +377,10 @@ export function NewTaskModal({
 
   async function handleCreate() {
     if (!title.trim() || !currentWorkspace) return
+    if (!canManageTasks) {
+      setError("Guests can only view tasks.")
+      return
+    }
 
     setError("")
 
@@ -396,6 +407,10 @@ export function NewTaskModal({
 
   async function handleGenerateTasks() {
     if (!aiPrompt.trim() || !currentWorkspace || isGenerating) return
+    if (!canManageTasks) {
+      setError("Guests can only view tasks.")
+      return
+    }
 
     setError("")
     setIsGenerating(true)

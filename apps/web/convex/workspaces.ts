@@ -1,5 +1,68 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
+import type { Doc } from "./_generated/dataModel"
+import {
+  getIdentityProfile,
+  requireIdentity,
+  requireWorkspaceAccess,
+  requireWorkspaceAdminAccess,
+} from "./permissions"
+import {
+  WORKSPACE_ROLE_RANK,
+  type WorkspaceInviteRole,
+  type WorkspaceRole,
+} from "../lib/workspace-permissions"
+
+const workspaceInviteRoleValidator = v.union(
+  v.literal("guest"),
+  v.literal("member"),
+  v.literal("admin")
+)
+
+function generatePrefix(name: string): string {
+  const cleaned = name.trim().toUpperCase()
+  const words = cleaned.split(/\s+/).filter(Boolean)
+
+  if (words.length >= 3) {
+    return words
+      .slice(0, 3)
+      .map((word) => word[0])
+      .join("")
+  }
+  if (words.length === 2) {
+    const twoChar = words.map((word) => word[0]).join("")
+    if (twoChar.length >= 3) return twoChar.slice(0, 3)
+    return (words[0]!.slice(0, 2) + words[1]![0]!).slice(0, 3)
+  }
+
+  const consonants = cleaned.replace(/[^A-Z]/g, "").replace(/[AEIOU]/g, "")
+  if (consonants.length >= 3) return consonants.slice(0, 3)
+  return cleaned.replace(/[^A-Z0-9]/g, "").slice(0, 3) || "TSK"
+}
+
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase()
+}
+
+function generateInviteToken() {
+  return crypto.randomUUID().replace(/-/g, "")
+}
+
+function maskEmailAddress(email?: string) {
+  if (!email) return null
+  const [local, domain] = email.split("@")
+  if (!local || !domain) return email
+  return `${local.slice(0, 2)}${"*".repeat(Math.max(local.length - 2, 1))}@${domain}`
+}
+
+function sortMembers(members: Doc<"workspaceMembers">[]) {
+  return [...members].sort((a, b) => {
+    const roleDiff =
+      WORKSPACE_ROLE_RANK[b.role as WorkspaceRole] - WORKSPACE_ROLE_RANK[a.role as WorkspaceRole]
+    if (roleDiff !== 0) return roleDiff
+    return (a.name ?? a.email ?? a.userId).localeCompare(b.name ?? b.email ?? b.userId)
+  })
+}
 
 export const getUserWorkspaces = query({
   args: {},
@@ -13,11 +76,11 @@ export const getUserWorkspaces = query({
       .collect()
 
     const workspaces = await Promise.all(
-      memberships.map(async (m) => {
-        const workspace = await ctx.db.get(m.workspaceId)
+      memberships.map(async (membership) => {
+        const workspace = await ctx.db.get(membership.workspaceId)
         if (!workspace) return null
         const iconUrl = workspace.iconId ? await ctx.storage.getUrl(workspace.iconId) : null
-        return { ...workspace, iconUrl, role: m.role }
+        return { ...workspace, iconUrl, role: membership.role }
       })
     )
 
@@ -25,11 +88,92 @@ export const getUserWorkspaces = query({
   },
 })
 
+export const getWorkspaceMembers = query({
+  args: {
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args) => {
+    const { membership } = await requireWorkspaceAccess(ctx, args.workspaceId)
+
+    const [workspace, members, invites] = await Promise.all([
+      ctx.db.get(args.workspaceId),
+      ctx.db
+        .query("workspaceMembers")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+        .collect(),
+      ctx.db
+        .query("workspaceInvites")
+        .withIndex("by_workspace_status", (q) =>
+          q.eq("workspaceId", args.workspaceId).eq("status", "pending")
+        )
+        .collect(),
+    ])
+
+    if (!workspace) {
+      throw new Error("Workspace not found")
+    }
+
+    return {
+      currentUserRole: membership.role,
+      canManageMembers: membership.role === "admin" || membership.role === "owner",
+      workspaceName: workspace.name,
+      members: sortMembers(members).map((member) => ({
+        _id: member._id,
+        userId: member.userId,
+        role: member.role,
+        name: member.name ?? null,
+        email: member.email ?? null,
+        imageUrl: member.imageUrl ?? null,
+      })),
+      invites: invites
+        .filter((invite) => invite.expiresAt > Date.now())
+        .sort((a, b) => b._creationTime - a._creationTime)
+        .map((invite) => ({
+          _id: invite._id,
+          inviteType: invite.inviteType,
+          role: invite.role,
+          invitedEmail: invite.invitedEmail ?? null,
+          expiresAt: invite.expiresAt,
+          createdAt: invite._creationTime,
+        })),
+    }
+  },
+})
+
+export const getInviteByToken = query({
+  args: {
+    token: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const invite = await ctx.db
+      .query("workspaceInvites")
+      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .unique()
+
+    if (!invite || invite.status !== "pending" || invite.expiresAt <= Date.now()) {
+      return null
+    }
+
+    const workspace = await ctx.db.get(invite.workspaceId)
+    if (!workspace) {
+      return null
+    }
+
+    return {
+      workspaceId: invite.workspaceId,
+      workspaceName: workspace.name,
+      role: invite.role,
+      inviteType: invite.inviteType,
+      invitedEmail: maskEmailAddress(invite.invitedEmail),
+      expiresAt: invite.expiresAt,
+    }
+  },
+})
+
 export const generateUploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity()
-    if (!identity) throw new Error("Not authenticated")
+    await requireIdentity(ctx)
     return await ctx.storage.generateUploadUrl()
   },
 })
@@ -45,12 +189,10 @@ export const updateWorkspaceLabels = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity()
-    if (!identity) throw new Error("Not authenticated")
+    await requireWorkspaceAdminAccess(ctx, args.workspaceId)
 
     const workspace = await ctx.db.get(args.workspaceId)
     if (!workspace) throw new Error("Workspace not found")
-    if (workspace.ownerId !== identity.subject) throw new Error("Not authorized")
 
     await ctx.db.patch(args.workspaceId, { labels: args.labels })
   },
@@ -63,17 +205,14 @@ export const updateWorkspace = mutation({
     iconId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity()
-    if (!identity) throw new Error("Not authenticated")
+    await requireWorkspaceAdminAccess(ctx, args.workspaceId)
 
     const workspace = await ctx.db.get(args.workspaceId)
     if (!workspace) throw new Error("Workspace not found")
-    if (workspace.ownerId !== identity.subject) throw new Error("Not authorized")
 
     const updates: Record<string, unknown> = {}
     if (args.name !== undefined) updates.name = args.name
     if (args.iconId !== undefined) {
-      // Delete old icon from storage
       if (workspace.iconId) {
         await ctx.storage.delete(workspace.iconId)
       }
@@ -89,53 +228,48 @@ export const deleteWorkspace = mutation({
     workspaceId: v.id("workspaces"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity()
-    if (!identity) throw new Error("Not authenticated")
+    const { membership } = await requireWorkspaceAccess(ctx, args.workspaceId)
+    if (membership.role !== "owner") {
+      throw new Error("Only the workspace owner can delete the workspace")
+    }
 
     const workspace = await ctx.db.get(args.workspaceId)
     if (!workspace) throw new Error("Workspace not found")
-    if (workspace.ownerId !== identity.subject) throw new Error("Not authorized")
 
-    // Delete all members
-    const members = await ctx.db
-      .query("workspaceMembers")
-      .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
-      .collect()
+    const [members, invites, tasks] = await Promise.all([
+      ctx.db
+        .query("workspaceMembers")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+        .collect(),
+      ctx.db
+        .query("workspaceInvites")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+        .collect(),
+      ctx.db
+        .query("tasks")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+        .collect(),
+    ])
+
+    for (const task of tasks) {
+      await ctx.db.delete(task._id)
+    }
+
+    for (const invite of invites) {
+      await ctx.db.delete(invite._id)
+    }
 
     for (const member of members) {
       await ctx.db.delete(member._id)
     }
 
-    // Delete icon from storage
     if (workspace.iconId) {
       await ctx.storage.delete(workspace.iconId)
     }
 
-    // Delete workspace
     await ctx.db.delete(args.workspaceId)
   },
 })
-
-function generatePrefix(name: string): string {
-  const cleaned = name.trim().toUpperCase()
-  const words = cleaned.split(/\s+/).filter(Boolean)
-
-  if (words.length >= 3) {
-    // Take first letter of first 3 words: "My Cool App" → "MCA"
-    return words.slice(0, 3).map((w) => w[0]).join("")
-  }
-  if (words.length === 2) {
-    // First letter of each word: "Cool App" → "CA"
-    // But if that's only 2 chars, take first 2 of first word + first of second
-    const twoChar = words.map((w) => w[0]).join("")
-    if (twoChar.length >= 3) return twoChar.slice(0, 3)
-    return (words[0]!.slice(0, 2) + words[1]![0]!).slice(0, 3)
-  }
-  // Single word: take first 3 consonants, fallback to first 3 chars
-  const consonants = cleaned.replace(/[^A-Z]/g, "").replace(/[AEIOU]/g, "")
-  if (consonants.length >= 3) return consonants.slice(0, 3)
-  return cleaned.replace(/[^A-Z0-9]/g, "").slice(0, 3) || "TSK"
-}
 
 export const createWorkspace = mutation({
   args: {
@@ -143,10 +277,9 @@ export const createWorkspace = mutation({
     iconId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity()
-    if (!identity) throw new Error("Not authenticated")
-
+    const identity = await requireIdentity(ctx)
     const prefix = generatePrefix(args.name)
+    const profile = getIdentityProfile(identity)
 
     const workspaceId = await ctx.db.insert("workspaces", {
       name: args.name,
@@ -160,8 +293,249 @@ export const createWorkspace = mutation({
       workspaceId,
       userId: identity.subject,
       role: "owner",
+      ...profile,
     })
 
     return workspaceId
+  },
+})
+
+export const createInviteLink = mutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    role: workspaceInviteRoleValidator,
+  },
+  handler: async (ctx, args) => {
+    const { identity } = await requireWorkspaceAdminAccess(ctx, args.workspaceId)
+
+    const workspace = await ctx.db.get(args.workspaceId)
+    if (!workspace) {
+      throw new Error("Workspace not found")
+    }
+
+    const inviteId = await ctx.db.insert("workspaceInvites", {
+      workspaceId: args.workspaceId,
+      createdByUserId: identity.subject,
+      token: generateInviteToken(),
+      inviteType: "link",
+      role: args.role,
+      status: "pending",
+      expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 14,
+    })
+
+    const invite = await ctx.db.get(inviteId)
+    if (!invite) {
+      throw new Error("Failed to create invite")
+    }
+
+    return {
+      inviteId,
+      token: invite.token,
+      role: invite.role,
+      expiresAt: invite.expiresAt,
+      workspaceName: workspace.name,
+    }
+  },
+})
+
+export const createEmailInvite = mutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    email: v.string(),
+    role: workspaceInviteRoleValidator,
+  },
+  handler: async (ctx, args) => {
+    const { identity } = await requireWorkspaceAdminAccess(ctx, args.workspaceId)
+    const workspace = await ctx.db.get(args.workspaceId)
+    if (!workspace) {
+      throw new Error("Workspace not found")
+    }
+
+    const email = normalizeEmail(args.email)
+    const members = await ctx.db
+      .query("workspaceMembers")
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .collect()
+
+    if (members.some((member) => normalizeEmail(member.email ?? "") === email)) {
+      throw new Error("That user is already in the workspace")
+    }
+
+    const existingInvite = await ctx.db
+      .query("workspaceInvites")
+      .withIndex("by_workspace_status", (q) =>
+        q.eq("workspaceId", args.workspaceId).eq("status", "pending")
+      )
+      .collect()
+
+    const duplicateInvite = existingInvite.find(
+      (invite) => invite.inviteType === "email" && normalizeEmail(invite.invitedEmail ?? "") === email
+    )
+
+    if (duplicateInvite && duplicateInvite.expiresAt > Date.now()) {
+      return {
+        inviteId: duplicateInvite._id,
+        token: duplicateInvite.token,
+        role: duplicateInvite.role,
+        invitedEmail: duplicateInvite.invitedEmail ?? email,
+        expiresAt: duplicateInvite.expiresAt,
+        workspaceName: workspace.name,
+        reused: true,
+      }
+    }
+
+    const inviteId = await ctx.db.insert("workspaceInvites", {
+      workspaceId: args.workspaceId,
+      createdByUserId: identity.subject,
+      token: generateInviteToken(),
+      inviteType: "email",
+      role: args.role,
+      invitedEmail: email,
+      status: "pending",
+      expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 7,
+    })
+
+    const invite = await ctx.db.get(inviteId)
+    if (!invite) {
+      throw new Error("Failed to create invite")
+    }
+
+    return {
+      inviteId,
+      token: invite.token,
+      role: invite.role,
+      invitedEmail: invite.invitedEmail ?? email,
+      expiresAt: invite.expiresAt,
+      workspaceName: workspace.name,
+      reused: false,
+    }
+  },
+})
+
+export const revokeInvite = mutation({
+  args: {
+    inviteId: v.id("workspaceInvites"),
+  },
+  handler: async (ctx, args) => {
+    const invite = await ctx.db.get(args.inviteId)
+    if (!invite) {
+      throw new Error("Invite not found")
+    }
+
+    await requireWorkspaceAdminAccess(ctx, invite.workspaceId)
+    await ctx.db.patch(args.inviteId, { status: "revoked" })
+  },
+})
+
+export const updateMemberRole = mutation({
+  args: {
+    memberId: v.id("workspaceMembers"),
+    role: workspaceInviteRoleValidator,
+  },
+  handler: async (ctx, args) => {
+    const member = await ctx.db.get(args.memberId)
+    if (!member) {
+      throw new Error("Member not found")
+    }
+
+    const { membership } = await requireWorkspaceAdminAccess(ctx, member.workspaceId)
+    if (member.role === "owner") {
+      throw new Error("The workspace owner role cannot be changed")
+    }
+    if (member.userId === membership.userId) {
+      throw new Error("You cannot change your own role")
+    }
+
+    await ctx.db.patch(args.memberId, { role: args.role })
+  },
+})
+
+export const removeMember = mutation({
+  args: {
+    memberId: v.id("workspaceMembers"),
+  },
+  handler: async (ctx, args) => {
+    const member = await ctx.db.get(args.memberId)
+    if (!member) {
+      throw new Error("Member not found")
+    }
+
+    const { membership } = await requireWorkspaceAdminAccess(ctx, member.workspaceId)
+    if (member.role === "owner") {
+      throw new Error("The workspace owner cannot be removed")
+    }
+    if (member.userId === membership.userId) {
+      throw new Error("You cannot remove yourself")
+    }
+
+    await ctx.db.delete(args.memberId)
+  },
+})
+
+export const acceptInvite = mutation({
+  args: {
+    token: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await requireIdentity(ctx)
+    const invite = await ctx.db
+      .query("workspaceInvites")
+      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .unique()
+
+    if (!invite || invite.status !== "pending" || invite.expiresAt <= Date.now()) {
+      throw new Error("Invite is no longer valid")
+    }
+
+    if (invite.invitedEmail) {
+      const identityEmail = normalizeEmail(identity.email ?? "")
+      if (!identityEmail || identityEmail !== normalizeEmail(invite.invitedEmail)) {
+        throw new Error("This invite was sent to a different email address")
+      }
+    }
+
+    const workspace = await ctx.db.get(invite.workspaceId)
+    if (!workspace) {
+      throw new Error("Workspace not found")
+    }
+
+    const existingMembership = await ctx.db
+      .query("workspaceMembers")
+      .withIndex("by_user_workspace", (q) =>
+        q.eq("userId", identity.subject).eq("workspaceId", invite.workspaceId)
+      )
+      .unique()
+
+    const profile = getIdentityProfile(identity)
+
+    if (existingMembership) {
+      if (
+        existingMembership.role !== "owner" &&
+        WORKSPACE_ROLE_RANK[invite.role] > WORKSPACE_ROLE_RANK[existingMembership.role as WorkspaceRole]
+      ) {
+        await ctx.db.patch(existingMembership._id, {
+          role: invite.role,
+          ...profile,
+        })
+      }
+    } else {
+      await ctx.db.insert("workspaceMembers", {
+        workspaceId: invite.workspaceId,
+        userId: identity.subject,
+        role: invite.role as WorkspaceInviteRole,
+        ...profile,
+      })
+    }
+
+    await ctx.db.patch(invite._id, {
+      status: "accepted",
+      acceptedAt: Date.now(),
+      acceptedByUserId: identity.subject,
+    })
+
+    return {
+      workspaceId: invite.workspaceId,
+      workspaceName: workspace.name,
+    }
   },
 })
