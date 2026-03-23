@@ -55,7 +55,7 @@ export async function POST(request: Request) {
         : "No predefined labels available."
 
     const { object } = await generateObject({
-      model: "openai/gpt-5-nano",
+      model: "arcee-ai/trinity-mini",
       schema: generatedTasksSchema,
       system: [
         "You generate actionable task objects for a project management app.",
