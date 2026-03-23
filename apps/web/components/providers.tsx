@@ -3,6 +3,7 @@
 import { ClerkProvider, useAuth } from "@clerk/nextjs"
 import { ConvexReactClient } from "convex/react"
 import { ConvexProviderWithClerk } from "convex/react-clerk"
+import { Toaster } from "sonner"
 
 import { TooltipProvider } from "@workspace/ui/components/tooltip"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -19,10 +20,16 @@ export function Providers({
     <ClerkProvider afterSignOutUrl="/">
       {convex ? (
         <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-          <ThemeProvider><TooltipProvider>{children}</TooltipProvider></ThemeProvider>
+          <ThemeProvider>
+            <TooltipProvider>{children}</TooltipProvider>
+            <Toaster richColors position="top-right" />
+          </ThemeProvider>
         </ConvexProviderWithClerk>
       ) : (
-        <ThemeProvider><TooltipProvider>{children}</TooltipProvider></ThemeProvider>
+        <ThemeProvider>
+          <TooltipProvider>{children}</TooltipProvider>
+          <Toaster richColors position="top-right" />
+        </ThemeProvider>
       )}
     </ClerkProvider>
   )
