@@ -66,7 +66,7 @@ export async function POST(request: Request) {
         : "No predefined labels available."
 
     const { text } = await generateText({
-      model: "arcee-ai/trinity-mini",
+      model: "anthropic/claude-haiku-4.5",
       system: [
         "You generate actionable task objects for a project management app.",
         `Workspace: ${workspaceName}.`,
