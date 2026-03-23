@@ -77,6 +77,7 @@ import {
   type TaskStatus as Status,
 } from "@/lib/task-board"
 import {
+  setCollapsedWorkspaceColumns,
   setWorkspaceTasks,
   updateWorkspaceTasks,
   useLocalFirstStore,
@@ -518,18 +519,20 @@ const RequestRow = memo(function RequestRow({
 function RequestsGroup({
   tasks,
   groupIndex,
+  collapsed,
+  onToggleCollapsed,
   onAccept,
   onDeny,
   onSelectTask,
 }: {
   tasks: Task[]
   groupIndex: number
+  collapsed: boolean
+  onToggleCollapsed: () => void
   onAccept: (task: Task) => void
   onDeny: (task: Task) => void
   onSelectTask: (task: Task) => void
 }) {
-  const [collapsed, setCollapsed] = useState(false)
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
@@ -538,7 +541,7 @@ function RequestsGroup({
     >
       {/* Group header — distinct style */}
       <button
-        onClick={() => setCollapsed(!collapsed)}
+        onClick={onToggleCollapsed}
         className="flex w-full items-center gap-2.5 border-b border-dashed border-border bg-sidebar/40 px-4 py-2 text-left transition-colors hover:bg-sidebar/70 dark:bg-accent/20 dark:hover:bg-accent/40"
       >
         <motion.span
@@ -845,6 +848,8 @@ function ListGroup({
   tasks,
   groupIndex,
   isDropTarget,
+  collapsed,
+  onToggleCollapsed,
   onSelectTask,
   onUpdateTask,
   onDeleteTask,
@@ -853,11 +858,12 @@ function ListGroup({
   tasks: Task[]
   groupIndex: number
   isDropTarget?: boolean
+  collapsed: boolean
+  onToggleCollapsed: () => void
   onSelectTask: (task: Task) => void
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void
   onDeleteTask: (taskId: string) => void
 }) {
-  const [collapsed, setCollapsed] = useState(false)
   const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks])
   const { setNodeRef } = useDroppable({
     id: column.id,
@@ -877,7 +883,7 @@ function ListGroup({
     >
       {/* Group header */}
       <button
-        onClick={() => setCollapsed(!collapsed)}
+        onClick={onToggleCollapsed}
         className="flex w-full items-center gap-2.5 bg-sidebar/60 px-4 py-2 text-left transition-colors hover:bg-sidebar dark:bg-accent/30 dark:hover:bg-accent/50"
       >
         <motion.span
@@ -1170,6 +1176,8 @@ function TaskDetailModal({
 function ListView({
   tasks,
   hiddenColumns,
+  collapsedColumns,
+  onToggleCollapsedColumn,
   onMoveTask,
   onUpdateTask,
   onDeleteTask,
@@ -1178,6 +1186,8 @@ function ListView({
 }: {
   tasks: Task[]
   hiddenColumns: Status[]
+  collapsedColumns: Status[]
+  onToggleCollapsedColumn: (status: Status) => void
   onMoveTask: (taskId: string, toStatus: Status, toIndex: number) => void
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void
   onDeleteTask: (taskId: string) => void
@@ -1315,6 +1325,8 @@ function ListView({
           <RequestsGroup
             tasks={tasksByColumn.requests}
             groupIndex={0}
+            collapsed={collapsedColumns.includes("requests")}
+            onToggleCollapsed={() => onToggleCollapsedColumn("requests")}
             onAccept={onAcceptRequest}
             onDeny={onDenyRequest}
             onSelectTask={handleSelectTask}
@@ -1331,6 +1343,8 @@ function ListView({
               tasks={columnTasks}
               groupIndex={showRequests ? groupIndex + 1 : groupIndex}
               isDropTarget={overColumn === column.id && activeTaskSource !== null && activeTaskSource !== column.id}
+              collapsed={collapsedColumns.includes(column.id)}
+              onToggleCollapsed={() => onToggleCollapsedColumn(column.id)}
               onSelectTask={handleSelectTask}
               onUpdateTask={onUpdateTask}
               onDeleteTask={onDeleteTask}
@@ -1359,7 +1373,7 @@ export function KanbanBoard() {
   const convex = useConvex()
   const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth()
   const { currentWorkspace } = useWorkspace()
-  const { tasksByWorkspace } = useLocalFirstStore()
+  const { tasksByWorkspace, collapsedColumnsByWorkspace } = useLocalFirstStore()
   const [modalOpen, setModalOpen] = useState(false)
   const [modalDefaultStatus, setModalDefaultStatus] = useState<Status>("todo")
   const [hiddenColumns, setHiddenColumns] = useState<Status[]>([])
@@ -1370,6 +1384,10 @@ export function KanbanBoard() {
 
   const workspaceId = currentWorkspace?._id
   const taskDocs = workspaceId ? tasksByWorkspace[workspaceId] : undefined
+  const collapsedColumns = useMemo(
+    () => (workspaceId ? (collapsedColumnsByWorkspace[workspaceId] ?? []) as Status[] : []),
+    [collapsedColumnsByWorkspace, workspaceId]
+  )
 
   const clearDemoTasks = useMutation(api.tasks.clearDemoTasks)
   const updateTask = useMutation(api.tasks.updateTask)
@@ -1446,6 +1464,16 @@ export function KanbanBoard() {
 
   function handleShowColumn(status: Status) {
     setHiddenColumns((prev) => prev.filter((s) => s !== status))
+  }
+
+  function handleToggleCollapsedColumn(status: Status) {
+    if (!workspaceId) return
+
+    const nextCollapsed = collapsedColumns.includes(status)
+      ? collapsedColumns.filter((column) => column !== status)
+      : [...collapsedColumns, status]
+
+    setCollapsedWorkspaceColumns(workspaceId, nextCollapsed)
   }
 
   function handleAcceptRequest(task: Task) {
@@ -1592,6 +1620,8 @@ export function KanbanBoard() {
         <ListView
           tasks={tasks}
           hiddenColumns={hiddenColumns}
+          collapsedColumns={collapsedColumns}
+          onToggleCollapsedColumn={handleToggleCollapsedColumn}
           onMoveTask={handleMoveTask}
           onUpdateTask={handleUpdateTask}
           onDeleteTask={handleDeleteTask}

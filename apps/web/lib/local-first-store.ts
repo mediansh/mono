@@ -25,6 +25,7 @@ type LocalFirstStore = {
   currentWorkspaceId: string | null
   workspaces: WorkspaceRecord[]
   tasksByWorkspace: Record<string, LocalTaskDoc[]>
+  collapsedColumnsByWorkspace: Record<string, string[]>
 }
 
 const STORAGE_KEY = "median_local_first_store_v1"
@@ -34,6 +35,7 @@ const EMPTY_STORE: LocalFirstStore = {
   currentWorkspaceId: null,
   workspaces: [],
   tasksByWorkspace: {},
+  collapsedColumnsByWorkspace: {},
 }
 
 let storeCache = EMPTY_STORE
@@ -58,6 +60,11 @@ function sanitizeStore(value: unknown): LocalFirstStore {
     tasksByWorkspace:
       candidate.tasksByWorkspace && typeof candidate.tasksByWorkspace === "object"
         ? candidate.tasksByWorkspace
+        : {},
+    collapsedColumnsByWorkspace:
+      candidate.collapsedColumnsByWorkspace &&
+      typeof candidate.collapsedColumnsByWorkspace === "object"
+        ? candidate.collapsedColumnsByWorkspace
         : {},
   }
 }
@@ -190,6 +197,19 @@ export function setWorkspaceTasks(workspaceId: string, tasks: LocalTaskDoc[]) {
     tasksByWorkspace: {
       ...current.tasksByWorkspace,
       [workspaceId]: tasks,
+    },
+  }))
+}
+
+export function setCollapsedWorkspaceColumns(
+  workspaceId: string,
+  columns: string[]
+) {
+  updateLocalFirstStore((current) => ({
+    ...current,
+    collapsedColumnsByWorkspace: {
+      ...current.collapsedColumnsByWorkspace,
+      [workspaceId]: columns,
     },
   }))
 }
