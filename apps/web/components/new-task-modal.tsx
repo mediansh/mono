@@ -229,6 +229,7 @@ export function NewTaskModal({
   const descriptionRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const createTask = useMutation(api.tasks.createTask)
+  const createTasks = useMutation(api.tasks.createTasks)
 
   const generateUploadUrl = useMutation(api.workspaces.generateUploadUrl)
 
@@ -399,6 +400,8 @@ export function NewTaskModal({
     setError("")
     setIsGenerating(true)
     const toastId = toast.loading("Generating tasks...")
+    const controller = new AbortController()
+    const timeoutId = window.setTimeout(() => controller.abort(), 15000)
 
     try {
       const response = await fetch("/api/tasks/generate", {
@@ -406,6 +409,7 @@ export function NewTaskModal({
         headers: {
           "Content-Type": "application/json",
         },
+        signal: controller.signal,
         body: JSON.stringify({
           prompt: aiPrompt.trim(),
           workspaceName: currentWorkspace.name,
@@ -434,8 +438,9 @@ export function NewTaskModal({
         { id: toastId }
       )
 
-      for (const task of generatedTasks) {
-        await createSingleTask({
+      const createdTasks = (await createTasks({
+        workspaceId: currentWorkspace._id,
+        tasks: generatedTasks.map((task) => ({
           title: task.title,
           description: task.description,
           status: task.status ?? defaultStatus,
@@ -443,8 +448,13 @@ export function NewTaskModal({
           labels: (task.labels ?? []).filter((label) =>
             labelOptions.some((option) => option.id === label)
           ),
-        })
-      }
+        })),
+      })) as Doc<"tasks">[]
+
+      updateWorkspaceTasks(currentWorkspace._id, (tasks) => [
+        ...tasks,
+        ...createdTasks,
+      ])
 
       toast.success(
         generatedTasks.length === 1
@@ -457,10 +467,15 @@ export function NewTaskModal({
       resetForm()
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Task generation failed."
+        err instanceof DOMException && err.name === "AbortError"
+          ? "Task generation timed out. Try a shorter prompt."
+          : err instanceof Error
+            ? err.message
+            : "Task generation failed."
       setError(message)
       toast.error(message, { id: toastId })
     } finally {
+      window.clearTimeout(timeoutId)
       setIsGenerating(false)
     }
   }
