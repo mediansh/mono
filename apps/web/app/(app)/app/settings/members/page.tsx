@@ -1,16 +1,13 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useMutation, useQuery } from "convex/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  Add01Icon,
-  CheckmarkBadge01Icon,
   Delete02Icon,
   LinkSquare02Icon,
-  UserMultiple02Icon,
+  Mail01Icon,
 } from "@hugeicons/core-free-icons"
-import { motion } from "motion/react"
 import { toast } from "sonner"
 import type { Id } from "@/convex/_generated/dataModel"
 import { api } from "@/convex/_generated/api"
@@ -21,6 +18,7 @@ import {
   hasWorkspaceAdminPermission,
   type WorkspaceInviteRole,
 } from "@/lib/workspace-permissions"
+import { SettingsAccessState } from "@/components/settings-access-state"
 
 const inviteRoleOptions: WorkspaceInviteRole[] = ["guest", "member", "admin"]
 
@@ -37,18 +35,63 @@ function getInviteUrl(token: string) {
   return `${window.location.origin}/invite/${token}`
 }
 
+function MembersSkeleton() {
+  return (
+    <div className="mx-auto w-full max-w-2xl px-10 py-10">
+      <div className="mb-8">
+        <div className="h-5 w-24 rounded bg-muted/60" />
+        <div className="mt-2 h-4 w-72 rounded bg-muted/40" />
+      </div>
+
+      {/* Invite card skeleton */}
+      <div className="rounded-lg border border-border bg-card">
+        <div className="flex gap-1 border-b border-border px-5 pt-4 pb-3">
+          <div className="h-4 w-20 rounded bg-muted/50" />
+          <div className="ml-4 h-4 w-24 rounded bg-muted/50" />
+        </div>
+        <div className="space-y-3 p-5">
+          <div className="h-4 w-12 rounded bg-muted/40" />
+          <div className="h-10 w-full rounded-lg bg-muted/30" />
+          <div className="h-8 w-40 rounded-md bg-muted/40" />
+        </div>
+      </div>
+
+      {/* Members skeleton */}
+      <div className="mt-8">
+        <div className="mb-3 h-4 w-28 rounded bg-muted/50" />
+        <div className="rounded-lg border border-border bg-card">
+          <div className="divide-y divide-border">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 px-5 py-3">
+                <div className="size-8 rounded-full bg-muted/50" />
+                <div className="flex-1">
+                  <div className="h-4 w-32 rounded bg-muted/50" />
+                  <div className="mt-1.5 h-3 w-44 rounded bg-muted/30" />
+                </div>
+                <div className="h-6 w-16 rounded-full bg-muted/30" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function MembersSettingsPage() {
   const { currentWorkspace } = useWorkspace()
   const workspaceData = useQuery(
     api.workspaces.getWorkspaceMembers,
     currentWorkspace ? { workspaceId: currentWorkspace._id } : "skip"
   )
+  const syncMyProfile = useMutation(api.workspaces.syncMyProfile)
   const createInviteLink = useMutation(api.workspaces.createInviteLink)
   const createEmailInvite = useMutation(api.workspaces.createEmailInvite)
   const revokeInvite = useMutation(api.workspaces.revokeInvite)
   const updateMemberRole = useMutation(api.workspaces.updateMemberRole)
   const removeMember = useMutation(api.workspaces.removeMember)
 
+  const [inviteMode, setInviteMode] = useState<"link" | "email">("link")
   const [linkRole, setLinkRole] = useState<WorkspaceInviteRole>("member")
   const [emailRole, setEmailRole] = useState<WorkspaceInviteRole>("guest")
   const [emailValue, setEmailValue] = useState("")
@@ -57,28 +100,38 @@ export default function MembersSettingsPage() {
   const [busyMemberId, setBusyMemberId] = useState<string | null>(null)
   const [busyInviteId, setBusyInviteId] = useState<string | null>(null)
 
-  const canManageMembers = workspaceData?.canManageMembers ?? false
-  const currentUserRole = workspaceData?.currentUserRole ?? currentWorkspace?.role
+  const hasSynced = useRef(false)
 
-  const permissionRows = useMemo(
-    () => [
-      { role: "guest", summary: "Can view tasks only" },
-      { role: "member", summary: "Can create, update, move, and delete tasks" },
-      { role: "admin", summary: "Can manage members and workspace settings" },
-    ],
-    []
-  )
+  // Sync the current user's profile data from Clerk on mount
+  useEffect(() => {
+    if (!currentWorkspace || hasSynced.current) return
+    hasSynced.current = true
+    syncMyProfile({ workspaceId: currentWorkspace._id }).catch(() => {})
+  }, [currentWorkspace, syncMyProfile])
 
   if (!currentWorkspace) return null
+  if (!hasWorkspaceAdminPermission(currentWorkspace.role)) {
+    return (
+      <div className="mx-auto w-full max-w-2xl px-10 py-10">
+        <SettingsAccessState />
+      </div>
+    )
+  }
+
+  // Show skeleton while data is loading
+  if (workspaceData === undefined) {
+    return <MembersSkeleton />
+  }
+
   const workspaceId = currentWorkspace._id
+  const canManageMembers = workspaceData.canManageMembers
+  const members = workspaceData.members
+  const invites = workspaceData.invites
 
   async function handleCreateInviteLink() {
     setCreatingLink(true)
     try {
-      const invite = await createInviteLink({
-        workspaceId,
-        role: linkRole,
-      })
+      const invite = await createInviteLink({ workspaceId, role: linkRole })
       const inviteUrl = getInviteUrl(invite.token)
       await navigator.clipboard.writeText(inviteUrl)
       toast.success(`${getRoleLabel(linkRole)} invite link copied.`)
@@ -95,11 +148,7 @@ export default function MembersSettingsPage() {
 
     setSendingInvite(true)
     try {
-      const invite = await createEmailInvite({
-        workspaceId,
-        email,
-        role: emailRole,
-      })
+      const invite = await createEmailInvite({ workspaceId, email, role: emailRole })
 
       const response = await fetch("/api/workspace-invites/email", {
         method: "POST",
@@ -165,119 +214,55 @@ export default function MembersSettingsPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-10 py-10">
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.22, ease: "easeOut" }}
-        className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between"
-      >
-        <div>
-          <h2 className="text-base font-semibold">Members</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Invite teammates, assign roles, and control who can change the workspace.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <RoleBadge role={currentUserRole ?? "guest"} />
-          <span className="text-xs text-muted-foreground">
-            {hasWorkspaceAdminPermission(currentUserRole)
-              ? "You can manage members and settings."
-              : "You can view members, but only admins can make changes."}
-          </span>
-        </div>
-      </motion.div>
+    <div className="mx-auto w-full max-w-2xl px-10 py-10">
+      {/* Header */}
+      <div className="mb-8">
+        <h2 className="text-base font-semibold">Members</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Invite teammates and manage who has access to this workspace.
+        </p>
+      </div>
 
-      <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="space-y-5">
-          <motion.section
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.22, delay: 0.04, ease: "easeOut" }}
-            className="rounded-2xl border border-border bg-card/90 shadow-sm"
+      {/* Invite card */}
+      <div className="rounded-lg border border-border bg-card">
+        {/* Invite mode tabs */}
+        <div className="flex items-center gap-1 border-b border-border px-5 pt-4 pb-0">
+          <button
+            type="button"
+            onClick={() => setInviteMode("link")}
+            className={`flex items-center gap-1.5 border-b-2 px-3 pb-3 text-sm font-medium transition-colors ${
+              inviteMode === "link"
+                ? "border-[#0496FF] text-[#0496FF]"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
           >
-            <div className="flex items-center justify-between border-b border-border px-5 py-4">
-              <div>
-                <h3 className="text-sm font-semibold">Team access</h3>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Roles apply immediately across tasks, settings, and invites.
-                </p>
-              </div>
-              <div className="flex size-11 items-center justify-center rounded-2xl border border-border bg-muted/60">
-                <HugeiconsIcon
-                  icon={UserMultiple02Icon}
-                  size={20}
-                  strokeWidth={1.6}
-                  className="text-muted-foreground"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-3 px-5 py-5">
-              {permissionRows.map((row, index) => (
-                <motion.div
-                  key={row.role}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2, delay: 0.06 + index * 0.04, ease: "easeOut" }}
-                  className="flex items-center justify-between rounded-2xl border border-border/80 bg-background/70 px-4 py-3"
-                >
-                  <div className="space-y-1">
-                    <RoleBadge role={row.role} />
-                    <p className="text-sm text-muted-foreground">{row.summary}</p>
-                  </div>
-                  <HugeiconsIcon
-                    icon={CheckmarkBadge01Icon}
-                    size={18}
-                    strokeWidth={1.6}
-                    className="text-[#0496FF]"
-                  />
-                </motion.div>
-              ))}
-            </div>
-          </motion.section>
-
-          <motion.section
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.22, delay: 0.08, ease: "easeOut" }}
-            className="rounded-2xl border border-border bg-card/90 shadow-sm"
+            <HugeiconsIcon icon={LinkSquare02Icon} size={14} strokeWidth={1.7} />
+            Invite link
+          </button>
+          <button
+            type="button"
+            onClick={() => setInviteMode("email")}
+            className={`flex items-center gap-1.5 border-b-2 px-3 pb-3 text-sm font-medium transition-colors ${
+              inviteMode === "email"
+                ? "border-[#0496FF] text-[#0496FF]"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
           >
-            <div className="flex items-center justify-between border-b border-border px-5 py-4">
+            <HugeiconsIcon icon={Mail01Icon} size={14} strokeWidth={1.7} />
+            Email invite
+          </button>
+        </div>
+
+        <div className="p-5">
+          {inviteMode === "link" ? (
+            <div className="flex flex-col gap-3">
               <div>
-                <h3 className="text-sm font-semibold">Invite people</h3>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Use a shareable link or email invite. Links expire in 14 days and email
-                  invites expire in 7 days.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid gap-4 p-5 md:grid-cols-2">
-              <div className="rounded-2xl border border-border/80 bg-background/70 p-4">
-                <div className="mb-4 flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-semibold">Invite by link</h4>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Copy a reusable link for anyone joining as that role.
-                    </p>
-                  </div>
-                  <HugeiconsIcon
-                    icon={LinkSquare02Icon}
-                    size={18}
-                    strokeWidth={1.6}
-                    className="text-muted-foreground"
-                  />
-                </div>
-
-                <label className="mb-2 block text-xs font-medium text-muted-foreground">
-                  Role
-                </label>
+                <label className="mb-2 block text-sm font-medium">Role</label>
                 <select
                   value={linkRole}
-                  onChange={(event) => setLinkRole(event.target.value as WorkspaceInviteRole)}
+                  onChange={(e) => setLinkRole(e.target.value as WorkspaceInviteRole)}
                   disabled={!canManageMembers || creatingLink}
-                  className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {inviteRoleOptions.map((role) => (
                     <option key={role} value={role}>
@@ -285,54 +270,39 @@ export default function MembersSettingsPage() {
                     </option>
                   ))}
                 </select>
-
-                <button
-                  type="button"
-                  disabled={!canManageMembers || creatingLink}
-                  onClick={handleCreateInviteLink}
-                  className="mt-4 flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#0496FF] px-4 text-sm font-medium text-white transition-colors hover:bg-[#0496FF]/90 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <HugeiconsIcon icon={Add01Icon} size={16} strokeWidth={1.8} />
-                  {creatingLink ? "Creating..." : "Create and copy link"}
-                </button>
               </div>
-
-              <div className="rounded-2xl border border-border/80 bg-background/70 p-4">
-                <div className="mb-4 flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-semibold">Invite by email</h4>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Sends a role-specific invite email through inbound.new.
-                    </p>
-                  </div>
-                  <HugeiconsIcon
-                    icon={UserMultiple02Icon}
-                    size={18}
-                    strokeWidth={1.6}
-                    className="text-muted-foreground"
-                  />
-                </div>
-
-                <label className="mb-2 block text-xs font-medium text-muted-foreground">
-                  Email address
-                </label>
+              <button
+                type="button"
+                disabled={!canManageMembers || creatingLink}
+                onClick={handleCreateInviteLink}
+                className="flex h-8 items-center justify-center gap-1.5 rounded-md bg-[#0496FF] px-3.5 text-xs font-medium text-white transition-colors hover:bg-[#0496FF]/90 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {creatingLink ? "Creating..." : "Create and copy link"}
+              </button>
+              <p className="text-xs text-muted-foreground">
+                Anyone with the link can join as the selected role. Links expire in 14 days.
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="mb-2 block text-sm font-medium">Email address</label>
                 <input
                   type="email"
                   value={emailValue}
-                  onChange={(event) => setEmailValue(event.target.value)}
+                  onChange={(e) => setEmailValue(e.target.value)}
                   disabled={!canManageMembers || sendingInvite}
                   placeholder="teammate@company.com"
-                  className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-60"
                 />
-
-                <label className="mb-2 mt-4 block text-xs font-medium text-muted-foreground">
-                  Role
-                </label>
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium">Role</label>
                 <select
                   value={emailRole}
-                  onChange={(event) => setEmailRole(event.target.value as WorkspaceInviteRole)}
+                  onChange={(e) => setEmailRole(e.target.value as WorkspaceInviteRole)}
                   disabled={!canManageMembers || sendingInvite}
-                  className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {inviteRoleOptions.map((role) => (
                     <option key={role} value={role}>
@@ -340,193 +310,145 @@ export default function MembersSettingsPage() {
                     </option>
                   ))}
                 </select>
-
-                <button
-                  type="button"
-                  disabled={!canManageMembers || sendingInvite || !emailValue.trim()}
-                  onClick={handleSendEmailInvite}
-                  className="mt-4 flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 text-sm font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <HugeiconsIcon icon={Add01Icon} size={16} strokeWidth={1.8} />
-                  {sendingInvite ? "Sending..." : "Send invite"}
-                </button>
               </div>
+              <button
+                type="button"
+                disabled={!canManageMembers || sendingInvite || !emailValue.trim()}
+                onClick={handleSendEmailInvite}
+                className="flex h-8 items-center justify-center gap-1.5 rounded-md bg-[#0496FF] px-3.5 text-xs font-medium text-white transition-colors hover:bg-[#0496FF]/90 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {sendingInvite ? "Sending..." : "Send invite"}
+              </button>
+              <p className="text-xs text-muted-foreground">
+                Email invites expire in 7 days.
+              </p>
             </div>
-          </motion.section>
+          )}
+        </div>
+      </div>
 
-          <motion.section
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.22, delay: 0.12, ease: "easeOut" }}
-            className="rounded-2xl border border-border bg-card/90 shadow-sm"
-          >
-            <div className="flex items-center justify-between border-b border-border px-5 py-4">
-              <div>
-                <h3 className="text-sm font-semibold">Current members</h3>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {workspaceData?.members.length ?? 0} people currently have access.
-                </p>
-              </div>
-            </div>
-
-            <div className="divide-y divide-border/80">
-              {(workspaceData?.members ?? []).map((member, index) => (
-                <motion.div
-                  key={member._id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.18, delay: 0.04 + index * 0.02, ease: "easeOut" }}
-                  className="flex flex-col gap-3 px-5 py-4 md:flex-row md:items-center md:justify-between"
+      {/* Pending invites */}
+      {invites.length > 0 && (
+        <div className="mt-8">
+          <h3 className="mb-3 text-sm font-medium">
+            Pending invites
+            <span className="ml-1.5 text-muted-foreground">({invites.length})</span>
+          </h3>
+          <div className="rounded-lg border border-border bg-card">
+            <div className="divide-y divide-border">
+              {invites.map((invite) => (
+                <div
+                  key={invite._id}
+                  className="flex items-center justify-between px-5 py-3"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex size-11 items-center justify-center overflow-hidden rounded-2xl border border-border bg-muted/60">
-                      {member.imageUrl ? (
-                        <img
-                          src={member.imageUrl}
-                          alt={member.name ?? member.email ?? "Member avatar"}
-                          className="size-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-sm font-semibold text-muted-foreground">
-                          {(member.name ?? member.email ?? "?").charAt(0).toUpperCase()}
-                        </span>
-                      )}
+                    <div className="flex size-8 items-center justify-center rounded-md border border-border bg-muted/50">
+                      <HugeiconsIcon
+                        icon={invite.inviteType === "email" ? Mail01Icon : LinkSquare02Icon}
+                        size={14}
+                        strokeWidth={1.5}
+                        className="text-muted-foreground"
+                      />
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium">
-                          {member.name ?? member.email ?? "Unnamed member"}
-                        </p>
-                        <RoleBadge role={member.role} />
-                      </div>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {member.email ?? "No email available"}
+                      <p className="text-sm font-medium">
+                        {invite.invitedEmail ?? "Link invite"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Expires {formatExpiry(invite.expiresAt)}
                       </p>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-2 self-start md:self-center">
-                    <select
-                      value={member.role === "owner" ? "owner" : member.role}
-                      disabled={!canManageMembers || member.role === "owner" || busyMemberId === member._id}
-                      onChange={(event) =>
-                        handleRoleChange(
-                          member._id,
-                          event.target.value as WorkspaceInviteRole
-                        )
-                      }
-                      className="h-9 rounded-xl border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {member.role === "owner" ? (
-                        <option value="owner">Owner</option>
-                      ) : (
-                        inviteRoleOptions.map((role) => (
-                          <option key={role} value={role}>
-                            {getRoleLabel(role)}
-                          </option>
-                        ))
-                      )}
-                    </select>
-                    {member.role !== "owner" ? (
+                  <div className="flex items-center gap-2">
+                    <RoleBadge role={invite.role} />
+                    {canManageMembers && (
                       <button
                         type="button"
-                        disabled={!canManageMembers || busyMemberId === member._id}
-                        onClick={() => handleRemoveMember(member._id)}
-                        className="flex h-9 items-center gap-1.5 rounded-xl border border-destructive/25 px-3 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
+                        disabled={busyInviteId === invite._id}
+                        onClick={() => handleRevokeInvite(invite._id)}
+                        className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        <HugeiconsIcon icon={Delete02Icon} size={14} strokeWidth={1.7} />
-                        Remove
+                        <HugeiconsIcon icon={Delete02Icon} size={14} strokeWidth={1.5} />
                       </button>
-                    ) : null}
+                    )}
                   </div>
-                </motion.div>
+                </div>
               ))}
             </div>
-          </motion.section>
+          </div>
         </div>
+      )}
 
-        <motion.aside
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.22, delay: 0.16, ease: "easeOut" }}
-          className="space-y-5"
-        >
-          <section className="rounded-2xl border border-border bg-card/90 shadow-sm">
-            <div className="border-b border-border px-5 py-4">
-              <h3 className="text-sm font-semibold">Pending invites</h3>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Outstanding links and email invites waiting to be accepted.
-              </p>
-            </div>
-
-            <div className="space-y-3 p-4">
-              {(workspaceData?.invites ?? []).length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-                  No pending invites.
-                </div>
-              ) : (
-                workspaceData!.invites.map((invite) => (
-                  <div
-                    key={invite._id}
-                    className="rounded-2xl border border-border/80 bg-background/70 p-4"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <RoleBadge role={invite.role} />
-                          <span className="text-xs text-muted-foreground">
-                            {invite.inviteType === "email" ? "Email invite" : "Link invite"}
-                          </span>
-                        </div>
-                        <p className="text-sm font-medium">
-                          {invite.invitedEmail ?? "Anyone with the link can join"}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Expires {formatExpiry(invite.expiresAt)}
-                        </p>
-                      </div>
-                      {canManageMembers ? (
-                        <button
-                          type="button"
-                          disabled={busyInviteId === invite._id}
-                          onClick={() => handleRevokeInvite(invite._id)}
-                          className="flex h-8 items-center gap-1.5 rounded-lg border border-destructive/25 px-2.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <HugeiconsIcon icon={Delete02Icon} size={13} strokeWidth={1.7} />
-                          Revoke
-                        </button>
-                      ) : null}
+      {/* Members list */}
+      <div className="mt-8">
+        <h3 className="mb-3 text-sm font-medium">
+          Members
+          <span className="ml-1.5 text-muted-foreground">({members.length})</span>
+        </h3>
+        <div className="rounded-lg border border-border bg-card">
+          <div className="divide-y divide-border">
+            {members.map((member) => (
+              <div
+                key={member._id}
+                className="group flex items-center justify-between px-5 py-3"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex size-8 items-center justify-center overflow-hidden rounded-full border border-border bg-muted/50">
+                    {member.imageUrl ? (
+                      <img
+                        src={member.imageUrl}
+                        alt={member.name ?? member.email ?? ""}
+                        className="size-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {(member.name ?? member.email ?? "?").charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium">
+                        {member.name ?? member.email ?? "Unnamed member"}
+                      </p>
+                      <RoleBadge role={member.role} />
                     </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
-
-          <section className="rounded-2xl border border-border bg-card/90 shadow-sm">
-            <div className="border-b border-border px-5 py-4">
-              <h3 className="text-sm font-semibold">Role guide</h3>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Use guests for stakeholders, members for contributors, and admins for
-                workspace operators.
-              </p>
-            </div>
-
-            <div className="space-y-3 p-4">
-              {permissionRows.map((row) => (
-                <div
-                  key={row.role}
-                  className="rounded-2xl border border-border/80 bg-background/70 px-4 py-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <RoleBadge role={row.role} />
-                    <span className="text-xs text-muted-foreground">{row.summary}</span>
+                    {member.email && (
+                      <p className="text-xs text-muted-foreground">{member.email}</p>
+                    )}
                   </div>
                 </div>
-              ))}
-            </div>
-          </section>
-        </motion.aside>
+
+                {member.role !== "owner" && (
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={member.role}
+                      disabled={!canManageMembers || busyMemberId === member._id}
+                      onChange={(e) =>
+                        handleRoleChange(member._id, e.target.value as WorkspaceInviteRole)
+                      }
+                      className="h-8 rounded-md border border-border bg-background px-2.5 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {inviteRoleOptions.map((role) => (
+                        <option key={role} value={role}>
+                          {getRoleLabel(role)}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      disabled={!canManageMembers || busyMemberId === member._id}
+                      onClick={() => handleRemoveMember(member._id)}
+                      className="flex size-8 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <HugeiconsIcon icon={Delete02Icon} size={14} strokeWidth={1.5} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   )

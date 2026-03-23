@@ -140,6 +140,33 @@ export const getWorkspaceMembers = query({
   },
 })
 
+export const syncMyProfile = mutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await requireIdentity(ctx)
+    const membership = await ctx.db
+      .query("workspaceMembers")
+      .withIndex("by_user_workspace", (q) =>
+        q.eq("userId", identity.subject).eq("workspaceId", args.workspaceId)
+      )
+      .unique()
+
+    if (!membership) return
+
+    const profile = getIdentityProfile(identity)
+    const needsUpdate =
+      membership.name !== profile.name ||
+      membership.email !== profile.email ||
+      membership.imageUrl !== profile.imageUrl
+
+    if (needsUpdate) {
+      await ctx.db.patch(membership._id, profile)
+    }
+  },
+})
+
 export const getInviteByToken = query({
   args: {
     token: v.string(),
