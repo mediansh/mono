@@ -5,6 +5,7 @@ import { ConvexReactClient } from "convex/react"
 import { ConvexProviderWithClerk } from "convex/react-clerk"
 import { Toaster } from "sonner"
 
+import { ErrorTracker } from "@/components/error-tracker"
 import { TooltipProvider } from "@workspace/ui/components/tooltip"
 import { ThemeProvider } from "@/components/theme-provider"
 
@@ -21,13 +22,19 @@ export function Providers({
       {convex ? (
         <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
           <ThemeProvider>
-            <TooltipProvider>{children}</TooltipProvider>
+            <TooltipProvider>
+              <ErrorTracker />
+              {children}
+            </TooltipProvider>
             <Toaster richColors position="top-right" />
           </ThemeProvider>
         </ConvexProviderWithClerk>
       ) : (
         <ThemeProvider>
-          <TooltipProvider>{children}</TooltipProvider>
+          <TooltipProvider>
+            <ErrorTracker />
+            {children}
+          </TooltipProvider>
           <Toaster richColors position="top-right" />
         </ThemeProvider>
       )}

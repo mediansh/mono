@@ -81,7 +81,13 @@ export async function POST(request: Request) {
     }))
 
     return NextResponse.json({ tasks: normalizedTasks })
-  } catch {
+  } catch (error) {
+    console.error("[median:ai-task-generation]", {
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+      userId,
+    })
+
     return NextResponse.json(
       { error: "Unable to generate tasks right now." },
       { status: 500 }
