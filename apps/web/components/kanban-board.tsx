@@ -4,6 +4,7 @@ import { createContext, memo, useCallback, useContext, useEffect, useMemo, useRe
 import { createPortal } from "react-dom"
 import { useConvex, useConvexAuth, useMutation } from "convex/react"
 import { HugeiconsIcon } from "@hugeicons/react"
+import { toast } from "sonner"
 import {
   SignalFull02Icon,
   SignalMedium02Icon,
@@ -207,7 +208,10 @@ function patchTaskDocs(
   taskId: string,
   updates: Partial<Pick<TaskDoc, "title" | "description" | "priority" | "labels">>
 ) {
-  return tasks.map((task) => (task._id === taskId ? { ...task, ...updates } : task))
+  const defined = Object.fromEntries(
+    Object.entries(updates).filter(([, v]) => v !== undefined)
+  )
+  return tasks.map((task) => (task._id === taskId ? { ...task, ...defined } : task))
 }
 
 function mapTaskDoc(task: TaskDoc): Task {
@@ -465,7 +469,7 @@ const RequestRow = memo(function RequestRow({
           ) : (
             <span className="text-[11px] text-muted-foreground/60">Request</span>
           )}
-          {task.labels.map((label) => (
+          {(task.labels ?? []).map((label) => (
             <span
               key={label}
               className="rounded-full px-2 py-0.5 text-[10px] font-medium capitalize"
@@ -580,6 +584,50 @@ function RequestsGroup({
 
 // ── Context Menu ──
 
+function ContextSubmenu({
+  label,
+  icon,
+  children,
+}: {
+  label: string
+  icon: React.ReactNode
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(false)
+  const submenuRef = useRef<HTMLDivElement>(null)
+
+  const handleEnter = () => {
+    setOpen(true)
+  }
+  const handleLeave = () => {
+    setOpen(false)
+  }
+
+  return (
+    <div
+      className="relative"
+      onMouseEnter={handleEnter}
+      onMouseLeave={handleLeave}
+    >
+      <button
+        className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-sm transition-colors hover:bg-accent"
+      >
+        {icon}
+        <span>{label}</span>
+        <svg className="ml-auto size-3.5 text-muted-foreground" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 4l4 4-4 4" /></svg>
+      </button>
+      {open && (
+        <div
+          ref={submenuRef}
+          className="absolute left-full top-0 z-[101] ml-1 min-w-[180px] rounded-lg p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 bg-popover/70 before:pointer-events-none before:absolute before:inset-0 before:-z-1 before:rounded-[inherit] before:backdrop-blur-2xl before:backdrop-saturate-150"
+        >
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function TaskContextMenu({
   task,
   position,
@@ -614,8 +662,9 @@ function TaskContextMenu({
   }, [onClose])
 
   function toggleLabel(label: Label) {
-    const has = task.labels.includes(label)
-    const updated = has ? task.labels.filter((l) => l !== label) : [...task.labels, label]
+    const labels = task.labels ?? []
+    const has = labels.includes(label)
+    const updated = has ? labels.filter((l) => l !== label) : [...labels, label]
     onUpdate(task.id, { labels: updated })
   }
 
@@ -625,54 +674,53 @@ function TaskContextMenu({
       className="fixed z-[100] min-w-[200px] rounded-lg p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 bg-popover/70 before:pointer-events-none before:absolute before:inset-0 before:-z-1 before:rounded-[inherit] before:backdrop-blur-2xl before:backdrop-saturate-150"
       style={{ top: position.y, left: position.x }}
     >
-      {/* Status */}
-      <div className="px-1.5 py-1 text-xs font-medium text-muted-foreground">Status</div>
-      {ALL_STATUSES.map((s) => (
-        <button
-          key={s}
-          onClick={() => { onUpdate(task.id, { status: s }); onClose() }}
-          className={`flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-sm transition-colors hover:bg-accent ${task.status === s ? "font-medium" : ""}`}
-        >
-          {getStatusIcon(s, 14)}
-          <span>{STATUS_LABELS[s]}</span>
-          {task.status === s && <span className="ml-auto text-xs text-primary">✓</span>}
-        </button>
-      ))}
+      {/* Status submenu */}
+      <ContextSubmenu label="Status" icon={getStatusIcon(task.status, 14)}>
+        {ALL_STATUSES.map((s) => (
+          <button
+            key={s}
+            onClick={() => { onUpdate(task.id, { status: s }); onClose() }}
+            className={`flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-sm transition-colors hover:bg-accent ${task.status === s ? "font-medium" : ""}`}
+          >
+            {getStatusIcon(s, 14)}
+            <span>{STATUS_LABELS[s]}</span>
+            {task.status === s && <span className="ml-auto text-xs text-primary">✓</span>}
+          </button>
+        ))}
+      </ContextSubmenu>
 
-      <div className="-mx-1 my-1 h-px bg-border" />
+      {/* Priority submenu */}
+      <ContextSubmenu label="Priority" icon={getPriorityIcon(task.priority, 14)}>
+        {ALL_PRIORITIES.map((p) => (
+          <button
+            key={p}
+            onClick={() => { onUpdate(task.id, { priority: p }); onClose() }}
+            className={`flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-sm transition-colors hover:bg-accent ${task.priority === p ? "font-medium" : ""}`}
+          >
+            {getPriorityIcon(p, 14)}
+            <span>{PRIORITY_LABELS[p]}</span>
+            {task.priority === p && <span className="ml-auto text-xs text-primary">✓</span>}
+          </button>
+        ))}
+      </ContextSubmenu>
 
-      {/* Priority */}
-      <div className="px-1.5 py-1 text-xs font-medium text-muted-foreground">Priority</div>
-      {ALL_PRIORITIES.map((p) => (
-        <button
-          key={p}
-          onClick={() => { onUpdate(task.id, { priority: p }); onClose() }}
-          className={`flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-sm transition-colors hover:bg-accent ${task.priority === p ? "font-medium" : ""}`}
-        >
-          {getPriorityIcon(p, 14)}
-          <span>{PRIORITY_LABELS[p]}</span>
-          {task.priority === p && <span className="ml-auto text-xs text-primary">✓</span>}
-        </button>
-      ))}
-
-      <div className="-mx-1 my-1 h-px bg-border" />
-
-      {/* Labels */}
-      <div className="px-1.5 py-1 text-xs font-medium text-muted-foreground">Labels</div>
-      {labelConfig.names.map((label) => (
-        <button
-          key={label}
-          onClick={() => toggleLabel(label)}
-          className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-sm capitalize transition-colors hover:bg-accent"
-        >
-          <div
-            className="size-2.5 rounded-full"
-            style={{ backgroundColor: labelConfig.colors[label] ?? "#888" }}
-          />
-          <span>{label}</span>
-          {task.labels.includes(label) && <span className="ml-auto text-xs text-primary">✓</span>}
-        </button>
-      ))}
+      {/* Labels submenu */}
+      <ContextSubmenu label="Labels" icon={<HugeiconsIcon icon={Tag01Icon} size={14} />}>
+        {labelConfig.names.map((label) => (
+          <button
+            key={label}
+            onClick={() => toggleLabel(label)}
+            className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-sm capitalize transition-colors hover:bg-accent"
+          >
+            <div
+              className="size-2.5 rounded-full"
+              style={{ backgroundColor: labelConfig.colors[label] ?? "#888" }}
+            />
+            <span>{label}</span>
+            {(task.labels ?? []).includes(label) && <span className="ml-auto text-xs text-primary">✓</span>}
+          </button>
+        ))}
+      </ContextSubmenu>
 
       <div className="-mx-1 my-1 h-px bg-border" />
 
@@ -700,7 +748,7 @@ const ListRowContent = memo(function ListRowContent({ task }: { task: Task }) {
       <div className="shrink-0">{getStatusIcon(task.status)}</div>
       <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground/90">{task.title}</span>
       <div className="flex shrink-0 items-center gap-1.5">
-        {task.labels.map((label) => (
+        {(task.labels ?? []).map((label) => (
           <span
             key={label}
             className="rounded-full px-2 py-0.5 text-[10px] font-medium capitalize"
@@ -916,8 +964,9 @@ function TaskDetailModal({
 
   function toggleLabel(label: Label) {
     if (!task) return
-    const has = task.labels.includes(label)
-    const updated = has ? task.labels.filter((l) => l !== label) : [...task.labels, label]
+    const labels = task.labels ?? []
+    const has = labels.includes(label)
+    const updated = has ? labels.filter((l) => l !== label) : [...labels, label]
     onUpdate(task.id, { labels: updated })
   }
 
@@ -1006,7 +1055,7 @@ function TaskDetailModal({
                       <DropdownMenuItem
                         key={s}
                         className={task.status === s ? "font-medium" : ""}
-                        onSelect={() => onUpdate(task.id, { status: s })}
+                        onClick={() => onUpdate(task.id, { status: s })}
                       >
                         <div className="flex items-center gap-2">
                           {getStatusIcon(s, 14)}
@@ -1028,7 +1077,7 @@ function TaskDetailModal({
                       <DropdownMenuItem
                         key={p}
                         className={task.priority === p ? "font-medium" : ""}
-                        onSelect={() => onUpdate(task.id, { priority: p })}
+                        onClick={() => onUpdate(task.id, { priority: p })}
                       >
                         <div className="flex items-center gap-2">
                           {getPriorityIcon(p, 14)}
@@ -1042,10 +1091,10 @@ function TaskDetailModal({
                 {/* Labels */}
                 <DropdownMenu>
                   <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent">
-                    {task.labels.length > 0 ? (
+                    {(task.labels ?? []).length > 0 ? (
                       <div className="flex items-center gap-1.5">
                         <div className="flex -space-x-0.5">
-                          {task.labels.map((label) => (
+                          {(task.labels ?? []).map((label) => (
                             <div
                               key={label}
                               className="size-2.5 rounded-full ring-1 ring-background"
@@ -1053,7 +1102,7 @@ function TaskDetailModal({
                             />
                           ))}
                         </div>
-                        <span>{task.labels.length === 1 ? task.labels[0] : `${task.labels.length} labels`}</span>
+                        <span>{(task.labels ?? []).length === 1 ? (task.labels ?? [])[0] : `${(task.labels ?? []).length} labels`}</span>
                       </div>
                     ) : (
                       <span className="text-muted-foreground">Add label</span>
@@ -1063,7 +1112,7 @@ function TaskDetailModal({
                     {labelConfig.names.map((label) => (
                       <DropdownMenuItem
                         key={label}
-                        onSelect={() => toggleLabel(label)}
+                        onClick={() => toggleLabel(label)}
                       >
                         <div className="flex w-full items-center gap-2 capitalize">
                           <div
@@ -1071,7 +1120,7 @@ function TaskDetailModal({
                             style={{ backgroundColor: labelConfig.colors[label] ?? "#888" }}
                           />
                           <span>{label}</span>
-                          {task.labels.includes(label) && (
+                          {(task.labels ?? []).includes(label) && (
                             <span className="ml-auto text-xs text-primary">✓</span>
                           )}
                         </div>
@@ -1465,11 +1514,24 @@ export function KanbanBoard() {
   function handleDeleteTask(taskId: string) {
     if (!workspaceId || !taskDocs || taskId.startsWith("optimistic:")) return
 
+    const deletedTask = taskDocs.find((task) => task._id === taskId)
+    if (!deletedTask) return
+
     updateWorkspaceTasks(workspaceId, (tasks) =>
       tasks.filter((t) => t._id !== taskId)
     )
 
     void deleteTask({ taskId: taskId as Id<"tasks"> })
+      .then(() => {
+        toast.success(`Deleted "${deletedTask.title}".`)
+      })
+      .catch(() => {
+        updateWorkspaceTasks(workspaceId, (tasks) => {
+          const restoredTasks = [...tasks, deletedTask]
+          return sortTaskDocs(restoredTasks)
+        })
+        toast.error("Task deletion failed. Try again.")
+      })
   }
 
   function handleMoveTask(taskId: string, toStatus: Status, toIndex: number) {
