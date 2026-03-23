@@ -16,10 +16,10 @@ const generatedTasksSchema = z.object({
     .array(
       z.object({
         title: z.string().min(1).max(140),
-        description: z.string().max(2000).optional(),
-        status: z.enum(TASK_STATUSES).optional(),
-        priority: z.enum(TASK_PRIORITIES).optional(),
-        labels: z.array(z.string()).max(5).optional(),
+        description: z.string().max(2000).nullable(),
+        status: z.enum(TASK_STATUSES).nullable(),
+        priority: z.enum(TASK_PRIORITIES).nullable(),
+        labels: z.array(z.string()).max(5),
       })
     )
     .min(1)
@@ -65,7 +65,10 @@ export async function POST(request: Request) {
         `Allowed labels: ${labelsText}`,
         "Return between 1 and 12 tasks.",
         "Every task must have a concise title.",
-        "Descriptions should be plain text and optional.",
+        "Every task object must include title, description, status, priority, and labels.",
+        "Use null for description, status, or priority when not specified.",
+        "Use an empty array for labels when none apply.",
+        "Descriptions should be plain text.",
         "Only use labels from the allowed labels list.",
         "Use sensible defaults when the user does not specify status or priority.",
         "Do not include markdown, commentary, or fields outside the schema.",
@@ -74,10 +77,11 @@ export async function POST(request: Request) {
     })
 
     const normalizedTasks = object.tasks.map((task) => ({
-      ...task,
-      labels: (task.labels ?? []).filter((label) =>
-        availableLabels.includes(label)
-      ),
+      title: task.title,
+      description: task.description ?? undefined,
+      status: task.status ?? undefined,
+      priority: task.priority ?? undefined,
+      labels: task.labels.filter((label) => availableLabels.includes(label)),
     }))
 
     return NextResponse.json({ tasks: normalizedTasks })
