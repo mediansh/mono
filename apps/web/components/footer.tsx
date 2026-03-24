@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { ArrowUpRight } from "lucide-react"
+import { ArrowUpRight } from "@phosphor-icons/react"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
 const footerLinks = [
@@ -101,7 +101,7 @@ export function Footer() {
                       >
                         {link.label}
                         {link.external && (
-                          <ArrowUpRight className="h-3 w-3" />
+                          <ArrowUpRight size={12} />
                         )}
                       </Link>
                     </li>

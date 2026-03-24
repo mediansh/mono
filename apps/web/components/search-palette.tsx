@@ -3,25 +3,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { usePathname, useRouter } from "next/navigation"
-import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  Search01Icon,
-  Home01Icon,
-  Settings01Icon,
-  Tag01Icon,
-  UserMultiple02Icon,
-  Loading03Icon,
-  CircleIcon,
-  CheckmarkBadge01Icon,
-  Rocket01Icon,
-  Archive01Icon,
-  AlertCircleIcon,
-  SignalFull02Icon,
-  SignalMedium02Icon,
-  SignalLow02Icon,
-  ArrowRight01Icon,
-  ConnectIcon,
-} from "@hugeicons/core-free-icons"
+  MagnifyingGlass,
+  House,
+  Gear,
+  Tag,
+  Users,
+  SpinnerGap,
+  Circle,
+  SealCheck,
+  Rocket,
+  Archive,
+  WarningCircle,
+  CellSignalFull,
+  CellSignalMedium,
+  CellSignalLow,
+  ArrowRight,
+  Plugs,
+} from "@phosphor-icons/react"
 import { motion, AnimatePresence } from "motion/react"
 import { useWorkspace } from "@/components/workspace-provider"
 import { useLocalFirstStore } from "@/lib/local-first-store"
@@ -55,46 +54,46 @@ export function useSearchPaletteTaskEvent(handler: (taskId: string) => void) {
 function getStatusIcon(status: TaskStatus, size = 13) {
   switch (status) {
     case "requests":
-      return <HugeiconsIcon icon={Loading03Icon} size={size} className="text-muted-foreground" />
+      return <SpinnerGap size={size} className="text-muted-foreground" />
     case "todo":
-      return <HugeiconsIcon icon={CircleIcon} size={size} className="text-muted-foreground" />
+      return <Circle size={size} className="text-muted-foreground" />
     case "in_progress":
-      return <HugeiconsIcon icon={Loading03Icon} size={size} className="text-yellow-500" />
+      return <SpinnerGap size={size} className="text-yellow-500" />
     case "ready":
-      return <HugeiconsIcon icon={CheckmarkBadge01Icon} size={size} className="text-emerald-500" />
+      return <SealCheck size={size} weight="fill" className="text-emerald-500" />
     case "shipped":
-      return <HugeiconsIcon icon={Rocket01Icon} size={size} className="text-blue-500" />
+      return <Rocket size={size} weight="fill" className="text-blue-500" />
     case "archive":
-      return <HugeiconsIcon icon={Archive01Icon} size={size} className="text-muted-foreground" />
+      return <Archive size={size} className="text-muted-foreground" />
   }
 }
 
 function getPriorityIcon(priority: TaskPriority, size = 12) {
   switch (priority) {
     case "urgent":
-      return <HugeiconsIcon icon={AlertCircleIcon} size={size} className="text-red-500" />
+      return <WarningCircle size={size} weight="fill" className="text-red-500" />
     case "high":
-      return <HugeiconsIcon icon={SignalFull02Icon} size={size} className="text-orange-500" />
+      return <CellSignalFull size={size} className="text-orange-500" />
     case "medium":
-      return <HugeiconsIcon icon={SignalMedium02Icon} size={size} className="text-yellow-500" />
+      return <CellSignalMedium size={size} className="text-yellow-500" />
     case "low":
-      return <HugeiconsIcon icon={SignalLow02Icon} size={size} className="text-blue-400" />
+      return <CellSignalLow size={size} className="text-blue-400" />
     case "none":
-      return <HugeiconsIcon icon={SignalLow02Icon} size={size} className="text-muted-foreground" />
+      return <CellSignalLow size={size} className="text-muted-foreground" />
   }
 }
 
 // ── Navigation items ──
 
 const NAV_ITEMS = [
-  { id: "home", label: "Home", href: "/app", icon: Home01Icon, keywords: ["board", "kanban", "tasks", "home"] },
-  { id: "settings", label: "Settings", href: "/app/settings", icon: Settings01Icon, keywords: ["settings", "preferences", "account"] },
-  { id: "labels", label: "Labels", href: "/app/settings/labels", icon: Tag01Icon, keywords: ["labels", "tags", "categories"] },
-  { id: "members", label: "Members", href: "/app/settings/members", icon: UserMultiple02Icon, keywords: ["members", "team", "users", "invite"] },
-  { id: "integrations-discord", label: "Discord Integration", href: "/app/integrations/discord", icon: ConnectIcon, keywords: ["integrations", "discord", "connect", "bot"] },
-  { id: "integrations-linear", label: "Linear Integration", href: "/app/integrations/linear", icon: ConnectIcon, keywords: ["integrations", "linear", "sync", "issues"] },
-  { id: "integrations-x", label: "X (Twitter) Integration", href: "/app/integrations/x", icon: ConnectIcon, keywords: ["integrations", "x", "twitter", "tweets", "mentions"] },
-  { id: "integrations-github", label: "GitHub Integration", href: "/app/integrations/github", icon: ConnectIcon, keywords: ["integrations", "github", "repository", "issues", "pr", "pull request"] },
+  { id: "home", label: "Home", href: "/app", icon: House, keywords: ["board", "kanban", "tasks", "home"] },
+  { id: "settings", label: "Settings", href: "/app/settings", icon: Gear, keywords: ["settings", "preferences", "account"] },
+  { id: "labels", label: "Labels", href: "/app/settings/labels", icon: Tag, keywords: ["labels", "tags", "categories"] },
+  { id: "members", label: "Members", href: "/app/settings/members", icon: Users, keywords: ["members", "team", "users", "invite"] },
+  { id: "integrations-discord", label: "Discord Integration", href: "/app/integrations/discord", icon: Plugs, keywords: ["integrations", "discord", "connect", "bot"] },
+  { id: "integrations-linear", label: "Linear Integration", href: "/app/integrations/linear", icon: Plugs, keywords: ["integrations", "linear", "sync", "issues"] },
+  { id: "integrations-x", label: "X (Twitter) Integration", href: "/app/integrations/x", icon: Plugs, keywords: ["integrations", "x", "twitter", "tweets", "mentions"] },
+  { id: "integrations-github", label: "GitHub Integration", href: "/app/integrations/github", icon: Plugs, keywords: ["integrations", "github", "repository", "issues", "pr", "pull request"] },
 ]
 
 // ── Search result types ──
@@ -115,7 +114,7 @@ type NavResult = {
   id: string
   label: string
   href: string
-  icon: typeof Home01Icon
+  icon: typeof House
   keywords: string[]
 }
 
@@ -353,10 +352,8 @@ export function SearchPalette({
           >
             {/* Search input */}
             <div className="flex items-center gap-3 border-b border-border px-4">
-              <HugeiconsIcon
-                icon={Search01Icon}
+              <MagnifyingGlass
                 size={16}
-                strokeWidth={2}
                 className="shrink-0 text-muted-foreground"
               />
               <input
@@ -488,11 +485,10 @@ function NavResultRow({
       )}
     >
       <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted/80">
-        <HugeiconsIcon icon={result.icon} size={14} strokeWidth={2} className="text-muted-foreground" />
+        <result.icon size={14} className="text-muted-foreground" />
       </div>
       <span className="flex-1 truncate text-[13px] font-medium">{result.label}</span>
-      <HugeiconsIcon
-        icon={ArrowRight01Icon}
+      <ArrowRight
         size={13}
         className={cn(
           "shrink-0 transition-opacity",

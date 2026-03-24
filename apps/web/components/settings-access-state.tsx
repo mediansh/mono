@@ -1,7 +1,6 @@
 "use client"
 
-import { HugeiconsIcon } from "@hugeicons/react"
-import { Settings01Icon } from "@hugeicons/core-free-icons"
+import { Gear } from "@phosphor-icons/react"
 import { motion } from "motion/react"
 
 export function SettingsAccessState() {
@@ -14,10 +13,8 @@ export function SettingsAccessState() {
     >
       <div className="flex max-w-md flex-col items-start gap-4">
         <div className="flex size-12 items-center justify-center rounded-2xl border border-border bg-muted/70">
-          <HugeiconsIcon
-            icon={Settings01Icon}
+          <Gear
             size={22}
-            strokeWidth={1.6}
             className="text-muted-foreground"
           />
         </div>

@@ -2,12 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useMutation, useQuery } from "convex/react"
-import { HugeiconsIcon } from "@hugeicons/react"
-import {
-  Delete02Icon,
-  LinkSquare02Icon,
-  Mail01Icon,
-} from "@hugeicons/core-free-icons"
+import { Trash, Link as LinkIcon, Envelope } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import type { Id } from "@/convex/_generated/dataModel"
 import { api } from "@/convex/_generated/api"
@@ -236,7 +231,7 @@ export default function MembersSettingsPage() {
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            <HugeiconsIcon icon={LinkSquare02Icon} size={14} strokeWidth={1.7} />
+            <LinkIcon size={14} />
             Invite link
           </button>
           <button
@@ -248,7 +243,7 @@ export default function MembersSettingsPage() {
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            <HugeiconsIcon icon={Mail01Icon} size={14} strokeWidth={1.7} />
+            <Envelope size={14} />
             Email invite
           </button>
         </div>
@@ -343,12 +338,11 @@ export default function MembersSettingsPage() {
                 >
                   <div className="flex items-center gap-3">
                     <div className="flex size-8 items-center justify-center rounded-md border border-border bg-muted/50">
-                      <HugeiconsIcon
-                        icon={invite.inviteType === "email" ? Mail01Icon : LinkSquare02Icon}
-                        size={14}
-                        strokeWidth={1.5}
-                        className="text-muted-foreground"
-                      />
+                      {invite.inviteType === "email" ? (
+                        <Envelope size={14} className="text-muted-foreground" />
+                      ) : (
+                        <LinkIcon size={14} className="text-muted-foreground" />
+                      )}
                     </div>
                     <div>
                       <p className="text-sm font-medium">
@@ -368,7 +362,7 @@ export default function MembersSettingsPage() {
                         onClick={() => handleRevokeInvite(invite._id)}
                         className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        <HugeiconsIcon icon={Delete02Icon} size={14} strokeWidth={1.5} />
+                        <Trash size={14} />
                       </button>
                     )}
                   </div>
@@ -441,7 +435,7 @@ export default function MembersSettingsPage() {
                       onClick={() => handleRemoveMember(member._id)}
                       className="flex size-8 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      <HugeiconsIcon icon={Delete02Icon} size={14} strokeWidth={1.5} />
+                      <Trash size={14} />
                     </button>
                   </div>
                 )}

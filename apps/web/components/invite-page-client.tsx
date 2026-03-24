@@ -5,12 +5,7 @@ import { useState } from "react"
 import { useMutation, useQuery } from "convex/react"
 import { useAuth } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
-import { HugeiconsIcon } from "@hugeicons/react"
-import {
-  CheckmarkBadge01Icon,
-  LinkSquare02Icon,
-  UserMultiple02Icon,
-} from "@hugeicons/core-free-icons"
+import { SealCheck, Link as LinkIcon, Users } from "@phosphor-icons/react"
 import { motion } from "motion/react"
 import { toast } from "sonner"
 import { api } from "@/convex/_generated/api"
@@ -54,10 +49,8 @@ export function InvitePageClient({ token }: { token: string }) {
         className="mx-auto flex w-full max-w-xl flex-col gap-6 rounded-[28px] border border-border bg-background/90 p-8 shadow-[0_40px_120px_-60px_rgba(4,150,255,0.45)] backdrop-blur-xl"
       >
         <div className="flex size-14 items-center justify-center rounded-[20px] border border-border bg-[#14120B]/10">
-          <HugeiconsIcon
-            icon={UserMultiple02Icon}
+          <Users
             size={24}
-            strokeWidth={1.7}
             className="text-[#14120B]"
           />
         </div>
@@ -108,10 +101,9 @@ export function InvitePageClient({ token }: { token: string }) {
             <div className="grid gap-3 rounded-2xl border border-border/80 bg-muted/30 p-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Permissions</span>
-                <HugeiconsIcon
-                  icon={CheckmarkBadge01Icon}
+                <SealCheck
                   size={18}
-                  strokeWidth={1.6}
+                  weight="fill"
                   className="text-[#14120B]"
                 />
               </div>
@@ -131,7 +123,7 @@ export function InvitePageClient({ token }: { token: string }) {
                 onClick={handleAcceptInvite}
                 className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#14120B] px-4 text-sm font-medium text-white transition-colors hover:bg-[#14120B]/90 disabled:opacity-60"
               >
-                <HugeiconsIcon icon={LinkSquare02Icon} size={16} strokeWidth={1.7} />
+                <LinkIcon size={16} />
                 {accepting ? "Joining..." : "Accept invite"}
               </button>
             ) : (
@@ -139,7 +131,7 @@ export function InvitePageClient({ token }: { token: string }) {
                 href={authRedirect}
                 className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#14120B] px-4 text-sm font-medium text-white transition-colors hover:bg-[#14120B]/90"
               >
-                <HugeiconsIcon icon={LinkSquare02Icon} size={16} strokeWidth={1.7} />
+                <LinkIcon size={16} />
                 Sign in to accept
               </Link>
             )}

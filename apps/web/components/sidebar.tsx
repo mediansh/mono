@@ -6,21 +6,20 @@ import { usePathname } from "next/navigation"
 import { useClerk, useUser } from "@clerk/nextjs"
 import { useTheme } from "next-themes"
 import { useMutation } from "convex/react"
-import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  Home01Icon,
-  Search01Icon,
-  Logout01Icon,
-  Settings01Icon,
-  Sun01Icon,
-  Moon02Icon,
-  ComputerIcon,
-  QuillWrite01Icon,
-  Add01Icon,
-  Tick02Icon,
-  Image01Icon,
-  ConnectIcon,
-} from "@hugeicons/core-free-icons"
+  House,
+  MagnifyingGlass,
+  SignOut,
+  Gear,
+  Sun,
+  Moon,
+  Desktop,
+  PenNib,
+  Plus,
+  Check,
+  Image,
+  Plugs,
+} from "@phosphor-icons/react"
 import { motion } from "motion/react"
 import { Facehash } from "facehash"
 import { NewTaskModal } from "@/components/new-task-modal"
@@ -62,8 +61,8 @@ import {
 } from "@workspace/ui/components/sidebar"
 
 const mainNav = [
-  { label: "Home", href: "/app", icon: Home01Icon },
-  { label: "Integrations", href: "/app/integrations", icon: ConnectIcon },
+  { label: "Home", href: "/app", icon: House },
+  { label: "Integrations", href: "/app/integrations", icon: Plugs },
 ]
 
 function CreateWorkspaceModal({
@@ -183,10 +182,8 @@ function CreateWorkspaceModal({
               ) : name.trim() ? (
                 <Facehash name={name.trim()} size={56} />
               ) : (
-                <HugeiconsIcon
-                  icon={Image01Icon}
+                <Image
                   size={20}
-                  strokeWidth={1.5}
                   className="text-muted-foreground transition-colors group-hover:text-foreground"
                 />
               )}
@@ -334,7 +331,7 @@ export function AppSidebar() {
                       onClick={() => setSearchOpen(true)}
                       className="text-muted-foreground ring-1 ring-sidebar-border"
                     >
-                      <HugeiconsIcon icon={Search01Icon} size={16} strokeWidth={2} />
+                      <MagnifyingGlass size={16} />
                       <span>Search</span>
                       <kbd className="ml-auto hidden rounded border border-sidebar-border bg-sidebar px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground group-data-[collapsible=icon]:hidden lg:inline">
                         {mounted ? (/Mac|iPhone/.test(navigator.userAgent) ? "⌘K" : "Ctrl+K") : null}
@@ -356,7 +353,7 @@ export function AppSidebar() {
                       disabled={!canManageTasks}
                       className="bg-[#14120B] text-white hover:bg-[#14120B]/85 hover:text-white active:bg-[#14120B]/70 active:text-white data-active:bg-[#14120B] data-active:text-white"
                     >
-                      <HugeiconsIcon icon={QuillWrite01Icon} size={16} strokeWidth={2} />
+                      <PenNib size={16} />
                       <span>New</span>
                       <kbd className="ml-auto hidden rounded border border-white/25 bg-white/10 px-1.5 py-0.5 font-mono text-[10px] text-white/70 group-data-[collapsible=icon]:hidden lg:inline">
                         C
@@ -399,7 +396,7 @@ export function AppSidebar() {
                               : undefined
                           }
                         >
-                          <HugeiconsIcon icon={item.icon} size={16} strokeWidth={2} />
+                          <item.icon size={16} weight={isActive ? "fill" : "regular"} />
                           <span>{item.label}</span>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
@@ -428,7 +425,7 @@ export function AppSidebar() {
                     : undefined
                 }
               >
-                <HugeiconsIcon icon={Settings01Icon} size={16} strokeWidth={2} />
+                <Gear size={16} weight={pathname.startsWith("/app/settings") ? "fill" : "regular"} />
                 <span>Settings</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -493,10 +490,8 @@ export function AppSidebar() {
                             )}
                             <span className="truncate">{ws.name}</span>
                             {ws._id === currentWorkspace?._id && (
-                              <HugeiconsIcon
-                                icon={Tick02Icon}
+                              <Check
                                 size={14}
-                                strokeWidth={2}
                                 className="ml-auto text-[#14120B]"
                               />
                             )}
@@ -512,43 +507,39 @@ export function AppSidebar() {
                     <DropdownMenuItem
                       onClick={() => setCreateModalOpen(true)}
                     >
-                      <HugeiconsIcon icon={Add01Icon} size={14} strokeWidth={2} />
+                      <Plus size={14} />
                       New workspace
                     </DropdownMenuItem>
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
 
                   <DropdownMenuItem render={<Link href="/settings" />}>
-                    <HugeiconsIcon icon={Settings01Icon} size={14} strokeWidth={2} />
+                    <Gear size={14} />
                     Settings
                   </DropdownMenuItem>
                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger>
-                      <HugeiconsIcon
-                        icon={theme === "dark" ? Moon02Icon : Sun01Icon}
-                        size={14}
-                        strokeWidth={2}
-                      />
+                      {theme === "dark" ? <Moon size={14} /> : <Sun size={14} />}
                       Theme
                     </DropdownMenuSubTrigger>
                     <DropdownMenuSubContent>
                       <DropdownMenuItem onClick={() => setTheme("light")}>
-                        <HugeiconsIcon icon={Sun01Icon} size={14} strokeWidth={2} />
+                        <Sun size={14} />
                         Light
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => setTheme("dark")}>
-                        <HugeiconsIcon icon={Moon02Icon} size={14} strokeWidth={2} />
+                        <Moon size={14} />
                         Dark
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => setTheme("system")}>
-                        <HugeiconsIcon icon={ComputerIcon} size={14} strokeWidth={2} />
+                        <Desktop size={14} />
                         System
                       </DropdownMenuItem>
                     </DropdownMenuSubContent>
                   </DropdownMenuSub>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => signOut()}>
-                    <HugeiconsIcon icon={Logout01Icon} size={14} strokeWidth={2} />
+                    <SignOut size={14} />
                     Sign out
                   </DropdownMenuItem>
                 </DropdownMenuContent>

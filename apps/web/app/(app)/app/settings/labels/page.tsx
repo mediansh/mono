@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useId } from "react"
 import { useMutation } from "convex/react"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { Add01Icon, Delete02Icon } from "@hugeicons/core-free-icons"
+import { Plus, Trash } from "@phosphor-icons/react"
 import { DEFAULT_WORKSPACE_LABELS } from "@/lib/task-board"
 import { motion, AnimatePresence } from "motion/react"
 import { api } from "@/convex/_generated/api"
@@ -118,11 +117,7 @@ export default function LabelsSettingsPage() {
                     onClick={() => removeLabel(index)}
                     className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
                   >
-                    <HugeiconsIcon
-                      icon={Delete02Icon}
-                      size={14}
-                      strokeWidth={1.5}
-                    />
+                    <Trash size={14} />
                   </button>
                 </div>
               ))}
@@ -133,7 +128,7 @@ export default function LabelsSettingsPage() {
             onClick={addLabel}
             className="mt-3 flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border text-xs text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
           >
-            <HugeiconsIcon icon={Add01Icon} size={13} strokeWidth={1.5} />
+            <Plus size={13} />
             Add label
           </button>
         </div>

@@ -4,8 +4,7 @@ import { useState, useRef } from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { useMutation } from "convex/react"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { Image01Icon } from "@hugeicons/core-free-icons"
+import { Image as ImageIcon } from "@phosphor-icons/react"
 import { Facehash } from "facehash"
 import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
@@ -145,10 +144,8 @@ export default function WorkspaceSetupPage() {
                 ) : name.trim() ? (
                   <Facehash name={name.trim()} size={64} />
                 ) : (
-                  <HugeiconsIcon
-                    icon={Image01Icon}
+                  <ImageIcon
                     size={20}
-                    strokeWidth={1.5}
                     className="text-muted-foreground transition-colors group-hover:text-foreground"
                   />
                 )}

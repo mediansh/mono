@@ -2,10 +2,10 @@
 
 import { useSyncExternalStore } from "react"
 import { useTheme } from "next-themes"
-import { Monitor, Sun, Moon } from "lucide-react"
+import { Desktop, Sun, Moon } from "@phosphor-icons/react"
 
 const themes = [
-  { value: "system", icon: Monitor },
+  { value: "system", icon: Desktop },
   { value: "light", icon: Sun },
   { value: "dark", icon: Moon },
 ] as const
@@ -33,7 +33,7 @@ export function ThemeSwitcher() {
           }`}
           aria-label={`${value} theme`}
         >
-          <Icon className="h-3.5 w-3.5" />
+          <Icon size={14} weight={theme === value ? "fill" : "regular"} />
         </button>
       ))}
     </div>

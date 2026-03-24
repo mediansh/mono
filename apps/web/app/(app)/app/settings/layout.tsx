@@ -3,18 +3,13 @@
 import { useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { HugeiconsIcon } from "@hugeicons/react"
-import {
-  Settings01Icon,
-  Tag01Icon,
-  UserMultiple02Icon,
-} from "@hugeicons/core-free-icons"
+import { Gear, Tag, Users } from "@phosphor-icons/react"
 import { motion } from "motion/react"
 
 const settingsNav = [
-  { label: "General", href: "/app/settings", icon: Settings01Icon },
-  { label: "Labels", href: "/app/settings/labels", icon: Tag01Icon },
-  { label: "Members", href: "/app/settings/members", icon: UserMultiple02Icon },
+  { label: "General", href: "/app/settings", icon: Gear },
+  { label: "Labels", href: "/app/settings/labels", icon: Tag },
+  { label: "Members", href: "/app/settings/members", icon: Users },
 ]
 
 export default function SettingsLayout({
@@ -67,10 +62,9 @@ export default function SettingsLayout({
                       : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
                   }`}
                 >
-                  <HugeiconsIcon
-                    icon={item.icon}
+                  <item.icon
                     size={15}
-                    strokeWidth={1.75}
+                    weight={isActive ? "fill" : "regular"}
                     className={
                       isActive ? "text-[#14120B]" : "text-muted-foreground group-hover:text-foreground"
                     }

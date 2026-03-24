@@ -2,8 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { useMutation } from "convex/react"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { Image01Icon, Delete02Icon } from "@hugeicons/core-free-icons"
+import { Image, Trash } from "@phosphor-icons/react"
 import { motion, AnimatePresence } from "motion/react"
 import { Facehash } from "facehash"
 import { api } from "@/convex/_generated/api"
@@ -147,18 +146,14 @@ export default function GeneralSettingsPage() {
               ) : name.trim() ? (
                 <Facehash name={name.trim()} size={64} />
               ) : (
-                <HugeiconsIcon
-                  icon={Image01Icon}
+                <Image
                   size={22}
-                  strokeWidth={1.5}
                   className="text-muted-foreground transition-colors group-hover:text-foreground"
                 />
               )}
               <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/10">
-                <HugeiconsIcon
-                  icon={Image01Icon}
+                <Image
                   size={16}
-                  strokeWidth={2}
                   className="text-white opacity-0 transition-opacity group-hover:opacity-100"
                 />
               </div>
@@ -237,7 +232,7 @@ export default function GeneralSettingsPage() {
                 onClick={() => setDeleteModalOpen(true)}
                 className="flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-destructive/30 px-3 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
               >
-                <HugeiconsIcon icon={Delete02Icon} size={13} strokeWidth={1.5} />
+                <Trash size={13} />
                 Delete
               </button>
             </div>

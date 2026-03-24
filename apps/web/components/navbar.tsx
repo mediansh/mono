@@ -7,7 +7,7 @@ import {
   useAuth,
 } from "@clerk/nextjs"
 import Link from "next/link"
-import { ChevronDown } from "lucide-react"
+import { CaretDown } from "@phosphor-icons/react"
 import { Logo } from "@/components/logo"
 
 const navLinks = [
@@ -37,7 +37,7 @@ export function Navbar() {
                 className="text-navbar-foreground/70 flex items-center gap-1 px-3 py-2 text-sm font-medium"
               >
                 {link.label}
-                {link.hasDropdown && <ChevronDown className="h-3.5 w-3.5" />}
+                {link.hasDropdown && <CaretDown size={14} />}
               </Link>
             </li>
           ))}

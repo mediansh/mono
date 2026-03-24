@@ -3,26 +3,25 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import { useMutation } from "convex/react"
 import { useUser } from "@clerk/nextjs"
-import { HugeiconsIcon } from "@hugeicons/react"
 import { toast } from "sonner"
 import {
-  Cancel01Icon,
-  Loading03Icon,
-  CircleIcon,
-  CheckmarkBadge01Icon,
-  Archive01Icon,
-  MoreHorizontalIcon,
-  Tag01Icon,
-  SignalFull02Icon,
-  SignalMedium02Icon,
-  SignalLow02Icon,
-  AlertCircleIcon,
-  Rocket01Icon,
-  Attachment01Icon,
-  Edit02Icon,
-  SparklesIcon,
-  ArrowRight01Icon,
-} from "@hugeicons/core-free-icons"
+  X,
+  SpinnerGap,
+  Circle,
+  SealCheck,
+  Archive,
+  DotsThree,
+  Tag,
+  CellSignalFull,
+  CellSignalMedium,
+  CellSignalLow,
+  WarningCircle,
+  Rocket,
+  Paperclip,
+  PencilSimple,
+  Sparkle,
+  ArrowRight,
+} from "@phosphor-icons/react"
 import { motion } from "motion/react"
 import { Dialog, DialogContent } from "@workspace/ui/components/dialog"
 import {
@@ -71,98 +70,32 @@ const PRIORITY_OPTIONS: { id: Priority; label: string }[] = [
 function getStatusIcon(status: Status) {
   switch (status) {
     case "requests":
-      return (
-        <HugeiconsIcon
-          icon={Loading03Icon}
-          size={14}
-          className="text-muted-foreground"
-        />
-      )
+      return <SpinnerGap size={14} className="text-muted-foreground" />
     case "todo":
-      return (
-        <HugeiconsIcon
-          icon={CircleIcon}
-          size={14}
-          className="text-muted-foreground"
-        />
-      )
+      return <Circle size={14} className="text-muted-foreground" />
     case "in_progress":
-      return (
-        <HugeiconsIcon
-          icon={Loading03Icon}
-          size={14}
-          className="text-yellow-500"
-        />
-      )
+      return <SpinnerGap size={14} className="text-yellow-500" />
     case "ready":
-      return (
-        <HugeiconsIcon
-          icon={CheckmarkBadge01Icon}
-          size={14}
-          className="text-emerald-500"
-        />
-      )
+      return <SealCheck size={14} weight="fill" className="text-emerald-500" />
     case "shipped":
-      return (
-        <HugeiconsIcon
-          icon={Rocket01Icon}
-          size={14}
-          className="text-blue-500"
-        />
-      )
+      return <Rocket size={14} weight="fill" className="text-blue-500" />
     case "archive":
-      return (
-        <HugeiconsIcon
-          icon={Archive01Icon}
-          size={14}
-          className="text-muted-foreground"
-        />
-      )
+      return <Archive size={14} className="text-muted-foreground" />
   }
 }
 
 function getPriorityIcon(priority: Priority) {
   switch (priority) {
     case "urgent":
-      return (
-        <HugeiconsIcon
-          icon={AlertCircleIcon}
-          size={14}
-          className="text-red-500"
-        />
-      )
+      return <WarningCircle size={14} weight="fill" className="text-red-500" />
     case "high":
-      return (
-        <HugeiconsIcon
-          icon={SignalFull02Icon}
-          size={14}
-          className="text-orange-500"
-        />
-      )
+      return <CellSignalFull size={14} className="text-orange-500" />
     case "medium":
-      return (
-        <HugeiconsIcon
-          icon={SignalMedium02Icon}
-          size={14}
-          className="text-yellow-500"
-        />
-      )
+      return <CellSignalMedium size={14} className="text-yellow-500" />
     case "low":
-      return (
-        <HugeiconsIcon
-          icon={SignalLow02Icon}
-          size={14}
-          className="text-blue-400"
-        />
-      )
+      return <CellSignalLow size={14} className="text-blue-400" />
     case "none":
-      return (
-        <HugeiconsIcon
-          icon={MoreHorizontalIcon}
-          size={14}
-          className="text-muted-foreground"
-        />
-      )
+      return <DotsThree size={14} className="text-muted-foreground" />
   }
 }
 
@@ -550,7 +483,7 @@ export function NewTaskModal({
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <HugeiconsIcon icon={Edit02Icon} size={14} />
+              <PencilSimple size={14} />
               Manual
               {activeTab === "manual" && (
                 <div className="absolute inset-x-0 -bottom-px h-0.5 bg-foreground" />
@@ -564,7 +497,7 @@ export function NewTaskModal({
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <HugeiconsIcon icon={SparklesIcon} size={14} />
+              <Sparkle size={14} />
               AI Prompt
               {activeTab === "ai" && (
                 <div className="absolute inset-x-0 -bottom-px h-0.5 bg-foreground" />
@@ -576,7 +509,7 @@ export function NewTaskModal({
               onClick={() => onOpenChange(false)}
               className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
-              <HugeiconsIcon icon={Cancel01Icon} size={14} strokeWidth={2} />
+              <X size={14} />
             </button>
           </div>
         </div>
@@ -660,8 +593,7 @@ export function NewTaskModal({
                   {/* Labels (multi-select) */}
                   <DropdownMenu>
                     <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent">
-                      <HugeiconsIcon
-                        icon={Tag01Icon}
+                      <Tag
                         size={14}
                         className="text-muted-foreground"
                       />
@@ -703,8 +635,7 @@ export function NewTaskModal({
                         key={i}
                         className="flex items-center gap-1.5 rounded-lg border border-border bg-accent/50 px-2.5 py-1 text-xs"
                       >
-                        <HugeiconsIcon
-                          icon={Attachment01Icon}
+                        <Paperclip
                           size={12}
                           className="text-muted-foreground"
                         />
@@ -719,7 +650,7 @@ export function NewTaskModal({
                           }
                           className="ml-0.5 text-muted-foreground transition-colors hover:text-foreground"
                         >
-                          <HugeiconsIcon icon={Cancel01Icon} size={10} />
+                          <X size={10} />
                         </button>
                       </div>
                     ))}
@@ -741,11 +672,11 @@ export function NewTaskModal({
                       disabled={uploading}
                       className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
                     >
-                      <HugeiconsIcon
-                        icon={uploading ? Loading03Icon : Attachment01Icon}
-                        size={14}
-                        className={uploading ? "animate-spin" : ""}
-                      />
+                      {uploading ? (
+                        <SpinnerGap size={14} className="animate-spin" />
+                      ) : (
+                        <Paperclip size={14} />
+                      )}
                       {uploading ? "Uploading..." : "Attach"}
                     </button>
                     {error && (
@@ -807,11 +738,11 @@ export function NewTaskModal({
                   className="flex items-center gap-2 rounded-lg bg-[#14120B] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#14120B]/90 disabled:opacity-50"
                 >
                   {isGenerating ? "Generating..." : "Generate tasks"}
-                  <HugeiconsIcon
-                    icon={isGenerating ? Loading03Icon : ArrowRight01Icon}
-                    size={16}
-                    className={isGenerating ? "animate-spin" : ""}
-                  />
+                  {isGenerating ? (
+                    <SpinnerGap size={16} className="animate-spin" />
+                  ) : (
+                    <ArrowRight size={16} />
+                  )}
                 </button>
               </div>
             </div>

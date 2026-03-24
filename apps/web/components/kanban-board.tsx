@@ -3,27 +3,26 @@
 import { createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react"
 import { createPortal } from "react-dom"
 import { useConvexAuth, useMutation, useQuery } from "convex/react"
-import { HugeiconsIcon } from "@hugeicons/react"
 import { toast } from "sonner"
 import {
-  SignalFull02Icon,
-  SignalMedium02Icon,
-  SignalLow02Icon,
-  CircleIcon,
-  Loading03Icon,
-  CheckmarkBadge01Icon,
-  Archive01Icon,
-  AlertCircleIcon,
-  Rocket01Icon,
-  ViewOffIcon,
-  ViewIcon,
-  CheckmarkCircle02Icon,
-  Cancel02Icon,
-  LinkSquare02Icon,
-  Delete02Icon,
-  Tag01Icon,
-  Tick02Icon,
-} from "@hugeicons/core-free-icons"
+  CellSignalFull,
+  CellSignalMedium,
+  CellSignalLow,
+  Circle,
+  SpinnerGap,
+  SealCheck,
+  Archive,
+  WarningCircle,
+  Rocket,
+  EyeSlash,
+  Eye,
+  CheckCircle,
+  XCircle,
+  Link as LinkIcon,
+  Trash,
+  Tag,
+  Check,
+} from "@phosphor-icons/react"
 import { motion, AnimatePresence } from "motion/react"
 import { NewTaskModal } from "@/components/new-task-modal"
 import {
@@ -43,7 +42,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuCheckboxItem,
 } from "@workspace/ui/components/dropdown-menu"
-import { Cancel01Icon } from "@hugeicons/core-free-icons"
+import { X } from "@phosphor-icons/react"
 import {
   DndContext,
   DragOverlay,
@@ -124,17 +123,17 @@ const SORTABLE_TRANSITION = null
 function getStatusIcon(status: Status, size = 14) {
   switch (status) {
     case "requests":
-      return <HugeiconsIcon icon={Loading03Icon} size={size} className="text-muted-foreground" />
+      return <SpinnerGap size={size} className="text-muted-foreground" />
     case "todo":
-      return <HugeiconsIcon icon={CircleIcon} size={size} className="text-muted-foreground" />
+      return <Circle size={size} className="text-muted-foreground" />
     case "in_progress":
-      return <HugeiconsIcon icon={Loading03Icon} size={size} className="text-yellow-500" />
+      return <SpinnerGap size={size} className="text-yellow-500" />
     case "ready":
-      return <HugeiconsIcon icon={CheckmarkBadge01Icon} size={size} className="text-emerald-500" />
+      return <SealCheck size={size} weight="fill" className="text-emerald-500" />
     case "shipped":
-      return <HugeiconsIcon icon={Rocket01Icon} size={size} className="text-blue-500" />
+      return <Rocket size={size} weight="fill" className="text-blue-500" />
     case "archive":
-      return <HugeiconsIcon icon={Archive01Icon} size={size} className="text-muted-foreground" />
+      return <Archive size={size} className="text-muted-foreground" />
   }
 }
 
@@ -145,15 +144,15 @@ function getColumnIcon(status: Status) {
 function getPriorityIcon(priority: Priority, size = 14) {
   switch (priority) {
     case "urgent":
-      return <HugeiconsIcon icon={AlertCircleIcon} size={size} className="text-red-500" />
+      return <WarningCircle size={size} weight="fill" className="text-red-500" />
     case "high":
-      return <HugeiconsIcon icon={SignalFull02Icon} size={size} className="text-orange-500" />
+      return <CellSignalFull size={size} className="text-orange-500" />
     case "medium":
-      return <HugeiconsIcon icon={SignalMedium02Icon} size={size} className="text-yellow-500" />
+      return <CellSignalMedium size={size} className="text-yellow-500" />
     case "low":
-      return <HugeiconsIcon icon={SignalLow02Icon} size={size} className="text-blue-400" />
+      return <CellSignalLow size={size} className="text-blue-400" />
     case "none":
-      return <HugeiconsIcon icon={SignalLow02Icon} size={size} className="text-muted-foreground" />
+      return <CellSignalLow size={size} className="text-muted-foreground" />
   }
 }
 
@@ -326,7 +325,7 @@ function EmptyBoardState({ onCreateTask }: { onCreateTask: () => void }) {
         className="w-full max-w-md rounded-[28px] border border-border/70 bg-gradient-to-b from-background to-sidebar/40 p-8 text-center shadow-[0_24px_80px_rgba(0,0,0,0.12)]"
       >
         <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-2xl bg-[#14120B]/10 text-[#14120B]">
-          <HugeiconsIcon icon={CheckmarkBadge01Icon} size={22} />
+          <SealCheck size={22} weight="fill" />
         </div>
         <h2 className="text-pretty text-xl font-semibold tracking-tight">No tasks yet</h2>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
@@ -365,7 +364,7 @@ function HiddenColumnsToolbar({
     <>
       <div className="flex items-center gap-1.5">
         <div className="mx-1.5 h-4 w-px bg-border" />
-        <HugeiconsIcon icon={ViewOffIcon} size={13} className="text-muted-foreground" />
+        <EyeSlash size={13} className="text-muted-foreground" />
         {hiddenColumns.map((status) => {
           const col = COLUMNS.find((c) => c.id === status)
           if (!col) return null
@@ -400,7 +399,7 @@ function HiddenColumnsToolbar({
                 }}
                 className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               >
-                <HugeiconsIcon icon={ViewIcon} size={13} />
+                <Eye size={13} />
                 Show column
               </button>
             </div>
@@ -508,7 +507,7 @@ const RequestRow = memo(function RequestRow({
             >
               <SourceIcon platform={source.platform} size={12} />
               {source.author}
-              <HugeiconsIcon icon={LinkSquare02Icon} size={9} className="opacity-60" />
+              <LinkIcon size={9} className="opacity-60" />
             </a>
           ) : (
             <span className="text-[11px] text-muted-foreground/60">Request</span>
@@ -543,7 +542,7 @@ const RequestRow = memo(function RequestRow({
           onClick={(e) => { e.stopPropagation(); onAccept(task) }}
           className="flex items-center gap-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
         >
-          <HugeiconsIcon icon={CheckmarkCircle02Icon} size={12} />
+          <CheckCircle size={12} weight="fill" />
           Accept
         </button>
         <button
@@ -551,7 +550,7 @@ const RequestRow = memo(function RequestRow({
           onClick={(e) => { e.stopPropagation(); onDeny(task) }}
           className="flex items-center gap-1.5 rounded-md border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-[11px] font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
         >
-          <HugeiconsIcon icon={Cancel02Icon} size={12} />
+          <XCircle size={12} />
           Deny
         </button>
       </div>
@@ -794,7 +793,7 @@ function TaskContextMenu({
       </ContextSubmenu>
 
       {/* Labels submenu */}
-      <ContextSubmenu label="Labels" icon={<HugeiconsIcon icon={Tag01Icon} size={14} />}>
+      <ContextSubmenu label="Labels" icon={<Tag size={14} />}>
         {labelConfig.names.map((label) => (
           <button
             key={label}
@@ -820,7 +819,7 @@ function TaskContextMenu({
         onClick={() => { onDelete(task.id); onClose() }}
         className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-sm text-destructive transition-colors hover:bg-destructive/10"
       >
-        <HugeiconsIcon icon={Delete02Icon} size={14} />
+        <Trash size={14} />
         <span>Delete task</span>
       </button>
     </div>,
@@ -935,7 +934,7 @@ const SortableListRow = memo(function SortableListRow({
               : "border-border bg-background opacity-0 group-hover:opacity-100"
           } ${hasSelection ? "!opacity-100" : ""}`}
         >
-          {isSelected && <HugeiconsIcon icon={Tick02Icon} size={10} strokeWidth={3} />}
+          {isSelected && <Check size={10} weight="bold" />}
         </div>
         <ListRowContent task={task} />
       </div>
@@ -1133,7 +1132,7 @@ function TaskDetailModal({
                       >
                         <SourceIcon platform={task.source!.platform} size={11} />
                         <span>{task.source!.author}</span>
-                        <HugeiconsIcon icon={LinkSquare02Icon} size={10} />
+                        <LinkIcon size={10} />
                       </a>
                     </>
                   )
@@ -1146,13 +1145,13 @@ function TaskDetailModal({
                   className="rounded-md p-1 text-muted-foreground/60 transition-colors hover:bg-destructive/10 hover:text-destructive"
                   title="Delete task"
                 >
-                  <HugeiconsIcon icon={Delete02Icon} size={14} />
+                  <Trash size={14} />
                 </button>
                 <button
                   onClick={onClose}
                   className="rounded-md p-1 text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
                 >
-                  <HugeiconsIcon icon={Cancel01Icon} size={14} />
+                  <X size={14} />
                 </button>
               </div>
             </div>
@@ -1326,7 +1325,7 @@ function TaskDetailModal({
                       onClick={() => { onAccept(task); onClose() }}
                       className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
                     >
-                      <HugeiconsIcon icon={CheckmarkCircle02Icon} size={14} />
+                      <CheckCircle size={14} weight="fill" />
                       Accept request
                     </button>
                     <button
@@ -1334,7 +1333,7 @@ function TaskDetailModal({
                       onClick={() => { onDeny(task); onClose() }}
                       className="flex items-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
                     >
-                      <HugeiconsIcon icon={Cancel02Icon} size={14} />
+                      <XCircle size={14} />
                       Deny request
                     </button>
                   </div>
@@ -1383,7 +1382,7 @@ function BulkActionToolbar({
           className="rounded-md p-0.5 text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
           title="Clear selection"
         >
-          <HugeiconsIcon icon={Cancel01Icon} size={13} />
+          <X size={13} />
         </button>
       </div>
 
@@ -1426,7 +1425,7 @@ function BulkActionToolbar({
       {/* Labels */}
       <DropdownMenu>
         <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
-          <HugeiconsIcon icon={Tag01Icon} size={13} />
+          <Tag size={13} />
           <span>Label</span>
         </DropdownMenuTrigger>
         <DropdownMenuContent side="top" align="center">
@@ -1444,7 +1443,7 @@ function BulkActionToolbar({
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => onChangeLabels([])}>
             <div className="flex items-center gap-2">
-              <HugeiconsIcon icon={Cancel02Icon} size={12} className="text-muted-foreground" />
+              <XCircle size={12} className="text-muted-foreground" />
               <span>Clear labels</span>
             </div>
           </DropdownMenuItem>
@@ -1459,7 +1458,7 @@ function BulkActionToolbar({
         onClick={onDelete}
         className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
       >
-        <HugeiconsIcon icon={Delete02Icon} size={13} />
+        <Trash size={13} />
         <span>Delete</span>
       </button>
     </motion.div>,
