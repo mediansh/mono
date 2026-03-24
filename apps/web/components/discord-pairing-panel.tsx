@@ -5,12 +5,9 @@ import { useMutation, useQuery } from "convex/react"
 import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  CheckmarkBadge02Icon,
-  Clock01Icon,
-  Key01Icon,
+  InformationCircleIcon,
   Link01Icon,
   Unlink01Icon,
-  InformationCircleIcon,
 } from "@hugeicons/core-free-icons"
 import { toast } from "sonner"
 import { Button } from "@workspace/ui/components/button"
@@ -42,8 +39,7 @@ function DiscordPairingSkeleton() {
   return (
     <div className="mx-auto w-full max-w-2xl px-10 py-10">
       <div className="mb-8 h-12 bg-muted/30" />
-      <div className="h-48 border border-border bg-card/50" />
-      <div className="mt-4 h-32 border border-border bg-card/30" />
+      <div className="h-36 border border-border bg-card/50" />
     </div>
   )
 }
@@ -111,6 +107,67 @@ export function DiscordPairingPanel() {
     }
   }
 
+  /* ── Connected state: just the status card + disconnect ── */
+  if (integration) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+        className="mx-auto w-full max-w-2xl px-10 py-10"
+      >
+        <div className="flex flex-col gap-6">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">Discord</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Manage the Discord server paired to this workspace.
+            </p>
+          </div>
+
+          <div className="rounded-none border border-border bg-card">
+            <div className="flex items-center gap-4 p-5">
+              <div className="flex size-10 items-center justify-center rounded-none bg-[#5865F2]/10">
+                <DiscordBrandIcon size={20} className="text-[#5865F2]" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-medium">{integration.guildName}</h3>
+                <p className="text-xs text-muted-foreground">
+                  Paired {formatTimestamp(integration.pairedAt)}
+                  {integration.channelId ? (
+                    <span className="ml-1 text-muted-foreground/60">
+                      &middot; Channel {integration.channelId}
+                    </span>
+                  ) : null}
+                </p>
+              </div>
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600">
+                <span className="size-1.5 bg-emerald-500" />
+                Connected
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between border-t border-border bg-muted/30 px-5 py-3">
+              <p className="text-xs text-muted-foreground">
+                Automations from this server are routed to {workspace.name}.
+              </p>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                disabled={isDisconnecting}
+                onClick={handleDisconnect}
+              >
+                <HugeiconsIcon icon={Unlink01Icon} size={13} strokeWidth={1.8} />
+                {isDisconnecting ? "Disconnecting..." : "Disconnect"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    )
+  }
+
+  /* ── Disconnected state: pairing form + how it works ── */
   return (
     <motion.div
       initial={{ opacity: 0, y: 18 }}
@@ -119,7 +176,6 @@ export function DiscordPairingPanel() {
       className="mx-auto w-full max-w-2xl px-10 py-10"
     >
       <div className="flex flex-col gap-6">
-        {/* Header */}
         <div>
           <h2 className="text-lg font-semibold tracking-tight">Discord</h2>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -127,40 +183,20 @@ export function DiscordPairingPanel() {
           </p>
         </div>
 
-        {/* Connection status card */}
+        {/* Connection card with pairing form */}
         <div className="rounded-none border border-border bg-card">
           <div className="flex items-center gap-4 p-5">
             <div className="flex size-10 items-center justify-center rounded-none bg-[#5865F2]/10">
               <DiscordBrandIcon size={20} className="text-[#5865F2]" />
             </div>
             <div className="flex-1">
-              <h3 className="text-sm font-medium">
-                {integration ? integration.guildName : "Not connected"}
-              </h3>
+              <h3 className="text-sm font-medium">Not connected</h3>
               <p className="text-xs text-muted-foreground">
-                {integration ? (
-                  <>
-                    Paired {formatTimestamp(integration.pairedAt)}
-                    {integration.channelId ? (
-                      <span className="ml-1 text-muted-foreground/60">
-                        &middot; Channel {integration.channelId}
-                      </span>
-                    ) : null}
-                  </>
-                ) : (
-                  <>Run <span className="font-medium text-foreground">/pair</span> in Discord and paste the code below.</>
-                )}
+                Run <span className="font-medium text-foreground">/pair</span> in Discord and paste the code below.
               </p>
             </div>
-            {integration ? (
-              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600">
-                <span className="size-1.5 bg-emerald-500" />
-                Connected
-              </span>
-            ) : null}
           </div>
 
-          {/* Pairing form */}
           <form onSubmit={handlePairWorkspace} className="border-t border-border p-5">
             <label htmlFor="pairing-code" className="mb-2 block text-sm font-medium">
               Pairing code
@@ -184,27 +220,14 @@ export function DiscordPairingPanel() {
             </div>
           </form>
 
-          {/* Save bar / disconnect */}
-          <div className="flex items-center justify-between border-t border-border bg-muted/30 px-5 py-3">
+          <div className="flex items-center border-t border-border bg-muted/30 px-5 py-3">
             <p className="text-xs text-muted-foreground">
               Codes expire after 10 minutes and can only be used once.
             </p>
-            {integration ? (
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                disabled={isDisconnecting}
-                onClick={handleDisconnect}
-              >
-                <HugeiconsIcon icon={Unlink01Icon} size={13} strokeWidth={1.8} />
-                {isDisconnecting ? "Disconnecting..." : "Disconnect"}
-              </Button>
-            ) : null}
           </div>
         </div>
 
-        {/* How it works */}
+        {/* How it works — only when not connected */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -230,30 +253,6 @@ export function DiscordPairingPanel() {
             </div>
           </div>
         </motion.div>
-
-        {/* What this enables — only show when connected */}
-        {integration ? (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-            className="rounded-none border border-border bg-card p-5"
-          >
-            <div className="flex items-start gap-3">
-              <HugeiconsIcon icon={CheckmarkBadge02Icon} size={16} strokeWidth={1.8} className="mt-0.5 text-emerald-500" />
-              <div>
-                <h4 className="text-sm font-medium">What this enables</h4>
-                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                  Discord automations can now target{" "}
-                  <span className="font-medium text-foreground">{workspace.name}</span>{" "}
-                  directly — no manual setup needed. Messages, commands, and events from{" "}
-                  <span className="font-medium text-foreground">{integration.guildName}</span>{" "}
-                  are routed to this workspace automatically.
-                </p>
-              </div>
-            </div>
-          </motion.div>
-        ) : null}
       </div>
     </motion.div>
   )
