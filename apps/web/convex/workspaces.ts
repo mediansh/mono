@@ -263,7 +263,7 @@ export const deleteWorkspace = mutation({
     const workspace = await ctx.db.get(args.workspaceId)
     if (!workspace) throw new Error("Workspace not found")
 
-    const [members, invites, tasks] = await Promise.all([
+    const [members, invites, tasks, discordIntegrations, pairedCodes] = await Promise.all([
       ctx.db
         .query("workspaceMembers")
         .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
@@ -276,6 +276,14 @@ export const deleteWorkspace = mutation({
         .query("tasks")
         .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
         .collect(),
+      ctx.db
+        .query("discordWorkspaceIntegrations")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+        .collect(),
+      ctx.db
+        .query("discordPairingCodes")
+        .withIndex("by_paired_workspace", (q) => q.eq("pairedWorkspaceId", args.workspaceId))
+        .collect(),
     ])
 
     for (const task of tasks) {
@@ -284,6 +292,14 @@ export const deleteWorkspace = mutation({
 
     for (const invite of invites) {
       await ctx.db.delete(invite._id)
+    }
+
+    for (const integration of discordIntegrations) {
+      await ctx.db.delete(integration._id)
+    }
+
+    for (const pairingCode of pairedCodes) {
+      await ctx.db.delete(pairingCode._id)
     }
 
     for (const member of members) {

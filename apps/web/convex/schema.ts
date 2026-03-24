@@ -51,6 +51,35 @@ export default defineSchema({
     .index("by_workspace", ["workspaceId"])
     .index("by_workspace_status", ["workspaceId", "status"]),
 
+  discordPairingCodes: defineTable({
+    code: v.string(),
+    guildId: v.string(),
+    guildName: v.string(),
+    channelId: v.optional(v.string()),
+    issuedByDiscordUserId: v.string(),
+    issuedByDiscordUsername: v.optional(v.string()),
+    status: v.union(v.literal("pending"), v.literal("paired"), v.literal("expired")),
+    expiresAt: v.number(),
+    pairedWorkspaceId: v.optional(v.id("workspaces")),
+    pairedByUserId: v.optional(v.string()),
+    pairedAt: v.optional(v.number()),
+  })
+    .index("by_code", ["code"])
+    .index("by_guild", ["guildId"])
+    .index("by_paired_workspace", ["pairedWorkspaceId"]),
+
+  discordWorkspaceIntegrations: defineTable({
+    workspaceId: v.id("workspaces"),
+    guildId: v.string(),
+    guildName: v.string(),
+    channelId: v.optional(v.string()),
+    pairedByUserId: v.string(),
+    pairedAt: v.number(),
+    pairingCodeId: v.id("discordPairingCodes"),
+  })
+    .index("by_workspace", ["workspaceId"])
+    .index("by_guild", ["guildId"]),
+
   tasks: defineTable({
     workspaceId: v.id("workspaces"),
     taskCode: v.string(),

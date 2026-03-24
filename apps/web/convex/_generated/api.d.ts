@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as discord from "../discord.js";
 import type * as permissions from "../permissions.js";
 import type * as tasks from "../tasks.js";
 import type * as workspaces from "../workspaces.js";
@@ -19,6 +20,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  discord: typeof discord;
   permissions: typeof permissions;
   tasks: typeof tasks;
   workspaces: typeof workspaces;
