@@ -12,6 +12,13 @@ import {
 import { toast } from "sonner"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@workspace/ui/components/dialog"
 import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
 import { SettingsAccessState } from "@/components/settings-access-state"
@@ -49,6 +56,7 @@ export function DiscordPairingPanel() {
   const [pairingCode, setPairingCode] = useState("")
   const [isPairing, setIsPairing] = useState(false)
   const [isDisconnecting, setIsDisconnecting] = useState(false)
+  const [disconnectOpen, setDisconnectOpen] = useState(false)
 
   const integrationState = useQuery(
     api.discord.getWorkspaceDiscordIntegration,
@@ -99,6 +107,7 @@ export function DiscordPairingPanel() {
     setIsDisconnecting(true)
     try {
       await disconnectIntegration({ workspaceId: workspace._id })
+      setDisconnectOpen(false)
       toast.success("Discord server disconnected.")
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to disconnect Discord.")
@@ -154,15 +163,46 @@ export function DiscordPairingPanel() {
                 type="button"
                 variant="destructive"
                 size="sm"
-                disabled={isDisconnecting}
-                onClick={handleDisconnect}
+                onClick={() => setDisconnectOpen(true)}
               >
                 <HugeiconsIcon icon={Unlink01Icon} size={13} strokeWidth={1.8} />
-                {isDisconnecting ? "Disconnecting..." : "Disconnect"}
+                Disconnect
               </Button>
             </div>
           </div>
         </div>
+
+        <Dialog open={disconnectOpen} onOpenChange={setDisconnectOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Disconnect Discord</DialogTitle>
+              <DialogDescription>
+                This will unpair{" "}
+                <span className="font-medium text-foreground">{integration.guildName}</span>{" "}
+                from{" "}
+                <span className="font-medium text-foreground">{workspace.name}</span>.
+                Discord automations will stop routing to this workspace.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setDisconnectOpen(false)}
+                className="flex h-9 flex-1 items-center justify-center rounded-none border border-border text-sm font-medium transition-colors hover:bg-muted"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDisconnecting}
+                onClick={handleDisconnect}
+                className="flex h-9 flex-1 items-center justify-center rounded-none bg-destructive text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:opacity-50"
+              >
+                {isDisconnecting ? "Disconnecting..." : "Disconnect"}
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </motion.div>
     )
   }
