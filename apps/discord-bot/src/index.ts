@@ -9,6 +9,7 @@ import {
   Events,
   GatewayIntentBits,
   InteractionContextType,
+  MessageFlags,
   REST,
   Routes,
   SlashCommandBuilder,
@@ -34,15 +35,15 @@ const issuePairingCodeMutation = makeFunctionReference<
 >("discord:issuePairingCode")
 
 for (const envPath of [
-  path.join(botRoot, ".env.local"),
-  path.join(botRoot, ".env"),
-  path.join(repoRoot, ".env.local"),
   path.join(repoRoot, ".env"),
-  path.join(repoRoot, "apps/web/.env.local"),
+  path.join(repoRoot, ".env.local"),
   path.join(repoRoot, "apps/web/.env"),
+  path.join(repoRoot, "apps/web/.env.local"),
+  path.join(botRoot, ".env"),
+  path.join(botRoot, ".env.local"),
 ]) {
   if (existsSync(envPath)) {
-    loadEnv({ path: envPath, override: false, quiet: true })
+    loadEnv({ path: envPath, override: true, quiet: true })
   }
 }
 
@@ -109,7 +110,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   if (!interaction.inGuild() || !interaction.guildId || !interaction.guild) {
     await interaction.reply({
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
       content: "Run `/pair` inside the Discord server you want to connect.",
     })
     return
@@ -128,7 +129,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     const expiresAt = Math.floor(result.expiresAt / 1000)
 
     await interaction.reply({
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
       content: [
         `Pairing code for **${interaction.guild.name}**: \`${result.code}\``,
         `Open Median, go to Discord integrations, and enter it before <t:${expiresAt}:R>.`,
@@ -137,7 +138,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
   } catch (error) {
     console.error("Failed to issue pairing code", error)
     await interaction.reply({
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
       content: "Could not generate a pairing code. Check the bot environment and try again.",
     })
   }
