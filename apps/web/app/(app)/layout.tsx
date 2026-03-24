@@ -8,7 +8,7 @@ import { RoutePrefetch } from "@/components/route-prefetch"
 import { WorkspaceProvider } from "@/components/workspace-provider"
 import { WorkspaceGuard } from "@/components/workspace-guard"
 
-const appRoutes = ["/app", "/app/setup", "/app/settings", "/app/settings/labels", "/app/settings/members"]
+const appRoutes = ["/app", "/app/setup", "/app/settings", "/app/settings/labels", "/app/settings/members", "/app/integrations", "/app/integrations/discord", "/app/integrations/linear", "/app/integrations/x", "/app/integrations/github"]
 
 export default function AppLayout({
   children,

@@ -85,6 +85,7 @@ import {
   type LocalTaskDoc as TaskDoc,
 } from "@/lib/local-first-store"
 import { hasTaskWritePermission } from "@/lib/workspace-permissions"
+import { useSearchPaletteTaskEvent } from "@/components/search-palette"
 
 interface Task extends Omit<TaskDoc, "_syncStatus"> {
   id: string
@@ -560,6 +561,8 @@ const RequestRow = memo(function RequestRow({
 
 // ── Requests Group (non-draggable, distinct design) ──
 
+const REQUESTS_PREVIEW_LIMIT = 3
+
 function RequestsGroup({
   tasks,
   groupIndex,
@@ -579,6 +582,11 @@ function RequestsGroup({
   onDeny: (task: Task) => void
   onSelectTask: (task: Task) => void
 }) {
+  const [showAll, setShowAll] = useState(false)
+  const hasMore = tasks.length > REQUESTS_PREVIEW_LIMIT
+  const visibleTasks = showAll ? tasks : tasks.slice(0, REQUESTS_PREVIEW_LIMIT)
+  const hiddenCount = tasks.length - REQUESTS_PREVIEW_LIMIT
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
@@ -614,7 +622,7 @@ function RequestsGroup({
             className="overflow-hidden"
           >
             <div className="grid grid-cols-1 gap-2 px-4 py-3 sm:grid-cols-2 lg:grid-cols-3">
-              {tasks.map((task) => (
+              {visibleTasks.map((task) => (
                 <RequestRow
                   key={task.id}
                   task={task}
@@ -625,6 +633,27 @@ function RequestsGroup({
                 />
               ))}
             </div>
+            {hasMore && !showAll && (
+              <div className="px-4 pb-3">
+                <button
+                  onClick={() => setShowAll(true)}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground"
+                >
+                  View all requests
+                  <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px]">{hiddenCount} more</span>
+                </button>
+              </div>
+            )}
+            {hasMore && showAll && (
+              <div className="px-4 pb-3">
+                <button
+                  onClick={() => setShowAll(false)}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground"
+                >
+                  Show fewer
+                </button>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -1039,12 +1068,16 @@ function TaskDetailModal({
   onClose,
   onUpdate,
   onDelete,
+  onAccept,
+  onDeny,
   canManageTasks,
 }: {
   task: Task | null
   onClose: () => void
   onUpdate: (taskId: string, updates: Partial<Task>) => void
   onDelete: (taskId: string) => void
+  onAccept?: (task: Task) => void
+  onDeny?: (task: Task) => void
   canManageTasks: boolean
 }) {
   const labelConfig = useLabelConfig()
@@ -1282,6 +1315,31 @@ function TaskDetailModal({
                   </div>
                 )}
               </div>
+
+              {/* Accept / Deny for request tasks */}
+              {task.status === "requests" && onAccept && onDeny && (
+                <>
+                  <div className="h-px bg-border" />
+                  <div className="flex items-center gap-2">
+                    <button
+                      disabled={!canManageTasks}
+                      onClick={() => { onAccept(task); onClose() }}
+                      className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
+                    >
+                      <HugeiconsIcon icon={CheckmarkCircle02Icon} size={14} />
+                      Accept request
+                    </button>
+                    <button
+                      disabled={!canManageTasks}
+                      onClick={() => { onDeny(task); onClose() }}
+                      className="flex items-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
+                    >
+                      <HugeiconsIcon icon={Cancel02Icon} size={14} />
+                      Deny request
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -1464,6 +1522,16 @@ function ListView({
   const handleSelectTask = useCallback((task: Task) => {
     setSelectedTaskId(task.id)
   }, [])
+
+  // Signal that the board is mounted and ready to receive task-open events
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("search-palette:board-ready"))
+  }, [])
+
+  // Listen for task-open events from search palette
+  useSearchPaletteTaskEvent(useCallback((taskId: string) => {
+    setSelectedTaskId(taskId)
+  }, []))
 
   const handleToggleSelectTask = useCallback((taskId: string, shiftKey: boolean) => {
     if (!canManageTasks) return
@@ -1707,6 +1775,8 @@ function ListView({
       onClose={() => setSelectedTaskId(null)}
       onUpdate={onUpdateTask}
       onDelete={(taskId) => { onDeleteTask(taskId); setSelectedTaskId(null) }}
+      onAccept={(task) => { onAcceptRequest(task); setSelectedTaskId(null) }}
+      onDeny={(task) => { onDenyRequest(task); setSelectedTaskId(null) }}
       canManageTasks={canManageTasks}
     />
 
@@ -1831,8 +1901,10 @@ export function KanbanBoard() {
 
   function handleAcceptRequest(task: Task) {
     if (!workspaceId || !taskDocs || !canManageTasks) return
+    const prevTasks = taskDocs
     const nextTasks = moveTaskDocs(taskDocs, task.id, "todo", 0)
     setWorkspaceTasks(workspaceId, nextTasks)
+    toast.success(`Accepted "${task.title}" → Todo`)
     void reorderTasks({
       workspaceId,
       changes: nextTasks.map((item) => ({
@@ -1840,15 +1912,21 @@ export function KanbanBoard() {
         status: item.status,
         order: item.order,
       })),
+    }).catch(() => {
+      setWorkspaceTasks(workspaceId, prevTasks)
+      toast.error("Failed to accept request. Try again.")
     })
   }
 
   function handleDenyRequest(task: Task) {
-    if (!canManageTasks || task.id.startsWith("optimistic:")) return
-    if (workspaceId) {
-      updateWorkspaceTasks(workspaceId, (tasks) => tasks.filter((item) => item._id !== task.id))
-    }
-    void deleteTask({ taskId: task.id as Id<"tasks"> })
+    if (!workspaceId || !canManageTasks || task.id.startsWith("optimistic:")) return
+    const prevTasks = taskDocs ?? []
+    updateWorkspaceTasks(workspaceId, (tasks) => tasks.filter((item) => item._id !== task.id))
+    toast.success(`Denied "${task.title}".`)
+    void deleteTask({ taskId: task.id as Id<"tasks"> }).catch(() => {
+      updateWorkspaceTasks(workspaceId, (tasks) => sortTaskDocs([...tasks, ...prevTasks.filter((t) => t._id === task.id)]))
+      toast.error("Failed to deny request. Try again.")
+    })
   }
 
   function handleUpdateTask(taskId: string, updates: Partial<Task>) {

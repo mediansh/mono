@@ -19,10 +19,12 @@ import {
   Add01Icon,
   Tick02Icon,
   Image01Icon,
+  ConnectIcon,
 } from "@hugeicons/core-free-icons"
 import { motion } from "motion/react"
 import { Facehash } from "facehash"
 import { NewTaskModal } from "@/components/new-task-modal"
+import { SearchPalette } from "@/components/search-palette"
 import { api } from "@/convex/_generated/api"
 import { Logo } from "@/components/logo"
 import { useWorkspace } from "@/components/workspace-provider"
@@ -61,6 +63,7 @@ import {
 
 const mainNav = [
   { label: "Home", href: "/app", icon: Home01Icon },
+  { label: "Integrations", href: "/app/integrations", icon: ConnectIcon },
 ]
 
 function CreateWorkspaceModal({
@@ -247,6 +250,7 @@ export function AppSidebar() {
   const [mounted, setMounted] = useState(false)
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [newTaskOpen, setNewTaskOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
   const pathname = usePathname()
   const { signOut } = useClerk()
   const { user } = useUser()
@@ -279,6 +283,18 @@ export function AppSidebar() {
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [canManageTasks])
+
+  // Cmd+K / Ctrl+K to open search palette
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault()
+        setSearchOpen(true)
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [])
 
   return (
     <>
@@ -314,7 +330,10 @@ export function AppSidebar() {
                   transition={{ duration: 0.25, delay: 0.05, ease: "easeOut" }}
                 >
                   <SidebarMenuItem>
-                    <SidebarMenuButton className="text-muted-foreground ring-1 ring-sidebar-border">
+                    <SidebarMenuButton
+                      onClick={() => setSearchOpen(true)}
+                      className="text-muted-foreground ring-1 ring-sidebar-border"
+                    >
                       <HugeiconsIcon icon={Search01Icon} size={16} strokeWidth={2} />
                       <span>Search</span>
                       <kbd className="ml-auto hidden rounded border border-sidebar-border bg-sidebar px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground group-data-[collapsible=icon]:hidden lg:inline">
@@ -355,33 +374,38 @@ export function AppSidebar() {
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
-                {mainNav.map((item, i) => (
-                  <motion.div
-                    key={item.href}
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{
-                      duration: 0.25,
-                      delay: 0.1 + i * 0.05,
-                      ease: "easeOut",
-                    }}
-                  >
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        render={<Link href={item.href} />}
-                        isActive={pathname === item.href}
-                        className={
-                          pathname === item.href
-                            ? "data-active:bg-[#0496FF]/10 data-active:text-[#0496FF]"
-                            : undefined
-                        }
-                      >
-                        <HugeiconsIcon icon={item.icon} size={16} strokeWidth={2} />
-                        <span>{item.label}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  </motion.div>
-                ))}
+                {mainNav.map((item, i) => {
+                  const isActive = item.href === "/app"
+                    ? pathname === "/app"
+                    : pathname.startsWith(item.href)
+                  return (
+                    <motion.div
+                      key={item.href}
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{
+                        duration: 0.25,
+                        delay: 0.1 + i * 0.05,
+                        ease: "easeOut",
+                      }}
+                    >
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          render={<Link href={item.href} />}
+                          isActive={isActive}
+                          className={
+                            isActive
+                              ? "data-active:bg-[#0496FF]/10 data-active:text-[#0496FF]"
+                              : undefined
+                          }
+                        >
+                          <HugeiconsIcon icon={item.icon} size={16} strokeWidth={2} />
+                          <span>{item.label}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    </motion.div>
+                  )
+                })}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -548,6 +572,11 @@ export function AppSidebar() {
       <NewTaskModal
         open={newTaskOpen}
         onOpenChange={setNewTaskOpen}
+      />
+
+      <SearchPalette
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
       />
     </>
   )
