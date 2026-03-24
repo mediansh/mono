@@ -4,8 +4,11 @@ import { usePathname } from "next/navigation"
 import { SidebarProvider, SidebarInset } from "@workspace/ui/components/sidebar"
 import { AppSidebar } from "@/components/sidebar"
 import { PageTransition } from "@/components/page-transition"
+import { RoutePrefetch } from "@/components/route-prefetch"
 import { WorkspaceProvider } from "@/components/workspace-provider"
 import { WorkspaceGuard } from "@/components/workspace-guard"
+
+const appRoutes = ["/app", "/app/setup", "/app/settings", "/app/settings/labels", "/app/settings/members"]
 
 export default function AppLayout({
   children,
@@ -17,6 +20,7 @@ export default function AppLayout({
 
   return (
     <WorkspaceProvider>
+      <RoutePrefetch routes={appRoutes} />
       <WorkspaceGuard>
         {isSetup ? (
           children

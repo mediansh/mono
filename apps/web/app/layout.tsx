@@ -1,9 +1,11 @@
 import type { Metadata } from "next"
+import { Suspense } from "react"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Agentation } from "agentation"
 
 import "@workspace/ui/globals.css"
 import { Providers } from "@/components/providers"
+import { RoutePrefetch } from "@/components/route-prefetch"
 import { cn } from "@workspace/ui/lib/utils"
 
 export const metadata: Metadata = {
@@ -27,6 +29,8 @@ const fontMono = Geist_Mono({
   variable: "--font-mono",
 })
 
+const globalRoutes = ["/", "/app", "/app/setup", "/sign-in", "/sign-up"]
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -39,9 +43,12 @@ export default function RootLayout({
       className={cn("antialiased", fontMono.variable, "font-sans", fontSans.variable)}
     >
       <body>
-        <Providers>
-          {children}
-        </Providers>
+        <Suspense fallback={null}>
+          <Providers>
+            <RoutePrefetch routes={globalRoutes} />
+            {children}
+          </Providers>
+        </Suspense>
         {process.env.NODE_ENV === "development" && <Agentation />}
       </body>
     </html>

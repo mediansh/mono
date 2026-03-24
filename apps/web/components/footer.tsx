@@ -1,3 +1,6 @@
+"use client"
+
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { ArrowUpRight } from "lucide-react"
@@ -56,6 +59,12 @@ const footerLinks = [
 ]
 
 export function Footer() {
+  const [year, setYear] = useState<number | null>(null)
+
+  useEffect(() => {
+    setYear(new Date().getFullYear())
+  }, [])
+
   return (
     <footer className="border-t border-navbar-border bg-navbar">
       <div className="mx-auto max-w-7xl px-6 py-8">
@@ -106,7 +115,7 @@ export function Footer() {
         {/* Bottom bar */}
         <div className="mt-8 flex items-center justify-between border-t border-navbar-border pt-5">
           <div className="text-navbar-foreground/50 text-sm">
-            &copy; {new Date().getFullYear()} Median.
+            &copy; {year ?? ""} Median.
           </div>
           <ThemeSwitcher />
         </div>
