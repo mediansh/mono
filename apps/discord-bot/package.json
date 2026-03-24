@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/index.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "start": "node dist/index.js"
   },
@@ -16,6 +17,7 @@
   "devDependencies": {
     "@types/node": "^25.1.0",
     "@workspace/typescript-config": "workspace:*",
+    "tsx": "^4.20.6",
     "typescript": "^5.9.3"
   }
 }
