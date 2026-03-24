@@ -58,14 +58,14 @@ export default function IntegrationsLayout({
                   href={item.href}
                   className={`group relative flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors ${
                     isActive
-                      ? "bg-[#0496FF]/10 text-[#0496FF]"
+                      ? "bg-[#14120B]/10 text-[#14120B]"
                       : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
                   }`}
                 >
                   <item.icon
                     size={15}
                     className={
-                      isActive ? "text-[#0496FF]" : "text-muted-foreground group-hover:text-foreground"
+                      isActive ? "text-[#14120B]" : "text-muted-foreground group-hover:text-foreground"
                     }
                   />
                   <span>{item.label}</span>

@@ -53,12 +53,12 @@ export function InvitePageClient({ token }: { token: string }) {
         transition={{ duration: 0.24, ease: "easeOut" }}
         className="mx-auto flex w-full max-w-xl flex-col gap-6 rounded-[28px] border border-border bg-background/90 p-8 shadow-[0_40px_120px_-60px_rgba(4,150,255,0.45)] backdrop-blur-xl"
       >
-        <div className="flex size-14 items-center justify-center rounded-[20px] border border-border bg-[#0496FF]/10">
+        <div className="flex size-14 items-center justify-center rounded-[20px] border border-border bg-[#14120B]/10">
           <HugeiconsIcon
             icon={UserMultiple02Icon}
             size={24}
             strokeWidth={1.7}
-            className="text-[#0496FF]"
+            className="text-[#14120B]"
           />
         </div>
 
@@ -112,7 +112,7 @@ export function InvitePageClient({ token }: { token: string }) {
                   icon={CheckmarkBadge01Icon}
                   size={18}
                   strokeWidth={1.6}
-                  className="text-[#0496FF]"
+                  className="text-[#14120B]"
                 />
               </div>
               <p className="text-sm">
@@ -129,7 +129,7 @@ export function InvitePageClient({ token }: { token: string }) {
                 type="button"
                 disabled={accepting}
                 onClick={handleAcceptInvite}
-                className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#0496FF] px-4 text-sm font-medium text-white transition-colors hover:bg-[#0496FF]/90 disabled:opacity-60"
+                className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#14120B] px-4 text-sm font-medium text-white transition-colors hover:bg-[#14120B]/90 disabled:opacity-60"
               >
                 <HugeiconsIcon icon={LinkSquare02Icon} size={16} strokeWidth={1.7} />
                 {accepting ? "Joining..." : "Accept invite"}
@@ -137,7 +137,7 @@ export function InvitePageClient({ token }: { token: string }) {
             ) : (
               <Link
                 href={authRedirect}
-                className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#0496FF] px-4 text-sm font-medium text-white transition-colors hover:bg-[#0496FF]/90"
+                className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#14120B] px-4 text-sm font-medium text-white transition-colors hover:bg-[#14120B]/90"
               >
                 <HugeiconsIcon icon={LinkSquare02Icon} size={16} strokeWidth={1.7} />
                 Sign in to accept

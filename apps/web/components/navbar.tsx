@@ -24,7 +24,7 @@ export function Navbar() {
     <header className="sticky top-0 z-50 w-full border-b border-navbar-border bg-navbar">
       <nav className="mx-auto flex h-11 max-w-7xl items-center px-6">
         {/* Logo */}
-        <Link href="/" className="mr-6 flex-shrink-0 text-navbar-accent">
+        <Link href="/" className="mr-6 flex-shrink-0">
           <Logo />
         </Link>
 

@@ -42,7 +42,7 @@ export async function POST(request: Request) {
         <div style="font-family: Inter, Arial, sans-serif; padding: 24px; color: #0f172a;">
           <p style="margin: 0 0 12px;">${inviterName} invited you to join <strong>${body.workspaceName}</strong> on Median.</p>
           <p style="margin: 0 0 20px;">You will join as a <strong>${roleLabel}</strong>.</p>
-          <a href="${body.inviteUrl}" style="display: inline-block; border-radius: 999px; background: #0496FF; color: white; padding: 12px 18px; text-decoration: none; font-weight: 600;">Accept invite</a>
+          <a href="${body.inviteUrl}" style="display: inline-block; border-radius: 999px; background: #14120B; color: white; padding: 12px 18px; text-decoration: none; font-weight: 600;">Accept invite</a>
           <p style="margin: 20px 0 0; color: #64748b; font-size: 14px;">If the button does not work, open this link:<br /><a href="${body.inviteUrl}">${body.inviteUrl}</a></p>
         </div>
       `,

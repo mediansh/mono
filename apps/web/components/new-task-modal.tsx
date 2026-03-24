@@ -760,7 +760,7 @@ export function NewTaskModal({
                     >
                       <div
                         className={`relative h-5 w-8 rounded-full transition-colors ${
-                          createMore ? "bg-[#0496FF]" : "bg-accent"
+                          createMore ? "bg-[#14120B]" : "bg-accent"
                         }`}
                       >
                         <motion.div
@@ -776,7 +776,7 @@ export function NewTaskModal({
                     <button
                       onClick={handleCreate}
                       disabled={!title.trim() || !currentWorkspace}
-                      className="flex items-center rounded-lg bg-[#0496FF] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0496FF]/90 disabled:opacity-50"
+                      className="flex items-center rounded-lg bg-[#14120B] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#14120B]/90 disabled:opacity-50"
                     >
                       Create task
                     </button>
@@ -797,14 +797,14 @@ export function NewTaskModal({
                   placeholder="e.g. Create tasks for building a user authentication flow with signup, login, password reset, and email verification..."
                   autoFocus
                   rows={6}
-                  className="w-full flex-1 resize-none rounded-lg border border-border bg-accent/30 p-3 text-sm transition-colors outline-none placeholder:text-muted-foreground/50 focus:border-[#0496FF]/50 focus:ring-1 focus:ring-[#0496FF]/20"
+                  className="w-full flex-1 resize-none rounded-lg border border-border bg-accent/30 p-3 text-sm transition-colors outline-none placeholder:text-muted-foreground/50 focus:border-[#14120B]/50 focus:ring-1 focus:ring-[#14120B]/20"
                 />
               </div>
               <div className="flex items-center justify-end border-t border-border px-4 py-3">
                 <button
                   onClick={handleGenerateTasks}
                   disabled={!aiPrompt.trim() || isGenerating}
-                  className="flex items-center gap-2 rounded-lg bg-[#0496FF] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0496FF]/90 disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-lg bg-[#14120B] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#14120B]/90 disabled:opacity-50"
                 >
                   {isGenerating ? "Generating..." : "Generate tasks"}
                   <HugeiconsIcon

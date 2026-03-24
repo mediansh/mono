@@ -232,7 +232,7 @@ export default function MembersSettingsPage() {
             onClick={() => setInviteMode("link")}
             className={`flex items-center gap-1.5 border-b-2 px-3 pb-3 text-sm font-medium transition-colors ${
               inviteMode === "link"
-                ? "border-[#0496FF] text-[#0496FF]"
+                ? "border-[#14120B] text-[#14120B]"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -244,7 +244,7 @@ export default function MembersSettingsPage() {
             onClick={() => setInviteMode("email")}
             className={`flex items-center gap-1.5 border-b-2 px-3 pb-3 text-sm font-medium transition-colors ${
               inviteMode === "email"
-                ? "border-[#0496FF] text-[#0496FF]"
+                ? "border-[#14120B] text-[#14120B]"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -275,7 +275,7 @@ export default function MembersSettingsPage() {
                 type="button"
                 disabled={!canManageMembers || creatingLink}
                 onClick={handleCreateInviteLink}
-                className="flex h-8 items-center justify-center gap-1.5 rounded-md bg-[#0496FF] px-3.5 text-xs font-medium text-white transition-colors hover:bg-[#0496FF]/90 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-8 items-center justify-center gap-1.5 rounded-md bg-[#14120B] px-3.5 text-xs font-medium text-white transition-colors hover:bg-[#14120B]/90 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {creatingLink ? "Creating..." : "Create and copy link"}
               </button>
@@ -315,7 +315,7 @@ export default function MembersSettingsPage() {
                 type="button"
                 disabled={!canManageMembers || sendingInvite || !emailValue.trim()}
                 onClick={handleSendEmailInvite}
-                className="flex h-8 items-center justify-center gap-1.5 rounded-md bg-[#0496FF] px-3.5 text-xs font-medium text-white transition-colors hover:bg-[#0496FF]/90 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-8 items-center justify-center gap-1.5 rounded-md bg-[#14120B] px-3.5 text-xs font-medium text-white transition-colors hover:bg-[#14120B]/90 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {sendingInvite ? "Sending..." : "Send invite"}
               </button>

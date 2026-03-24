@@ -325,7 +325,7 @@ function EmptyBoardState({ onCreateTask }: { onCreateTask: () => void }) {
         transition={{ duration: 0.24, ease: "easeOut" }}
         className="w-full max-w-md rounded-[28px] border border-border/70 bg-gradient-to-b from-background to-sidebar/40 p-8 text-center shadow-[0_24px_80px_rgba(0,0,0,0.12)]"
       >
-        <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-2xl bg-[#0496FF]/10 text-[#0496FF]">
+        <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-2xl bg-[#14120B]/10 text-[#14120B]">
           <HugeiconsIcon icon={CheckmarkBadge01Icon} size={22} />
         </div>
         <h2 className="text-pretty text-xl font-semibold tracking-tight">No tasks yet</h2>
@@ -334,7 +334,7 @@ function EmptyBoardState({ onCreateTask }: { onCreateTask: () => void }) {
         </p>
         <button
           onClick={onCreateTask}
-          className="mt-6 inline-flex h-11 items-center justify-center rounded-xl bg-[#0496FF] px-5 text-sm font-medium text-white transition-colors hover:bg-[#0496FF]/90"
+          className="mt-6 inline-flex h-11 items-center justify-center rounded-xl bg-[#14120B] px-5 text-sm font-medium text-white transition-colors hover:bg-[#14120B]/90"
         >
           Create first task
         </button>

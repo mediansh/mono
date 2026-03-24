@@ -229,7 +229,7 @@ function CreateWorkspaceModal({
           <button
             type="submit"
             disabled={loading || !name.trim()}
-            className="flex h-10 items-center justify-center rounded-lg bg-[#0496FF] text-sm font-medium text-white transition-colors hover:bg-[#0496FF]/90 disabled:opacity-50"
+            className="flex h-10 items-center justify-center rounded-lg bg-[#14120B] text-sm font-medium text-white transition-colors hover:bg-[#14120B]/90 disabled:opacity-50"
           >
             {loading ? (
               <svg className="size-4 animate-spin" viewBox="0 0 24 24" fill="none">
@@ -312,7 +312,7 @@ export function AppSidebar() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.3, ease: "easeOut" }}
                 >
-                  <Logo className="!h-5 !w-auto text-[#0496FF]" />
+                  <Logo className="!h-5 !w-auto" />
                 </motion.div>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -354,7 +354,7 @@ export function AppSidebar() {
                         setNewTaskOpen(true)
                       }}
                       disabled={!canManageTasks}
-                      className="bg-[#0496FF] text-white hover:bg-[#0496FF]/85 hover:text-white active:bg-[#0496FF]/70 active:text-white data-active:bg-[#0496FF] data-active:text-white"
+                      className="bg-[#14120B] text-white hover:bg-[#14120B]/85 hover:text-white active:bg-[#14120B]/70 active:text-white data-active:bg-[#14120B] data-active:text-white"
                     >
                       <HugeiconsIcon icon={QuillWrite01Icon} size={16} strokeWidth={2} />
                       <span>New</span>
@@ -395,7 +395,7 @@ export function AppSidebar() {
                           isActive={isActive}
                           className={
                             isActive
-                              ? "data-active:bg-[#0496FF]/10 data-active:text-[#0496FF]"
+                              ? "data-active:bg-[#14120B]/10 data-active:text-[#14120B]"
                               : undefined
                           }
                         >
@@ -424,7 +424,7 @@ export function AppSidebar() {
                 isActive={pathname.startsWith("/app/settings")}
                 className={
                   pathname.startsWith("/app/settings")
-                    ? "data-active:bg-[#0496FF]/10 data-active:text-[#0496FF]"
+                    ? "data-active:bg-[#14120B]/10 data-active:text-[#14120B]"
                     : undefined
                 }
               >
@@ -497,7 +497,7 @@ export function AppSidebar() {
                                 icon={Tick02Icon}
                                 size={14}
                                 strokeWidth={2}
-                                className="ml-auto text-[#0496FF]"
+                                className="ml-auto text-[#14120B]"
                               />
                             )}
                           </DropdownMenuItem>

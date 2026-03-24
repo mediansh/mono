@@ -161,7 +161,7 @@ export default function LabelsSettingsPage() {
               type="button"
               disabled={saving || labels.some((l) => !l.name.trim())}
               onClick={handleSave}
-              className="flex h-8 items-center justify-center rounded-md bg-[#0496FF] px-3.5 text-xs font-medium text-white transition-colors hover:bg-[#0496FF]/90 disabled:opacity-40"
+              className="flex h-8 items-center justify-center rounded-md bg-[#14120B] px-3.5 text-xs font-medium text-white transition-colors hover:bg-[#14120B]/90 disabled:opacity-40"
             >
               {saving ? "Saving..." : "Save"}
             </button>

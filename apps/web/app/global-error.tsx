@@ -30,7 +30,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
     <html lang="en">
       <body className="flex min-h-screen items-center justify-center bg-background px-6 text-foreground">
         <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-sm">
-          <p className="text-sm font-medium text-[#0496FF]">
+          <p className="text-sm font-medium text-[#14120B]">
             Application error
           </p>
           <h1 className="mt-2 text-2xl font-semibold">Something went wrong</h1>
@@ -45,7 +45,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
           ) : null}
           <button
             onClick={reset}
-            className="mt-5 inline-flex rounded-lg bg-[#0496FF] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0496FF]/90"
+            className="mt-5 inline-flex rounded-lg bg-[#14120B] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#14120B]/90"
           >
             Try again
           </button>
