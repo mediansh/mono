@@ -16,6 +16,7 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, "../../..")
+const botRoot = path.resolve(__dirname, "..")
 const issuePairingCodeMutation = makeFunctionReference<
   "mutation",
   {
@@ -33,13 +34,15 @@ const issuePairingCodeMutation = makeFunctionReference<
 >("discord:issuePairingCode")
 
 for (const envPath of [
+  path.join(botRoot, ".env.local"),
+  path.join(botRoot, ".env"),
   path.join(repoRoot, ".env.local"),
   path.join(repoRoot, ".env"),
   path.join(repoRoot, "apps/web/.env.local"),
   path.join(repoRoot, "apps/web/.env"),
 ]) {
   if (existsSync(envPath)) {
-    loadEnv({ path: envPath, override: false })
+    loadEnv({ path: envPath, override: false, quiet: true })
   }
 }
 
@@ -49,6 +52,24 @@ function getEnv(name: string) {
     throw new Error(`Missing required environment variable: ${name}`)
   }
   return value
+}
+
+const missingDiscordEnv = [
+  "DISCORD_BOT_TOKEN",
+  "DISCORD_APPLICATION_ID",
+  "DISCORD_PAIRING_SECRET",
+].filter((name) => !process.env[name])
+
+if (missingDiscordEnv.length > 0) {
+  console.warn(
+    [
+      "Discord bot is disabled.",
+      `Missing env: ${missingDiscordEnv.join(", ")}.`,
+      "Add them to apps/discord-bot/.env.local to enable the bot in monorepo dev.",
+    ].join(" ")
+  )
+  process.stdin.resume()
+  await new Promise(() => {})
 }
 
 const discordToken = getEnv("DISCORD_BOT_TOKEN")
