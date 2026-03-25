@@ -420,6 +420,30 @@ export const getPendingDiscordNotifications = query({
   },
 })
 
+export const getAllPendingDiscordNotifications = query({
+  args: {
+    botSecret: v.string(),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    requireDiscordBotSecret(args.botSecret)
+
+    const notifications = await ctx.db
+      .query("discordPendingNotifications")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .take(Math.min(args.limit ?? 20, 50))
+
+    return notifications.map((notification) => ({
+      _id: notification._id,
+      type: notification.type,
+      channelId: notification.channelId,
+      replyToMessageId: notification.replyToMessageId ?? null,
+      taskTitle: notification.taskTitle,
+      taskCode: notification.taskCode,
+    }))
+  },
+})
+
 export const markDiscordNotificationSent = mutation({
   args: {
     botSecret: v.string(),

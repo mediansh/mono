@@ -116,6 +116,7 @@ export default defineSchema({
     sentAt: v.optional(v.number()),
   })
     .index("by_integration_status", ["integrationId", "status"])
+    .index("by_status", ["status"])
     .index("by_task", ["taskId"]),
 
   tasks: defineTable({

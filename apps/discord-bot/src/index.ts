@@ -122,11 +122,10 @@ const createTasksFromDiscordFeedbackMutation = makeFunctionReference<
     _id: string
   }[]
 >("tasks:createTasksFromDiscordFeedback")
-const getPendingDiscordNotificationsQuery = makeFunctionReference<
+const getAllPendingDiscordNotificationsQuery = makeFunctionReference<
   "query",
   {
     botSecret: string
-    integrationId: string
     limit?: number
   },
   {
@@ -137,7 +136,7 @@ const getPendingDiscordNotificationsQuery = makeFunctionReference<
     taskTitle: string
     taskCode: string
   }[]
->("discord:getPendingDiscordNotifications")
+>("discord:getAllPendingDiscordNotifications")
 const markDiscordNotificationSentMutation = makeFunctionReference<
   "mutation",
   {
@@ -692,20 +691,16 @@ async function processFeedbackWindow(integrationId: string) {
   }
 }
 
-const knownIntegrationIds = new Set<string>()
-
-async function processShippedNotifications(integrationId: string) {
+async function processPendingNotifications() {
   try {
-    const notifications = await convex.query(getPendingDiscordNotificationsQuery, {
+    const notifications = await convex.query(getAllPendingDiscordNotificationsQuery, {
       botSecret: pairingSecret,
-      integrationId,
       limit: 20,
     })
 
     if (notifications.length === 0) return
 
-    logInfo("responder", "Processing shipped notifications", {
-      integrationId,
+    logInfo("responder", "Processing pending notifications", {
       count: notifications.length,
     })
 
@@ -748,7 +743,6 @@ async function processShippedNotifications(integrationId: string) {
         })
 
         logInfo("responder", "Sent Discord notification", {
-          integrationId,
           notificationId: notification._id,
           type: notification.type,
           taskCode: notification.taskCode,
@@ -765,15 +759,13 @@ async function processShippedNotifications(integrationId: string) {
       }
     }
   } catch (error) {
-    logError("responder", "Failed to poll shipped notifications", error, { integrationId })
+    logError("responder", "Failed to poll pending notifications", error)
   }
 }
 
 function startNotificationPolling() {
-  setInterval(async () => {
-    for (const integrationId of knownIntegrationIds) {
-      await processShippedNotifications(integrationId)
-    }
+  setInterval(() => {
+    void processPendingNotifications()
   }, 10_000)
   logInfo("responder", "Notification polling started", { intervalMs: 10_000 })
 }
@@ -894,7 +886,6 @@ client.on(Events.MessageCreate, async (message: Message) => {
       guildName: result.integration.guildName,
     })
 
-    knownIntegrationIds.add(result.integration.integrationId)
     scheduleFeedbackProcessing(result.integration.integrationId)
   } catch (error) {
     logError("message", "Failed to record Discord message", error, {
