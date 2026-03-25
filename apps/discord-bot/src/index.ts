@@ -800,7 +800,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       botSecret: pairingSecret,
       guildId: interaction.guildId,
       guildName: interaction.guild.name,
-      channelId: interaction.channelId ?? undefined,
       issuedByDiscordUserId: interaction.user.id,
       issuedByDiscordUsername: interaction.user.username,
     })

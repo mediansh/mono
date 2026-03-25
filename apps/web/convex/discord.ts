@@ -325,7 +325,6 @@ export const redeemPairingCode = mutation({
       workspaceId: args.workspaceId,
       guildId: pairingCode.guildId,
       guildName: pairingCode.guildName,
-      channelId: pairingCode.channelId,
       pairedByUserId: identity.subject,
       pairedAt,
       pairingCodeId: pairingCode._id,
