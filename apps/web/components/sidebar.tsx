@@ -303,9 +303,7 @@ export function AppSidebar() {
                 className="hover:bg-transparent active:bg-transparent data-active:bg-transparent"
                 size="lg"
               >
-                <div>
-                  <Logo className="!h-5 !w-auto" />
-                </div>
+                <Logo symbolOnly className="size-5" />
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
