@@ -205,6 +205,37 @@ export const createTasksFromDiscordFeedback = mutation({
   },
 })
 
+export const getTaskSnapshotForDiscord = query({
+  args: {
+    botSecret: v.string(),
+    workspaceId: v.id("workspaces"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const configuredSecret = process.env.DISCORD_PAIRING_SECRET
+    if (!configuredSecret || args.botSecret !== configuredSecret) {
+      throw new Error("Invalid Discord bot secret")
+    }
+
+    const tasks = await getWorkspaceTasks(ctx, args.workspaceId)
+    const limit = Math.min(args.limit ?? 50, 100)
+
+    return tasks
+      .filter((task) => task.status !== "archive")
+      .slice(0, limit)
+      .map((task) => ({
+        taskId: task._id,
+        taskCode: task.taskCode,
+        title: task.title,
+        description: task.description ?? null,
+        status: task.status,
+        priority: task.priority,
+        labels: task.labels,
+        sourceUrl: task.source?.url ?? null,
+      }))
+  },
+})
+
 export const updateTask = mutation({
   args: {
     taskId: v.id("tasks"),

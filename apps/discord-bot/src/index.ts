@@ -120,6 +120,24 @@ const createTasksFromDiscordFeedbackMutation = makeFunctionReference<
     _id: string
   }[]
 >("tasks:createTasksFromDiscordFeedback")
+const getTaskSnapshotForDiscordQuery = makeFunctionReference<
+  "query",
+  {
+    botSecret: string
+    workspaceId: string
+    limit?: number
+  },
+  {
+    taskId: string
+    taskCode: string
+    title: string
+    description: string | null
+    status: "requests" | "todo" | "in_progress" | "ready" | "shipped" | "archive"
+    priority: "urgent" | "high" | "medium" | "low" | "none"
+    labels: string[]
+    sourceUrl: string | null
+  }[]
+>("tasks:getTaskSnapshotForDiscord")
 
 const feedbackClassificationSchema = z.object({
   isProductFeedback: z.boolean(),
@@ -311,6 +329,33 @@ function extractJsonObject(text: string) {
   return text.slice(start, end + 1)
 }
 
+function formatExistingTasks(
+  tasks: {
+    taskCode: string
+    title: string
+    description: string | null
+    status: "requests" | "todo" | "in_progress" | "ready" | "shipped" | "archive"
+    priority: "urgent" | "high" | "medium" | "low" | "none"
+    labels: string[]
+  }[]
+) {
+  if (tasks.length === 0) {
+    return "No existing tasks."
+  }
+
+  return tasks
+    .map((task) =>
+      [
+        `${task.taskCode} | ${task.status} | ${task.priority} | ${task.title}`,
+        task.labels.length > 0 ? `labels: ${task.labels.join(", ")}` : null,
+        task.description ? `description: ${task.description}` : null,
+      ]
+        .filter(Boolean)
+        .join(" | ")
+    )
+    .join("\n")
+}
+
 function scheduleFeedbackProcessing(integrationId: string) {
   const existingTimer = processingTimers.get(integrationId)
   if (existingTimer) {
@@ -457,6 +502,18 @@ async function processFeedbackWindow(integrationId: string) {
         ? feedbackWindow.integration.availableLabels.join(", ")
         : "No predefined labels."
 
+    const existingTasks = await convex.query(getTaskSnapshotForDiscordQuery, {
+      botSecret: pairingSecret,
+      workspaceId: feedbackWindow.integration.workspaceId,
+      limit: 50,
+    })
+
+    logInfo("taskboard", "Loaded existing task context for duplicate detection", {
+      integrationId,
+      workspaceId: feedbackWindow.integration.workspaceId,
+      existingTaskCount: existingTasks.length,
+    })
+
     const { object: extracted } = await generateObject({
       model: "anthropic/claude-haiku-4.5",
       schema: extractedFeedbackTasksSchema,
@@ -466,6 +523,8 @@ async function processFeedbackWindow(integrationId: string) {
         "Only create tasks for actionable feedback about the real product. Ignore unrelated discussion.",
         "Return between 0 and 5 tasks.",
         "Each task must be distinct, concrete, and understandable without Discord context.",
+        "You will be given existing tasks from the board. Do not create a task if the same bug, feature request, or underlying user problem is already covered by an existing task, even if the wording is different.",
+        "If the feedback is already represented by an existing task, return an empty tasks array.",
         "Descriptions should summarize the user problem and expected outcome in plain text.",
         "Priority may be urgent, high, medium, low, or none.",
         `Allowed labels: ${labelsText}`,
@@ -473,6 +532,8 @@ async function processFeedbackWindow(integrationId: string) {
       ].join(" "),
       prompt: [
         `Classifier summary: ${classification.summary ?? classification.reason}`,
+        "Existing task context:",
+        formatExistingTasks(existingTasks),
         "Relevant feedback messages:",
         relevantMessages
           .map(
