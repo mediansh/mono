@@ -1,6 +1,6 @@
 import path from "node:path"
 import { fileURLToPath } from "node:url"
-import { generateObject, generateText } from "ai"
+import { generateText, Output } from "ai"
 import { google } from "@ai-sdk/google"
 import { config as loadEnv } from "dotenv"
 import { ConvexHttpClient } from "convex/browser"
@@ -76,6 +76,8 @@ const getPendingFeedbackWindowQuery = makeFunctionReference<
       channelId: string | null
       lastProcessedMessageId: string | null
       lastProcessedMessageCreatedAt: number | null
+      additionalContext: string | null
+      respondForMe: boolean
     }
     messages: {
       _id: string
@@ -120,6 +122,31 @@ const createTasksFromDiscordFeedbackMutation = makeFunctionReference<
     _id: string
   }[]
 >("tasks:createTasksFromDiscordFeedback")
+const getPendingDiscordNotificationsQuery = makeFunctionReference<
+  "query",
+  {
+    botSecret: string
+    integrationId: string
+    limit?: number
+  },
+  {
+    _id: string
+    type: "request_received" | "request_shipped"
+    channelId: string
+    replyToMessageId: string | null
+    taskTitle: string
+    taskCode: string
+  }[]
+>("discord:getPendingDiscordNotifications")
+const markDiscordNotificationSentMutation = makeFunctionReference<
+  "mutation",
+  {
+    botSecret: string
+    notificationId: string
+    status: "sent" | "failed"
+  },
+  null
+>("discord:markDiscordNotificationSent")
 const getTaskSnapshotForDiscordQuery = makeFunctionReference<
   "query",
   {
@@ -420,9 +447,7 @@ async function processFeedbackWindow(integrationId: string) {
     const pendingMessageIds = new Set(pendingMessages.map((message) => message.messageId))
     const transcript = formatTranscript(contextMessages, pendingMessageIds)
 
-    const { text: classificationText } = await generateText({
-      model: google("gemma-3-27b-it"),
-      system: [
+    const classifierSystemParts = [
         "You classify Discord conversations for a product team.",
         `The only product that matters is ${feedbackWindow.integration.workspaceName}, also referred to as Median.`,
         "Return isProductFeedback=true only when the newest messages contain concrete product feedback, a bug report, a feature request, workflow friction, or an actionable complaint about the actual product.",
@@ -431,7 +456,17 @@ async function processFeedbackWindow(integrationId: string) {
         "Only include relevantMessageIds from NEW messages.",
         "Return valid JSON only. No markdown. No code fences. No commentary.",
         'Use this exact JSON shape: {"isProductFeedback":false,"confidence":0.0,"summary":null,"reason":"...","relevantMessageIds":[]}',
-      ].join(" "),
+      ]
+
+    if (feedbackWindow.integration.additionalContext) {
+      classifierSystemParts.push(
+        `Additional product context from the workspace owner: ${feedbackWindow.integration.additionalContext}`
+      )
+    }
+
+    const { text: classificationText } = await generateText({
+      model: google("gemma-3-27b-it"),
+      system: classifierSystemParts.join(" "),
       prompt: [
         `Workspace name: ${feedbackWindow.integration.workspaceName}`,
         `Guild: ${feedbackWindow.integration.guildName}`,
@@ -514,10 +549,7 @@ async function processFeedbackWindow(integrationId: string) {
       existingTaskCount: existingTasks.length,
     })
 
-    const { object: extracted } = await generateObject({
-      model: "anthropic/claude-haiku-4.5",
-      schema: extractedFeedbackTasksSchema,
-      system: [
+    const extractorSystemParts = [
         "You turn product feedback into concise task requests for a task board.",
         `The product is ${feedbackWindow.integration.workspaceName}, also referred to as Median.`,
         "Only create tasks for actionable feedback about the real product. Ignore unrelated discussion.",
@@ -529,7 +561,18 @@ async function processFeedbackWindow(integrationId: string) {
         "Priority may be urgent, high, medium, low, or none.",
         `Allowed labels: ${labelsText}`,
         "Only use labels from the allowed list. Use an empty array when none apply.",
-      ].join(" "),
+      ]
+
+    if (feedbackWindow.integration.additionalContext) {
+      extractorSystemParts.push(
+        `Additional product context from the workspace owner: ${feedbackWindow.integration.additionalContext}`
+      )
+    }
+
+    const { output: extracted } = await generateText({
+      model: "anthropic/claude-haiku-4.5",
+      output: Output.object({ schema: extractedFeedbackTasksSchema }),
+      system: extractorSystemParts.join(" "),
       prompt: [
         `Classifier summary: ${classification.summary ?? classification.reason}`,
         "Existing task context:",
@@ -543,6 +586,17 @@ async function processFeedbackWindow(integrationId: string) {
           .join("\n"),
       ].join("\n\n"),
     })
+
+    if (!extracted) {
+      logInfo("extractor", "Claude returned no structured output", { integrationId })
+      await convex.mutation(markFeedbackWindowProcessedMutation, {
+        botSecret: pairingSecret,
+        integrationId,
+        lastProcessedMessageId: latestPendingMessage.messageId,
+        lastProcessedMessageCreatedAt: latestPendingMessage.messageCreatedAt,
+      })
+      return
+    }
 
     logInfo("extractor", "Claude extracted tasks from feedback", {
       integrationId,
@@ -583,6 +637,39 @@ async function processFeedbackWindow(integrationId: string) {
         createdTaskCount: extracted.tasks.length,
         sourceUrl,
       })
+
+      // Send "request received" replies if respondForMe is enabled
+      if (feedbackWindow.integration.respondForMe) {
+        const lastRelevantMessage = relevantMessages[relevantMessages.length - 1]
+        if (lastRelevantMessage) {
+          try {
+            const channel = await client.channels.fetch(lastRelevantMessage.permalink.split("/").at(-2) ?? "")
+            if (channel && channel.isTextBased() && "send" in channel) {
+              const taskList = extracted.tasks
+                .map((task) => `• **${task.title}**`)
+                .join("\n")
+              await channel.send({
+                content: [
+                  `✅ Got it! We've logged ${extracted.tasks.length === 1 ? "this" : "these"} as ${extracted.tasks.length === 1 ? "a request" : "requests"}:`,
+                  taskList,
+                  "We'll follow up here when shipped.",
+                ].join("\n"),
+                reply: {
+                  messageReference: lastRelevantMessage.messageId,
+                  failIfNotExists: false,
+                },
+              })
+              logInfo("responder", "Sent request-received reply", {
+                integrationId,
+                channelId: lastRelevantMessage.permalink.split("/").at(-2),
+                taskCount: extracted.tasks.length,
+              })
+            }
+          } catch (replyError) {
+            logError("responder", "Failed to send request-received reply", replyError, { integrationId })
+          }
+        }
+      }
     } else {
       logInfo("extractor", "Claude returned no tasks for this feedback window", { integrationId })
     }
@@ -605,8 +692,95 @@ async function processFeedbackWindow(integrationId: string) {
   }
 }
 
+const knownIntegrationIds = new Set<string>()
+
+async function processShippedNotifications(integrationId: string) {
+  try {
+    const notifications = await convex.query(getPendingDiscordNotificationsQuery, {
+      botSecret: pairingSecret,
+      integrationId,
+      limit: 20,
+    })
+
+    if (notifications.length === 0) return
+
+    logInfo("responder", "Processing shipped notifications", {
+      integrationId,
+      count: notifications.length,
+    })
+
+    for (const notification of notifications) {
+      try {
+        const channel = await client.channels.fetch(notification.channelId)
+        if (!channel || !channel.isTextBased() || !("send" in channel)) {
+          await convex.mutation(markDiscordNotificationSentMutation, {
+            botSecret: pairingSecret,
+            notificationId: notification._id,
+            status: "failed",
+          })
+          continue
+        }
+
+        const replyOptions: Record<string, unknown> = {}
+        if (notification.replyToMessageId) {
+          replyOptions.reply = {
+            messageReference: notification.replyToMessageId,
+            failIfNotExists: false,
+          }
+        }
+
+        if (notification.type === "request_shipped") {
+          await channel.send({
+            content: `🚀 **${notification.taskCode}** has been shipped: ${notification.taskTitle}`,
+            ...replyOptions,
+          })
+        } else if (notification.type === "request_received") {
+          await channel.send({
+            content: `✅ Request received and logged as **${notification.taskCode}**: ${notification.taskTitle}`,
+            ...replyOptions,
+          })
+        }
+
+        await convex.mutation(markDiscordNotificationSentMutation, {
+          botSecret: pairingSecret,
+          notificationId: notification._id,
+          status: "sent",
+        })
+
+        logInfo("responder", "Sent Discord notification", {
+          integrationId,
+          notificationId: notification._id,
+          type: notification.type,
+          taskCode: notification.taskCode,
+        })
+      } catch (notifError) {
+        logError("responder", "Failed to send notification", notifError, {
+          notificationId: notification._id,
+        })
+        await convex.mutation(markDiscordNotificationSentMutation, {
+          botSecret: pairingSecret,
+          notificationId: notification._id,
+          status: "failed",
+        }).catch(() => {})
+      }
+    }
+  } catch (error) {
+    logError("responder", "Failed to poll shipped notifications", error, { integrationId })
+  }
+}
+
+function startNotificationPolling() {
+  setInterval(async () => {
+    for (const integrationId of knownIntegrationIds) {
+      await processShippedNotifications(integrationId)
+    }
+  }, 10_000)
+  logInfo("responder", "Notification polling started", { intervalMs: 10_000 })
+}
+
 client.once(Events.ClientReady, async (readyClient) => {
   await registerCommands()
+  startNotificationPolling()
   logInfo("startup", "Discord bot ready", {
     botTag: readyClient.user.tag,
     applicationId: discordApplicationId,
@@ -720,6 +894,7 @@ client.on(Events.MessageCreate, async (message: Message) => {
       guildName: result.integration.guildName,
     })
 
+    knownIntegrationIds.add(result.integration.integrationId)
     scheduleFeedbackProcessing(result.integration.integrationId)
   } catch (error) {
     logError("message", "Failed to record Discord message", error, {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, type FormEvent } from "react"
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 import { useMutation, useQuery } from "convex/react"
 import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -8,10 +8,14 @@ import {
   InformationCircleIcon,
   Link01Icon,
   Unlink01Icon,
+  SentIcon,
+  TextIcon,
 } from "@hugeicons/core-free-icons"
 import { toast } from "sonner"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
+import { Textarea } from "@workspace/ui/components/textarea"
+import { Switch } from "@workspace/ui/components/switch"
 import {
   Dialog,
   DialogContent,
@@ -64,6 +68,62 @@ export function DiscordPairingPanel() {
   )
   const redeemPairingCode = useMutation(api.discord.redeemPairingCode)
   const disconnectIntegration = useMutation(api.discord.disconnectWorkspaceDiscordIntegration)
+  const updateSettings = useMutation(api.discord.updateDiscordIntegrationSettings)
+
+  // Settings state — synced from server, debounced writes
+  const [additionalContext, setAdditionalContext] = useState("")
+  const [respondForMe, setRespondForMe] = useState(false)
+  const [settingsInitialized, setSettingsInitialized] = useState(false)
+  const contextSaveTimer = useRef<NodeJS.Timeout | null>(null)
+
+  const integration = integrationState?.integration ?? null
+
+  // Sync server state into local state on first load
+  useEffect(() => {
+    if (integration && !settingsInitialized) {
+      setAdditionalContext(integration.additionalContext)
+      setRespondForMe(integration.respondForMe)
+      setSettingsInitialized(true)
+    }
+    if (!integration && settingsInitialized) {
+      setSettingsInitialized(false)
+    }
+  }, [integration, settingsInitialized])
+
+  const saveContext = useCallback(
+    (value: string) => {
+      if (!currentWorkspace) return
+      if (contextSaveTimer.current) clearTimeout(contextSaveTimer.current)
+      contextSaveTimer.current = setTimeout(() => {
+        void updateSettings({
+          workspaceId: currentWorkspace._id,
+          additionalContext: value,
+        })
+      }, 800)
+    },
+    [currentWorkspace, updateSettings]
+  )
+
+  function handleContextChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
+    const value = event.target.value
+    setAdditionalContext(value)
+    saveContext(value)
+  }
+
+  async function handleRespondForMeToggle(checked: boolean) {
+    setRespondForMe(checked)
+    if (!currentWorkspace) return
+    try {
+      await updateSettings({
+        workspaceId: currentWorkspace._id,
+        respondForMe: checked,
+      })
+      toast.success(checked ? "Auto-responses enabled." : "Auto-responses disabled.")
+    } catch {
+      setRespondForMe(!checked)
+      toast.error("Failed to update setting.")
+    }
+  }
 
   if (!currentWorkspace) return null
   if (!hasWorkspaceAdminPermission(currentWorkspace.role)) {
@@ -78,7 +138,6 @@ export function DiscordPairingPanel() {
   }
 
   const workspace = currentWorkspace
-  const integration = integrationState.integration
 
   async function handlePairWorkspace(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -116,7 +175,7 @@ export function DiscordPairingPanel() {
     }
   }
 
-  /* ── Connected state: just the status card + disconnect ── */
+  /* ── Connected state: status card + settings + disconnect ── */
   if (integration) {
     return (
       <motion.div
@@ -133,6 +192,7 @@ export function DiscordPairingPanel() {
             </p>
           </div>
 
+          {/* Connection status card */}
           <div className="rounded-none border border-border bg-card">
             <div className="flex items-center gap-4 p-5">
               <div className="flex size-10 items-center justify-center rounded-none bg-[#5865F2]/10">
@@ -170,6 +230,58 @@ export function DiscordPairingPanel() {
               </Button>
             </div>
           </div>
+
+          {/* Additional context */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.04, ease: [0.16, 1, 0.3, 1] }}
+            className="rounded-none border border-border bg-card"
+          >
+            <div className="flex items-center gap-3 border-b border-border px-5 py-3.5">
+              <HugeiconsIcon icon={TextIcon} size={15} strokeWidth={1.8} className="text-muted-foreground" />
+              <div className="flex-1">
+                <h3 className="text-sm font-medium">Additional context</h3>
+                <p className="text-xs text-muted-foreground">
+                  Describe your product so the AI can better classify feedback.
+                </p>
+              </div>
+            </div>
+            <div className="p-5">
+              <Textarea
+                value={additionalContext}
+                onChange={handleContextChange}
+                placeholder="e.g. Median is a project management tool for small teams. Key features include task boards, Discord integration, and AI-powered feedback triage..."
+                rows={4}
+                className="resize-none text-sm"
+              />
+              <p className="mt-2 text-[11px] text-muted-foreground/60">
+                This context is passed to the AI when scanning messages. Changes save automatically.
+              </p>
+            </div>
+          </motion.div>
+
+          {/* Respond for me toggle */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
+            className="rounded-none border border-border bg-card"
+          >
+            <div className="flex items-center gap-3 px-5 py-4">
+              <HugeiconsIcon icon={SentIcon} size={15} strokeWidth={1.8} className="text-muted-foreground" />
+              <div className="flex-1">
+                <h3 className="text-sm font-medium">Respond for me</h3>
+                <p className="text-xs text-muted-foreground">
+                  Automatically reply in Discord when a request is received and when the change ships.
+                </p>
+              </div>
+              <Switch
+                checked={respondForMe}
+                onCheckedChange={handleRespondForMeToggle}
+              />
+            </div>
+          </motion.div>
         </div>
 
         <Dialog open={disconnectOpen} onOpenChange={setDisconnectOpen}>

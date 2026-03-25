@@ -74,6 +74,8 @@ export const getWorkspaceDiscordIntegration = query({
         guildName: integration.guildName,
         channelId: integration.channelId ?? null,
         pairedAt: integration.pairedAt,
+        additionalContext: integration.additionalContext ?? "",
+        respondForMe: integration.respondForMe ?? false,
       },
     }
   },
@@ -230,6 +232,8 @@ export const getPendingFeedbackWindow = query({
         channelId: integration.channelId ?? null,
         lastProcessedMessageId: integration.lastProcessedMessageId ?? null,
         lastProcessedMessageCreatedAt: integration.lastProcessedMessageCreatedAt ?? null,
+        additionalContext: integration.additionalContext ?? null,
+        respondForMe: integration.respondForMe ?? false,
       },
       messages: messages.reverse().map((message) => ({
         _id: message._id,
@@ -356,5 +360,83 @@ export const disconnectWorkspaceDiscordIntegration = mutation({
       .collect()
 
     await Promise.all(integrations.map((integration) => ctx.db.delete(integration._id)))
+  },
+})
+
+export const updateDiscordIntegrationSettings = mutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    additionalContext: v.optional(v.string()),
+    respondForMe: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    await requireWorkspaceAdminAccess(ctx, args.workspaceId)
+
+    const integration = await ctx.db
+      .query("discordWorkspaceIntegrations")
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .unique()
+
+    if (!integration) {
+      throw new Error("No Discord integration found for this workspace")
+    }
+
+    const updates: Record<string, unknown> = {}
+    if (args.additionalContext !== undefined) {
+      updates.additionalContext = args.additionalContext.trim() || undefined
+    }
+    if (args.respondForMe !== undefined) {
+      updates.respondForMe = args.respondForMe
+    }
+
+    await ctx.db.patch(integration._id, updates)
+  },
+})
+
+export const getPendingDiscordNotifications = query({
+  args: {
+    botSecret: v.string(),
+    integrationId: v.id("discordWorkspaceIntegrations"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    requireDiscordBotSecret(args.botSecret)
+
+    const notifications = await ctx.db
+      .query("discordPendingNotifications")
+      .withIndex("by_integration_status", (q) =>
+        q.eq("integrationId", args.integrationId).eq("status", "pending")
+      )
+      .take(Math.min(args.limit ?? 20, 50))
+
+    return notifications.map((notification) => ({
+      _id: notification._id,
+      type: notification.type,
+      channelId: notification.channelId,
+      replyToMessageId: notification.replyToMessageId ?? null,
+      taskTitle: notification.taskTitle,
+      taskCode: notification.taskCode,
+    }))
+  },
+})
+
+export const markDiscordNotificationSent = mutation({
+  args: {
+    botSecret: v.string(),
+    notificationId: v.id("discordPendingNotifications"),
+    status: v.union(v.literal("sent"), v.literal("failed")),
+  },
+  handler: async (ctx, args) => {
+    requireDiscordBotSecret(args.botSecret)
+
+    const notification = await ctx.db.get(args.notificationId)
+    if (!notification) {
+      throw new Error("Notification not found")
+    }
+
+    await ctx.db.patch(args.notificationId, {
+      status: args.status,
+      sentAt: args.status === "sent" ? Date.now() : undefined,
+    })
   },
 })

@@ -236,6 +236,12 @@ export const getTaskSnapshotForDiscord = query({
   },
 })
 
+function parseDiscordPermalink(url: string): { guildId: string; channelId: string; messageId: string } | null {
+  const match = url.match(/discord\.com\/channels\/(\d+)\/(\d+)\/(\d+)/)
+  if (!match?.[1] || !match[2] || !match[3]) return null
+  return { guildId: match[1], channelId: match[2], messageId: match[3] }
+}
+
 export const updateTask = mutation({
   args: {
     taskId: v.id("tasks"),
@@ -276,6 +282,37 @@ export const updateTask = mutation({
     if (args.labels !== undefined) updates.labels = args.labels
 
     await ctx.db.patch(args.taskId, updates)
+
+    // Queue a Discord notification when a task with a Discord source is shipped
+    if (
+      args.status === "shipped" &&
+      task.status !== "shipped" &&
+      task.source?.platform === "discord" &&
+      task.source.url
+    ) {
+      const parsed = parseDiscordPermalink(task.source.url)
+      if (parsed) {
+        const integration = await ctx.db
+          .query("discordWorkspaceIntegrations")
+          .withIndex("by_guild", (q) => q.eq("guildId", parsed.guildId))
+          .first()
+
+        if (integration && integration.respondForMe) {
+          await ctx.db.insert("discordPendingNotifications", {
+            workspaceId: task.workspaceId,
+            integrationId: integration._id,
+            taskId: args.taskId,
+            type: "request_shipped",
+            channelId: parsed.channelId,
+            replyToMessageId: parsed.messageId,
+            taskTitle: task.title,
+            taskCode: task.taskCode,
+            status: "pending",
+            createdAt: Date.now(),
+          })
+        }
+      }
+    }
   },
 })
 

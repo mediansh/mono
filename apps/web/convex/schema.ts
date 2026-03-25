@@ -79,6 +79,8 @@ export default defineSchema({
     lastProcessedMessageId: v.optional(v.string()),
     lastProcessedMessageCreatedAt: v.optional(v.number()),
     lastProcessedAt: v.optional(v.number()),
+    additionalContext: v.optional(v.string()),
+    respondForMe: v.optional(v.boolean()),
   })
     .index("by_workspace", ["workspaceId"])
     .index("by_guild", ["guildId"]),
@@ -99,6 +101,22 @@ export default defineSchema({
     .index("by_discord_message", ["guildId", "channelId", "messageId"])
     .index("by_integration_created_at", ["integrationId", "messageCreatedAt"])
     .index("by_workspace_channel_created_at", ["workspaceId", "channelId", "messageCreatedAt"]),
+
+  discordPendingNotifications: defineTable({
+    workspaceId: v.id("workspaces"),
+    integrationId: v.id("discordWorkspaceIntegrations"),
+    taskId: v.id("tasks"),
+    type: v.union(v.literal("request_received"), v.literal("request_shipped")),
+    channelId: v.string(),
+    replyToMessageId: v.optional(v.string()),
+    taskTitle: v.string(),
+    taskCode: v.string(),
+    status: v.union(v.literal("pending"), v.literal("sent"), v.literal("failed")),
+    createdAt: v.number(),
+    sentAt: v.optional(v.number()),
+  })
+    .index("by_integration_status", ["integrationId", "status"])
+    .index("by_task", ["taskId"]),
 
   tasks: defineTable({
     workspaceId: v.id("workspaces"),
