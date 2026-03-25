@@ -295,18 +295,10 @@ export function AppSidebar() {
   return (
     <>
       <Sidebar collapsible="icon">
-        <SidebarHeader>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                render={<Link href="/app" />}
-                className="hover:bg-transparent active:bg-transparent data-active:bg-transparent"
-                size="lg"
-              >
-                <Logo symbolOnly className="size-7" />
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
+        <SidebarHeader className="p-3">
+          <Link href="/app">
+            <Logo symbolOnly className="size-8" />
+          </Link>
         </SidebarHeader>
 
         <SidebarContent>
