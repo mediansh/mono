@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import Image from "next/image"
 import { ArrowUpRight } from "@phosphor-icons/react"
+import { Logo } from "@/components/logo"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
 const footerLinks = [
@@ -73,12 +73,7 @@ export function Footer() {
           {/* Logo */}
           <div className="col-span-2 md:col-span-1">
             <Link href="/">
-              <Image
-                src="/median.svg"
-                alt="Median"
-                width={28}
-                height={28}
-              />
+              <Logo symbolOnly className="size-7 text-navbar-foreground" />
             </Link>
           </div>
 
