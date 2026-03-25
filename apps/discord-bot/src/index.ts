@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { generateObject } from "ai"
@@ -21,7 +20,6 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, "../../..")
-const botRoot = path.resolve(__dirname, "..")
 const issuePairingCodeMutation = makeFunctionReference<
   "mutation",
   {
@@ -147,18 +145,8 @@ const extractedFeedbackTasksSchema = z.object({
 const processingTimers = new Map<string, NodeJS.Timeout>()
 const activeProcessing = new Set<string>()
 
-for (const envPath of [
-  path.join(repoRoot, ".env"),
-  path.join(repoRoot, ".env.local"),
-  path.join(repoRoot, "apps/web/.env"),
-  path.join(repoRoot, "apps/web/.env.local"),
-  path.join(botRoot, ".env"),
-  path.join(botRoot, ".env.local"),
-]) {
-  if (existsSync(envPath)) {
-    loadEnv({ path: envPath, override: true, quiet: true })
-  }
-}
+loadEnv({ path: path.join(repoRoot, ".env.local"), override: true, quiet: true })
+loadEnv({ path: path.join(repoRoot, ".env"), override: false, quiet: true })
 
 function getEnv(name: string) {
   const value = process.env[name]
