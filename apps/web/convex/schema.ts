@@ -76,9 +76,29 @@ export default defineSchema({
     pairedByUserId: v.string(),
     pairedAt: v.number(),
     pairingCodeId: v.id("discordPairingCodes"),
+    lastProcessedMessageId: v.optional(v.string()),
+    lastProcessedMessageCreatedAt: v.optional(v.number()),
+    lastProcessedAt: v.optional(v.number()),
   })
     .index("by_workspace", ["workspaceId"])
     .index("by_guild", ["guildId"]),
+
+  discordMessages: defineTable({
+    workspaceId: v.id("workspaces"),
+    integrationId: v.id("discordWorkspaceIntegrations"),
+    guildId: v.string(),
+    channelId: v.string(),
+    messageId: v.string(),
+    permalink: v.string(),
+    authorId: v.string(),
+    authorUsername: v.string(),
+    content: v.string(),
+    messageCreatedAt: v.number(),
+    receivedAt: v.number(),
+  })
+    .index("by_discord_message", ["guildId", "channelId", "messageId"])
+    .index("by_integration_created_at", ["integrationId", "messageCreatedAt"])
+    .index("by_workspace_channel_created_at", ["workspaceId", "channelId", "messageCreatedAt"]),
 
   tasks: defineTable({
     workspaceId: v.id("workspaces"),

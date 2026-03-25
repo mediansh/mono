@@ -8,6 +8,29 @@ function normalizePairingCode(code: string) {
   return code.trim().toUpperCase().replace(/[^A-Z0-9]/g, "")
 }
 
+function requireDiscordBotSecret(botSecret: string) {
+  const configuredSecret = process.env.DISCORD_PAIRING_SECRET
+  if (!configuredSecret || botSecret !== configuredSecret) {
+    throw new Error("Invalid Discord bot secret")
+  }
+}
+
+async function getActiveIntegrationForGuildChannel(
+  ctx: Pick<MutationCtx, "db">,
+  guildId: string,
+  channelId: string
+) {
+  const integrations = await ctx.db
+    .query("discordWorkspaceIntegrations")
+    .withIndex("by_guild", (q) => q.eq("guildId", guildId))
+    .collect()
+
+  return (
+    integrations.find((integration) => !integration.channelId || integration.channelId === channelId) ??
+    null
+  )
+}
+
 async function generateUniquePairingCode(ctx: MutationCtx): Promise<string> {
   for (let attempt = 0; attempt < 10; attempt += 1) {
     const candidate = crypto.randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase()
@@ -66,10 +89,7 @@ export const issuePairingCode = mutation({
     issuedByDiscordUsername: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const configuredSecret = process.env.DISCORD_PAIRING_SECRET
-    if (!configuredSecret || args.botSecret !== configuredSecret) {
-      throw new Error("Invalid Discord bot secret")
-    }
+    requireDiscordBotSecret(args.botSecret)
 
     const now = Date.now()
     const existingCodes = await ctx.db
@@ -101,6 +121,148 @@ export const issuePairingCode = mutation({
       code,
       expiresAt,
     }
+  },
+})
+
+export const recordInboundMessage = mutation({
+  args: {
+    botSecret: v.string(),
+    guildId: v.string(),
+    channelId: v.string(),
+    messageId: v.string(),
+    authorId: v.string(),
+    authorUsername: v.string(),
+    content: v.string(),
+    messageCreatedAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    requireDiscordBotSecret(args.botSecret)
+
+    const integration = await getActiveIntegrationForGuildChannel(ctx, args.guildId, args.channelId)
+    if (!integration) {
+      return {
+        accepted: false,
+        duplicate: false,
+        integration: null,
+      } as const
+    }
+
+    const existingMessage = await ctx.db
+      .query("discordMessages")
+      .withIndex("by_discord_message", (q) =>
+        q.eq("guildId", args.guildId).eq("channelId", args.channelId).eq("messageId", args.messageId)
+      )
+      .unique()
+
+    if (existingMessage) {
+      return {
+        accepted: false,
+        duplicate: true,
+        integration: {
+          integrationId: integration._id,
+          workspaceId: integration.workspaceId,
+          channelId: integration.channelId ?? args.channelId,
+          guildName: integration.guildName,
+        },
+      } as const
+    }
+
+    await ctx.db.insert("discordMessages", {
+      workspaceId: integration.workspaceId,
+      integrationId: integration._id,
+      guildId: args.guildId,
+      channelId: args.channelId,
+      messageId: args.messageId,
+      permalink: `https://discord.com/channels/${args.guildId}/${args.channelId}/${args.messageId}`,
+      authorId: args.authorId,
+      authorUsername: args.authorUsername,
+      content: args.content,
+      messageCreatedAt: args.messageCreatedAt,
+      receivedAt: Date.now(),
+    })
+
+    return {
+      accepted: true,
+      duplicate: false,
+      integration: {
+        integrationId: integration._id,
+        workspaceId: integration.workspaceId,
+        channelId: integration.channelId ?? args.channelId,
+        guildName: integration.guildName,
+      },
+    } as const
+  },
+})
+
+export const getPendingFeedbackWindow = query({
+  args: {
+    botSecret: v.string(),
+    integrationId: v.id("discordWorkspaceIntegrations"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    requireDiscordBotSecret(args.botSecret)
+
+    const integration = await ctx.db.get(args.integrationId)
+    if (!integration) {
+      throw new Error("Discord integration not found")
+    }
+
+    const workspace = await ctx.db.get(integration.workspaceId)
+    if (!workspace) {
+      throw new Error("Workspace not found")
+    }
+
+    const messages = await ctx.db
+      .query("discordMessages")
+      .withIndex("by_integration_created_at", (q) => q.eq("integrationId", args.integrationId))
+      .order("desc")
+      .take(Math.min(args.limit ?? 100, 100))
+
+    return {
+      integration: {
+        integrationId: integration._id,
+        workspaceId: integration.workspaceId,
+        workspaceName: workspace.name,
+        availableLabels: (workspace.labels ?? []).map((label) => label.name),
+        guildId: integration.guildId,
+        guildName: integration.guildName,
+        channelId: integration.channelId ?? null,
+        lastProcessedMessageId: integration.lastProcessedMessageId ?? null,
+        lastProcessedMessageCreatedAt: integration.lastProcessedMessageCreatedAt ?? null,
+      },
+      messages: messages.reverse().map((message) => ({
+        _id: message._id,
+        messageId: message.messageId,
+        authorUsername: message.authorUsername,
+        content: message.content,
+        permalink: message.permalink,
+        messageCreatedAt: message.messageCreatedAt,
+      })),
+    }
+  },
+})
+
+export const markFeedbackWindowProcessed = mutation({
+  args: {
+    botSecret: v.string(),
+    integrationId: v.id("discordWorkspaceIntegrations"),
+    lastProcessedMessageId: v.string(),
+    lastProcessedMessageCreatedAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    requireDiscordBotSecret(args.botSecret)
+
+    const integration = await ctx.db.get(args.integrationId)
+    if (!integration) {
+      throw new Error("Discord integration not found")
+    }
+
+    await ctx.db.patch(args.integrationId, {
+      lastProcessedMessageId: args.lastProcessedMessageId,
+      lastProcessedMessageCreatedAt: args.lastProcessedMessageCreatedAt,
+      lastProcessedAt: Date.now(),
+    })
   },
 })
 

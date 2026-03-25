@@ -32,14 +32,42 @@ const attachmentValidator = v.object({
   size: v.number(),
 })
 
+const taskSourceValidator = v.object({
+  platform: v.union(v.literal("discord"), v.literal("slack"), v.literal("x")),
+  url: v.string(),
+  author: v.string(),
+})
+
 const taskInputValidator = v.object({
   title: v.string(),
   description: v.optional(v.string()),
   status: taskStatusValidator,
   priority: taskPriorityValidator,
   labels: v.array(v.string()),
+  source: v.optional(taskSourceValidator),
+  createdAtLabel: v.optional(v.string()),
   attachments: v.optional(v.array(attachmentValidator)),
 })
+
+type CreateTaskInput = {
+  title: string
+  description?: string
+  status: "requests" | "todo" | "in_progress" | "ready" | "shipped" | "archive"
+  priority: "urgent" | "high" | "medium" | "low" | "none"
+  labels: string[]
+  source?: {
+    platform: "discord" | "slack" | "x"
+    url: string
+    author: string
+  }
+  createdAtLabel?: string
+  attachments?: {
+    storageId: Id<"_storage">
+    name: string
+    type: string
+    size: number
+  }[]
+}
 
 function sortTasks<T extends { status: keyof typeof STATUS_ORDER; order: number }>(tasks: T[]) {
   return tasks.sort((a, b) => {
@@ -58,25 +86,11 @@ async function getWorkspaceTasks(ctx: QueryCtx | MutationCtx, workspaceId: Id<"w
   return sortTasks(tasks)
 }
 
-async function createTasksForWorkspace(
+async function insertTasksForWorkspace(
   ctx: MutationCtx,
   workspaceId: Id<"workspaces">,
-  taskInputs: {
-    title: string
-    description?: string
-    status: "requests" | "todo" | "in_progress" | "ready" | "shipped" | "archive"
-    priority: "urgent" | "high" | "medium" | "low" | "none"
-    labels: string[]
-    attachments?: {
-      storageId: Id<"_storage">
-      name: string
-      type: string
-      size: number
-    }[]
-  }[]
+  taskInputs: CreateTaskInput[]
 ) {
-  await requireTaskWriteAccess(ctx, workspaceId)
-
   const workspace = await ctx.db.get(workspaceId)
   if (!workspace) throw new Error("Workspace not found")
   if (taskInputs.length === 0) return []
@@ -118,6 +132,8 @@ async function createTasksForWorkspace(
         name: "Abdul",
         avatar: "",
       },
+      source: taskInput.source,
+      createdAtLabel: taskInput.createdAtLabel,
       attachments: taskInput.attachments ?? undefined,
     })
 
@@ -131,6 +147,15 @@ async function createTasksForWorkspace(
   return (
     await Promise.all(createdTaskIds.map((taskId) => ctx.db.get(taskId)))
   ).filter(Boolean) as Doc<"tasks">[]
+}
+
+async function createTasksForWorkspace(
+  ctx: MutationCtx,
+  workspaceId: Id<"workspaces">,
+  taskInputs: CreateTaskInput[]
+) {
+  await requireTaskWriteAccess(ctx, workspaceId)
+  return await insertTasksForWorkspace(ctx, workspaceId, taskInputs)
 }
 
 export const listByWorkspace = query({
@@ -161,6 +186,22 @@ export const createTasks = mutation({
   },
   handler: async (ctx, args) => {
     return await createTasksForWorkspace(ctx, args.workspaceId, args.tasks)
+  },
+})
+
+export const createTasksFromDiscordFeedback = mutation({
+  args: {
+    botSecret: v.string(),
+    workspaceId: v.id("workspaces"),
+    tasks: v.array(taskInputValidator),
+  },
+  handler: async (ctx, args) => {
+    const configuredSecret = process.env.DISCORD_PAIRING_SECRET
+    if (!configuredSecret || args.botSecret !== configuredSecret) {
+      throw new Error("Invalid Discord bot secret")
+    }
+
+    return await insertTasksForWorkspace(ctx, args.workspaceId, args.tasks)
   },
 })
 
