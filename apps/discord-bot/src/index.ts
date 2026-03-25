@@ -234,6 +234,10 @@ function formatCursor(cursor: { messageId: string | null; messageCreatedAt: numb
   return `${cursor.messageId}@${new Date(cursor.messageCreatedAt).toISOString()}`
 }
 
+function normalizeDiscordId(id: string) {
+  return id.trim().replace(/\D/g, "")
+}
+
 function logInfo(scope: string, message: string, details?: Record<string, unknown>) {
   if (details) {
     console.log(`[discord-bot:${scope}] ${message}`, details)
@@ -423,22 +427,23 @@ async function processFeedbackWindow(integrationId: string) {
       return
     }
 
-    const relevantMessages = pendingMessages.filter((message) =>
-      classification.relevantMessageIds.includes(message.messageId)
+    const normalizedRelevantIds = new Set(
+      classification.relevantMessageIds.map((messageId) => normalizeDiscordId(messageId)).filter(Boolean)
     )
 
-    if (relevantMessages.length === 0) {
-      await convex.mutation(markFeedbackWindowProcessedMutation, {
-        botSecret: pairingSecret,
+    const matchedRelevantMessages = pendingMessages.filter((message) =>
+      normalizedRelevantIds.has(normalizeDiscordId(message.messageId))
+    )
+
+    const relevantMessages =
+      matchedRelevantMessages.length > 0 ? matchedRelevantMessages : pendingMessages
+
+    if (matchedRelevantMessages.length === 0) {
+      logInfo("classifier", "Classifier IDs did not match pending messages; falling back to all pending messages", {
         integrationId,
-        lastProcessedMessageId: latestPendingMessage.messageId,
-        lastProcessedMessageCreatedAt: latestPendingMessage.messageCreatedAt,
+        classifierRelevantMessageIds: classification.relevantMessageIds,
+        pendingMessageIds: pendingMessages.map((message) => message.messageId),
       })
-      logInfo("processor", "Classifier returned no matching pending messages; cursor advanced", {
-        integrationId,
-        lastProcessedMessageId: latestPendingMessage.messageId,
-      })
-      return
     }
 
     logInfo("classifier", "Relevant feedback messages selected", {
