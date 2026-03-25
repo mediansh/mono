@@ -91,8 +91,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
       agentation:
-        specifier: ^2.3.3
-        version: 2.3.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        specifier: ^3.0.1
+        version: 3.0.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       ai:
         specifier: ^6.0.134
         version: 6.0.134(zod@3.25.76)
@@ -1628,8 +1628,8 @@ packages:
     resolution: {integrity: sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ==}
     engines: {node: '>= 14'}
 
-  agentation@2.3.3:
-    resolution: {integrity: sha512-AUZgFCdBQ/nAohlFsHByM9S2Dp7ECMNqVjlOke4hv/90v+wTiwrGladEkgWS60RDQp+CJ5p97meeCthYgTFlKQ==}
+  agentation@3.0.1:
+    resolution: {integrity: sha512-4s/vTjrb4Xlg2202HJNJLu4lhcvYKGeuWGzVYRN0O6eENyb/gNZ7EclodKWpSjdkIHt1qvL8JmIsVyAIUdc7Dw==}
     peerDependencies:
       react: '>=18.0.0'
       react-dom: '>=18.0.0'
@@ -5495,7 +5495,7 @@ snapshots:
 
   agent-base@7.1.4: {}
 
-  agentation@2.3.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
+  agentation@3.0.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
     optionalDependencies:
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
