@@ -774,12 +774,12 @@ async function processPendingNotifications() {
 
         if (notification.type === "request_shipped") {
           await channel.send({
-            content: `🚀 **${notification.taskCode}** has been shipped: ${notification.taskTitle}`,
+            content: `This should be resolved now — shipped in **${notification.taskCode}**.`,
             ...replyOptions,
           })
         } else if (notification.type === "request_received") {
           await channel.send({
-            content: `✅ Request received and logged as **${notification.taskCode}**: ${notification.taskTitle}`,
+            content: `Got it, we're on it.`,
             ...replyOptions,
           })
         }
