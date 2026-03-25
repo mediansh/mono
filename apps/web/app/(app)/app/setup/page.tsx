@@ -133,7 +133,7 @@ export default function WorkspaceSetupPage() {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="group flex size-16 items-center justify-center overflow-hidden rounded-lg border border-border bg-card transition-colors hover:bg-muted"
+                className="group flex size-16 items-center justify-center overflow-hidden rounded-none border border-border bg-card transition-colors hover:bg-muted"
               >
                 {iconPreview ? (
                   <img
@@ -179,7 +179,7 @@ export default function WorkspaceSetupPage() {
                   if (error) setError("")
                 }}
                 autoFocus
-                className="h-10 rounded-lg border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
+                className="h-10 rounded-none border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
               />
             </div>
 
@@ -190,7 +190,7 @@ export default function WorkspaceSetupPage() {
             <button
               type="submit"
               disabled={loading || !name.trim()}
-              className="mt-1 flex h-10 items-center justify-center rounded-lg bg-[#14120B] text-sm font-medium text-white transition-colors hover:bg-[#14120B]/90 disabled:opacity-50"
+              className="mt-1 flex h-10 items-center justify-center rounded-none bg-primary text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
             >
               {loading ? <Spinner /> : "Create workspace"}
             </button>
@@ -199,7 +199,7 @@ export default function WorkspaceSetupPage() {
       </div>
 
       {/* Right half - Branding */}
-      <div className="hidden flex-col items-center justify-center bg-[#14120B] lg:flex lg:w-1/2">
+      <div className="hidden flex-col items-center justify-center bg-card border-l border-border lg:flex lg:w-1/2">
         <Image
           src="/median.svg"
           alt="Median"

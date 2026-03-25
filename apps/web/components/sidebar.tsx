@@ -20,7 +20,6 @@ import {
   Image,
   Plugs,
 } from "@phosphor-icons/react"
-import { motion } from "motion/react"
 import { Facehash } from "facehash"
 import { NewTaskModal } from "@/components/new-task-modal"
 import { SearchPalette } from "@/components/search-palette"
@@ -171,7 +170,7 @@ function CreateWorkspaceModal({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="group flex size-14 items-center justify-center overflow-hidden rounded-lg border border-border bg-card transition-colors hover:bg-muted"
+              className="group flex size-14 items-center justify-center overflow-hidden rounded-none border border-border bg-card transition-colors hover:bg-muted"
             >
               {iconPreview ? (
                 <img
@@ -217,7 +216,7 @@ function CreateWorkspaceModal({
                 if (error) setError("")
               }}
               autoFocus
-              className="h-10 rounded-lg border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
+              className="h-10 rounded-none border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
             />
           </div>
 
@@ -226,7 +225,7 @@ function CreateWorkspaceModal({
           <button
             type="submit"
             disabled={loading || !name.trim()}
-            className="flex h-10 items-center justify-center rounded-lg bg-[#14120B] text-sm font-medium text-white transition-colors hover:bg-[#14120B]/90 disabled:opacity-50"
+            className="flex h-10 items-center justify-center rounded-none bg-primary text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
           >
             {loading ? (
               <svg className="size-4 animate-spin" viewBox="0 0 24 24" fill="none">
@@ -304,13 +303,9 @@ export function AppSidebar() {
                 className="hover:bg-transparent active:bg-transparent data-active:bg-transparent"
                 size="lg"
               >
-                <motion.div
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.3, ease: "easeOut" }}
-                >
+                <div>
                   <Logo className="!h-5 !w-auto" />
-                </motion.div>
+                </div>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -321,11 +316,7 @@ export function AppSidebar() {
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu className="gap-2">
-                <motion.div
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.25, delay: 0.05, ease: "easeOut" }}
-                >
+                <div>
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       onClick={() => setSearchOpen(true)}
@@ -333,17 +324,13 @@ export function AppSidebar() {
                     >
                       <MagnifyingGlass size={16} />
                       <span>Search</span>
-                      <kbd className="ml-auto hidden rounded border border-sidebar-border bg-sidebar px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground group-data-[collapsible=icon]:hidden lg:inline">
+                      <kbd className="ml-auto hidden rounded-none border border-sidebar-border bg-sidebar px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground group-data-[collapsible=icon]:hidden lg:inline">
                         {mounted ? (/Mac|iPhone/.test(navigator.userAgent) ? "⌘K" : "Ctrl+K") : null}
                       </kbd>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                </motion.div>
-                <motion.div
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.25, delay: 0.08, ease: "easeOut" }}
-                >
+                </div>
+                <div>
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       onClick={() => {
@@ -351,16 +338,16 @@ export function AppSidebar() {
                         setNewTaskOpen(true)
                       }}
                       disabled={!canManageTasks}
-                      className="bg-[#14120B] text-white hover:bg-[#14120B]/85 hover:text-white active:bg-[#14120B]/70 active:text-white data-active:bg-[#14120B] data-active:text-white"
+                      className="bg-primary text-primary-foreground hover:bg-primary/85 hover:text-primary-foreground active:bg-primary/70 active:text-primary-foreground data-active:bg-primary data-active:text-primary-foreground"
                     >
                       <PenNib size={16} />
                       <span>New</span>
-                      <kbd className="ml-auto hidden rounded border border-white/25 bg-white/10 px-1.5 py-0.5 font-mono text-[10px] text-white/70 group-data-[collapsible=icon]:hidden lg:inline">
+                      <kbd className="ml-auto hidden rounded-none border border-primary-foreground/25 bg-primary-foreground/10 px-1.5 py-0.5 font-mono text-[10px] text-primary-foreground/70 group-data-[collapsible=icon]:hidden lg:inline">
                         C
                       </kbd>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                </motion.div>
+                </div>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -371,28 +358,19 @@ export function AppSidebar() {
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
-                {mainNav.map((item, i) => {
+                {mainNav.map((item) => {
                   const isActive = item.href === "/app"
                     ? pathname === "/app"
                     : pathname.startsWith(item.href)
                   return (
-                    <motion.div
-                      key={item.href}
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{
-                        duration: 0.25,
-                        delay: 0.1 + i * 0.05,
-                        ease: "easeOut",
-                      }}
-                    >
+                    <div key={item.href}>
                       <SidebarMenuItem>
                         <SidebarMenuButton
                           render={<Link href={item.href} />}
                           isActive={isActive}
                           className={
                             isActive
-                              ? "data-active:bg-[#14120B]/10 data-active:text-[#14120B]"
+                              ? "data-active:bg-accent data-active:text-foreground"
                               : undefined
                           }
                         >
@@ -400,7 +378,7 @@ export function AppSidebar() {
                           <span>{item.label}</span>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
-                    </motion.div>
+                    </div>
                   )
                 })}
               </SidebarMenu>
@@ -409,11 +387,7 @@ export function AppSidebar() {
         </SidebarContent>
 
         <SidebarFooter>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3, delay: 0.3, ease: "easeOut" }}
-          >
+          <div>
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
@@ -421,7 +395,7 @@ export function AppSidebar() {
                 isActive={pathname.startsWith("/app/settings")}
                 className={
                   pathname.startsWith("/app/settings")
-                    ? "data-active:bg-[#14120B]/10 data-active:text-[#14120B]"
+                    ? "data-active:bg-accent data-active:text-foreground"
                     : undefined
                 }
               >
@@ -432,15 +406,15 @@ export function AppSidebar() {
             <SidebarMenuItem>
               {mounted ? (
               <DropdownMenu>
-                <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-md p-1.5 outline-none transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring">
+                <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-none p-1.5 outline-none transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring">
                   {user?.imageUrl ? (
                     <img
                       src={user.imageUrl}
                       alt={user.fullName ?? "Profile"}
-                      className="h-7 w-7 shrink-0 rounded-md object-cover"
+                      className="h-7 w-7 shrink-0 rounded-none object-cover"
                     />
                   ) : (
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-sidebar-accent text-xs font-medium text-sidebar-accent-foreground">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-none bg-sidebar-accent text-xs font-medium text-sidebar-accent-foreground">
                       {user?.firstName?.charAt(0) ?? "?"}
                     </div>
                   )}
@@ -481,10 +455,10 @@ export function AppSidebar() {
                               <img
                                 src={ws.iconUrl}
                                 alt={ws.name}
-                                className="!h-4 !w-4 shrink-0 rounded object-cover"
+                                className="!h-4 !w-4 shrink-0 rounded-none object-cover"
                               />
                             ) : (
-                              <div className="flex h-4 w-4 shrink-0 items-center justify-center overflow-hidden rounded">
+                              <div className="flex h-4 w-4 shrink-0 items-center justify-center overflow-hidden rounded-none">
                                 <Facehash name={ws.name} size={16} />
                               </div>
                             )}
@@ -492,7 +466,7 @@ export function AppSidebar() {
                             {ws._id === currentWorkspace?._id && (
                               <Check
                                 size={14}
-                                className="ml-auto text-[#14120B]"
+                                className="ml-auto text-foreground"
                               />
                             )}
                           </DropdownMenuItem>
@@ -545,13 +519,13 @@ export function AppSidebar() {
                 </DropdownMenuContent>
               </DropdownMenu>
               ) : (
-                <div className="flex w-full items-center gap-2 rounded-md p-1.5">
-                  <div className="h-7 w-7 shrink-0 rounded-md bg-sidebar-accent" />
+                <div className="flex w-full items-center gap-2 rounded-none p-1.5">
+                  <div className="h-7 w-7 shrink-0 rounded-none bg-sidebar-accent" />
                 </div>
               )}
             </SidebarMenuItem>
           </SidebarMenu>
-          </motion.div>
+          </div>
         </SidebarFooter>
       </Sidebar>
 

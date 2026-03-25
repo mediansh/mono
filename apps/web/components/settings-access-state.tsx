@@ -1,18 +1,14 @@
 "use client"
 
 import { Gear } from "@phosphor-icons/react"
-import { motion } from "motion/react"
 
 export function SettingsAccessState() {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.22, ease: "easeOut" }}
-      className="rounded-2xl border border-border bg-card/80 p-8 shadow-sm"
+    <div
+      className="rounded-none border-2 border-border bg-card p-8 shadow-none"
     >
       <div className="flex max-w-md flex-col items-start gap-4">
-        <div className="flex size-12 items-center justify-center rounded-2xl border border-border bg-muted/70">
+        <div className="flex size-12 items-center justify-center rounded-none border border-border bg-muted">
           <Gear
             size={22}
             className="text-muted-foreground"
@@ -26,6 +22,6 @@ export function SettingsAccessState() {
           </p>
         </div>
       </div>
-    </motion.div>
+    </div>
   )
 }

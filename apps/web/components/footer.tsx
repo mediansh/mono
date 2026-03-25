@@ -66,7 +66,7 @@ export function Footer() {
   }, [])
 
   return (
-    <footer className="border-t border-navbar-border bg-navbar">
+    <footer className="border-t-2 border-navbar-border bg-navbar">
       <div className="mx-auto max-w-7xl px-6 py-8">
         {/* Top section: logo + link columns */}
         <div className="grid grid-cols-2 gap-6 md:grid-cols-[auto_1fr] md:gap-16">
@@ -113,7 +113,7 @@ export function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="mt-8 flex items-center justify-between border-t border-navbar-border pt-5">
+        <div className="mt-8 flex items-center justify-between border-t-2 border-navbar-border pt-5">
           <div className="text-navbar-foreground/50 text-sm">
             &copy; {year ?? ""} Median.
           </div>

@@ -1,14 +1,9 @@
 "use client"
 
-import { motion } from "motion/react"
-
 export default function XIntegrationPage() {
   return (
     <div className="mx-auto w-full max-w-2xl px-10 py-10">
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25, ease: "easeOut" }}
+      <div
         className="flex flex-col gap-6"
       >
         <div>
@@ -18,9 +13,9 @@ export default function XIntegrationPage() {
           </p>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-6">
+        <div className="rounded-none border border-border bg-card p-6">
           <div className="flex items-center gap-4">
-            <div className="flex size-10 items-center justify-center rounded-lg bg-foreground/5">
+            <div className="flex size-10 items-center justify-center rounded-none bg-foreground/5">
               <svg width={20} height={20} viewBox="0 0 24 24" fill="currentColor" className="text-foreground">
                 <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
               </svg>
@@ -31,18 +26,18 @@ export default function XIntegrationPage() {
                 Link your X account to capture feedback from tweets.
               </p>
             </div>
-            <button className="rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-foreground/90">
+            <button className="rounded-none bg-foreground px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-foreground/90">
               Connect
             </button>
           </div>
         </div>
 
-        <div className="rounded-xl border border-dashed border-border p-6 text-center">
+        <div className="rounded-none border border-dashed border-border p-6 text-center">
           <p className="text-sm text-muted-foreground">
             Once connected, mentions and replies will appear as request tasks with a link back to the original tweet.
           </p>
         </div>
-      </motion.div>
+      </div>
     </div>
   )
 }

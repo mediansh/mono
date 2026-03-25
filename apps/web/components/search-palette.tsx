@@ -21,7 +21,6 @@ import {
   ArrowRight,
   Plugs,
 } from "@phosphor-icons/react"
-import { motion, AnimatePresence } from "motion/react"
 import { useWorkspace } from "@/components/workspace-provider"
 import { useLocalFirstStore } from "@/lib/local-first-store"
 import {
@@ -329,26 +328,18 @@ export function SearchPalette({
   let flatIndex = 0
 
   return createPortal(
-    <AnimatePresence>
+    <>
       {open && (
         <>
           {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-50 bg-black/25 supports-backdrop-filter:backdrop-blur-sm"
+          <div
+            className="fixed inset-0 z-50 bg-black/50"
           />
 
           {/* Panel */}
-          <motion.div
+          <div
             ref={panelRef}
-            initial={{ opacity: 0, scale: 0.96, y: -8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: -8 }}
-            transition={{ duration: 0.18, ease: [0.32, 0.72, 0, 1] }}
-            className="fixed top-[min(20%,180px)] left-1/2 z-50 w-[calc(100%-2rem)] max-w-[540px] -translate-x-1/2 overflow-hidden rounded-xl border border-border/60 bg-background shadow-2xl ring-1 ring-foreground/[0.03] dark:bg-card"
+            className="fixed top-[min(20%,180px)] left-1/2 z-50 w-[calc(100%-2rem)] max-w-[540px] -translate-x-1/2 overflow-hidden rounded-none border-2 border-border bg-background shadow-none"
           >
             {/* Search input */}
             <div className="flex items-center gap-3 border-b border-border px-4">
@@ -369,7 +360,7 @@ export function SearchPalette({
               {query && (
                 <button
                   onClick={() => setQuery("")}
-                  className="shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground"
+                  className="shrink-0 rounded-none px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground"
                 >
                   Clear
                 </button>
@@ -430,31 +421,31 @@ export function SearchPalette({
             {/* Footer */}
             <div className="flex items-center gap-3 border-t border-border px-4 py-2">
               <div className="flex items-center gap-1.5">
-                <kbd className="flex h-5 min-w-5 items-center justify-center rounded border border-border bg-muted px-1 font-mono text-[10px] text-muted-foreground">
+                <kbd className="flex h-5 min-w-5 items-center justify-center rounded-none border border-border bg-muted px-1 font-mono text-[10px] text-muted-foreground">
                   ↑
                 </kbd>
-                <kbd className="flex h-5 min-w-5 items-center justify-center rounded border border-border bg-muted px-1 font-mono text-[10px] text-muted-foreground">
+                <kbd className="flex h-5 min-w-5 items-center justify-center rounded-none border border-border bg-muted px-1 font-mono text-[10px] text-muted-foreground">
                   ↓
                 </kbd>
                 <span className="text-[11px] text-muted-foreground/60">navigate</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <kbd className="flex h-5 min-w-5 items-center justify-center rounded border border-border bg-muted px-1 font-mono text-[10px] text-muted-foreground">
+                <kbd className="flex h-5 min-w-5 items-center justify-center rounded-none border border-border bg-muted px-1 font-mono text-[10px] text-muted-foreground">
                   ↵
                 </kbd>
                 <span className="text-[11px] text-muted-foreground/60">open</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <kbd className="flex h-5 min-w-5 items-center justify-center rounded border border-border bg-muted px-1 font-mono text-[10px] text-muted-foreground">
+                <kbd className="flex h-5 min-w-5 items-center justify-center rounded-none border border-border bg-muted px-1 font-mono text-[10px] text-muted-foreground">
                   esc
                 </kbd>
                 <span className="text-[11px] text-muted-foreground/60">close</span>
               </div>
             </div>
-          </motion.div>
+          </div>
         </>
       )}
-    </AnimatePresence>,
+    </>,
     document.body
   )
 }
@@ -480,11 +471,11 @@ function NavResultRow({
       onClick={onSelect}
       onMouseMove={onHover}
       className={cn(
-        "flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors",
+        "flex w-full items-center gap-3 rounded-none px-2.5 py-2 text-left transition-colors",
         isActive ? "bg-accent text-foreground" : "text-foreground/80 hover:bg-accent/50"
       )}
     >
-      <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted/80">
+      <div className="flex size-7 shrink-0 items-center justify-center rounded-none bg-muted/80">
         <result.icon size={14} className="text-muted-foreground" />
       </div>
       <span className="flex-1 truncate text-[13px] font-medium">{result.label}</span>
@@ -518,7 +509,7 @@ function TaskResultRow({
       onClick={onSelect}
       onMouseMove={onHover}
       className={cn(
-        "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors",
+        "flex w-full items-center gap-2.5 rounded-none px-2.5 py-2 text-left transition-colors",
         isActive ? "bg-accent text-foreground" : "text-foreground/80 hover:bg-accent/50"
       )}
     >
@@ -533,7 +524,7 @@ function TaskResultRow({
           {result.labels.slice(0, 2).map((label) => (
             <span
               key={label}
-              className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-medium capitalize text-muted-foreground"
+              className="rounded-none bg-muted px-1.5 py-0.5 text-[9px] font-medium capitalize text-muted-foreground"
             >
               {label}
             </span>

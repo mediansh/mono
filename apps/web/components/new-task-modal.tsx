@@ -22,7 +22,6 @@ import {
   Sparkle,
   ArrowRight,
 } from "@phosphor-icons/react"
-import { motion } from "motion/react"
 import { Dialog, DialogContent } from "@workspace/ui/components/dialog"
 import {
   DropdownMenu,
@@ -161,6 +160,7 @@ export function NewTaskModal({
     }))
   }, [currentWorkspace?.labels])
 
+  const titleRef = useRef<HTMLInputElement>(null)
   const descriptionRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const createTask = useMutation(api.tasks.createTask)
@@ -329,6 +329,7 @@ export function NewTaskModal({
 
       if (createMore) {
         resetForm({ keepOpen: true, nextStatus: status })
+        requestAnimationFrame(() => titleRef.current?.focus())
       } else {
         onOpenChange(false)
         resetForm()
@@ -449,7 +450,7 @@ export function NewTaskModal({
   }
 
   function handleTitleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !e.metaKey && !e.ctrlKey) {
       e.preventDefault()
       descriptionRef.current?.focus()
     }
@@ -471,6 +472,16 @@ export function NewTaskModal({
       <DialogContent
         showCloseButton={false}
         className="flex max-w-2xl flex-col gap-0 p-0"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault()
+            if (activeTab === "manual") {
+              handleCreate()
+            } else {
+              handleGenerateTasks()
+            }
+          }
+        }}
       >
         {/* Header with tabs */}
         <div className="flex items-center justify-between border-b border-border px-4">
@@ -507,7 +518,7 @@ export function NewTaskModal({
           <div className="flex items-center gap-1">
             <button
               onClick={() => onOpenChange(false)}
-              className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className="flex size-7 items-center justify-center rounded-none text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
               <X size={14} />
             </button>
@@ -520,6 +531,7 @@ export function NewTaskModal({
               {/* Body */}
               <div className="flex flex-1 flex-col px-5 pt-4 pb-2">
                 <input
+                  ref={titleRef}
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
@@ -544,7 +556,7 @@ export function NewTaskModal({
                 <div className="flex flex-wrap items-center gap-2">
                   {/* Status */}
                   <DropdownMenu>
-                    <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent">
+                    <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-none border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent">
                       {getStatusIcon(status)}
                       {statusLabel}
                     </DropdownMenuTrigger>
@@ -568,7 +580,7 @@ export function NewTaskModal({
 
                   {/* Priority */}
                   <DropdownMenu>
-                    <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent">
+                    <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-none border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent">
                       {getPriorityIcon(priority)}
                       {priorityLabel}
                     </DropdownMenuTrigger>
@@ -592,7 +604,7 @@ export function NewTaskModal({
 
                   {/* Labels (multi-select) */}
                   <DropdownMenu>
-                    <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent">
+                    <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-none border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent">
                       <Tag
                         size={14}
                         className="text-muted-foreground"
@@ -617,7 +629,7 @@ export function NewTaskModal({
                           onCheckedChange={() => toggleLabel(opt.id)}
                         >
                           <span
-                            className="inline-block size-2.5 shrink-0 rounded-full"
+                            className="inline-block size-2.5 shrink-0 rounded-none"
                             style={{ backgroundColor: opt.color }}
                           />
                           {opt.label}
@@ -633,7 +645,7 @@ export function NewTaskModal({
                     {attachments.map((file, i) => (
                       <div
                         key={i}
-                        className="flex items-center gap-1.5 rounded-lg border border-border bg-accent/50 px-2.5 py-1 text-xs"
+                        className="flex items-center gap-1.5 rounded-none border border-border bg-accent/50 px-2.5 py-1 text-xs"
                       >
                         <Paperclip
                           size={12}
@@ -670,7 +682,7 @@ export function NewTaskModal({
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       disabled={uploading}
-                      className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+                      className="flex items-center gap-1.5 rounded-none border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
                     >
                       {uploading ? (
                         <SpinnerGap size={14} className="animate-spin" />
@@ -690,14 +702,13 @@ export function NewTaskModal({
                       className="flex items-center gap-2 text-xs text-muted-foreground"
                     >
                       <div
-                        className={`relative h-5 w-8 rounded-full transition-colors ${
-                          createMore ? "bg-[#14120B]" : "bg-accent"
+                        className={`relative h-5 w-8 rounded-none transition-colors ${
+                          createMore ? "bg-primary" : "bg-accent"
                         }`}
                       >
-                        <motion.div
-                          animate={{ x: createMore ? 18 : 2 }}
-                          transition={{ duration: 0.15 }}
-                          className="absolute top-1 size-3 rounded-full bg-white shadow-sm"
+                        <div
+                          className="absolute top-1 size-3 rounded-none bg-white transition-transform duration-150"
+                          style={{ transform: createMore ? "translateX(18px)" : "translateX(2px)" }}
                         />
                       </div>
                       Create more
@@ -707,9 +718,12 @@ export function NewTaskModal({
                     <button
                       onClick={handleCreate}
                       disabled={!title.trim() || !currentWorkspace}
-                      className="flex items-center rounded-lg bg-[#14120B] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#14120B]/90 disabled:opacity-50"
+                      className="flex items-center gap-2 rounded-none bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                     >
                       Create task
+                      <kbd className="hidden rounded bg-primary-foreground/20 px-1.5 py-0.5 text-[10px] font-normal text-primary-foreground/70 sm:inline-block">
+                        {typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.userAgent) ? "⌘" : "Ctrl"}↵
+                      </kbd>
                     </button>
                   </div>
                 </div>
@@ -728,20 +742,24 @@ export function NewTaskModal({
                   placeholder="e.g. Create tasks for building a user authentication flow with signup, login, password reset, and email verification..."
                   autoFocus
                   rows={6}
-                  className="w-full flex-1 resize-none rounded-lg border border-border bg-accent/30 p-3 text-sm transition-colors outline-none placeholder:text-muted-foreground/50 focus:border-[#14120B]/50 focus:ring-1 focus:ring-[#14120B]/20"
+                  className="w-full flex-1 resize-none rounded-none border border-border bg-accent/30 p-3 text-sm transition-colors outline-none placeholder:text-muted-foreground/50 focus:border-ring focus:ring-1 focus:ring-ring/30"
                 />
               </div>
               <div className="flex items-center justify-end border-t border-border px-4 py-3">
                 <button
                   onClick={handleGenerateTasks}
                   disabled={!aiPrompt.trim() || isGenerating}
-                  className="flex items-center gap-2 rounded-lg bg-[#14120B] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#14120B]/90 disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-none bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                 >
                   {isGenerating ? "Generating..." : "Generate tasks"}
                   {isGenerating ? (
                     <SpinnerGap size={16} className="animate-spin" />
                   ) : (
-                    <ArrowRight size={16} />
+                    <>
+                      <kbd className="hidden rounded bg-primary-foreground/20 px-1.5 py-0.5 text-[10px] font-normal text-primary-foreground/70 sm:inline-block">
+                        {typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.userAgent) ? "⌘" : "Ctrl"}↵
+                      </kbd>
+                    </>
                   )}
                 </button>
               </div>

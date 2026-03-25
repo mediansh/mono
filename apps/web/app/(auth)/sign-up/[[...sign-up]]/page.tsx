@@ -121,7 +121,7 @@ export default function SignUpPage() {
                   type="button"
                   disabled={!!ssoLoading}
                   onClick={() => handleOAuth("oauth_github")}
-                  className="flex h-10 w-full items-center justify-center gap-3 rounded-lg border border-border bg-card text-sm font-medium transition-colors hover:bg-muted disabled:opacity-50"
+                  className="flex h-10 w-full items-center justify-center gap-3 rounded-none border border-border bg-card text-sm font-medium transition-colors hover:bg-muted disabled:opacity-50"
                 >
                   {ssoLoading === "oauth_github" ? <Spinner /> : (
                     <>
@@ -137,7 +137,7 @@ export default function SignUpPage() {
                   type="button"
                   disabled={!!ssoLoading}
                   onClick={() => handleOAuth("oauth_google")}
-                  className="flex h-10 w-full items-center justify-center gap-3 rounded-lg border border-border bg-card text-sm font-medium transition-colors hover:bg-muted disabled:opacity-50"
+                  className="flex h-10 w-full items-center justify-center gap-3 rounded-none border border-border bg-card text-sm font-medium transition-colors hover:bg-muted disabled:opacity-50"
                 >
                   {ssoLoading === "oauth_google" ? <Spinner /> : (
                     <>
@@ -176,7 +176,7 @@ export default function SignUpPage() {
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
                       placeholder="John"
-                      className="h-10 rounded-lg border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
+                      className="h-10 rounded-none border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
                     />
                   </div>
                   <div className="flex flex-col gap-1.5">
@@ -189,7 +189,7 @@ export default function SignUpPage() {
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
                       placeholder="Doe"
-                      className="h-10 rounded-lg border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
+                      className="h-10 rounded-none border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
                     />
                   </div>
                 </div>
@@ -205,7 +205,7 @@ export default function SignUpPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
                     required
-                    className="h-10 rounded-lg border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
+                    className="h-10 rounded-none border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
                   />
                 </div>
 
@@ -220,7 +220,7 @@ export default function SignUpPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Create a password"
                     required
-                    className="h-10 rounded-lg border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
+                    className="h-10 rounded-none border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
                   />
                 </div>
 
@@ -233,7 +233,7 @@ export default function SignUpPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="mt-1 h-10 rounded-lg bg-[#14120B] text-sm font-medium text-white transition-colors hover:bg-[#14120B]/90 disabled:opacity-50"
+                  className="mt-1 h-10 rounded-none bg-primary text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                 >
                   {loading ? <Spinner /> : "Create account"}
                 </button>
@@ -270,7 +270,7 @@ export default function SignUpPage() {
                     onChange={(e) => setCode(e.target.value)}
                     placeholder="Enter 6-digit code"
                     required
-                    className="h-10 rounded-lg border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
+                    className="h-10 rounded-none border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
                   />
                 </div>
 
@@ -281,7 +281,7 @@ export default function SignUpPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="mt-1 h-10 rounded-lg bg-[#14120B] text-sm font-medium text-white transition-colors hover:bg-[#14120B]/90 disabled:opacity-50"
+                  className="mt-1 h-10 rounded-none bg-primary text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                 >
                   {loading ? <Spinner /> : "Verify email"}
                 </button>
@@ -300,7 +300,7 @@ export default function SignUpPage() {
       </div>
 
       {/* Right half - Branding */}
-      <div className="hidden flex-col items-center justify-center bg-[#14120B] lg:flex lg:w-1/2">
+      <div className="hidden flex-col items-center justify-center bg-card border-l border-border lg:flex lg:w-1/2">
         <Image
           src="/median-full.png"
           alt="Median"

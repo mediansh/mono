@@ -19,14 +19,14 @@ export const metadata: Metadata = {
   },
 }
 
-const fontSans = Geist({
-  subsets: ["latin"],
-  variable: "--font-sans",
-})
-
 const fontMono = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
+})
+
+const fontSans = Geist({
+  subsets: ["latin"],
+  variable: "--font-sans",
 })
 
 const globalRoutes = ["/", "/app", "/app/setup", "/sign-in", "/sign-up"]
@@ -40,7 +40,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn("antialiased", fontMono.variable, "font-sans", fontSans.variable)}
+      className={cn("antialiased", fontMono.variable, fontSans.variable, "font-sans")}
     >
       <body>
         <Suspense fallback={null}>

@@ -4,7 +4,6 @@ import { useState, useEffect, useId } from "react"
 import { useMutation } from "convex/react"
 import { Plus, Trash } from "@phosphor-icons/react"
 import { DEFAULT_WORKSPACE_LABELS } from "@/lib/task-board"
-import { motion, AnimatePresence } from "motion/react"
 import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
 import { hasWorkspaceAdminPermission } from "@/lib/workspace-permissions"
@@ -82,7 +81,7 @@ export default function LabelsSettingsPage() {
       </div>
 
       {/* Labels card */}
-      <div className="rounded-lg border border-border bg-card">
+      <div className="rounded-none border border-border bg-card">
         <div className="p-5">
           <div className="flex flex-col gap-2">
               {labels.map((label, index) => (
@@ -98,7 +97,7 @@ export default function LabelsSettingsPage() {
                       next[index] = { ...next[index]!, color: e.target.value }
                       setLabels(next)
                     }}
-                    className="size-8 shrink-0 cursor-pointer appearance-none rounded-md border border-border bg-transparent p-0.5 [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-sm [&::-webkit-color-swatch]:border-none"
+                    className="size-8 shrink-0 cursor-pointer appearance-none rounded-none border border-border bg-transparent p-0.5 [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-none [&::-webkit-color-swatch]:border-none"
                   />
                   <input
                     type="text"
@@ -110,12 +109,12 @@ export default function LabelsSettingsPage() {
                     }}
                     placeholder="Label name"
                     autoFocus={label.name === ""}
-                    className="h-8 w-full rounded-md border border-border bg-background px-2.5 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
+                    className="h-8 w-full rounded-none border border-border bg-background px-2.5 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
                   />
                   <button
                     type="button"
                     onClick={() => removeLabel(index)}
-                    className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+                    className="flex size-8 shrink-0 items-center justify-center rounded-none text-muted-foreground opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
                   >
                     <Trash size={14} />
                   </button>
@@ -126,7 +125,7 @@ export default function LabelsSettingsPage() {
           <button
             type="button"
             onClick={addLabel}
-            className="mt-3 flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border text-xs text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+            className="mt-3 flex h-8 w-full items-center justify-center gap-1.5 rounded-none border border-dashed border-border text-xs text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
           >
             <Plus size={13} />
             Add label
@@ -139,24 +138,16 @@ export default function LabelsSettingsPage() {
             {labels.length} label{labels.length !== 1 ? "s" : ""} configured
           </p>
           <div className="flex items-center gap-2">
-            <AnimatePresence>
-              {saved && (
-                <motion.span
-                  initial={{ opacity: 0, x: 4 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 4 }}
-                  transition={{ duration: 0.15 }}
-                  className="text-xs text-emerald-500"
-                >
-                  Saved
-                </motion.span>
-              )}
-            </AnimatePresence>
+            {saved && (
+              <span className="text-xs text-emerald-500">
+                Saved
+              </span>
+            )}
             <button
               type="button"
               disabled={saving || labels.some((l) => !l.name.trim())}
               onClick={handleSave}
-              className="flex h-8 items-center justify-center rounded-md bg-[#14120B] px-3.5 text-xs font-medium text-white transition-colors hover:bg-[#14120B]/90 disabled:opacity-40"
+              className="flex h-8 items-center justify-center rounded-none bg-primary px-3.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
             >
               {saving ? "Saving..." : "Save"}
             </button>

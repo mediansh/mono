@@ -4,7 +4,6 @@ import { useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Gear, Tag, Users } from "@phosphor-icons/react"
-import { motion } from "motion/react"
 
 const settingsNav = [
   { label: "General", href: "/app/settings", icon: Gear },
@@ -29,36 +28,26 @@ export default function SettingsLayout({
       <div className="flex w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
         {/* Title */}
         <div className="px-4 pb-2 pt-4">
-          <motion.h1
-            initial={{ opacity: 0, x: -4 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
+          <h1
             className="text-sm font-semibold"
           >
             Settings
-          </motion.h1>
+          </h1>
         </div>
 
         {/* Navigation */}
         <nav className="flex flex-col gap-0.5 px-2 pt-2">
-          {settingsNav.map((item, i) => {
+          {settingsNav.map((item) => {
             const isActive = pathname === item.href
             return (
-              <motion.div
+              <div
                 key={item.href}
-                initial={{ opacity: 0, x: -6 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{
-                  duration: 0.25,
-                  delay: 0.03 + i * 0.04,
-                  ease: "easeOut",
-                }}
               >
                 <Link
                   href={item.href}
-                  className={`group relative flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors ${
+                  className={`group relative flex items-center gap-2.5 rounded-none px-2.5 py-1.5 text-sm font-medium transition-colors ${
                     isActive
-                      ? "bg-[#14120B]/10 text-[#14120B]"
+                      ? "bg-accent text-foreground"
                       : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
                   }`}
                 >
@@ -66,12 +55,12 @@ export default function SettingsLayout({
                     size={15}
                     weight={isActive ? "fill" : "regular"}
                     className={
-                      isActive ? "text-[#14120B]" : "text-muted-foreground group-hover:text-foreground"
+                      isActive ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
                     }
                   />
                   <span>{item.label}</span>
                 </Link>
-              </motion.div>
+              </div>
             )
           })}
         </nav>

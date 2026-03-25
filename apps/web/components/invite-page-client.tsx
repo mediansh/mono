@@ -6,7 +6,6 @@ import { useMutation, useQuery } from "convex/react"
 import { useAuth } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
 import { SealCheck, Link as LinkIcon, Users } from "@phosphor-icons/react"
-import { motion } from "motion/react"
 import { toast } from "sonner"
 import { api } from "@/convex/_generated/api"
 import { RoleBadge } from "@/components/role-badge"
@@ -42,16 +41,13 @@ export function InvitePageClient({ token }: { token: string }) {
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(4,150,255,0.16),_transparent_38%),linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.95))] px-6 py-20 dark:bg-[radial-gradient(circle_at_top,_rgba(4,150,255,0.18),_transparent_32%),linear-gradient(180deg,_rgba(10,15,23,1),_rgba(10,15,23,0.96))]">
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24, ease: "easeOut" }}
-        className="mx-auto flex w-full max-w-xl flex-col gap-6 rounded-[28px] border border-border bg-background/90 p-8 shadow-[0_40px_120px_-60px_rgba(4,150,255,0.45)] backdrop-blur-xl"
+      <div
+        className="mx-auto flex w-full max-w-xl flex-col gap-6 rounded-none border-2 border-border bg-background p-8 shadow-none"
       >
-        <div className="flex size-14 items-center justify-center rounded-[20px] border border-border bg-[#14120B]/10">
+        <div className="flex size-14 items-center justify-center rounded-none border border-border bg-accent">
           <Users
             size={24}
-            className="text-[#14120B]"
+            className="text-foreground"
           />
         </div>
 
@@ -71,7 +67,7 @@ export function InvitePageClient({ token }: { token: string }) {
             </p>
             <Link
               href="/"
-              className="inline-flex h-10 items-center justify-center rounded-xl border border-border px-4 text-sm font-medium transition-colors hover:bg-accent"
+              className="inline-flex h-10 items-center justify-center rounded-none border border-border px-4 text-sm font-medium transition-colors hover:bg-accent"
             >
               Back to home
             </Link>
@@ -98,13 +94,13 @@ export function InvitePageClient({ token }: { token: string }) {
               </p>
             </div>
 
-            <div className="grid gap-3 rounded-2xl border border-border/80 bg-muted/30 p-4">
+            <div className="grid gap-3 rounded-none border border-border/80 bg-muted/30 p-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Permissions</span>
                 <SealCheck
                   size={18}
                   weight="fill"
-                  className="text-[#14120B]"
+                  className="text-foreground"
                 />
               </div>
               <p className="text-sm">
@@ -121,7 +117,7 @@ export function InvitePageClient({ token }: { token: string }) {
                 type="button"
                 disabled={accepting}
                 onClick={handleAcceptInvite}
-                className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#14120B] px-4 text-sm font-medium text-white transition-colors hover:bg-[#14120B]/90 disabled:opacity-60"
+                className="flex h-11 items-center justify-center gap-2 rounded-none bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
               >
                 <LinkIcon size={16} />
                 {accepting ? "Joining..." : "Accept invite"}
@@ -129,7 +125,7 @@ export function InvitePageClient({ token }: { token: string }) {
             ) : (
               <Link
                 href={authRedirect}
-                className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#14120B] px-4 text-sm font-medium text-white transition-colors hover:bg-[#14120B]/90"
+                className="flex h-11 items-center justify-center gap-2 rounded-none bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
               >
                 <LinkIcon size={16} />
                 Sign in to accept
@@ -137,7 +133,7 @@ export function InvitePageClient({ token }: { token: string }) {
             )}
           </>
         )}
-      </motion.div>
+      </div>
     </main>
   )
 }

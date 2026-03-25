@@ -168,7 +168,7 @@ export default function SignInPage() {
                   type="button"
                   disabled={!!ssoLoading}
                   onClick={() => handleOAuth("oauth_github")}
-                  className="flex h-10 w-full items-center justify-center gap-3 rounded-lg border border-border bg-card text-sm font-medium transition-colors hover:bg-muted disabled:opacity-50"
+                  className="flex h-10 w-full items-center justify-center gap-3 rounded-none border border-border bg-card text-sm font-medium transition-colors hover:bg-muted disabled:opacity-50"
                 >
                   {ssoLoading === "oauth_github" ? <Spinner /> : (
                     <>
@@ -184,7 +184,7 @@ export default function SignInPage() {
                   type="button"
                   disabled={!!ssoLoading}
                   onClick={() => handleOAuth("oauth_google")}
-                  className="flex h-10 w-full items-center justify-center gap-3 rounded-lg border border-border bg-card text-sm font-medium transition-colors hover:bg-muted disabled:opacity-50"
+                  className="flex h-10 w-full items-center justify-center gap-3 rounded-none border border-border bg-card text-sm font-medium transition-colors hover:bg-muted disabled:opacity-50"
                 >
                   {ssoLoading === "oauth_google" ? <Spinner /> : (
                     <>
@@ -223,7 +223,7 @@ export default function SignInPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
                     required
-                    className="h-10 rounded-lg border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
+                    className="h-10 rounded-none border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
                   />
                 </div>
 
@@ -247,7 +247,7 @@ export default function SignInPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
                     required
-                    className="h-10 rounded-lg border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
+                    className="h-10 rounded-none border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
                   />
                 </div>
 
@@ -258,7 +258,7 @@ export default function SignInPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="mt-1 h-10 rounded-lg bg-[#14120B] text-sm font-medium text-white transition-colors hover:bg-[#14120B]/90 disabled:opacity-50"
+                  className="mt-1 h-10 rounded-none bg-primary text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                 >
                   {loading ? <Spinner /> : "Sign in"}
                 </button>
@@ -294,7 +294,7 @@ export default function SignInPage() {
                     onChange={(e) => setMfaCode(e.target.value)}
                     placeholder="Enter 6-digit code"
                     required
-                    className="h-10 rounded-lg border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
+                    className="h-10 rounded-none border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
                   />
                 </div>
 
@@ -305,7 +305,7 @@ export default function SignInPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="mt-1 h-10 rounded-lg bg-[#14120B] text-sm font-medium text-white transition-colors hover:bg-[#14120B]/90 disabled:opacity-50"
+                  className="mt-1 h-10 rounded-none bg-primary text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                 >
                   {loading ? <Spinner /> : "Verify"}
                 </button>
@@ -340,7 +340,7 @@ export default function SignInPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
                     required
-                    className="h-10 rounded-lg border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
+                    className="h-10 rounded-none border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
                   />
                 </div>
 
@@ -351,7 +351,7 @@ export default function SignInPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="mt-1 h-10 rounded-lg bg-[#14120B] text-sm font-medium text-white transition-colors hover:bg-[#14120B]/90 disabled:opacity-50"
+                  className="mt-1 h-10 rounded-none bg-primary text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                 >
                   {loading ? <Spinner /> : "Send reset code"}
                 </button>
@@ -387,7 +387,7 @@ export default function SignInPage() {
                     onChange={(e) => setResetCode(e.target.value)}
                     placeholder="Enter code"
                     required
-                    className="h-10 rounded-lg border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
+                    className="h-10 rounded-none border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
                   />
                 </div>
 
@@ -402,7 +402,7 @@ export default function SignInPage() {
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Enter new password"
                     required
-                    className="h-10 rounded-lg border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
+                    className="h-10 rounded-none border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
                   />
                 </div>
 
@@ -413,7 +413,7 @@ export default function SignInPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="mt-1 h-10 rounded-lg bg-[#14120B] text-sm font-medium text-white transition-colors hover:bg-[#14120B]/90 disabled:opacity-50"
+                  className="mt-1 h-10 rounded-none bg-primary text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                 >
                   {loading ? <Spinner /> : "Reset password"}
                 </button>
@@ -432,7 +432,7 @@ export default function SignInPage() {
       </div>
 
       {/* Right half - Branding */}
-      <div className="hidden flex-col items-center justify-center bg-[#14120B] lg:flex lg:w-1/2">
+      <div className="hidden flex-col items-center justify-center bg-card border-l border-border lg:flex lg:w-1/2">
         <Image
           src="/median-full.png"
           alt="Median"
