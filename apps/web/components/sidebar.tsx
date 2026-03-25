@@ -303,7 +303,7 @@ export function AppSidebar() {
                 className="hover:bg-transparent active:bg-transparent data-active:bg-transparent"
                 size="lg"
               >
-                <Logo symbolOnly className="size-5" />
+                <Logo symbolOnly className="size-7" />
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
