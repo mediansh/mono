@@ -73,9 +73,12 @@ export function DiscordPairingPanel() {
   const [additionalContext, setAdditionalContext] = useState("")
   const [respondForMeMode, setRespondForMeMode] = useState<"off" | "all" | "specific">("off")
   const [respondChannelIds, setRespondChannelIds] = useState<string[]>([])
-  const [channelIdInput, setChannelIdInput] = useState("")
+  const [channelSearch, setChannelSearch] = useState("")
+  const [channelDropdownOpen, setChannelDropdownOpen] = useState(false)
   const [settingsInitialized, setSettingsInitialized] = useState(false)
   const contextSaveTimer = useRef<NodeJS.Timeout | null>(null)
+  const channelSearchRef = useRef<HTMLInputElement>(null)
+  const channelDropdownRef = useRef<HTMLDivElement>(null)
 
   const integration = integrationState?.integration ?? null
 
@@ -127,15 +130,35 @@ export function DiscordPairingPanel() {
     }
   }
 
-  function handleAddChannelId() {
-    const id = channelIdInput.trim().replace(/\D/g, "")
-    if (!id || respondChannelIds.includes(id)) {
-      setChannelIdInput("")
-      return
+  const guildChannels = integration?.guildChannels ?? []
+
+  const filteredChannels = guildChannels.filter(
+    (ch) =>
+      !respondChannelIds.includes(ch.id) &&
+      ch.name.toLowerCase().includes(channelSearch.toLowerCase())
+  )
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        channelDropdownRef.current &&
+        !channelDropdownRef.current.contains(event.target as Node)
+      ) {
+        setChannelDropdownOpen(false)
+      }
     }
-    const updated = [...respondChannelIds, id]
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
+  function handleToggleChannel(channelId: string) {
+    const isSelected = respondChannelIds.includes(channelId)
+    const updated = isSelected
+      ? respondChannelIds.filter((id) => id !== channelId)
+      : [...respondChannelIds, channelId]
     setRespondChannelIds(updated)
-    setChannelIdInput("")
+    setChannelSearch("")
     if (!currentWorkspace) return
     void updateSettings({
       workspaceId: currentWorkspace._id,
@@ -143,8 +166,8 @@ export function DiscordPairingPanel() {
     })
   }
 
-  function handleRemoveChannelId(id: string) {
-    const updated = respondChannelIds.filter((channelId) => channelId !== id)
+  function handleRemoveChannel(channelId: string) {
+    const updated = respondChannelIds.filter((id) => id !== channelId)
     setRespondChannelIds(updated)
     if (!currentWorkspace) return
     void updateSettings({
@@ -336,54 +359,92 @@ export function DiscordPairingPanel() {
 
             {respondForMeMode === "specific" ? (
               <div className="border-t border-border px-5 py-3">
-                <div className="flex gap-2">
+                {/* Selected channels */}
+                {respondChannelIds.length > 0 ? (
+                  <div className="mb-2.5 flex flex-wrap gap-1.5">
+                    {respondChannelIds.map((id) => {
+                      const channel = guildChannels.find((ch) => ch.id === id)
+                      return (
+                        <span
+                          key={id}
+                          className="inline-flex items-center gap-1.5 border border-border bg-muted/50 px-2 py-0.5 text-xs text-muted-foreground"
+                        >
+                          <span className="text-muted-foreground/60">#</span>
+                          {channel?.name ?? id}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveChannel(id)}
+                            className="text-muted-foreground/60 transition-colors hover:text-foreground"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      )
+                    })}
+                  </div>
+                ) : null}
+
+                {/* Channel search dropdown */}
+                <div ref={channelDropdownRef} className="relative">
                   <Input
-                    value={channelIdInput}
-                    onChange={(event) => setChannelIdInput(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault()
-                        handleAddChannelId()
-                      }
+                    ref={channelSearchRef}
+                    value={channelSearch}
+                    onChange={(event) => {
+                      setChannelSearch(event.target.value)
+                      setChannelDropdownOpen(true)
                     }}
-                    placeholder="Paste a channel ID"
-                    className="h-8 flex-1 font-mono text-xs"
+                    onFocus={() => setChannelDropdownOpen(true)}
+                    placeholder={
+                      guildChannels.length > 0
+                        ? "Search channels..."
+                        : "Syncing channels from Discord..."
+                    }
+                    disabled={guildChannels.length === 0}
+                    className="h-8 text-xs"
                   />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleAddChannelId}
-                    disabled={!channelIdInput.trim()}
-                    className="h-8"
-                  >
-                    Add
-                  </Button>
+
+                  {channelDropdownOpen && filteredChannels.length > 0 ? (
+                    <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-y-auto border border-border bg-card shadow-lg">
+                      {filteredChannels.map((ch) => (
+                        <button
+                          key={ch.id}
+                          type="button"
+                          onClick={() => {
+                            handleToggleChannel(ch.id)
+                            setChannelDropdownOpen(false)
+                          }}
+                          className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors hover:bg-muted/50"
+                        >
+                          <span className="text-muted-foreground/60">#</span>
+                          <span className="flex-1 truncate">{ch.name}</span>
+                          {ch.parentName ? (
+                            <span className="shrink-0 text-[10px] text-muted-foreground/50">
+                              {ch.parentName}
+                            </span>
+                          ) : null}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {channelDropdownOpen && channelSearch && filteredChannels.length === 0 ? (
+                    <div className="absolute left-0 right-0 top-full z-50 mt-1 border border-border bg-card px-3 py-2 shadow-lg">
+                      <p className="text-xs text-muted-foreground/60">No matching channels</p>
+                    </div>
+                  ) : null}
                 </div>
 
-                {respondChannelIds.length > 0 ? (
-                  <div className="mt-2.5 flex flex-wrap gap-1.5">
-                    {respondChannelIds.map((id) => (
-                      <span
-                        key={id}
-                        className="inline-flex items-center gap-1.5 border border-border bg-muted/50 px-2 py-0.5 font-mono text-xs text-muted-foreground"
-                      >
-                        {id}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveChannelId(id)}
-                          className="text-muted-foreground/60 transition-colors hover:text-foreground"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                ) : (
+                {respondChannelIds.length === 0 && guildChannels.length > 0 ? (
                   <p className="mt-2 text-[11px] text-muted-foreground/60">
-                    Right-click a channel in Discord and select "Copy Channel ID" to get the ID.
+                    Select the channels where Median should auto-reply.
                   </p>
-                )}
+                ) : null}
+
+                {guildChannels.length === 0 ? (
+                  <p className="mt-2 text-[11px] text-muted-foreground/60">
+                    Channel list will appear once the bot syncs with your Discord server.
+                  </p>
+                ) : null}
               </div>
             ) : null}
           </motion.div>

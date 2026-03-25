@@ -7,6 +7,7 @@ import { ConvexHttpClient } from "convex/browser"
 import { makeFunctionReference } from "convex/server"
 import { z } from "zod"
 import {
+  ChannelType,
   Client,
   Events,
   GatewayIntentBits,
@@ -148,6 +149,20 @@ const markDiscordNotificationSentMutation = makeFunctionReference<
   },
   null
 >("discord:markDiscordNotificationSent")
+const syncGuildChannelsMutation = makeFunctionReference<
+  "mutation",
+  {
+    botSecret: string
+    guildId: string
+    channels: {
+      id: string
+      name: string
+      type: number
+      parentName?: string
+    }[]
+  },
+  null
+>("discord:syncGuildChannels")
 const getTaskSnapshotForDiscordQuery = makeFunctionReference<
   "query",
   {
@@ -398,6 +413,51 @@ function shouldRespondInChannel(
   if (mode === "specific") return integration.respondForMeChannelIds.includes(channelId)
   // Legacy fallback: old boolean field
   return integration.respondForMe
+}
+
+async function syncGuildChannelsToConvex(guildId: string) {
+  try {
+    const guild = client.guilds.cache.get(guildId)
+    if (!guild) return
+
+    // Fetch all channels and filter to text-based ones
+    const allChannels = await guild.channels.fetch()
+    const textChannels = allChannels
+      .filter(
+        (ch) =>
+          ch !== null &&
+          (ch.type === ChannelType.GuildText ||
+            ch.type === ChannelType.GuildAnnouncement ||
+            ch.type === ChannelType.GuildForum)
+      )
+      .map((ch) => ({
+        id: ch!.id,
+        name: ch!.name,
+        type: ch!.type,
+        parentName: ch!.parent?.name ?? undefined,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+
+    await convex.mutation(syncGuildChannelsMutation, {
+      botSecret: pairingSecret,
+      guildId,
+      channels: textChannels,
+    })
+
+    logInfo("sync", "Synced guild channels to Convex", {
+      guildId,
+      guildName: guild.name,
+      channelCount: textChannels.length,
+    })
+  } catch (error) {
+    logError("sync", "Failed to sync guild channels", error, { guildId })
+  }
+}
+
+async function syncAllGuildChannels() {
+  for (const [guildId] of client.guilds.cache) {
+    await syncGuildChannelsToConvex(guildId)
+  }
 }
 
 function scheduleFeedbackProcessing(integrationId: string) {
@@ -657,39 +717,6 @@ async function processFeedbackWindow(integrationId: string) {
         sourceUrl,
       })
 
-      // Send "request received" replies if respondForMe is enabled for this channel
-      const lastRelevantMessage = relevantMessages[relevantMessages.length - 1]
-      const replyChannelId = lastRelevantMessage?.permalink.split("/").at(-2) ?? ""
-      if (lastRelevantMessage && shouldRespondInChannel(feedbackWindow.integration, replyChannelId)) {
-        {
-          try {
-            const channel = await client.channels.fetch(replyChannelId)
-            if (channel && channel.isTextBased() && "send" in channel) {
-              const taskList = extracted.tasks
-                .map((task) => `• **${task.title}**`)
-                .join("\n")
-              await channel.send({
-                content: [
-                  `✅ Got it! We've logged ${extracted.tasks.length === 1 ? "this" : "these"} as ${extracted.tasks.length === 1 ? "a request" : "requests"}:`,
-                  taskList,
-                  "We'll follow up here when shipped.",
-                ].join("\n"),
-                reply: {
-                  messageReference: lastRelevantMessage.messageId,
-                  failIfNotExists: false,
-                },
-              })
-              logInfo("responder", "Sent request-received reply", {
-                integrationId,
-                channelId: lastRelevantMessage.permalink.split("/").at(-2),
-                taskCount: extracted.tasks.length,
-              })
-            }
-          } catch (replyError) {
-            logError("responder", "Failed to send request-received reply", replyError, { integrationId })
-          }
-        }
-      }
     } else {
       logInfo("extractor", "Claude returned no tasks for this feedback window", { integrationId })
     }
@@ -794,10 +821,18 @@ function startNotificationPolling() {
 client.once(Events.ClientReady, async (readyClient) => {
   await registerCommands()
   startNotificationPolling()
+
+  // Sync guild channels on startup and periodically (every 5 minutes)
+  void syncAllGuildChannels()
+  setInterval(() => {
+    void syncAllGuildChannels()
+  }, 5 * 60 * 1000)
+
   logInfo("startup", "Discord bot ready", {
     botTag: readyClient.user.tag,
     applicationId: discordApplicationId,
     convexUrl,
+    guildCount: readyClient.guilds.cache.size,
   })
 })
 

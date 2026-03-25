@@ -85,6 +85,16 @@ export default defineSchema({
       v.union(v.literal("off"), v.literal("all"), v.literal("specific"))
     ),
     respondForMeChannelIds: v.optional(v.array(v.string())),
+    guildChannels: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          name: v.string(),
+          type: v.number(),
+          parentName: v.optional(v.string()),
+        })
+      )
+    ),
   })
     .index("by_workspace", ["workspaceId"])
     .index("by_guild", ["guildId"]),

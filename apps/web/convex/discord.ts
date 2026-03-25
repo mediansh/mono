@@ -78,6 +78,7 @@ export const getWorkspaceDiscordIntegration = query({
         respondForMe: integration.respondForMe ?? false,
         respondForMeMode: integration.respondForMeMode ?? (integration.respondForMe ? "all" : "off"),
         respondForMeChannelIds: integration.respondForMeChannelIds ?? [],
+        guildChannels: integration.guildChannels ?? [],
       },
     }
   },
@@ -406,6 +407,35 @@ export const updateDiscordIntegrationSettings = mutation({
     }
 
     await ctx.db.patch(integration._id, updates)
+  },
+})
+
+export const syncGuildChannels = mutation({
+  args: {
+    botSecret: v.string(),
+    guildId: v.string(),
+    channels: v.array(
+      v.object({
+        id: v.string(),
+        name: v.string(),
+        type: v.number(),
+        parentName: v.optional(v.string()),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    requireDiscordBotSecret(args.botSecret)
+
+    const integrations = await ctx.db
+      .query("discordWorkspaceIntegrations")
+      .withIndex("by_guild", (q) => q.eq("guildId", args.guildId))
+      .collect()
+
+    for (const integration of integrations) {
+      await ctx.db.patch(integration._id, {
+        guildChannels: args.channels,
+      })
+    }
   },
 })
 
