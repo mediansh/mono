@@ -1,6 +1,6 @@
 import path from "node:path"
 import { fileURLToPath } from "node:url"
-import { generateObject } from "ai"
+import { generateObject, generateText } from "ai"
 import { google } from "@ai-sdk/google"
 import { config as loadEnv } from "dotenv"
 import { ConvexHttpClient } from "convex/browser"
@@ -145,6 +145,8 @@ const extractedFeedbackTasksSchema = z.object({
 const processingTimers = new Map<string, NodeJS.Timeout>()
 const activeProcessing = new Set<string>()
 
+globalThis.AI_SDK_LOG_WARNINGS = false
+
 loadEnv({ path: path.join(repoRoot, ".env.local"), override: true, quiet: true })
 loadEnv({ path: path.join(repoRoot, ".env"), override: false, quiet: true })
 
@@ -169,7 +171,7 @@ if (missingDiscordEnv.length > 0) {
     [
       "Discord bot is disabled.",
       `Missing env: ${missingDiscordEnv.join(", ")}.`,
-      "Add them to apps/discord-bot/.env.local to enable the bot in monorepo dev.",
+      "Add them to the repo root .env.local to enable the bot.",
     ].join(" ")
   )
   process.stdin.resume()
@@ -253,6 +255,17 @@ function formatCreatedAtLabel(timestamp: number) {
   }).format(timestamp)
 }
 
+function extractJsonObject(text: string) {
+  const start = text.indexOf("{")
+  const end = text.lastIndexOf("}")
+
+  if (start === -1 || end === -1 || end <= start) {
+    throw new Error("Model did not return a JSON object.")
+  }
+
+  return text.slice(start, end + 1)
+}
+
 function scheduleFeedbackProcessing(integrationId: string) {
   const existingTimer = processingTimers.get(integrationId)
   if (existingTimer) {
@@ -298,9 +311,8 @@ async function processFeedbackWindow(integrationId: string) {
     const pendingMessageIds = new Set(pendingMessages.map((message) => message.messageId))
     const transcript = formatTranscript(contextMessages, pendingMessageIds)
 
-    const { object: classification } = await generateObject({
+    const { text: classificationText } = await generateText({
       model: google("gemma-3-27b-it"),
-      schema: feedbackClassificationSchema,
       system: [
         "You classify Discord conversations for a product team.",
         `The only product that matters is ${feedbackWindow.integration.workspaceName}, also referred to as Median.`,
@@ -308,6 +320,8 @@ async function processFeedbackWindow(integrationId: string) {
         "Reject off-topic chat, memes, introductions, hiring talk, agency requests, feedback about unrelated tools, and generic conversation that is not about the product itself.",
         "Use the recent context only to interpret what the new messages refer to.",
         "Only include relevantMessageIds from NEW messages.",
+        "Return valid JSON only. No markdown. No code fences. No commentary.",
+        'Use this exact JSON shape: {"isProductFeedback":false,"confidence":0.0,"summary":null,"reason":"...","relevantMessageIds":[]}',
       ].join(" "),
       prompt: [
         `Workspace name: ${feedbackWindow.integration.workspaceName}`,
@@ -316,6 +330,10 @@ async function processFeedbackWindow(integrationId: string) {
         transcript,
       ].join("\n\n"),
     })
+
+    const classification = feedbackClassificationSchema.parse(
+      JSON.parse(extractJsonObject(classificationText))
+    )
 
     const latestPendingMessage = pendingMessages.at(-1)
     if (!latestPendingMessage) {
