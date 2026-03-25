@@ -202,13 +202,54 @@ const pairCommand = new SlashCommandBuilder()
 async function registerCommands() {
   const rest = new REST({ version: "10" }).setToken(discordToken)
 
+  logInfo("startup", "Registering slash commands", {
+    applicationId: discordApplicationId,
+    commands: [pairCommand.name],
+  })
+
   await rest.put(Routes.applicationCommands(discordApplicationId), {
     body: [pairCommand.toJSON()],
   })
+
+  logInfo("startup", "Slash commands registered")
 }
 
 function normalizeMessageContent(content: string) {
   return content.replace(/\s+/g, " ").trim()
+}
+
+function summarizeText(text: string, limit = 120) {
+  if (text.length <= limit) {
+    return text
+  }
+
+  return `${text.slice(0, limit - 1)}...`
+}
+
+function formatCursor(cursor: { messageId: string | null; messageCreatedAt: number | null }) {
+  if (!cursor.messageId || !cursor.messageCreatedAt) {
+    return "none"
+  }
+
+  return `${cursor.messageId}@${new Date(cursor.messageCreatedAt).toISOString()}`
+}
+
+function logInfo(scope: string, message: string, details?: Record<string, unknown>) {
+  if (details) {
+    console.log(`[discord-bot:${scope}] ${message}`, details)
+    return
+  }
+
+  console.log(`[discord-bot:${scope}] ${message}`)
+}
+
+function logError(scope: string, message: string, error: unknown, details?: Record<string, unknown>) {
+  if (details) {
+    console.error(`[discord-bot:${scope}] ${message}`, details, error)
+    return
+  }
+
+  console.error(`[discord-bot:${scope}] ${message}`, error)
 }
 
 function isMessageAfterCursor(
@@ -270,12 +311,16 @@ function scheduleFeedbackProcessing(integrationId: string) {
   const existingTimer = processingTimers.get(integrationId)
   if (existingTimer) {
     clearTimeout(existingTimer)
+    logInfo("debounce", "Reset feedback processing timer", { integrationId, waitMs: 2000 })
+  } else {
+    logInfo("debounce", "Scheduled feedback processing timer", { integrationId, waitMs: 2000 })
   }
 
   processingTimers.set(
     integrationId,
     setTimeout(() => {
       processingTimers.delete(integrationId)
+      logInfo("debounce", "Feedback processing timer fired", { integrationId })
       void processFeedbackWindow(integrationId)
     }, 2_000)
   )
@@ -283,11 +328,13 @@ function scheduleFeedbackProcessing(integrationId: string) {
 
 async function processFeedbackWindow(integrationId: string) {
   if (activeProcessing.has(integrationId)) {
+    logInfo("processor", "Processing already active; re-queueing window", { integrationId })
     scheduleFeedbackProcessing(integrationId)
     return
   }
 
   activeProcessing.add(integrationId)
+  logInfo("processor", "Starting feedback window processing", { integrationId })
 
   try {
     const feedbackWindow = await convex.query(getPendingFeedbackWindowQuery, {
@@ -303,7 +350,20 @@ async function processFeedbackWindow(integrationId: string) {
       })
     )
 
+    logInfo("processor", "Loaded feedback window", {
+      integrationId,
+      workspaceId: feedbackWindow.integration.workspaceId,
+      workspaceName: feedbackWindow.integration.workspaceName,
+      totalMessages: feedbackWindow.messages.length,
+      pendingMessages: pendingMessages.length,
+      cursor: formatCursor({
+        messageId: feedbackWindow.integration.lastProcessedMessageId,
+        messageCreatedAt: feedbackWindow.integration.lastProcessedMessageCreatedAt,
+      }),
+    })
+
     if (pendingMessages.length === 0) {
+      logInfo("processor", "No pending messages to process", { integrationId })
       return
     }
 
@@ -340,12 +400,25 @@ async function processFeedbackWindow(integrationId: string) {
       return
     }
 
+    logInfo("classifier", "Gemma classification complete", {
+      integrationId,
+      isProductFeedback: classification.isProductFeedback,
+      confidence: classification.confidence,
+      relevantMessageCount: classification.relevantMessageIds.length,
+      summary: classification.summary ?? null,
+      reason: classification.reason,
+    })
+
     if (!classification.isProductFeedback || classification.relevantMessageIds.length === 0) {
       await convex.mutation(markFeedbackWindowProcessedMutation, {
         botSecret: pairingSecret,
         integrationId,
         lastProcessedMessageId: latestPendingMessage.messageId,
         lastProcessedMessageCreatedAt: latestPendingMessage.messageCreatedAt,
+      })
+      logInfo("processor", "Window marked processed with no actionable product feedback", {
+        integrationId,
+        lastProcessedMessageId: latestPendingMessage.messageId,
       })
       return
     }
@@ -361,8 +434,18 @@ async function processFeedbackWindow(integrationId: string) {
         lastProcessedMessageId: latestPendingMessage.messageId,
         lastProcessedMessageCreatedAt: latestPendingMessage.messageCreatedAt,
       })
+      logInfo("processor", "Classifier returned no matching pending messages; cursor advanced", {
+        integrationId,
+        lastProcessedMessageId: latestPendingMessage.messageId,
+      })
       return
     }
+
+    logInfo("classifier", "Relevant feedback messages selected", {
+      integrationId,
+      relevantMessageIds: relevantMessages.map((message) => message.messageId),
+      authors: Array.from(new Set(relevantMessages.map((message) => message.authorUsername))),
+    })
 
     const labelsText =
       feedbackWindow.integration.availableLabels.length > 0
@@ -395,6 +478,12 @@ async function processFeedbackWindow(integrationId: string) {
       ].join("\n\n"),
     })
 
+    logInfo("extractor", "Claude extracted tasks from feedback", {
+      integrationId,
+      taskCount: extracted.tasks.length,
+      taskTitles: extracted.tasks.map((task) => task.title),
+    })
+
     if (extracted.tasks.length > 0) {
       const authors = Array.from(new Set(relevantMessages.map((message) => message.authorUsername)))
       const sourceUrl = relevantMessages[relevantMessages.length - 1]?.permalink
@@ -421,6 +510,15 @@ async function processFeedbackWindow(integrationId: string) {
           createdAtLabel,
         })),
       })
+
+      logInfo("taskboard", "Created Discord feedback tasks", {
+        integrationId,
+        workspaceId: feedbackWindow.integration.workspaceId,
+        createdTaskCount: extracted.tasks.length,
+        sourceUrl,
+      })
+    } else {
+      logInfo("extractor", "Claude returned no tasks for this feedback window", { integrationId })
     }
 
     await convex.mutation(markFeedbackWindowProcessedMutation, {
@@ -429,16 +527,25 @@ async function processFeedbackWindow(integrationId: string) {
       lastProcessedMessageId: latestPendingMessage.messageId,
       lastProcessedMessageCreatedAt: latestPendingMessage.messageCreatedAt,
     })
+    logInfo("processor", "Advanced integration cursor after processing", {
+      integrationId,
+      lastProcessedMessageId: latestPendingMessage.messageId,
+    })
   } catch (error) {
-    console.error(`Failed to process Discord feedback for integration ${integrationId}`, error)
+    logError("processor", "Failed to process Discord feedback window", error, { integrationId })
   } finally {
     activeProcessing.delete(integrationId)
+    logInfo("processor", "Finished feedback window processing", { integrationId })
   }
 }
 
 client.once(Events.ClientReady, async (readyClient) => {
   await registerCommands()
-  console.log(`Discord bot ready as ${readyClient.user.tag}`)
+  logInfo("startup", "Discord bot ready", {
+    botTag: readyClient.user.tag,
+    applicationId: discordApplicationId,
+    convexUrl,
+  })
 })
 
 client.on(Events.InteractionCreate, async (interaction) => {
@@ -473,8 +580,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
         `Open Median, go to Discord integrations, and enter it before <t:${expiresAt}:R>.`,
       ].join("\n"),
     })
+    logInfo("pair", "Issued pairing code", {
+      guildId: interaction.guildId,
+      guildName: interaction.guild.name,
+      channelId: interaction.channelId ?? null,
+      issuedBy: interaction.user.username,
+      expiresAt,
+    })
   } catch (error) {
-    console.error("Failed to issue pairing code", error)
+    logError("pair", "Failed to issue pairing code", error, {
+      guildId: interaction.guildId,
+      guildName: interaction.guild?.name ?? null,
+    })
     await interaction.reply({
       flags: MessageFlags.Ephemeral,
       content: "Could not generate a pairing code. Check the bot environment and try again.",
@@ -489,8 +606,22 @@ client.on(Events.MessageCreate, async (message: Message) => {
 
   const content = normalizeMessageContent(message.content)
   if (!content) {
+    logInfo("message", "Ignoring empty message", {
+      guildId: message.guildId,
+      channelId: message.channelId,
+      messageId: message.id,
+      author: message.author.username,
+    })
     return
   }
+
+  logInfo("message", "Received Discord message", {
+    guildId: message.guildId,
+    channelId: message.channelId,
+    messageId: message.id,
+    author: message.author.username,
+    preview: summarizeText(content),
+  })
 
   try {
     const result = await convex.mutation(recordInboundMessageMutation, {
@@ -505,12 +636,31 @@ client.on(Events.MessageCreate, async (message: Message) => {
     })
 
     if (!result.accepted || !result.integration) {
+      logInfo("message", "Message was not accepted for processing", {
+        guildId: message.guildId,
+        channelId: message.channelId,
+        messageId: message.id,
+        duplicate: result.duplicate,
+      })
       return
     }
 
+    logInfo("message", "Stored message and resolved integration", {
+      guildId: message.guildId,
+      channelId: message.channelId,
+      messageId: message.id,
+      integrationId: result.integration.integrationId,
+      workspaceId: result.integration.workspaceId,
+      guildName: result.integration.guildName,
+    })
+
     scheduleFeedbackProcessing(result.integration.integrationId)
   } catch (error) {
-    console.error("Failed to record Discord message", error)
+    logError("message", "Failed to record Discord message", error, {
+      guildId: message.guildId,
+      channelId: message.channelId,
+      messageId: message.id,
+    })
   }
 })
 
