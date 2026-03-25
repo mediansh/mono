@@ -332,7 +332,7 @@ function formatTranscript(
     .map((message) => {
       const timestamp = new Date(message.messageCreatedAt).toISOString()
       const marker = pendingMessageIds.has(message.messageId) ? "NEW" : "CONTEXT"
-      return `[${marker}] ${timestamp} ${message.authorUsername}: ${message.content}`
+      return `[${marker}] [id:${message.messageId}] ${timestamp} ${message.authorUsername}: ${message.content}`
     })
     .join("\n")
 }
@@ -453,8 +453,9 @@ async function processFeedbackWindow(integrationId: string) {
         "Reject off-topic chat, memes, introductions, hiring talk, agency requests, feedback about unrelated tools, and generic conversation that is not about the product itself.",
         "Use the recent context only to interpret what the new messages refer to.",
         "Only include relevantMessageIds from NEW messages.",
+        "Each message has an [id:XXXXXXX] tag. Use the numeric ID from that tag as the relevantMessageId, NOT the timestamp.",
         "Return valid JSON only. No markdown. No code fences. No commentary.",
-        'Use this exact JSON shape: {"isProductFeedback":false,"confidence":0.0,"summary":null,"reason":"...","relevantMessageIds":[]}',
+        'Use this exact JSON shape: {"isProductFeedback":false,"confidence":0.0,"summary":null,"reason":"...","relevantMessageIds":["123456789"]}',
       ]
 
     if (feedbackWindow.integration.additionalContext) {
@@ -554,8 +555,9 @@ async function processFeedbackWindow(integrationId: string) {
         "Only create tasks for actionable feedback about the real product. Ignore unrelated discussion.",
         "Return between 0 and 5 tasks.",
         "Each task must be distinct, concrete, and understandable without Discord context.",
-        "You will be given existing tasks from the board. Do not create a task if the same bug, feature request, or underlying user problem is already covered by an existing task, even if the wording is different.",
-        "If the feedback is already represented by an existing task, return an empty tasks array.",
+        "You will be given existing tasks from the board. Only skip creating a task if an existing task describes the EXACT same specific issue — same error message, same feature, same broken flow.",
+        "Different error messages, different symptoms, or different contexts should each get their own task even if they relate to the same general area.",
+        "When in doubt, create the task. It is better to create a near-duplicate than to lose real user feedback.",
         "Descriptions should summarize the user problem and expected outcome in plain text.",
         "Priority may be urgent, high, medium, low, or none.",
         `Allowed labels: ${labelsText}`,
