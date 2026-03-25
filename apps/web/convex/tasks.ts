@@ -337,11 +337,14 @@ export const reorderTasks = mutation({
   handler: async (ctx, args) => {
     await requireTaskWriteAccess(ctx, args.workspaceId)
 
+    // Read all tasks first for validation and to detect status transitions
+    const tasksBeforeUpdate = new Map<string, Doc<"tasks">>()
     for (const change of args.changes) {
       const task = await ctx.db.get(change.taskId)
       if (!task || task.workspaceId !== args.workspaceId) {
         throw new Error("Task not found")
       }
+      tasksBeforeUpdate.set(change.taskId, task)
     }
 
     for (const change of args.changes) {
@@ -349,6 +352,43 @@ export const reorderTasks = mutation({
         status: change.status,
         order: change.order,
       })
+    }
+
+    // Queue Discord shipped notifications for tasks that just moved to "shipped"
+    for (const change of args.changes) {
+      const task = tasksBeforeUpdate.get(change.taskId)
+      if (
+        !task ||
+        change.status !== "shipped" ||
+        task.status === "shipped" ||
+        task.source?.platform !== "discord" ||
+        !task.source.url
+      ) {
+        continue
+      }
+
+      const parsed = parseDiscordPermalink(task.source.url)
+      if (!parsed) continue
+
+      const integration = await ctx.db
+        .query("discordWorkspaceIntegrations")
+        .withIndex("by_guild", (q) => q.eq("guildId", parsed.guildId))
+        .first()
+
+      if (integration && integration.respondForMe) {
+        await ctx.db.insert("discordPendingNotifications", {
+          workspaceId: task.workspaceId,
+          integrationId: integration._id,
+          taskId: change.taskId,
+          type: "request_shipped",
+          channelId: parsed.channelId,
+          replyToMessageId: parsed.messageId,
+          taskTitle: task.title,
+          taskCode: task.taskCode,
+          status: "pending",
+          createdAt: Date.now(),
+        })
+      }
     }
   },
 })
@@ -388,6 +428,37 @@ export const bulkUpdateTasks = mutation({
         throw new Error("Task not found")
       }
       await ctx.db.patch(taskId, updates)
+
+      // Queue Discord shipped notification
+      if (
+        args.status === "shipped" &&
+        task.status !== "shipped" &&
+        task.source?.platform === "discord" &&
+        task.source.url
+      ) {
+        const parsed = parseDiscordPermalink(task.source.url)
+        if (parsed) {
+          const integration = await ctx.db
+            .query("discordWorkspaceIntegrations")
+            .withIndex("by_guild", (q) => q.eq("guildId", parsed.guildId))
+            .first()
+
+          if (integration && integration.respondForMe) {
+            await ctx.db.insert("discordPendingNotifications", {
+              workspaceId: task.workspaceId,
+              integrationId: integration._id,
+              taskId,
+              type: "request_shipped",
+              channelId: parsed.channelId,
+              replyToMessageId: parsed.messageId,
+              taskTitle: task.title,
+              taskCode: task.taskCode,
+              status: "pending",
+              createdAt: Date.now(),
+            })
+          }
+        }
+      }
     }
   },
 })
