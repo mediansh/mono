@@ -1,10 +1,10 @@
 "use client"
 
 import { useSignUp } from "@clerk/nextjs/legacy"
-import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
+import { Logo } from "@/components/logo"
 
 function Spinner() {
   return (
@@ -99,13 +99,7 @@ export default function SignUpPage() {
         <div className="mx-auto w-full max-w-sm">
           {/* Logo */}
           <Link href="/" className="mb-10 inline-block">
-            <Image
-              src="/median-full.png"
-              alt="Median"
-              width={260}
-              height={200}
-              className="h-7 w-auto dark:invert"
-            />
+            <Logo className="text-2xl" />
           </Link>
 
           {stage === "initial" && (
@@ -301,14 +295,7 @@ export default function SignUpPage() {
 
       {/* Right half - Branding */}
       <div className="hidden flex-col items-center justify-center bg-card border-l border-border lg:flex lg:w-1/2">
-        <Image
-          src="/median-full.png"
-          alt="Median"
-          width={260}
-          height={200}
-          className="w-48 invert"
-          priority
-        />
+        <Logo symbolOnly className="size-32" />
       </div>
     </div>
   )
