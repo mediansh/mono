@@ -15,7 +15,6 @@ import { toast } from "sonner"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Textarea } from "@workspace/ui/components/textarea"
-import { Switch } from "@workspace/ui/components/switch"
 import {
   Dialog,
   DialogContent,
@@ -72,7 +71,9 @@ export function DiscordPairingPanel() {
 
   // Settings state — synced from server, debounced writes
   const [additionalContext, setAdditionalContext] = useState("")
-  const [respondForMe, setRespondForMe] = useState(false)
+  const [respondForMeMode, setRespondForMeMode] = useState<"off" | "all" | "specific">("off")
+  const [respondChannelIds, setRespondChannelIds] = useState<string[]>([])
+  const [channelIdInput, setChannelIdInput] = useState("")
   const [settingsInitialized, setSettingsInitialized] = useState(false)
   const contextSaveTimer = useRef<NodeJS.Timeout | null>(null)
 
@@ -82,7 +83,8 @@ export function DiscordPairingPanel() {
   useEffect(() => {
     if (integration && !settingsInitialized) {
       setAdditionalContext(integration.additionalContext)
-      setRespondForMe(integration.respondForMe)
+      setRespondForMeMode(integration.respondForMeMode)
+      setRespondChannelIds(integration.respondForMeChannelIds)
       setSettingsInitialized(true)
     }
     if (!integration && settingsInitialized) {
@@ -110,19 +112,45 @@ export function DiscordPairingPanel() {
     saveContext(value)
   }
 
-  async function handleRespondForMeToggle(checked: boolean) {
-    setRespondForMe(checked)
+  async function handleRespondModeChange(mode: "off" | "all" | "specific") {
+    const previousMode = respondForMeMode
+    setRespondForMeMode(mode)
     if (!currentWorkspace) return
     try {
       await updateSettings({
         workspaceId: currentWorkspace._id,
-        respondForMe: checked,
+        respondForMeMode: mode,
       })
-      toast.success(checked ? "Auto-responses enabled." : "Auto-responses disabled.")
     } catch {
-      setRespondForMe(!checked)
+      setRespondForMeMode(previousMode)
       toast.error("Failed to update setting.")
     }
+  }
+
+  function handleAddChannelId() {
+    const id = channelIdInput.trim().replace(/\D/g, "")
+    if (!id || respondChannelIds.includes(id)) {
+      setChannelIdInput("")
+      return
+    }
+    const updated = [...respondChannelIds, id]
+    setRespondChannelIds(updated)
+    setChannelIdInput("")
+    if (!currentWorkspace) return
+    void updateSettings({
+      workspaceId: currentWorkspace._id,
+      respondForMeChannelIds: updated,
+    })
+  }
+
+  function handleRemoveChannelId(id: string) {
+    const updated = respondChannelIds.filter((channelId) => channelId !== id)
+    setRespondChannelIds(updated)
+    if (!currentWorkspace) return
+    void updateSettings({
+      workspaceId: currentWorkspace._id,
+      respondForMeChannelIds: updated,
+    })
   }
 
   if (!currentWorkspace) return null
@@ -261,14 +289,14 @@ export function DiscordPairingPanel() {
             </div>
           </motion.div>
 
-          {/* Respond for me toggle */}
+          {/* Respond for me */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
             className="rounded-none border border-border bg-card"
           >
-            <div className="flex items-center gap-3 px-5 py-4">
+            <div className="flex items-center gap-3 border-b border-border px-5 py-3.5">
               <HugeiconsIcon icon={SentIcon} size={15} strokeWidth={1.8} className="text-muted-foreground" />
               <div className="flex-1">
                 <h3 className="text-sm font-medium">Respond for me</h3>
@@ -276,11 +304,88 @@ export function DiscordPairingPanel() {
                   Automatically reply in Discord when a request is received and when the change ships.
                 </p>
               </div>
-              <Switch
-                checked={respondForMe}
-                onCheckedChange={handleRespondForMeToggle}
-              />
             </div>
+
+            <div className="flex flex-col gap-0.5 px-5 py-3">
+              {(["off", "all", "specific"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => handleRespondModeChange(mode)}
+                  className="flex items-center gap-3 rounded-none px-2 py-2 text-left text-sm transition-colors hover:bg-muted/50"
+                >
+                  <span
+                    className={`flex size-4 shrink-0 items-center justify-center rounded-full border ${
+                      respondForMeMode === mode
+                        ? "border-foreground bg-foreground"
+                        : "border-muted-foreground/40"
+                    }`}
+                  >
+                    {respondForMeMode === mode ? (
+                      <span className="size-1.5 rounded-full bg-background" />
+                    ) : null}
+                  </span>
+                  <span className={respondForMeMode === mode ? "text-foreground" : "text-muted-foreground"}>
+                    {mode === "off" && "Off"}
+                    {mode === "all" && "All channels"}
+                    {mode === "specific" && "Specific channels only"}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {respondForMeMode === "specific" ? (
+              <div className="border-t border-border px-5 py-3">
+                <div className="flex gap-2">
+                  <Input
+                    value={channelIdInput}
+                    onChange={(event) => setChannelIdInput(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault()
+                        handleAddChannelId()
+                      }
+                    }}
+                    placeholder="Paste a channel ID"
+                    className="h-8 flex-1 font-mono text-xs"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddChannelId}
+                    disabled={!channelIdInput.trim()}
+                    className="h-8"
+                  >
+                    Add
+                  </Button>
+                </div>
+
+                {respondChannelIds.length > 0 ? (
+                  <div className="mt-2.5 flex flex-wrap gap-1.5">
+                    {respondChannelIds.map((id) => (
+                      <span
+                        key={id}
+                        className="inline-flex items-center gap-1.5 border border-border bg-muted/50 px-2 py-0.5 font-mono text-xs text-muted-foreground"
+                      >
+                        {id}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveChannelId(id)}
+                          className="text-muted-foreground/60 transition-colors hover:text-foreground"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-[11px] text-muted-foreground/60">
+                    Right-click a channel in Discord and select "Copy Channel ID" to get the ID.
+                  </p>
+                )}
+              </div>
+            ) : null}
           </motion.div>
         </div>
 

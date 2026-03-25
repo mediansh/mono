@@ -81,6 +81,10 @@ export default defineSchema({
     lastProcessedAt: v.optional(v.number()),
     additionalContext: v.optional(v.string()),
     respondForMe: v.optional(v.boolean()),
+    respondForMeMode: v.optional(
+      v.union(v.literal("off"), v.literal("all"), v.literal("specific"))
+    ),
+    respondForMeChannelIds: v.optional(v.array(v.string())),
   })
     .index("by_workspace", ["workspaceId"])
     .index("by_guild", ["guildId"]),

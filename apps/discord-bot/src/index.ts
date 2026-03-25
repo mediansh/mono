@@ -78,6 +78,8 @@ const getPendingFeedbackWindowQuery = makeFunctionReference<
       lastProcessedMessageCreatedAt: number | null
       additionalContext: string | null
       respondForMe: boolean
+      respondForMeMode: "off" | "all" | "specific"
+      respondForMeChannelIds: string[]
     }
     messages: {
       _id: string
@@ -382,6 +384,22 @@ function formatExistingTasks(
     .join("\n")
 }
 
+function shouldRespondInChannel(
+  integration: {
+    respondForMe: boolean
+    respondForMeMode: "off" | "all" | "specific"
+    respondForMeChannelIds: string[]
+  },
+  channelId: string
+): boolean {
+  const mode = integration.respondForMeMode
+  if (mode === "off") return false
+  if (mode === "all") return true
+  if (mode === "specific") return integration.respondForMeChannelIds.includes(channelId)
+  // Legacy fallback: old boolean field
+  return integration.respondForMe
+}
+
 function scheduleFeedbackProcessing(integrationId: string) {
   const existingTimer = processingTimers.get(integrationId)
   if (existingTimer) {
@@ -639,12 +657,13 @@ async function processFeedbackWindow(integrationId: string) {
         sourceUrl,
       })
 
-      // Send "request received" replies if respondForMe is enabled
-      if (feedbackWindow.integration.respondForMe) {
-        const lastRelevantMessage = relevantMessages[relevantMessages.length - 1]
-        if (lastRelevantMessage) {
+      // Send "request received" replies if respondForMe is enabled for this channel
+      const lastRelevantMessage = relevantMessages[relevantMessages.length - 1]
+      const replyChannelId = lastRelevantMessage?.permalink.split("/").at(-2) ?? ""
+      if (lastRelevantMessage && shouldRespondInChannel(feedbackWindow.integration, replyChannelId)) {
+        {
           try {
-            const channel = await client.channels.fetch(lastRelevantMessage.permalink.split("/").at(-2) ?? "")
+            const channel = await client.channels.fetch(replyChannelId)
             if (channel && channel.isTextBased() && "send" in channel) {
               const taskList = extracted.tasks
                 .map((task) => `• **${task.title}**`)

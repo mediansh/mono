@@ -236,6 +236,22 @@ export const getTaskSnapshotForDiscord = query({
   },
 })
 
+function shouldRespondInChannel(
+  integration: {
+    respondForMe?: boolean
+    respondForMeMode?: "off" | "all" | "specific"
+    respondForMeChannelIds?: string[]
+  },
+  channelId: string
+): boolean {
+  const mode = integration.respondForMeMode
+  if (mode === "off") return false
+  if (mode === "all") return true
+  if (mode === "specific") return (integration.respondForMeChannelIds ?? []).includes(channelId)
+  // Legacy fallback
+  return integration.respondForMe ?? false
+}
+
 function parseDiscordPermalink(url: string): { guildId: string; channelId: string; messageId: string } | null {
   const match = url.match(/discord\.com\/channels\/(\d+)\/(\d+)\/(\d+)/)
   if (!match?.[1] || !match[2] || !match[3]) return null
@@ -297,7 +313,7 @@ export const updateTask = mutation({
           .withIndex("by_guild", (q) => q.eq("guildId", parsed.guildId))
           .first()
 
-        if (integration && integration.respondForMe) {
+        if (integration && shouldRespondInChannel(integration, parsed.channelId)) {
           await ctx.db.insert("discordPendingNotifications", {
             workspaceId: task.workspaceId,
             integrationId: integration._id,
@@ -375,7 +391,7 @@ export const reorderTasks = mutation({
         .withIndex("by_guild", (q) => q.eq("guildId", parsed.guildId))
         .first()
 
-      if (integration && integration.respondForMe) {
+      if (integration && shouldRespondInChannel(integration, parsed.channelId)) {
         await ctx.db.insert("discordPendingNotifications", {
           workspaceId: task.workspaceId,
           integrationId: integration._id,
@@ -443,7 +459,7 @@ export const bulkUpdateTasks = mutation({
             .withIndex("by_guild", (q) => q.eq("guildId", parsed.guildId))
             .first()
 
-          if (integration && integration.respondForMe) {
+          if (integration && shouldRespondInChannel(integration, parsed.channelId)) {
             await ctx.db.insert("discordPendingNotifications", {
               workspaceId: task.workspaceId,
               integrationId: integration._id,

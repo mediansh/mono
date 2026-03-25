@@ -76,6 +76,8 @@ export const getWorkspaceDiscordIntegration = query({
         pairedAt: integration.pairedAt,
         additionalContext: integration.additionalContext ?? "",
         respondForMe: integration.respondForMe ?? false,
+        respondForMeMode: integration.respondForMeMode ?? (integration.respondForMe ? "all" : "off"),
+        respondForMeChannelIds: integration.respondForMeChannelIds ?? [],
       },
     }
   },
@@ -234,6 +236,8 @@ export const getPendingFeedbackWindow = query({
         lastProcessedMessageCreatedAt: integration.lastProcessedMessageCreatedAt ?? null,
         additionalContext: integration.additionalContext ?? null,
         respondForMe: integration.respondForMe ?? false,
+        respondForMeMode: integration.respondForMeMode ?? (integration.respondForMe ? "all" : "off"),
+        respondForMeChannelIds: integration.respondForMeChannelIds ?? [],
       },
       messages: messages.reverse().map((message) => ({
         _id: message._id,
@@ -367,6 +371,10 @@ export const updateDiscordIntegrationSettings = mutation({
     workspaceId: v.id("workspaces"),
     additionalContext: v.optional(v.string()),
     respondForMe: v.optional(v.boolean()),
+    respondForMeMode: v.optional(
+      v.union(v.literal("off"), v.literal("all"), v.literal("specific"))
+    ),
+    respondForMeChannelIds: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     await requireWorkspaceAdminAccess(ctx, args.workspaceId)
@@ -384,8 +392,17 @@ export const updateDiscordIntegrationSettings = mutation({
     if (args.additionalContext !== undefined) {
       updates.additionalContext = args.additionalContext.trim() || undefined
     }
-    if (args.respondForMe !== undefined) {
+    if (args.respondForMeMode !== undefined) {
+      updates.respondForMeMode = args.respondForMeMode
+      updates.respondForMe = args.respondForMeMode !== "off"
+    }
+    if (args.respondForMeChannelIds !== undefined) {
+      updates.respondForMeChannelIds = args.respondForMeChannelIds.filter(Boolean)
+    }
+    // Legacy support
+    if (args.respondForMe !== undefined && args.respondForMeMode === undefined) {
       updates.respondForMe = args.respondForMe
+      updates.respondForMeMode = args.respondForMe ? "all" : "off"
     }
 
     await ctx.db.patch(integration._id, updates)
