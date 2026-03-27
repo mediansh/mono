@@ -95,6 +95,7 @@ async function insertTasksForWorkspace(
   const workspace = await ctx.db.get(workspaceId)
   if (!workspace) throw new Error("Workspace not found")
   if (taskInputs.length === 0) return []
+  const now = Date.now()
 
   const existingTasks = await getWorkspaceTasks(ctx, workspaceId)
   const baseTaskNumber = Math.max(
@@ -129,6 +130,7 @@ async function insertTasksForWorkspace(
       labels: taskInput.labels,
       order: nextOrder,
       project: workspace.name,
+      updatedAt: now,
       assignee: {
         name: "Abdul",
         avatar: "",
@@ -323,6 +325,15 @@ export const updateTask = mutation({
     if (args.status !== undefined) updates.status = args.status
     if (args.priority !== undefined) updates.priority = args.priority
     if (args.labels !== undefined) updates.labels = args.labels
+    if (
+      args.title !== undefined ||
+      args.description !== undefined ||
+      args.status !== undefined ||
+      args.priority !== undefined ||
+      args.labels !== undefined
+    ) {
+      updates.updatedAt = Date.now()
+    }
 
     await ctx.db.patch(args.taskId, updates)
     if (
@@ -424,6 +435,7 @@ export const reorderTasks = mutation({
       await ctx.db.patch(change.taskId, {
         status: change.status,
         order: change.order,
+        updatedAt: Date.now(),
       })
 
       const taskBeforeUpdate = tasksBeforeUpdate.get(change.taskId)
@@ -523,6 +535,9 @@ export const bulkUpdateTasks = mutation({
     if (args.status !== undefined) updates.status = args.status
     if (args.priority !== undefined) updates.priority = args.priority
     if (args.labels !== undefined) updates.labels = args.labels
+    if (args.status !== undefined || args.priority !== undefined || args.labels !== undefined) {
+      updates.updatedAt = Date.now()
+    }
 
     for (const taskId of args.taskIds) {
       const task = await ctx.db.get(taskId)

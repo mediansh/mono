@@ -828,6 +828,7 @@ export const archiveTaskForRemovedLinearIssue = internalMutation({
     if (task.status !== "archive") {
       await ctx.db.patch(task._id, {
         status: "archive",
+        updatedAt: Date.now(),
       })
     }
 
@@ -885,6 +886,28 @@ export const listUnsyncedWorkspaceTasks = internalQuery({
   },
 })
 
+export const listWorkspaceTaskSyncStates = internalQuery({
+  args: {
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args) => {
+    const tasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .collect()
+    const links = await ctx.db
+      .query("linearTaskLinks")
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .collect()
+
+    const linksByTaskId = new Map(links.map((link) => [link.taskId, link]))
+    return tasks.map((task) => ({
+      task,
+      link: linksByTaskId.get(task._id) ?? null,
+    }))
+  },
+})
+
 export const upsertTaskFromLinearIssue = internalMutation({
   args: {
     integrationId: v.id("linearWorkspaceIntegrations"),
@@ -927,6 +950,7 @@ export const upsertTaskFromLinearIssue = internalMutation({
     const taskStatus = mapLinearStateToTaskStatus(issue)
     const taskPriority = mapLinearPriorityToTask(issue.priority)
     const nextDescription = normalizeOptionalText(issue.description)
+    const linearUpdatedAt = new Date(issue.updatedAt).getTime()
     const nextSource = issue.url
       ? {
           platform: "linear" as const,
@@ -945,6 +969,7 @@ export const upsertTaskFromLinearIssue = internalMutation({
           title: issue.title.trim(),
           description: nextDescription,
           priority: taskPriority,
+          updatedAt: Number.isFinite(linearUpdatedAt) ? linearUpdatedAt : Date.now(),
         }
 
         if (linkedTask.status !== taskStatus) {
@@ -992,6 +1017,7 @@ export const upsertTaskFromLinearIssue = internalMutation({
         title: issue.title.trim(),
         description: nextDescription,
         priority: taskPriority,
+        updatedAt: Number.isFinite(linearUpdatedAt) ? linearUpdatedAt : Date.now(),
       }
 
       if (matchedTask.status !== taskStatus) {
@@ -1033,6 +1059,7 @@ export const upsertTaskFromLinearIssue = internalMutation({
       labels: [],
       order: workspaceTasks.filter((task) => task.status === taskStatus).length,
       project: workspace.name,
+      updatedAt: Number.isFinite(linearUpdatedAt) ? linearUpdatedAt : Date.now(),
       assignee: {
         name: "Abdul",
         avatar: "",
@@ -1225,14 +1252,22 @@ export const performWorkspaceLinearSync = internalAction({
       })
     }
 
-    const unsyncedTasks = (await ctx.runQuery(internal.linear.listUnsyncedWorkspaceTasks, {
+    const taskSyncStates = await ctx.runQuery(internal.linear.listWorkspaceTaskSyncStates, {
       workspaceId: args.workspaceId,
-    })) as Doc<"tasks">[]
+    })
 
     const workflowStates = await fetchWorkflowStates(integration.apiKey, integration.teamId)
     let pushedCount = 0
-    for (const task of unsyncedTasks) {
-      await syncTaskToLinear(ctx, integration, task, null, workflowStates)
+    for (const item of taskSyncStates) {
+      const taskUpdatedAt = item.task.updatedAt ?? item.task._creationTime
+      const needsPush =
+        item.link === null || taskUpdatedAt > item.link.lastSyncedAt
+
+      if (!needsPush) {
+        continue
+      }
+
+      await syncTaskToLinear(ctx, integration, item.task, item.link, workflowStates)
       pushedCount += 1
     }
 
@@ -1278,6 +1313,13 @@ export const syncTaskToLinearIssue = internalAction({
     })
 
     if (!snapshot) {
+      return { skipped: true }
+    }
+
+    if (
+      snapshot.link &&
+      (snapshot.task.updatedAt ?? snapshot.task._creationTime) <= snapshot.link.lastSyncedAt
+    ) {
       return { skipped: true }
     }
 

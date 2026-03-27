@@ -195,6 +195,7 @@ export default defineSchema({
     labels: v.array(v.string()),
     order: v.number(),
     project: v.string(),
+    updatedAt: v.optional(v.number()),
     assignee: v.optional(
       v.object({
         name: v.string(),
