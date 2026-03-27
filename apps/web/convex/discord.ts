@@ -1,11 +1,18 @@
 import { v } from "convex/values"
 import { mutation, query, type MutationCtx } from "./_generated/server"
-import { requireWorkspaceAccess, requireWorkspaceAdminAccess } from "./permissions"
+import { internal } from "./_generated/api"
+import {
+  requireWorkspaceAccess,
+  requireWorkspaceAdminAccess,
+} from "./permissions"
 
 const PAIRING_CODE_TTL_MS = 1000 * 60 * 10
 
 function normalizePairingCode(code: string) {
-  return code.trim().toUpperCase().replace(/[^A-Z0-9]/g, "")
+  return code
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
 }
 
 function requireDiscordBotSecret(botSecret: string) {
@@ -26,14 +33,20 @@ async function getActiveIntegrationForGuildChannel(
     .collect()
 
   return (
-    integrations.find((integration) => !integration.channelId || integration.channelId === channelId) ??
-    null
+    integrations.find(
+      (integration) =>
+        !integration.channelId || integration.channelId === channelId
+    ) ?? null
   )
 }
 
 async function generateUniquePairingCode(ctx: MutationCtx): Promise<string> {
   for (let attempt = 0; attempt < 10; attempt += 1) {
-    const candidate = crypto.randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase()
+    const candidate = crypto
+      .randomUUID()
+      .replace(/-/g, "")
+      .slice(0, 8)
+      .toUpperCase()
     const existing = await ctx.db
       .query("discordPairingCodes")
       .withIndex("by_code", (q) => q.eq("code", candidate))
@@ -76,7 +89,9 @@ export const getWorkspaceDiscordIntegration = query({
         pairedAt: integration.pairedAt,
         additionalContext: integration.additionalContext ?? "",
         respondForMe: integration.respondForMe ?? false,
-        respondForMeMode: integration.respondForMeMode ?? (integration.respondForMe ? "all" : "off"),
+        respondForMeMode:
+          integration.respondForMeMode ??
+          (integration.respondForMe ? "all" : "off"),
         respondForMeChannelIds: integration.respondForMeChannelIds ?? [],
         guildChannels: integration.guildChannels ?? [],
       },
@@ -143,7 +158,11 @@ export const recordInboundMessage = mutation({
   handler: async (ctx, args) => {
     requireDiscordBotSecret(args.botSecret)
 
-    const integration = await getActiveIntegrationForGuildChannel(ctx, args.guildId, args.channelId)
+    const integration = await getActiveIntegrationForGuildChannel(
+      ctx,
+      args.guildId,
+      args.channelId
+    )
     if (!integration) {
       return {
         accepted: false,
@@ -155,7 +174,10 @@ export const recordInboundMessage = mutation({
     const existingMessage = await ctx.db
       .query("discordMessages")
       .withIndex("by_discord_message", (q) =>
-        q.eq("guildId", args.guildId).eq("channelId", args.channelId).eq("messageId", args.messageId)
+        q
+          .eq("guildId", args.guildId)
+          .eq("channelId", args.channelId)
+          .eq("messageId", args.messageId)
       )
       .unique()
 
@@ -185,6 +207,14 @@ export const recordInboundMessage = mutation({
       messageCreatedAt: args.messageCreatedAt,
       receivedAt: Date.now(),
     })
+
+    await ctx.scheduler.runAfter(
+      0,
+      internal.discordFeedback.scheduleFeedbackDetection,
+      {
+        integrationId: integration._id,
+      }
+    )
 
     return {
       accepted: true,
@@ -220,7 +250,9 @@ export const getPendingFeedbackWindow = query({
 
     const messages = await ctx.db
       .query("discordMessages")
-      .withIndex("by_integration_created_at", (q) => q.eq("integrationId", args.integrationId))
+      .withIndex("by_integration_created_at", (q) =>
+        q.eq("integrationId", args.integrationId)
+      )
       .order("desc")
       .take(Math.min(args.limit ?? 100, 100))
 
@@ -234,10 +266,13 @@ export const getPendingFeedbackWindow = query({
         guildName: integration.guildName,
         channelId: integration.channelId ?? null,
         lastProcessedMessageId: integration.lastProcessedMessageId ?? null,
-        lastProcessedMessageCreatedAt: integration.lastProcessedMessageCreatedAt ?? null,
+        lastProcessedMessageCreatedAt:
+          integration.lastProcessedMessageCreatedAt ?? null,
         additionalContext: integration.additionalContext ?? null,
         respondForMe: integration.respondForMe ?? false,
-        respondForMeMode: integration.respondForMeMode ?? (integration.respondForMe ? "all" : "off"),
+        respondForMeMode:
+          integration.respondForMeMode ??
+          (integration.respondForMe ? "all" : "off"),
         respondForMeChannelIds: integration.respondForMeChannelIds ?? [],
       },
       messages: messages.reverse().map((message) => ({
@@ -281,7 +316,10 @@ export const redeemPairingCode = mutation({
     code: v.string(),
   },
   handler: async (ctx, args) => {
-    const { identity } = await requireWorkspaceAdminAccess(ctx, args.workspaceId)
+    const { identity } = await requireWorkspaceAdminAccess(
+      ctx,
+      args.workspaceId
+    )
     const code = normalizePairingCode(args.code)
 
     if (code.length < 6) {
@@ -322,7 +360,9 @@ export const redeemPairingCode = mutation({
       ...guildIntegrations.map((integration) => integration._id),
     ])
 
-    await Promise.all([...integrationIds].map((integrationId) => ctx.db.delete(integrationId)))
+    await Promise.all(
+      [...integrationIds].map((integrationId) => ctx.db.delete(integrationId))
+    )
 
     const pairedAt = Date.now()
 
@@ -363,7 +403,9 @@ export const disconnectWorkspaceDiscordIntegration = mutation({
       .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
       .collect()
 
-    await Promise.all(integrations.map((integration) => ctx.db.delete(integration._id)))
+    await Promise.all(
+      integrations.map((integration) => ctx.db.delete(integration._id))
+    )
   },
 })
 
@@ -398,10 +440,14 @@ export const updateDiscordIntegrationSettings = mutation({
       updates.respondForMe = args.respondForMeMode !== "off"
     }
     if (args.respondForMeChannelIds !== undefined) {
-      updates.respondForMeChannelIds = args.respondForMeChannelIds.filter(Boolean)
+      updates.respondForMeChannelIds =
+        args.respondForMeChannelIds.filter(Boolean)
     }
     // Legacy support
-    if (args.respondForMe !== undefined && args.respondForMeMode === undefined) {
+    if (
+      args.respondForMe !== undefined &&
+      args.respondForMeMode === undefined
+    ) {
       updates.respondForMe = args.respondForMe
       updates.respondForMeMode = args.respondForMe ? "all" : "off"
     }

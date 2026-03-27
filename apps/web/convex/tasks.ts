@@ -1,13 +1,15 @@
 import { v } from "convex/values"
-import { mutation, query } from "./_generated/server"
+import {
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+} from "./_generated/server"
 import type { MutationCtx, QueryCtx } from "./_generated/server"
 import type { Doc, Id } from "./_generated/dataModel"
 import { internal } from "./_generated/api"
 import { STATUS_ORDER, isDemoTaskSet } from "../lib/task-board"
-import {
-  requireTaskWriteAccess,
-  requireWorkspaceAccess,
-} from "./permissions"
+import { requireTaskWriteAccess, requireWorkspaceAccess } from "./permissions"
 
 const taskStatusValidator = v.union(
   v.literal("requests"),
@@ -34,7 +36,12 @@ const attachmentValidator = v.object({
 })
 
 const taskSourceValidator = v.object({
-  platform: v.union(v.literal("discord"), v.literal("slack"), v.literal("x"), v.literal("linear")),
+  platform: v.union(
+    v.literal("discord"),
+    v.literal("slack"),
+    v.literal("x"),
+    v.literal("linear")
+  ),
   url: v.string(),
   author: v.string(),
 })
@@ -70,7 +77,9 @@ type CreateTaskInput = {
   }[]
 }
 
-function sortTasks<T extends { status: keyof typeof STATUS_ORDER; order: number }>(tasks: T[]) {
+function sortTasks<
+  T extends { status: keyof typeof STATUS_ORDER; order: number },
+>(tasks: T[]) {
   return tasks.sort((a, b) => {
     const statusDiff = STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
     if (statusDiff !== 0) return statusDiff
@@ -78,7 +87,10 @@ function sortTasks<T extends { status: keyof typeof STATUS_ORDER; order: number 
   })
 }
 
-async function getWorkspaceTasks(ctx: QueryCtx | MutationCtx, workspaceId: Id<"workspaces">) {
+async function getWorkspaceTasks(
+  ctx: QueryCtx | MutationCtx,
+  workspaceId: Id<"workspaces">
+) {
   const tasks = (await ctx.db
     .query("tasks")
     .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
@@ -162,7 +174,9 @@ async function createTasksForWorkspace(
 }
 
 async function queueLinearSync(ctx: MutationCtx, taskId: Id<"tasks">) {
-  await ctx.scheduler.runAfter(0, internal.linear.syncTaskToLinearIssue, { taskId })
+  await ctx.scheduler.runAfter(0, internal.linear.syncTaskToLinearIssue, {
+    taskId,
+  })
 }
 
 async function clearLinearTaskLink(ctx: MutationCtx, taskId: Id<"tasks">) {
@@ -192,7 +206,9 @@ export const createTask = mutation({
     ...taskInputValidator.fields,
   },
   handler: async (ctx, args) => {
-    const createdTasks = await createTasksForWorkspace(ctx, args.workspaceId, [args])
+    const createdTasks = await createTasksForWorkspace(ctx, args.workspaceId, [
+      args,
+    ])
     if (createdTasks[0]) {
       await queueLinearSync(ctx, createdTasks[0]._id)
     }
@@ -206,7 +222,11 @@ export const createTasks = mutation({
     tasks: v.array(taskInputValidator),
   },
   handler: async (ctx, args) => {
-    const createdTasks = await createTasksForWorkspace(ctx, args.workspaceId, args.tasks)
+    const createdTasks = await createTasksForWorkspace(
+      ctx,
+      args.workspaceId,
+      args.tasks
+    )
     for (const task of createdTasks) {
       await queueLinearSync(ctx, task._id)
     }
@@ -226,7 +246,29 @@ export const createTasksFromDiscordFeedback = mutation({
       throw new Error("Invalid Discord bot secret")
     }
 
-    const createdTasks = await insertTasksForWorkspace(ctx, args.workspaceId, args.tasks)
+    const createdTasks = await insertTasksForWorkspace(
+      ctx,
+      args.workspaceId,
+      args.tasks
+    )
+    for (const task of createdTasks) {
+      await queueLinearSync(ctx, task._id)
+    }
+    return createdTasks
+  },
+})
+
+export const createTasksFromDiscordFeedbackInternal = internalMutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    tasks: v.array(taskInputValidator),
+  },
+  handler: async (ctx, args) => {
+    const createdTasks = await insertTasksForWorkspace(
+      ctx,
+      args.workspaceId,
+      args.tasks
+    )
     for (const task of createdTasks) {
       await queueLinearSync(ctx, task._id)
     }
@@ -265,6 +307,31 @@ export const getTaskSnapshotForDiscord = query({
   },
 })
 
+export const getTaskSnapshotForDiscordInternal = internalQuery({
+  args: {
+    workspaceId: v.id("workspaces"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const tasks = await getWorkspaceTasks(ctx, args.workspaceId)
+    const limit = Math.min(args.limit ?? 50, 100)
+
+    return tasks
+      .filter((task) => task.status !== "archive")
+      .slice(0, limit)
+      .map((task) => ({
+        taskId: task._id,
+        taskCode: task.taskCode,
+        title: task.title,
+        description: task.description ?? null,
+        status: task.status,
+        priority: task.priority,
+        labels: task.labels,
+        sourceUrl: task.source?.url ?? null,
+      }))
+  },
+})
+
 function shouldRespondInChannel(
   integration: {
     respondForMe?: boolean
@@ -276,12 +343,15 @@ function shouldRespondInChannel(
   const mode = integration.respondForMeMode
   if (mode === "off") return false
   if (mode === "all") return true
-  if (mode === "specific") return (integration.respondForMeChannelIds ?? []).includes(channelId)
+  if (mode === "specific")
+    return (integration.respondForMeChannelIds ?? []).includes(channelId)
   // Legacy fallback
   return integration.respondForMe ?? false
 }
 
-function parseDiscordPermalink(url: string): { guildId: string; channelId: string; messageId: string } | null {
+function parseDiscordPermalink(
+  url: string
+): { guildId: string; channelId: string; messageId: string } | null {
   const match = url.match(/discord\.com\/channels\/(\d+)\/(\d+)\/(\d+)/)
   if (!match?.[1] || !match[2] || !match[3]) return null
   return { guildId: match[1], channelId: match[2], messageId: match[3] }
@@ -321,7 +391,8 @@ export const updateTask = mutation({
 
     const updates: Partial<Doc<"tasks">> = {}
     if (args.title !== undefined) updates.title = args.title.trim()
-    if (args.description !== undefined) updates.description = args.description.trim() || undefined
+    if (args.description !== undefined)
+      updates.description = args.description.trim() || undefined
     if (args.status !== undefined) updates.status = args.status
     if (args.priority !== undefined) updates.priority = args.priority
     if (args.labels !== undefined) updates.labels = args.labels
@@ -359,7 +430,10 @@ export const updateTask = mutation({
           .withIndex("by_guild", (q) => q.eq("guildId", parsed.guildId))
           .first()
 
-        if (integration && shouldRespondInChannel(integration, parsed.channelId)) {
+        if (
+          integration &&
+          shouldRespondInChannel(integration, parsed.channelId)
+        ) {
           // Shipped notification
           if (args.status === "shipped" && task.status !== "shipped") {
             await ctx.db.insert("discordPendingNotifications", {
@@ -379,7 +453,9 @@ export const updateTask = mutation({
           // Accepted notification — task moved out of "requests" to an active status
           if (
             task.status === "requests" &&
-            (args.status === "todo" || args.status === "in_progress" || args.status === "ready")
+            (args.status === "todo" ||
+              args.status === "in_progress" ||
+              args.status === "ready")
           ) {
             await ctx.db.insert("discordPendingNotifications", {
               workspaceId: task.workspaceId,
@@ -464,7 +540,10 @@ export const reorderTasks = mutation({
         .withIndex("by_guild", (q) => q.eq("guildId", parsed.guildId))
         .first()
 
-      if (!integration || !shouldRespondInChannel(integration, parsed.channelId)) {
+      if (
+        !integration ||
+        !shouldRespondInChannel(integration, parsed.channelId)
+      ) {
         continue
       }
 
@@ -487,7 +566,9 @@ export const reorderTasks = mutation({
       // Accepted notification — task moved out of "requests" to an active status
       if (
         task.status === "requests" &&
-        (change.status === "todo" || change.status === "in_progress" || change.status === "ready")
+        (change.status === "todo" ||
+          change.status === "in_progress" ||
+          change.status === "ready")
       ) {
         await ctx.db.insert("discordPendingNotifications", {
           workspaceId: task.workspaceId,
@@ -535,7 +616,11 @@ export const bulkUpdateTasks = mutation({
     if (args.status !== undefined) updates.status = args.status
     if (args.priority !== undefined) updates.priority = args.priority
     if (args.labels !== undefined) updates.labels = args.labels
-    if (args.status !== undefined || args.priority !== undefined || args.labels !== undefined) {
+    if (
+      args.status !== undefined ||
+      args.priority !== undefined ||
+      args.labels !== undefined
+    ) {
       updates.updatedAt = Date.now()
     }
 
@@ -563,7 +648,10 @@ export const bulkUpdateTasks = mutation({
             .withIndex("by_guild", (q) => q.eq("guildId", parsed.guildId))
             .first()
 
-          if (integration && shouldRespondInChannel(integration, parsed.channelId)) {
+          if (
+            integration &&
+            shouldRespondInChannel(integration, parsed.channelId)
+          ) {
             // Shipped notification
             if (args.status === "shipped" && task.status !== "shipped") {
               await ctx.db.insert("discordPendingNotifications", {
@@ -583,7 +671,9 @@ export const bulkUpdateTasks = mutation({
             // Accepted notification — moved out of "requests" to active status
             if (
               task.status === "requests" &&
-              (args.status === "todo" || args.status === "in_progress" || args.status === "ready")
+              (args.status === "todo" ||
+                args.status === "in_progress" ||
+                args.status === "ready")
             ) {
               await ctx.db.insert("discordPendingNotifications", {
                 workspaceId: task.workspaceId,

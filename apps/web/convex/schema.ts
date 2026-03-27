@@ -87,6 +87,15 @@ export default defineSchema({
     lastProcessedMessageId: v.optional(v.string()),
     lastProcessedMessageCreatedAt: v.optional(v.number()),
     lastProcessedAt: v.optional(v.number()),
+    feedbackProcessingState: v.optional(
+      v.union(v.literal("idle"), v.literal("scheduled"), v.literal("running"))
+    ),
+    feedbackProcessingWorkId: v.optional(v.string()),
+    feedbackProcessingNeedsRerun: v.optional(v.boolean()),
+    feedbackProcessingQueuedAt: v.optional(v.number()),
+    feedbackProcessingStartedAt: v.optional(v.number()),
+    feedbackProcessingCompletedAt: v.optional(v.number()),
+    feedbackProcessingLastError: v.optional(v.string()),
     additionalContext: v.optional(v.string()),
     respondForMe: v.optional(v.boolean()),
     respondForMeMode: v.optional(
