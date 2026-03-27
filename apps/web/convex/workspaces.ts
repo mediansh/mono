@@ -263,7 +263,8 @@ export const deleteWorkspace = mutation({
     const workspace = await ctx.db.get(args.workspaceId)
     if (!workspace) throw new Error("Workspace not found")
 
-    const [members, invites, tasks, discordIntegrations, pairedCodes] = await Promise.all([
+    const [members, invites, tasks, discordIntegrations, linearIntegrations, linearTaskLinks, pairedCodes] =
+      await Promise.all([
       ctx.db
         .query("workspaceMembers")
         .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
@@ -278,6 +279,14 @@ export const deleteWorkspace = mutation({
         .collect(),
       ctx.db
         .query("discordWorkspaceIntegrations")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+        .collect(),
+      ctx.db
+        .query("linearWorkspaceIntegrations")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+        .collect(),
+      ctx.db
+        .query("linearTaskLinks")
         .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
         .collect(),
       ctx.db
@@ -296,6 +305,14 @@ export const deleteWorkspace = mutation({
 
     for (const integration of discordIntegrations) {
       await ctx.db.delete(integration._id)
+    }
+
+    for (const integration of linearIntegrations) {
+      await ctx.db.delete(integration._id)
+    }
+
+    for (const link of linearTaskLinks) {
+      await ctx.db.delete(link._id)
     }
 
     for (const pairingCode of pairedCodes) {

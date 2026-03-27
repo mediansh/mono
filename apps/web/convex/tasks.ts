@@ -2,6 +2,7 @@ import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import type { MutationCtx, QueryCtx } from "./_generated/server"
 import type { Doc, Id } from "./_generated/dataModel"
+import { internal } from "./_generated/api"
 import { STATUS_ORDER, isDemoTaskSet } from "../lib/task-board"
 import {
   requireTaskWriteAccess,
@@ -33,7 +34,7 @@ const attachmentValidator = v.object({
 })
 
 const taskSourceValidator = v.object({
-  platform: v.union(v.literal("discord"), v.literal("slack"), v.literal("x")),
+  platform: v.union(v.literal("discord"), v.literal("slack"), v.literal("x"), v.literal("linear")),
   url: v.string(),
   author: v.string(),
 })
@@ -56,7 +57,7 @@ type CreateTaskInput = {
   priority: "urgent" | "high" | "medium" | "low" | "none"
   labels: string[]
   source?: {
-    platform: "discord" | "slack" | "x"
+    platform: "discord" | "slack" | "x" | "linear"
     url: string
     author: string
   }
@@ -158,6 +159,21 @@ async function createTasksForWorkspace(
   return await insertTasksForWorkspace(ctx, workspaceId, taskInputs)
 }
 
+async function queueLinearSync(ctx: MutationCtx, taskId: Id<"tasks">) {
+  await ctx.scheduler.runAfter(0, internal.linear.syncTaskToLinearIssue, { taskId })
+}
+
+async function clearLinearTaskLink(ctx: MutationCtx, taskId: Id<"tasks">) {
+  const link = await ctx.db
+    .query("linearTaskLinks")
+    .withIndex("by_task", (q) => q.eq("taskId", taskId))
+    .unique()
+
+  if (link) {
+    await ctx.db.delete(link._id)
+  }
+}
+
 export const listByWorkspace = query({
   args: {
     workspaceId: v.id("workspaces"),
@@ -175,6 +191,9 @@ export const createTask = mutation({
   },
   handler: async (ctx, args) => {
     const createdTasks = await createTasksForWorkspace(ctx, args.workspaceId, [args])
+    if (createdTasks[0]) {
+      await queueLinearSync(ctx, createdTasks[0]._id)
+    }
     return createdTasks[0]
   },
 })
@@ -185,7 +204,11 @@ export const createTasks = mutation({
     tasks: v.array(taskInputValidator),
   },
   handler: async (ctx, args) => {
-    return await createTasksForWorkspace(ctx, args.workspaceId, args.tasks)
+    const createdTasks = await createTasksForWorkspace(ctx, args.workspaceId, args.tasks)
+    for (const task of createdTasks) {
+      await queueLinearSync(ctx, task._id)
+    }
+    return createdTasks
   },
 })
 
@@ -201,7 +224,11 @@ export const createTasksFromDiscordFeedback = mutation({
       throw new Error("Invalid Discord bot secret")
     }
 
-    return await insertTasksForWorkspace(ctx, args.workspaceId, args.tasks)
+    const createdTasks = await insertTasksForWorkspace(ctx, args.workspaceId, args.tasks)
+    for (const task of createdTasks) {
+      await queueLinearSync(ctx, task._id)
+    }
+    return createdTasks
   },
 })
 
@@ -298,6 +325,14 @@ export const updateTask = mutation({
     if (args.labels !== undefined) updates.labels = args.labels
 
     await ctx.db.patch(args.taskId, updates)
+    if (
+      args.title !== undefined ||
+      args.description !== undefined ||
+      args.status !== undefined ||
+      args.priority !== undefined
+    ) {
+      await queueLinearSync(ctx, args.taskId)
+    }
 
     // Queue Discord notifications for status transitions on tasks with a Discord source
     if (
@@ -390,6 +425,11 @@ export const reorderTasks = mutation({
         status: change.status,
         order: change.order,
       })
+
+      const taskBeforeUpdate = tasksBeforeUpdate.get(change.taskId)
+      if (taskBeforeUpdate && change.status !== taskBeforeUpdate.status) {
+        await queueLinearSync(ctx, change.taskId)
+      }
     }
 
     // Queue Discord notifications for status transitions
@@ -463,6 +503,7 @@ export const deleteTask = mutation({
     if (!task) throw new Error("Task not found")
 
     await requireTaskWriteAccess(ctx, task.workspaceId)
+    await clearLinearTaskLink(ctx, args.taskId)
     await ctx.db.delete(args.taskId)
   },
 })
@@ -489,6 +530,9 @@ export const bulkUpdateTasks = mutation({
         throw new Error("Task not found")
       }
       await ctx.db.patch(taskId, updates)
+      if (args.status !== undefined || args.priority !== undefined) {
+        await queueLinearSync(ctx, taskId)
+      }
 
       // Queue Discord notifications for status transitions
       if (
@@ -559,6 +603,7 @@ export const bulkDeleteTasks = mutation({
       if (!task || task.workspaceId !== args.workspaceId) {
         throw new Error("Task not found")
       }
+      await clearLinearTaskLink(ctx, taskId)
       await ctx.db.delete(taskId)
     }
   },
@@ -577,6 +622,7 @@ export const clearDemoTasks = mutation({
     }
 
     for (const task of tasks) {
+      await clearLinearTaskLink(ctx, task._id)
       await ctx.db.delete(task._id)
     }
 

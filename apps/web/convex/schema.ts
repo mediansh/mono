@@ -99,6 +99,44 @@ export default defineSchema({
     .index("by_workspace", ["workspaceId"])
     .index("by_guild", ["guildId"]),
 
+  linearWorkspaceIntegrations: defineTable({
+    workspaceId: v.id("workspaces"),
+    apiKey: v.string(),
+    linearUserId: v.string(),
+    linearUserName: v.string(),
+    linearUserEmail: v.optional(v.string()),
+    teamId: v.string(),
+    teamKey: v.optional(v.string()),
+    teamName: v.string(),
+    webhookId: v.optional(v.string()),
+    webhookToken: v.string(),
+    connectedAt: v.number(),
+    lastSyncedAt: v.optional(v.number()),
+  })
+    .index("by_workspace", ["workspaceId"])
+    .index("by_team", ["teamId"])
+    .index("by_webhook_token", ["webhookToken"]),
+
+  linearTaskLinks: defineTable({
+    workspaceId: v.id("workspaces"),
+    taskId: v.id("tasks"),
+    linearIssueId: v.string(),
+    linearIssueIdentifier: v.string(),
+    linearIssueUrl: v.optional(v.string()),
+    lastLinearUpdatedAt: v.optional(v.string()),
+    lastSyncedAt: v.number(),
+  })
+    .index("by_workspace", ["workspaceId"])
+    .index("by_task", ["taskId"])
+    .index("by_linear_issue", ["linearIssueId"]),
+
+  linearWebhookDeliveries: defineTable({
+    deliveryId: v.string(),
+    integrationId: v.id("linearWorkspaceIntegrations"),
+    eventType: v.string(),
+    receivedAt: v.number(),
+  }).index("by_delivery", ["deliveryId"]),
+
   discordMessages: defineTable({
     workspaceId: v.id("workspaces"),
     integrationId: v.id("discordWorkspaceIntegrations"),
@@ -165,7 +203,12 @@ export default defineSchema({
     ),
     source: v.optional(
       v.object({
-        platform: v.union(v.literal("discord"), v.literal("slack"), v.literal("x")),
+        platform: v.union(
+          v.literal("discord"),
+          v.literal("slack"),
+          v.literal("x"),
+          v.literal("linear")
+        ),
         url: v.string(),
         author: v.string(),
       })

@@ -9,6 +9,8 @@
  */
 
 import type * as discord from "../discord.js";
+import type * as http from "../http.js";
+import type * as linear from "../linear.js";
 import type * as permissions from "../permissions.js";
 import type * as tasks from "../tasks.js";
 import type * as workspaces from "../workspaces.js";
@@ -21,6 +23,8 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   discord: typeof discord;
+  http: typeof http;
+  linear: typeof linear;
   permissions: typeof permissions;
   tasks: typeof tasks;
   workspaces: typeof workspaces;
