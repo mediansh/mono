@@ -221,7 +221,7 @@ export const getTaskSnapshotForDiscord = query({
     const limit = Math.min(args.limit ?? 50, 100)
 
     return tasks
-      .filter((task) => task.status !== "archive" && task.status !== "shipped")
+      .filter((task) => task.status !== "archive")
       .slice(0, limit)
       .map((task) => ({
         taskId: task._id,

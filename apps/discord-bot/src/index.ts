@@ -633,7 +633,7 @@ async function processFeedbackWindow(integrationId: string) {
         "Only create tasks for actionable feedback about the real product. Ignore unrelated discussion.",
         "Return between 0 and 5 tasks.",
         "Each task must be distinct, concrete, and understandable without Discord context.",
-        "You will be given existing tasks from the board. Only skip creating a task if an existing task describes the EXACT same specific issue — same error message, same feature, same broken flow.",
+        "You will be given existing tasks from the board, including shipped (resolved) tasks. Skip creating a task if an existing task — regardless of status — describes the EXACT same specific issue — same error message, same feature, same broken flow. A shipped task means the issue was already addressed; do not recreate it.",
         "Different error messages, different symptoms, or different contexts should each get their own task even if they relate to the same general area.",
         "When in doubt, create the task. It is better to create a near-duplicate than to lose real user feedback.",
         "Descriptions should summarize the user problem and expected outcome in plain text.",
