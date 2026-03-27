@@ -24,8 +24,13 @@ import {
   DialogTitle,
 } from "@workspace/ui/components/dialog"
 import { api } from "@/convex/_generated/api"
-import { useWorkspace } from "@/components/workspace-provider"
 import { SettingsAccessState } from "@/components/settings-access-state"
+import { useWorkspace } from "@/components/workspace-provider"
+import {
+  TASK_STATUSES,
+  TASK_STATUS_LABELS,
+  type TaskStatus,
+} from "@/lib/task-board"
 import { hasWorkspaceAdminPermission } from "@/lib/workspace-permissions"
 
 type PreviewTeam = {
@@ -33,6 +38,14 @@ type PreviewTeam = {
   name: string
   key: string | null
 }
+
+type LinearWorkflowStateOption = {
+  id: string
+  name: string
+  type: string
+}
+
+type StatusMappings = Partial<Record<TaskStatus, string>>
 
 function formatTimestamp(timestamp: number | null) {
   if (!timestamp) return "Not synced yet"
@@ -45,10 +58,33 @@ function formatTimestamp(timestamp: number | null) {
   }).format(timestamp)
 }
 
+function formatWorkflowStateType(type: string) {
+  return type
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ")
+}
+
+function serializeStatusMappings(statusMappings: StatusMappings) {
+  return TASK_STATUSES.map(
+    (status) => `${status}:${statusMappings[status] ?? ""}`
+  ).join("|")
+}
+
 function LinearBrandMark({ size = 20 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" fill="none" aria-hidden="true">
-      <path fill="#5E6AD2" d="M1.225 61.523c-.222-.949.908-1.546 1.597-.857l36.512 36.512c.69.69.092 1.82-.857 1.597-18.425-4.323-32.93-18.827-37.252-37.252ZM.002 46.889a.99.99 0 0 0 .29.76L52.35 99.71c.201.2.478.307.76.29 2.37-.149 4.695-.46 6.963-.927.765-.157 1.03-1.096.478-1.648L2.576 39.448c-.552-.551-1.491-.286-1.648.479a50.067 50.067 0 0 0-.926 6.962ZM4.21 29.705a.988.988 0 0 0 .208 1.1l64.776 64.776c.289.29.726.375 1.1.208a49.908 49.908 0 0 0 5.185-2.684.981.981 0 0 0 .183-1.54L8.436 24.336a.981.981 0 0 0-1.541.183 49.896 49.896 0 0 0-2.684 5.185Zm8.448-11.631a.986.986 0 0 1-.045-1.354C21.78 6.46 35.111 0 49.952 0 77.592 0 100 22.407 100 50.048c0 14.84-6.46 28.172-16.72 37.338a.986.986 0 0 1-1.354-.045L12.659 18.074Z" />
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 100 100"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        fill="#5E6AD2"
+        d="M1.225 61.523c-.222-.949.908-1.546 1.597-.857l36.512 36.512c.69.69.092 1.82-.857 1.597-18.425-4.323-32.93-18.827-37.252-37.252ZM.002 46.889a.99.99 0 0 0 .29.76L52.35 99.71c.201.2.478.307.76.29 2.37-.149 4.695-.46 6.963-.927.765-.157 1.03-1.096.478-1.648L2.576 39.448c-.552-.551-1.491-.286-1.648.479a50.067 50.067 0 0 0-.926 6.962ZM4.21 29.705a.988.988 0 0 0 .208 1.1l64.776 64.776c.289.29.726.375 1.1.208a49.908 49.908 0 0 0 5.185-2.684.981.981 0 0 0 .183-1.54L8.436 24.336a.981.981 0 0 0-1.541.183 49.896 49.896 0 0 0-2.684 5.185Zm8.448-11.631a.986.986 0 0 1-.045-1.354C21.78 6.46 35.111 0 49.952 0 77.592 0 100 22.407 100 50.048c0 14.84-6.46 28.172-16.72 37.338a.986.986 0 0 1-1.354-.045L12.659 18.074Z"
+      />
     </svg>
   )
 }
@@ -62,16 +98,77 @@ function LinearSkeleton() {
   )
 }
 
+function StatusMappingRow({
+  status,
+  value,
+  states,
+  disabled,
+  onChange,
+}: {
+  status: TaskStatus
+  value?: string
+  states: LinearWorkflowStateOption[]
+  disabled: boolean
+  onChange: (status: TaskStatus, value: string) => void
+}) {
+  const selectedState = states.find((state) => state.id === value) ?? null
+  const selectValue = selectedState ? selectedState.id : ""
+
+  return (
+    <div className="grid gap-3 px-5 py-4 md:grid-cols-[minmax(0,180px)_minmax(0,1fr)] md:items-center">
+      <div>
+        <p className="text-sm font-medium text-foreground">
+          {TASK_STATUS_LABELS[status]}
+        </p>
+        <p className="text-xs text-muted-foreground">Median board status</p>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <HugeiconsIcon icon={ArrowRight01Icon} size={12} strokeWidth={1.8} />
+          <select
+            value={selectValue}
+            disabled={disabled}
+            onChange={(event) => onChange(status, event.target.value)}
+            className="h-9 w-full rounded-none border border-border bg-background px-3 text-sm text-foreground transition-colors outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:opacity-60"
+          >
+            <option value="">Use automatic mapping</option>
+            {states.map((state) => (
+              <option key={state.id} value={state.id}>
+                {state.name} ({formatWorkflowStateType(state.type)})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          {selectedState
+            ? `${selectedState.name} • ${formatWorkflowStateType(selectedState.type)}`
+            : "Automatic mapping falls back to Median's default Linear status matching."}
+        </p>
+      </div>
+    </div>
+  )
+}
+
 export function LinearIntegrationPanel() {
   const { currentWorkspace } = useWorkspace()
   const [apiKey, setApiKey] = useState("")
   const [previewTeams, setPreviewTeams] = useState<PreviewTeam[]>([])
-  const [previewUser, setPreviewUser] = useState<{ name: string | null; email: string | null } | null>(
-    null
-  )
+  const [previewUser, setPreviewUser] = useState<{
+    name: string | null
+    email: string | null
+  } | null>(null)
   const [selectedTeamId, setSelectedTeamId] = useState("")
+  const [workflowStates, setWorkflowStates] = useState<
+    LinearWorkflowStateOption[]
+  >([])
+  const [draftStatusMappings, setDraftStatusMappings] =
+    useState<StatusMappings>({})
   const [isLoadingTeams, setIsLoadingTeams] = useState(false)
+  const [isLoadingWorkflowStates, setIsLoadingWorkflowStates] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
+  const [isSavingMappings, setIsSavingMappings] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
   const [isDisconnecting, setIsDisconnecting] = useState(false)
   const [disconnectOpen, setDisconnectOpen] = useState(false)
@@ -81,20 +178,71 @@ export function LinearIntegrationPanel() {
     currentWorkspace ? { workspaceId: currentWorkspace._id } : "skip"
   )
   const previewLinearTeams = useAction(api.linear.previewLinearTeams)
+  const loadWorkflowStates = useAction(
+    api.linear.getWorkspaceLinearWorkflowStates
+  )
   const connectLinear = useAction(api.linear.connectWorkspaceLinearIntegration)
-  const disconnectLinear = useAction(api.linear.disconnectWorkspaceLinearIntegration)
+  const updateLinearStatusMappings = useAction(
+    api.linear.updateWorkspaceLinearStatusMappings
+  )
+  const disconnectLinear = useAction(
+    api.linear.disconnectWorkspaceLinearIntegration
+  )
   const syncLinear = useAction(api.linear.syncWorkspaceLinearIntegration)
 
   const selectedTeam = useMemo(
     () => previewTeams.find((team) => team.id === selectedTeamId) ?? null,
     [previewTeams, selectedTeamId]
   )
+  const integration = integrationState?.integration ?? null
+  const workspaceId = currentWorkspace?._id ?? null
 
   useEffect(() => {
     if (!selectedTeamId && previewTeams[0]) {
       setSelectedTeamId(previewTeams[0].id)
     }
   }, [previewTeams, selectedTeamId])
+
+  useEffect(() => {
+    if (!workspaceId || integrationState === undefined || !integration) {
+      setWorkflowStates([])
+      setDraftStatusMappings({})
+      return
+    }
+
+    const connectedWorkspaceId = workspaceId
+    setDraftStatusMappings(integration.statusMappings)
+
+    let isActive = true
+
+    async function loadConnectedWorkflowStates() {
+      setIsLoadingWorkflowStates(true)
+      try {
+        const result = await loadWorkflowStates({
+          workspaceId: connectedWorkspaceId,
+        })
+        if (!isActive) return
+        setWorkflowStates(result.states)
+      } catch (error) {
+        if (!isActive) return
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to load Linear workflow states."
+        )
+      } finally {
+        if (isActive) {
+          setIsLoadingWorkflowStates(false)
+        }
+      }
+    }
+
+    void loadConnectedWorkflowStates()
+
+    return () => {
+      isActive = false
+    }
+  }, [integration, integrationState, loadWorkflowStates, workspaceId])
 
   if (!currentWorkspace) return null
   if (!hasWorkspaceAdminPermission(currentWorkspace.role)) {
@@ -109,7 +257,32 @@ export function LinearIntegrationPanel() {
   }
 
   const workspace = currentWorkspace
-  const integration = integrationState.integration
+  const savedStatusMappings = integration?.statusMappings ?? {}
+  const hasMappingChanges =
+    integration !== null &&
+    serializeStatusMappings(draftStatusMappings) !==
+      serializeStatusMappings(savedStatusMappings)
+  const missingMappedStatuses = integration
+    ? TASK_STATUSES.filter((status) => {
+        const mappedStateId = integration.statusMappings[status]
+        return (
+          !!mappedStateId &&
+          !workflowStates.some((state) => state.id === mappedStateId)
+        )
+      })
+    : []
+
+  function updateDraftStatus(status: TaskStatus, value: string) {
+    setDraftStatusMappings((current) => {
+      const next = { ...current }
+      if (value) {
+        next[status] = value
+      } else {
+        delete next[status]
+      }
+      return next
+    })
+  }
 
   async function handlePreviewTeams() {
     if (!apiKey.trim()) {
@@ -126,9 +299,13 @@ export function LinearIntegrationPanel() {
         email: result.viewer.email,
       })
       setSelectedTeamId(result.teams[0]?.id ?? "")
-      toast.success(`Loaded ${result.teams.length} Linear team${result.teams.length === 1 ? "" : "s"}.`)
+      toast.success(
+        `Loaded ${result.teams.length} Linear team${result.teams.length === 1 ? "" : "s"}.`
+      )
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to load Linear teams.")
+      toast.error(
+        error instanceof Error ? error.message : "Failed to load Linear teams."
+      )
     } finally {
       setIsLoadingTeams(false)
     }
@@ -159,9 +336,36 @@ export function LinearIntegrationPanel() {
         `Connected ${result.teamName} and synced ${result.syncResult.importedCount} Linear issue${result.syncResult.importedCount === 1 ? "" : "s"}.`
       )
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to connect Linear.")
+      toast.error(
+        error instanceof Error ? error.message : "Failed to connect Linear."
+      )
     } finally {
       setIsConnecting(false)
+    }
+  }
+
+  async function handleSaveMappings() {
+    if (!integration) {
+      return
+    }
+
+    setIsSavingMappings(true)
+    try {
+      await updateLinearStatusMappings({
+        workspaceId: workspace._id,
+        statusMappings: draftStatusMappings,
+      })
+      toast.success(
+        "Saved Linear status mappings. Run sync now to apply them to existing tasks."
+      )
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to save Linear status mappings."
+      )
+    } finally {
+      setIsSavingMappings(false)
     }
   }
 
@@ -173,7 +377,9 @@ export function LinearIntegrationPanel() {
         `Synced ${result.importedCount} Linear issue${result.importedCount === 1 ? "" : "s"} and pushed ${result.pushedCount} Median task${result.pushedCount === 1 ? "" : "s"}.`
       )
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to sync Linear.")
+      toast.error(
+        error instanceof Error ? error.message : "Failed to sync Linear."
+      )
     } finally {
       setIsSyncing(false)
     }
@@ -186,13 +392,14 @@ export function LinearIntegrationPanel() {
       setDisconnectOpen(false)
       toast.success("Linear disconnected.")
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to disconnect Linear.")
+      toast.error(
+        error instanceof Error ? error.message : "Failed to disconnect Linear."
+      )
     } finally {
       setIsDisconnecting(false)
     }
   }
 
-  /* ── Connected state ── */
   if (integration) {
     return (
       <div className="mx-auto w-full max-w-2xl px-10 py-10">
@@ -209,7 +416,6 @@ export function LinearIntegrationPanel() {
             </p>
           </div>
 
-          {/* Connection status card */}
           <div className="rounded-none border border-border bg-card">
             <div className="flex items-center gap-4 p-5">
               <div className="flex size-10 items-center justify-center rounded-none bg-[#5E6AD2]/10">
@@ -218,8 +424,10 @@ export function LinearIntegrationPanel() {
               <div className="flex-1">
                 <h3 className="text-sm font-medium">{integration.teamName}</h3>
                 <p className="text-xs text-muted-foreground">
-                  {integration.teamKey ? `${integration.teamKey} team` : "Selected team"} synced
-                  to {workspace.name}
+                  {integration.teamKey
+                    ? `${integration.teamKey} team`
+                    : "Selected team"}{" "}
+                  synced to {workspace.name}
                   {integration.linearUserEmail ? (
                     <span className="ml-1 text-muted-foreground/60">
                       &middot; {integration.linearUserEmail}
@@ -238,8 +446,17 @@ export function LinearIntegrationPanel() {
                 Last synced {formatTimestamp(integration.lastSyncedAt)}
               </p>
               <div className="flex gap-2">
-                <Button type="button" size="sm" onClick={handleSyncNow} disabled={isSyncing}>
-                  <HugeiconsIcon icon={RotateRight06Icon} size={13} strokeWidth={1.8} />
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleSyncNow}
+                  disabled={isSyncing}
+                >
+                  <HugeiconsIcon
+                    icon={RotateRight06Icon}
+                    size={13}
+                    strokeWidth={1.8}
+                  />
                   {isSyncing ? "Syncing..." : "Sync now"}
                 </Button>
                 <Button
@@ -248,48 +465,100 @@ export function LinearIntegrationPanel() {
                   variant="destructive"
                   onClick={() => setDisconnectOpen(true)}
                 >
-                  <HugeiconsIcon icon={Unlink01Icon} size={13} strokeWidth={1.8} />
+                  <HugeiconsIcon
+                    icon={Unlink01Icon}
+                    size={13}
+                    strokeWidth={1.8}
+                  />
                   Disconnect
                 </Button>
               </div>
             </div>
           </div>
 
-          {/* Status mapping */}
           <div className="rounded-none border border-border bg-card">
-            <div className="flex items-center gap-3 border-b border-border px-5 py-3.5">
-              <HugeiconsIcon icon={ArrowRight01Icon} size={15} strokeWidth={1.8} className="text-muted-foreground" />
-              <div className="flex-1">
-                <h3 className="text-sm font-medium">Status mapping</h3>
-                <p className="text-xs text-muted-foreground">
-                  How Median statuses translate to Linear workflow states.
-                </p>
-              </div>
-            </div>
-            <div className="divide-y divide-border">
-              {[
-                { median: "Requests", linear: "Backlog" },
-                { median: "Todo", linear: "Unstarted" },
-                { median: "In progress", linear: "Started" },
-                { median: "Ready", linear: "Review" },
-                { median: "Shipped", linear: "Done" },
-              ].map((row) => (
-                <div key={row.median} className="flex items-center justify-between px-5 py-3 text-sm">
-                  <span className="text-foreground">{row.median}</span>
-                  <span className="flex items-center gap-2 text-muted-foreground">
-                    <HugeiconsIcon icon={ArrowRight01Icon} size={12} strokeWidth={1.8} />
-                    {row.linear}
-                  </span>
+            <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-3.5">
+              <div className="flex items-center gap-3">
+                <HugeiconsIcon
+                  icon={ArrowRight01Icon}
+                  size={15}
+                  strokeWidth={1.8}
+                  className="text-muted-foreground"
+                />
+                <div>
+                  <h3 className="text-sm font-medium">Status mapping</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Remap how Median statuses align with this Linear team&apos;s
+                    workflow states.
+                  </p>
                 </div>
-              ))}
-            </div>
-            <div className="border-t border-border bg-muted/30 px-5 py-3">
-              <p className="text-xs text-muted-foreground">
-                Any started state containing &ldquo;review&rdquo; maps to Ready on the Median board.
-              </p>
-            </div>
-          </div>
+              </div>
 
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSaveMappings}
+                disabled={
+                  !hasMappingChanges ||
+                  isSavingMappings ||
+                  isLoadingWorkflowStates
+                }
+              >
+                <HugeiconsIcon
+                  icon={CheckmarkBadge01Icon}
+                  size={13}
+                  strokeWidth={1.8}
+                />
+                {isSavingMappings ? "Saving..." : "Save changes"}
+              </Button>
+            </div>
+
+            {isLoadingWorkflowStates ? (
+              <div className="px-5 py-6 text-sm text-muted-foreground">
+                Loading current Linear workflow states...
+              </div>
+            ) : workflowStates.length > 0 ? (
+              <>
+                <div className="divide-y divide-border">
+                  {TASK_STATUSES.map((status) => (
+                    <StatusMappingRow
+                      key={status}
+                      status={status}
+                      value={draftStatusMappings[status]}
+                      states={workflowStates}
+                      disabled={isSavingMappings}
+                      onChange={updateDraftStatus}
+                    />
+                  ))}
+                </div>
+
+                {missingMappedStatuses.length > 0 ? (
+                  <div className="border-t border-border bg-muted/30 px-5 py-3">
+                    <p className="text-xs text-muted-foreground">
+                      Some saved mappings point to workflow states that no
+                      longer exist in Linear. Median will fall back to automatic
+                      mapping for{" "}
+                      {missingMappedStatuses
+                        .map((status) => TASK_STATUS_LABELS[status])
+                        .join(", ")}{" "}
+                      until you save a replacement.
+                    </p>
+                  </div>
+                ) : null}
+
+                <div className="border-t border-border bg-muted/30 px-5 py-3">
+                  <p className="text-xs text-muted-foreground">
+                    Saved mappings apply when importing Linear issues and on the
+                    next sync back to Linear.
+                  </p>
+                </div>
+              </>
+            ) : (
+              <div className="px-5 py-6 text-sm text-muted-foreground">
+                No workflow states were returned for this Linear team.
+              </div>
+            )}
+          </div>
         </motion.div>
 
         <Dialog open={disconnectOpen} onOpenChange={setDisconnectOpen}>
@@ -298,10 +567,15 @@ export function LinearIntegrationPanel() {
               <DialogTitle>Disconnect Linear</DialogTitle>
               <DialogDescription>
                 This will disconnect{" "}
-                <span className="font-medium text-foreground">{integration.teamName}</span>{" "}
+                <span className="font-medium text-foreground">
+                  {integration.teamName}
+                </span>{" "}
                 from{" "}
-                <span className="font-medium text-foreground">{workspace.name}</span>.
-                Future syncing will stop but existing Median tasks will remain.
+                <span className="font-medium text-foreground">
+                  {workspace.name}
+                </span>
+                . Future syncing will stop but existing Median tasks will
+                remain.
               </DialogDescription>
             </DialogHeader>
             <div className="flex gap-2">
@@ -316,7 +590,7 @@ export function LinearIntegrationPanel() {
                 type="button"
                 disabled={isDisconnecting}
                 onClick={handleDisconnect}
-                className="flex h-9 flex-1 items-center justify-center rounded-none bg-destructive text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:opacity-50"
+                className="text-destructive-foreground flex h-9 flex-1 items-center justify-center rounded-none bg-destructive text-sm font-medium transition-colors hover:bg-destructive/90 disabled:opacity-50"
               >
                 {isDisconnecting ? "Disconnecting..." : "Disconnect"}
               </button>
@@ -327,7 +601,6 @@ export function LinearIntegrationPanel() {
     )
   }
 
-  /* ── Disconnected state ── */
   return (
     <div className="mx-auto w-full max-w-2xl px-10 py-10">
       <motion.div
@@ -339,11 +612,11 @@ export function LinearIntegrationPanel() {
         <div>
           <h2 className="text-lg font-semibold tracking-tight">Linear</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Connect a Linear team to this workspace and keep tasks synced in both directions.
+            Connect a Linear team to this workspace and keep tasks synced in
+            both directions.
           </p>
         </div>
 
-        {/* Connection card */}
         <div className="rounded-none border border-border bg-card">
           <div className="flex items-center gap-4 p-5">
             <div className="flex size-10 items-center justify-center rounded-none bg-[#5E6AD2]/10">
@@ -359,7 +632,10 @@ export function LinearIntegrationPanel() {
 
           <div className="space-y-4 border-t border-border p-5">
             <div>
-              <label htmlFor="linear-api-key" className="mb-2 block text-sm font-medium">
+              <label
+                htmlFor="linear-api-key"
+                className="mb-2 block text-sm font-medium"
+              >
                 Personal API key
               </label>
               <div className="flex gap-2">
@@ -377,7 +653,11 @@ export function LinearIntegrationPanel() {
                   disabled={isLoadingTeams}
                   className="h-9"
                 >
-                  <HugeiconsIcon icon={LaptopCheckIcon} size={15} strokeWidth={1.8} />
+                  <HugeiconsIcon
+                    icon={LaptopCheckIcon}
+                    size={15}
+                    strokeWidth={1.8}
+                  />
                   {isLoadingTeams ? "Loading..." : "Load teams"}
                 </Button>
               </div>
@@ -385,14 +665,17 @@ export function LinearIntegrationPanel() {
 
             {previewTeams.length > 0 ? (
               <div>
-                <label htmlFor="linear-team" className="mb-2 block text-sm font-medium">
+                <label
+                  htmlFor="linear-team"
+                  className="mb-2 block text-sm font-medium"
+                >
                   Team
                 </label>
                 <select
                   id="linear-team"
                   value={selectedTeamId}
                   onChange={(event) => setSelectedTeamId(event.target.value)}
-                  className="h-9 w-full rounded-none border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20"
+                  className="h-9 w-full rounded-none border border-border bg-background px-3 text-sm transition-colors outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
                 >
                   {previewTeams.map((team) => (
                     <option key={team.id} value={team.id}>
@@ -405,14 +688,22 @@ export function LinearIntegrationPanel() {
 
             {previewUser ? (
               <div className="flex items-center gap-3 border border-border bg-muted/30 px-4 py-3">
-                <HugeiconsIcon icon={User03Icon} size={14} strokeWidth={1.8} className="text-muted-foreground" />
+                <HugeiconsIcon
+                  icon={User03Icon}
+                  size={14}
+                  strokeWidth={1.8}
+                  className="text-muted-foreground"
+                />
                 <div className="text-sm">
                   <span className="text-foreground">
-                    {previewUser.name ?? previewUser.email ?? "Authenticated user"}
+                    {previewUser.name ??
+                      previewUser.email ??
+                      "Authenticated user"}
                   </span>
                   {selectedTeam ? (
                     <span className="ml-1.5 text-muted-foreground">
-                      &middot; {selectedTeam.name}{selectedTeam.key ? ` (${selectedTeam.key})` : ""}
+                      &middot; {selectedTeam.name}
+                      {selectedTeam.key ? ` (${selectedTeam.key})` : ""}
                     </span>
                   ) : null}
                 </div>
@@ -434,11 +725,11 @@ export function LinearIntegrationPanel() {
 
           <div className="flex items-center border-t border-border bg-muted/30 px-5 py-3">
             <p className="text-xs text-muted-foreground">
-              API keys can be created at Linear &rarr; Settings &rarr; API &rarr; Personal API keys.
+              API keys can be created at Linear &rarr; Settings &rarr; API
+              &rarr; Personal API keys.
             </p>
           </div>
         </div>
-
       </motion.div>
     </div>
   )

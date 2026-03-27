@@ -42,7 +42,11 @@ export default defineSchema({
     inviteType: v.union(v.literal("link"), v.literal("email")),
     role: v.union(v.literal("guest"), v.literal("member"), v.literal("admin")),
     invitedEmail: v.optional(v.string()),
-    status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("revoked")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("revoked")
+    ),
     expiresAt: v.number(),
     acceptedAt: v.optional(v.number()),
     acceptedByUserId: v.optional(v.string()),
@@ -58,7 +62,11 @@ export default defineSchema({
     channelId: v.optional(v.string()),
     issuedByDiscordUserId: v.string(),
     issuedByDiscordUsername: v.optional(v.string()),
-    status: v.union(v.literal("pending"), v.literal("paired"), v.literal("expired")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("paired"),
+      v.literal("expired")
+    ),
     expiresAt: v.number(),
     pairedWorkspaceId: v.optional(v.id("workspaces")),
     pairedByUserId: v.optional(v.string()),
@@ -108,6 +116,17 @@ export default defineSchema({
     teamId: v.string(),
     teamKey: v.optional(v.string()),
     teamName: v.string(),
+    statusMappings: v.optional(
+      v.object({
+        requests: v.optional(v.string()),
+        todo: v.optional(v.string()),
+        in_progress: v.optional(v.string()),
+        ready: v.optional(v.string()),
+        shipped: v.optional(v.string()),
+        archive: v.optional(v.string()),
+      })
+    ),
+    statusMappingsUpdatedAt: v.optional(v.number()),
     webhookId: v.optional(v.string()),
     webhookToken: v.string(),
     connectedAt: v.number(),
@@ -152,7 +171,11 @@ export default defineSchema({
   })
     .index("by_discord_message", ["guildId", "channelId", "messageId"])
     .index("by_integration_created_at", ["integrationId", "messageCreatedAt"])
-    .index("by_workspace_channel_created_at", ["workspaceId", "channelId", "messageCreatedAt"]),
+    .index("by_workspace_channel_created_at", [
+      "workspaceId",
+      "channelId",
+      "messageCreatedAt",
+    ]),
 
   discordPendingNotifications: defineTable({
     workspaceId: v.id("workspaces"),
@@ -163,7 +186,11 @@ export default defineSchema({
     replyToMessageId: v.optional(v.string()),
     taskTitle: v.string(),
     taskCode: v.string(),
-    status: v.union(v.literal("pending"), v.literal("sent"), v.literal("failed")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("sent"),
+      v.literal("failed")
+    ),
     createdAt: v.number(),
     sentAt: v.optional(v.number()),
   })

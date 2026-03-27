@@ -9,10 +9,21 @@ import {
 } from "./_generated/server"
 import type { Doc, Id } from "./_generated/dataModel"
 import { internal } from "./_generated/api"
-import { requireWorkspaceAccess, requireWorkspaceAdminAccess } from "./permissions"
+import {
+  requireWorkspaceAccess,
+  requireWorkspaceAdminAccess,
+} from "./permissions"
 import { type TaskPriority, type TaskStatus } from "../lib/task-board"
 
 const LINEAR_GRAPHQL_URL = "https://api.linear.app/graphql"
+const LINEAR_MAPPABLE_STATUSES: TaskStatus[] = [
+  "requests",
+  "todo",
+  "in_progress",
+  "ready",
+  "shipped",
+  "archive",
+]
 
 type LinearViewer = {
   id: string
@@ -57,6 +68,8 @@ type LinearWebhookPayload = {
   }
 }
 
+type LinearStatusMappings = Partial<Record<TaskStatus, string>>
+
 const linearIssueValidator = v.object({
   id: v.string(),
   identifier: v.string(),
@@ -73,6 +86,15 @@ const linearIssueValidator = v.object({
       type: v.string(),
     })
   ),
+})
+
+const linearStatusMappingsValidator = v.object({
+  requests: v.optional(v.string()),
+  todo: v.optional(v.string()),
+  in_progress: v.optional(v.string()),
+  ready: v.optional(v.string()),
+  shipped: v.optional(v.string()),
+  archive: v.optional(v.string()),
 })
 
 function normalizeTitle(value: string) {
@@ -96,7 +118,53 @@ function normalizeOptionalText(value: string | null | undefined) {
   return trimmed ? trimmed : undefined
 }
 
-function mapLinearPriorityToTask(priority: number | null | undefined): TaskPriority {
+function normalizeStatusMappings(
+  statusMappings: LinearStatusMappings | null | undefined
+): LinearStatusMappings {
+  const normalized: LinearStatusMappings = {}
+
+  for (const status of LINEAR_MAPPABLE_STATUSES) {
+    const stateId = statusMappings?.[status]?.trim()
+    if (stateId) {
+      normalized[status] = stateId
+    }
+  }
+
+  return normalized
+}
+
+function buildDefaultStatusMappings(states: LinearWorkflowState[]) {
+  return normalizeStatusMappings({
+    requests: pickDefaultWorkflowStateId(states, "requests"),
+    todo: pickDefaultWorkflowStateId(states, "todo"),
+    in_progress: pickDefaultWorkflowStateId(states, "in_progress"),
+    ready: pickDefaultWorkflowStateId(states, "ready"),
+    shipped: pickDefaultWorkflowStateId(states, "shipped"),
+    archive: pickDefaultWorkflowStateId(states, "archive"),
+  })
+}
+
+function assertUniqueStatusMappings(statusMappings: LinearStatusMappings) {
+  const seenStateIds = new Map<string, TaskStatus>()
+
+  for (const status of LINEAR_MAPPABLE_STATUSES) {
+    const stateId = statusMappings[status]
+    if (!stateId) continue
+
+    const existingStatus = seenStateIds.get(stateId)
+    if (existingStatus) {
+      throw new Error(
+        "Each Median status must map to a different Linear workflow state"
+      )
+    }
+
+    seenStateIds.set(stateId, status)
+  }
+}
+
+function mapLinearPriorityToTask(
+  priority: number | null | undefined
+): TaskPriority {
   switch (priority) {
     case 1:
       return "urgent"
@@ -126,7 +194,7 @@ function mapTaskPriorityToLinear(priority: TaskPriority) {
   }
 }
 
-function mapLinearStateToTaskStatus(issue: LinearIssue): TaskStatus {
+function mapLinearStateToDefaultTaskStatus(issue: LinearIssue): TaskStatus {
   const stateType = issue.state?.type?.toLowerCase()
   const stateName = issue.state?.name?.toLowerCase() ?? ""
 
@@ -140,6 +208,22 @@ function mapLinearStateToTaskStatus(issue: LinearIssue): TaskStatus {
   return "todo"
 }
 
+function mapLinearStateToTaskStatus(
+  issue: LinearIssue,
+  statusMappings?: LinearStatusMappings | null
+): TaskStatus {
+  const stateId = issue.state?.id
+  if (stateId) {
+    for (const status of LINEAR_MAPPABLE_STATUSES) {
+      if (statusMappings?.[status] === stateId) {
+        return status
+      }
+    }
+  }
+
+  return mapLinearStateToDefaultTaskStatus(issue)
+}
+
 function sortWorkflowStates(states: LinearWorkflowState[]) {
   return [...states].sort((a, b) => {
     const aPosition = a.position ?? Number.MAX_SAFE_INTEGER
@@ -149,20 +233,29 @@ function sortWorkflowStates(states: LinearWorkflowState[]) {
   })
 }
 
-function pickWorkflowStateId(states: LinearWorkflowState[], status: TaskStatus) {
+function pickDefaultWorkflowStateId(
+  states: LinearWorkflowState[],
+  status: TaskStatus
+) {
   const sorted = sortWorkflowStates(states)
-  const findByType = (type: string) => sorted.find((state) => state.type.toLowerCase() === type)?.id
+  const findByType = (type: string) =>
+    sorted.find((state) => state.type.toLowerCase() === type)?.id
   const findReview = () =>
     sorted.find(
       (state) =>
-        state.type.toLowerCase() === "started" && state.name.toLowerCase().includes("review")
+        state.type.toLowerCase() === "started" &&
+        state.name.toLowerCase().includes("review")
     )?.id
 
   switch (status) {
     case "requests":
-      return findByType("backlog") ?? findByType("triage") ?? findByType("unstarted")
+      return (
+        findByType("backlog") ?? findByType("triage") ?? findByType("unstarted")
+      )
     case "todo":
-      return findByType("unstarted") ?? findByType("backlog") ?? findByType("triage")
+      return (
+        findByType("unstarted") ?? findByType("backlog") ?? findByType("triage")
+      )
     case "in_progress":
       return findByType("started") ?? findByType("unstarted")
     case "ready":
@@ -172,6 +265,22 @@ function pickWorkflowStateId(states: LinearWorkflowState[], status: TaskStatus) 
     case "archive":
       return findByType("canceled") ?? findByType("completed")
   }
+}
+
+function pickWorkflowStateId(
+  states: LinearWorkflowState[],
+  status: TaskStatus,
+  statusMappings?: LinearStatusMappings | null
+) {
+  const configuredStateId = statusMappings?.[status]
+  if (
+    configuredStateId &&
+    states.some((state) => state.id === configuredStateId)
+  ) {
+    return configuredStateId
+  }
+
+  return pickDefaultWorkflowStateId(states, status)
 }
 
 async function linearGraphql<T>(
@@ -210,14 +319,20 @@ async function linearGraphql<T>(
 
   if (!response.ok) {
     const message =
-      body.errors?.map((error) => error.message ?? "Unknown Linear error").join("; ") ||
+      body.errors
+        ?.map((error) => error.message ?? "Unknown Linear error")
+        .join("; ") ||
       rawBody ||
       `HTTP ${response.status}`
     throw new Error(`Linear request failed with ${response.status}: ${message}`)
   }
 
   if (body.errors?.length) {
-    throw new Error(body.errors.map((error) => error.message ?? "Unknown Linear error").join("; "))
+    throw new Error(
+      body.errors
+        .map((error) => error.message ?? "Unknown Linear error")
+        .join("; ")
+    )
   }
 
   if (!body.data) {
@@ -377,7 +492,9 @@ async function fetchTeamIssues(apiKey: string, teamId: string) {
     }
 
     issues.push(...result.team.issues.nodes)
-    after = result.team.issues.pageInfo.hasNextPage ? result.team.issues.pageInfo.endCursor : null
+    after = result.team.issues.pageInfo.hasNextPage
+      ? result.team.issues.pageInfo.endCursor
+      : null
   } while (after)
 
   return issues
@@ -536,7 +653,8 @@ async function issueUpdate(
 }
 
 function buildLinearWebhookUrl(webhookToken: string) {
-  const baseUrl = process.env.CONVEX_SITE_URL ?? process.env.NEXT_PUBLIC_CONVEX_SITE_URL
+  const baseUrl =
+    process.env.CONVEX_SITE_URL ?? process.env.NEXT_PUBLIC_CONVEX_SITE_URL
   if (!baseUrl) {
     throw new Error("Missing CONVEX_SITE_URL for Linear webhook registration")
   }
@@ -551,12 +669,17 @@ async function syncTaskToLinear(
     apiKey: string
     teamId: string
     workspaceId: Id<"workspaces">
+    statusMappings?: LinearStatusMappings
   },
   task: Doc<"tasks">,
   link: Doc<"linearTaskLinks"> | null,
   workflowStates: LinearWorkflowState[]
 ) {
-  const stateId = pickWorkflowStateId(workflowStates, task.status)
+  const stateId = pickWorkflowStateId(
+    workflowStates,
+    task.status,
+    integration.statusMappings
+  )
   const input = {
     title: task.title.trim(),
     description: normalizeOptionalText(task.description),
@@ -565,7 +688,11 @@ async function syncTaskToLinear(
   }
 
   if (link) {
-    const updatedIssue = await issueUpdate(integration.apiKey, link.linearIssueId, input)
+    const updatedIssue = await issueUpdate(
+      integration.apiKey,
+      link.linearIssueId,
+      input
+    )
     await ctx.runMutation(internal.linear.saveLinearTaskLink, {
       workspaceId: integration.workspaceId,
       taskId: task._id,
@@ -613,6 +740,7 @@ export const getWorkspaceLinearIntegration = query({
             teamName: integration.teamName,
             linearUserName: integration.linearUserName,
             linearUserEmail: integration.linearUserEmail ?? null,
+            statusMappings: normalizeStatusMappings(integration.statusMappings),
             connectedAt: integration.connectedAt,
             lastSyncedAt: integration.lastSyncedAt ?? null,
             maskedApiKey: maskApiKey(integration.apiKey),
@@ -650,7 +778,9 @@ export const getLinearIntegrationByWebhookToken = internalQuery({
   handler: async (ctx, args) => {
     return await ctx.db
       .query("linearWorkspaceIntegrations")
-      .withIndex("by_webhook_token", (q) => q.eq("webhookToken", args.webhookToken))
+      .withIndex("by_webhook_token", (q) =>
+        q.eq("webhookToken", args.webhookToken)
+      )
       .unique()
   },
 })
@@ -674,6 +804,8 @@ export const saveWorkspaceLinearIntegration = internalMutation({
     teamId: v.string(),
     teamKey: v.optional(v.string()),
     teamName: v.string(),
+    statusMappings: v.optional(linearStatusMappingsValidator),
+    statusMappingsUpdatedAt: v.optional(v.number()),
     webhookId: v.optional(v.string()),
     webhookToken: v.string(),
   },
@@ -692,6 +824,9 @@ export const saveWorkspaceLinearIntegration = internalMutation({
       teamId: args.teamId,
       teamKey: args.teamKey,
       teamName: args.teamName,
+      statusMappings: normalizeStatusMappings(args.statusMappings),
+      statusMappingsUpdatedAt:
+        args.statusMappingsUpdatedAt ?? existing?.statusMappingsUpdatedAt,
       webhookId: args.webhookId,
       webhookToken: args.webhookToken,
       connectedAt: existing?.connectedAt ?? Date.now(),
@@ -744,6 +879,29 @@ export const markLinearIntegrationSyncedAt = internalMutation({
   },
 })
 
+export const saveWorkspaceLinearStatusMappings = internalMutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    statusMappings: linearStatusMappingsValidator,
+    updatedAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const integration = await ctx.db
+      .query("linearWorkspaceIntegrations")
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .unique()
+
+    if (!integration) {
+      throw new Error("Linear integration not found")
+    }
+
+    await ctx.db.patch(integration._id, {
+      statusMappings: normalizeStatusMappings(args.statusMappings),
+      statusMappingsUpdatedAt: args.updatedAt,
+    })
+  },
+})
+
 export const saveLinearTaskLink = internalMutation({
   args: {
     workspaceId: v.id("workspaces"),
@@ -761,7 +919,9 @@ export const saveLinearTaskLink = internalMutation({
 
     const existingByIssue = await ctx.db
       .query("linearTaskLinks")
-      .withIndex("by_linear_issue", (q) => q.eq("linearIssueId", args.linearIssueId))
+      .withIndex("by_linear_issue", (q) =>
+        q.eq("linearIssueId", args.linearIssueId)
+      )
       .unique()
 
     const payload = {
@@ -774,7 +934,11 @@ export const saveLinearTaskLink = internalMutation({
       lastSyncedAt: Date.now(),
     }
 
-    if (existingByTask && existingByIssue && existingByTask._id !== existingByIssue._id) {
+    if (
+      existingByTask &&
+      existingByIssue &&
+      existingByTask._id !== existingByIssue._id
+    ) {
       await ctx.db.delete(existingByIssue._id)
     }
 
@@ -841,7 +1005,9 @@ export const archiveTaskForRemovedLinearIssue = internalMutation({
   handler: async (ctx, args) => {
     const link = await ctx.db
       .query("linearTaskLinks")
-      .withIndex("by_linear_issue", (q) => q.eq("linearIssueId", args.linearIssueId))
+      .withIndex("by_linear_issue", (q) =>
+        q.eq("linearIssueId", args.linearIssueId)
+      )
       .unique()
 
     if (!link) return false
@@ -971,7 +1137,10 @@ export const upsertTaskFromLinearIssue = internalMutation({
       .withIndex("by_linear_issue", (q) => q.eq("linearIssueId", issue.id))
       .unique()
 
-    const taskStatus = mapLinearStateToTaskStatus(issue)
+    const taskStatus = mapLinearStateToTaskStatus(
+      issue,
+      integration.statusMappings
+    )
     const taskPriority = mapLinearPriorityToTask(issue.priority)
     const nextDescription = normalizeOptionalText(issue.description)
     const linearUpdatedAt = new Date(issue.updatedAt).getTime()
@@ -993,13 +1162,17 @@ export const upsertTaskFromLinearIssue = internalMutation({
           title: issue.title.trim(),
           description: nextDescription,
           priority: taskPriority,
-          updatedAt: Number.isFinite(linearUpdatedAt) ? linearUpdatedAt : Date.now(),
+          updatedAt: Number.isFinite(linearUpdatedAt)
+            ? linearUpdatedAt
+            : Date.now(),
         }
 
         if (linkedTask.status !== taskStatus) {
           const workspaceTasks = await ctx.db
             .query("tasks")
-            .withIndex("by_workspace", (q) => q.eq("workspaceId", integration.workspaceId))
+            .withIndex("by_workspace", (q) =>
+              q.eq("workspaceId", integration.workspaceId)
+            )
             .collect()
           updates.status = taskStatus
           updates.order = workspaceTasks.filter(
@@ -1024,16 +1197,22 @@ export const upsertTaskFromLinearIssue = internalMutation({
 
     const workspaceTasks = await ctx.db
       .query("tasks")
-      .withIndex("by_workspace", (q) => q.eq("workspaceId", integration.workspaceId))
+      .withIndex("by_workspace", (q) =>
+        q.eq("workspaceId", integration.workspaceId)
+      )
       .collect()
     const workspaceLinks = await ctx.db
       .query("linearTaskLinks")
-      .withIndex("by_workspace", (q) => q.eq("workspaceId", integration.workspaceId))
+      .withIndex("by_workspace", (q) =>
+        q.eq("workspaceId", integration.workspaceId)
+      )
       .collect()
 
     const linkedTaskIds = new Set(workspaceLinks.map((link) => link.taskId))
     const matchedTask = workspaceTasks.find(
-      (task) => !linkedTaskIds.has(task._id) && normalizeTitle(task.title) === normalizeTitle(issue.title)
+      (task) =>
+        !linkedTaskIds.has(task._id) &&
+        normalizeTitle(task.title) === normalizeTitle(issue.title)
     )
 
     if (matchedTask) {
@@ -1041,7 +1220,9 @@ export const upsertTaskFromLinearIssue = internalMutation({
         title: issue.title.trim(),
         description: nextDescription,
         priority: taskPriority,
-        updatedAt: Number.isFinite(linearUpdatedAt) ? linearUpdatedAt : Date.now(),
+        updatedAt: Number.isFinite(linearUpdatedAt)
+          ? linearUpdatedAt
+          : Date.now(),
       }
 
       if (matchedTask.status !== taskStatus) {
@@ -1068,10 +1249,11 @@ export const upsertTaskFromLinearIssue = internalMutation({
       return matchedTask._id
     }
 
-    const nextTaskNumber = Math.max(
-      workspace.taskCounter ?? 0,
-      ...workspaceTasks.map((task) => task.taskNumber)
-    ) + 1
+    const nextTaskNumber =
+      Math.max(
+        workspace.taskCounter ?? 0,
+        ...workspaceTasks.map((task) => task.taskNumber)
+      ) + 1
     const createdTaskId = await ctx.db.insert("tasks", {
       workspaceId: integration.workspaceId,
       taskCode: `${workspace.prefix || "MED"}-${nextTaskNumber}`,
@@ -1083,7 +1265,9 @@ export const upsertTaskFromLinearIssue = internalMutation({
       labels: [],
       order: workspaceTasks.filter((task) => task.status === taskStatus).length,
       project: workspace.name,
-      updatedAt: Number.isFinite(linearUpdatedAt) ? linearUpdatedAt : Date.now(),
+      updatedAt: Number.isFinite(linearUpdatedAt)
+        ? linearUpdatedAt
+        : Date.now(),
       assignee: {
         name: "Abdul",
         avatar: "",
@@ -1135,6 +1319,39 @@ export const previewLinearTeams = action({
   },
 })
 
+export const getWorkspaceLinearWorkflowStates = action({
+  args: {
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args) => {
+    await ctx.runMutation(internal.linear.assertWorkspaceAdminAccess, {
+      workspaceId: args.workspaceId,
+    })
+
+    const integration = await ctx.runQuery(
+      internal.linear.getLinearIntegrationForWorkspace,
+      {
+        workspaceId: args.workspaceId,
+      }
+    )
+    if (!integration) {
+      throw new Error("No Linear integration found for this workspace")
+    }
+
+    const workflowStates = sortWorkflowStates(
+      await fetchWorkflowStates(integration.apiKey, integration.teamId)
+    )
+
+    return {
+      states: workflowStates.map((state) => ({
+        id: state.id,
+        name: state.name,
+        type: state.type,
+      })),
+    }
+  },
+})
+
 export const connectWorkspaceLinearIntegration = action({
   args: {
     workspaceId: v.id("workspaces"),
@@ -1159,54 +1376,134 @@ export const connectWorkspaceLinearIntegration = action({
     })
 
     const apiKey = args.apiKey.trim()
-    const existingIntegration = await ctx.runQuery(internal.linear.getLinearIntegrationForWorkspace, {
-      workspaceId: args.workspaceId,
-    })
+    const existingIntegration = await ctx.runQuery(
+      internal.linear.getLinearIntegrationForWorkspace,
+      {
+        workspaceId: args.workspaceId,
+      }
+    )
 
     if (existingIntegration?.webhookId) {
       try {
-        await deleteWebhook(existingIntegration.apiKey, existingIntegration.webhookId)
+        await deleteWebhook(
+          existingIntegration.apiKey,
+          existingIntegration.webhookId
+        )
       } catch {
         // Replace the integration anyway so the workspace is not stuck on a bad webhook.
       }
     }
 
     const connectionData = await fetchViewerAndTeams(apiKey)
-    const selectedTeam = connectionData.teams.find((team) => team.id === args.teamId)
+    const selectedTeam = connectionData.teams.find(
+      (team) => team.id === args.teamId
+    )
 
     if (!selectedTeam) {
       throw new Error("Selected Linear team not found for this API key")
     }
 
+    const workflowStates = await fetchWorkflowStates(apiKey, selectedTeam.id)
+    const statusMappings = buildDefaultStatusMappings(workflowStates)
     const webhookToken = crypto.randomUUID().replace(/-/g, "")
-    const webhookId = await createWebhook(apiKey, selectedTeam.id, buildLinearWebhookUrl(webhookToken))
+    const webhookId = await createWebhook(
+      apiKey,
+      selectedTeam.id,
+      buildLinearWebhookUrl(webhookToken)
+    )
 
     await ctx.runMutation(internal.linear.clearWorkspaceLinearIntegration, {
       workspaceId: args.workspaceId,
     })
-    const integrationId = await ctx.runMutation(internal.linear.saveWorkspaceLinearIntegration, {
-      workspaceId: args.workspaceId,
-      apiKey,
-      linearUserId: connectionData.viewer.id,
-      linearUserName: connectionData.viewer.name ?? connectionData.viewer.email ?? "Linear user",
-      linearUserEmail: connectionData.viewer.email ?? undefined,
-      teamId: selectedTeam.id,
-      teamKey: selectedTeam.key ?? undefined,
-      teamName: selectedTeam.name,
-      webhookId,
-      webhookToken,
-    })
+    const integrationId = await ctx.runMutation(
+      internal.linear.saveWorkspaceLinearIntegration,
+      {
+        workspaceId: args.workspaceId,
+        apiKey,
+        linearUserId: connectionData.viewer.id,
+        linearUserName:
+          connectionData.viewer.name ??
+          connectionData.viewer.email ??
+          "Linear user",
+        linearUserEmail: connectionData.viewer.email ?? undefined,
+        teamId: selectedTeam.id,
+        teamKey: selectedTeam.key ?? undefined,
+        teamName: selectedTeam.name,
+        statusMappings,
+        statusMappingsUpdatedAt: Date.now(),
+        webhookId,
+        webhookToken,
+      }
+    )
 
-    const syncResult = await ctx.runAction(internal.linear.performWorkspaceLinearSync, {
-      workspaceId: args.workspaceId,
-    })
+    const syncResult = await ctx.runAction(
+      internal.linear.performWorkspaceLinearSync,
+      {
+        workspaceId: args.workspaceId,
+      }
+    )
 
     return {
       integrationId,
       teamName: selectedTeam.name,
       teamKey: selectedTeam.key ?? null,
-      viewerName: connectionData.viewer.name ?? connectionData.viewer.email ?? "Linear user",
+      viewerName:
+        connectionData.viewer.name ??
+        connectionData.viewer.email ??
+        "Linear user",
       syncResult,
+    }
+  },
+})
+
+export const updateWorkspaceLinearStatusMappings = action({
+  args: {
+    workspaceId: v.id("workspaces"),
+    statusMappings: linearStatusMappingsValidator,
+  },
+  handler: async (ctx, args) => {
+    await ctx.runMutation(internal.linear.assertWorkspaceAdminAccess, {
+      workspaceId: args.workspaceId,
+    })
+
+    const integration = await ctx.runQuery(
+      internal.linear.getLinearIntegrationForWorkspace,
+      {
+        workspaceId: args.workspaceId,
+      }
+    )
+    if (!integration) {
+      throw new Error("No Linear integration found for this workspace")
+    }
+
+    const workflowStates = await fetchWorkflowStates(
+      integration.apiKey,
+      integration.teamId
+    )
+    const workflowStateIds = new Set(workflowStates.map((state) => state.id))
+    const normalizedMappings = normalizeStatusMappings(args.statusMappings)
+
+    assertUniqueStatusMappings(normalizedMappings)
+
+    for (const status of LINEAR_MAPPABLE_STATUSES) {
+      const stateId = normalizedMappings[status]
+      if (stateId && !workflowStateIds.has(stateId)) {
+        throw new Error(
+          "One or more selected Linear workflow states no longer exist"
+        )
+      }
+    }
+
+    const updatedAt = Date.now()
+    await ctx.runMutation(internal.linear.saveWorkspaceLinearStatusMappings, {
+      workspaceId: args.workspaceId,
+      statusMappings: normalizedMappings,
+      updatedAt,
+    })
+
+    return {
+      statusMappings: normalizedMappings,
+      updatedAt,
     }
   },
 })
@@ -1220,9 +1517,12 @@ export const disconnectWorkspaceLinearIntegration = action({
       workspaceId: args.workspaceId,
     })
 
-    const integration = await ctx.runQuery(internal.linear.getLinearIntegrationForWorkspace, {
-      workspaceId: args.workspaceId,
-    })
+    const integration = await ctx.runQuery(
+      internal.linear.getLinearIntegrationForWorkspace,
+      {
+        workspaceId: args.workspaceId,
+      }
+    )
 
     if (integration?.webhookId) {
       try {
@@ -1245,14 +1545,20 @@ export const performWorkspaceLinearSync = internalAction({
     workspaceId: v.id("workspaces"),
   },
   handler: async (ctx, args) => {
-    const integration = await ctx.runQuery(internal.linear.getLinearIntegrationForWorkspace, {
-      workspaceId: args.workspaceId,
-    })
+    const integration = await ctx.runQuery(
+      internal.linear.getLinearIntegrationForWorkspace,
+      {
+        workspaceId: args.workspaceId,
+      }
+    )
     if (!integration) {
       throw new Error("No Linear integration found for this workspace")
     }
 
-    const teamIssues = await fetchTeamIssues(integration.apiKey, integration.teamId)
+    const teamIssues = await fetchTeamIssues(
+      integration.apiKey,
+      integration.teamId
+    )
     for (const issue of teamIssues) {
       await ctx.runMutation(internal.linear.upsertTaskFromLinearIssue, {
         integrationId: integration._id,
@@ -1276,22 +1582,37 @@ export const performWorkspaceLinearSync = internalAction({
       })
     }
 
-    const taskSyncStates = await ctx.runQuery(internal.linear.listWorkspaceTaskSyncStates, {
-      workspaceId: args.workspaceId,
-    })
+    const taskSyncStates = await ctx.runQuery(
+      internal.linear.listWorkspaceTaskSyncStates,
+      {
+        workspaceId: args.workspaceId,
+      }
+    )
 
-    const workflowStates = await fetchWorkflowStates(integration.apiKey, integration.teamId)
+    const workflowStates = await fetchWorkflowStates(
+      integration.apiKey,
+      integration.teamId
+    )
+    const statusMappingsUpdatedAt = integration.statusMappingsUpdatedAt ?? 0
     let pushedCount = 0
     for (const item of taskSyncStates) {
       const taskUpdatedAt = item.task.updatedAt ?? item.task._creationTime
       const needsPush =
-        item.link === null || taskUpdatedAt > item.link.lastSyncedAt
+        item.link === null ||
+        taskUpdatedAt > item.link.lastSyncedAt ||
+        statusMappingsUpdatedAt > item.link.lastSyncedAt
 
       if (!needsPush) {
         continue
       }
 
-      await syncTaskToLinear(ctx, integration, item.task, item.link, workflowStates)
+      await syncTaskToLinear(
+        ctx,
+        integration,
+        item.task,
+        item.link,
+        workflowStates
+      )
       pushedCount += 1
     }
 
@@ -1342,7 +1663,10 @@ export const syncTaskToLinearIssue = internalAction({
 
     if (
       snapshot.link &&
-      (snapshot.task.updatedAt ?? snapshot.task._creationTime) <= snapshot.link.lastSyncedAt
+      (snapshot.task.updatedAt ?? snapshot.task._creationTime) <=
+        snapshot.link.lastSyncedAt &&
+      (snapshot.integration.statusMappingsUpdatedAt ?? 0) <=
+        snapshot.link.lastSyncedAt
     ) {
       return { skipped: true }
     }
@@ -1378,9 +1702,12 @@ export const syncLinearIssueFromWebhook = internalAction({
     issueId: v.string(),
   },
   handler: async (ctx, args) => {
-    const integration = await ctx.runQuery(internal.linear.getLinearIntegrationById, {
-      integrationId: args.integrationId,
-    })
+    const integration = await ctx.runQuery(
+      internal.linear.getLinearIntegrationById,
+      {
+        integrationId: args.integrationId,
+      }
+    )
 
     if (!integration) {
       throw new Error("Linear integration not found")
@@ -1427,9 +1754,12 @@ export const linearWebhook = httpAction(async (ctx, request) => {
     return new Response("Missing webhook token", { status: 401 })
   }
 
-  const integration = await ctx.runQuery(internal.linear.getLinearIntegrationByWebhookToken, {
-    webhookToken,
-  })
+  const integration = await ctx.runQuery(
+    internal.linear.getLinearIntegrationByWebhookToken,
+    {
+      webhookToken,
+    }
+  )
   if (!integration) {
     return new Response("Unknown webhook token", { status: 404 })
   }
@@ -1440,11 +1770,14 @@ export const linearWebhook = httpAction(async (ctx, request) => {
     return new Response("Missing delivery id", { status: 400 })
   }
 
-  const accepted = await ctx.runMutation(internal.linear.recordLinearWebhookDelivery, {
-    deliveryId,
-    integrationId: integration._id,
-    eventType,
-  })
+  const accepted = await ctx.runMutation(
+    internal.linear.recordLinearWebhookDelivery,
+    {
+      deliveryId,
+      integrationId: integration._id,
+      eventType,
+    }
+  )
   if (!accepted) {
     return new Response("Duplicate delivery", { status: 200 })
   }
