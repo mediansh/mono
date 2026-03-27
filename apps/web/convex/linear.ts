@@ -191,13 +191,29 @@ async function linearGraphql<T>(
     }),
   })
 
-  if (!response.ok) {
-    throw new Error(`Linear request failed with ${response.status}`)
-  }
-
-  const body = (await response.json()) as {
+  const rawBody = await response.text()
+  let body: {
     data?: T
     errors?: { message?: string }[]
+  } = {}
+
+  if (rawBody) {
+    try {
+      body = (JSON.parse(rawBody) as {
+        data?: T
+        errors?: { message?: string }[]
+      }) ?? { data: undefined, errors: undefined }
+    } catch {
+      body = {}
+    }
+  }
+
+  if (!response.ok) {
+    const message =
+      body.errors?.map((error) => error.message ?? "Unknown Linear error").join("; ") ||
+      rawBody ||
+      `HTTP ${response.status}`
+    throw new Error(`Linear request failed with ${response.status}: ${message}`)
   }
 
   if (body.errors?.length) {
@@ -245,19 +261,23 @@ async function fetchViewerAndTeams(apiKey: string) {
 
 async function fetchWorkflowStates(apiKey: string, teamId: string) {
   const data = await linearGraphql<{
-    workflowStates: {
-      nodes: LinearWorkflowState[]
-    }
+    team: {
+      states: {
+        nodes: LinearWorkflowState[]
+      }
+    } | null
   }>(
     apiKey,
     `
       query TeamWorkflowStates($teamId: String!) {
-        workflowStates(filter: { team: { id: { eq: $teamId } } }) {
-          nodes {
-            id
-            name
-            type
-            position
+        team(id: $teamId) {
+          states {
+            nodes {
+              id
+              name
+              type
+              position
+            }
           }
         }
       }
@@ -265,7 +285,11 @@ async function fetchWorkflowStates(apiKey: string, teamId: string) {
     { teamId }
   )
 
-  return data.workflowStates.nodes
+  if (!data.team) {
+    throw new Error("Linear team not found while loading workflow states")
+  }
+
+  return data.team.states.nodes
 }
 
 async function fetchIssueById(apiKey: string, issueId: string) {
