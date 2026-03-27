@@ -526,7 +526,7 @@ async function processFeedbackWindow(integrationId: string) {
 
     const classifierSystemParts = [
         "You classify Discord conversations for a product team.",
-        `The only product that matters is ${feedbackWindow.integration.workspaceName}, also referred to as Median.`,
+        `The only product that matters is ${feedbackWindow.integration.workspaceName}`,
         "Return isProductFeedback=true only when the newest messages contain concrete product feedback, a bug report, a feature request, workflow friction, or an actionable complaint about the actual product.",
         "Reject off-topic chat, memes, introductions, hiring talk, agency requests, feedback about unrelated tools, and generic conversation that is not about the product itself.",
         "Use the recent context only to interpret what the new messages refer to.",
@@ -629,7 +629,7 @@ async function processFeedbackWindow(integrationId: string) {
 
     const extractorSystemParts = [
         "You turn product feedback into concise task requests for a task board.",
-        `The product is ${feedbackWindow.integration.workspaceName}, also referred to as Median.`,
+        `The product is ${feedbackWindow.integration.workspaceName}.`,
         "Only create tasks for actionable feedback about the real product. Ignore unrelated discussion.",
         "Return between 0 and 5 tasks.",
         "Each task must be distinct, concrete, and understandable without Discord context.",
