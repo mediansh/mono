@@ -824,7 +824,7 @@ const ListRowContent = memo(function ListRowContent({ task }: { task: Task }) {
   const { colors: labelColors } = useLabelConfig()
   return (
     <>
-      <span className="shrink-0 font-mono text-[11px] text-muted-foreground/50">{task.taskCode}</span>
+      <span className="w-14 shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground/50">{task.taskCode}</span>
       <div className="shrink-0">{getPriorityIcon(task.priority)}</div>
       <div className="shrink-0">{getStatusIcon(task.status)}</div>
       <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground/90">{task.title}</span>
