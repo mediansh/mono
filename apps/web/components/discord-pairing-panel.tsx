@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 import { useMutation, useQuery } from "convex/react"
-import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   InformationCircleIcon,
@@ -212,10 +211,7 @@ export function DiscordPairingPanel() {
   /* ── Connected state: status card + settings + disconnect ── */
   if (integration) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 18 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+      <div
         className="mx-auto w-full max-w-2xl px-10 py-10"
       >
         <div className="flex flex-col gap-6">
@@ -266,10 +262,7 @@ export function DiscordPairingPanel() {
           </div>
 
           {/* Additional context */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.04, ease: [0.16, 1, 0.3, 1] }}
+          <div
             className="rounded-none border border-border bg-card"
           >
             <div className="flex items-center gap-3 border-b border-border px-5 py-3.5">
@@ -293,13 +286,10 @@ export function DiscordPairingPanel() {
                 This context is passed to the AI when scanning messages. Changes save automatically.
               </p>
             </div>
-          </motion.div>
+          </div>
 
           {/* Respond for me */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
+          <div
             className="rounded-none border border-border bg-card"
           >
             <div className="flex items-center gap-3 border-b border-border px-5 py-3.5">
@@ -341,11 +331,7 @@ export function DiscordPairingPanel() {
             </div>
 
             {respondForMeMode === "specific" ? (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              <div
                 className="border-t border-border"
               >
                 {guildChannels.length === 0 ? (
@@ -456,9 +442,9 @@ export function DiscordPairingPanel() {
                     )}
                   </div>
                 )}
-              </motion.div>
+              </div>
             ) : null}
-          </motion.div>
+          </div>
         </div>
 
         <Dialog open={disconnectOpen} onOpenChange={setDisconnectOpen}>
@@ -492,16 +478,13 @@ export function DiscordPairingPanel() {
             </div>
           </DialogContent>
         </Dialog>
-      </motion.div>
+      </div>
     )
   }
 
   /* ── Disconnected state: pairing form + how it works ── */
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 18 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+    <div
       className="mx-auto w-full max-w-2xl px-10 py-10"
     >
       <div className="flex flex-col gap-6">
@@ -557,10 +540,7 @@ export function DiscordPairingPanel() {
         </div>
 
         {/* How it works — only when not connected */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.06, ease: [0.16, 1, 0.3, 1] }}
+        <div
           className="rounded-none border border-dashed border-border p-5"
         >
           <div className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
@@ -581,8 +561,8 @@ export function DiscordPairingPanel() {
               <span>Paste it above to bind {workspace.name} to that server.</span>
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
-    </motion.div>
+    </div>
   )
 }

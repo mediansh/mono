@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { usePathname, useRouter } from "next/navigation"
+import { AnimatePresence, motion } from "motion/react"
 import {
   MagnifyingGlass,
   House,
@@ -322,24 +323,32 @@ export function SearchPalette({
     [results, activeIndex, handleSelect, onOpenChange]
   )
 
-  if (!open) return null
-
   // Global index tracker for flat rendering
   let flatIndex = 0
 
+  if (typeof document === "undefined") return null
+
   return createPortal(
-    <>
+    <AnimatePresence>
       {open && (
         <>
           {/* Backdrop */}
-          <div
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15, ease: [0.23, 1, 0.32, 1] }}
             className="fixed inset-0 z-50 bg-black/50"
           />
 
           {/* Panel */}
-          <div
+          <motion.div
             ref={panelRef}
-            className="fixed top-[min(20%,180px)] left-1/2 z-50 w-[calc(100%-2rem)] max-w-[540px] -translate-x-1/2 overflow-hidden rounded-none border-2 border-border bg-background shadow-none"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.15, ease: [0.23, 1, 0.32, 1] }}
+            className="fixed top-[min(20%,180px)] left-1/2 z-50 w-[calc(100%-2rem)] max-w-[540px] -translate-x-1/2 overflow-hidden rounded-none border border-border/50 bg-background shadow-2xl ring-1 ring-white/[0.05]"
           >
             {/* Search input */}
             <div className="flex items-center gap-3 border-b border-border px-4">
@@ -442,10 +451,10 @@ export function SearchPalette({
                 <span className="text-[11px] text-muted-foreground/60">close</span>
               </div>
             </div>
-          </div>
+          </motion.div>
         </>
       )}
-    </>,
+    </AnimatePresence>,
     document.body
   )
 }

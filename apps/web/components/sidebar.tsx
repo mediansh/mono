@@ -312,7 +312,7 @@ export function AppSidebar() {
                       onClick={() => setSearchOpen(true)}
                       className="text-muted-foreground ring-1 ring-sidebar-border"
                     >
-                      <MagnifyingGlass size={16} />
+                      <MagnifyingGlass size={16} weight="fill" />
                       <span>Search</span>
                       <kbd className="ml-auto hidden rounded-none border border-sidebar-border bg-sidebar px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground group-data-[collapsible=icon]:hidden lg:inline">
                         {mounted ? (/Mac|iPhone/.test(navigator.userAgent) ? "⌘K" : "Ctrl+K") : null}
@@ -330,7 +330,7 @@ export function AppSidebar() {
                       disabled={!canManageTasks}
                       className="bg-primary text-primary-foreground hover:bg-primary/85 hover:text-primary-foreground active:bg-primary/70 active:text-primary-foreground data-active:bg-primary data-active:text-primary-foreground"
                     >
-                      <PenNib size={16} />
+                      <PenNib size={16} weight="fill" />
                       <span>New</span>
                       <kbd className="ml-auto hidden rounded-none border border-primary-foreground/25 bg-primary-foreground/10 px-1.5 py-0.5 font-mono text-[10px] text-primary-foreground/70 group-data-[collapsible=icon]:hidden lg:inline">
                         C
@@ -364,7 +364,7 @@ export function AppSidebar() {
                               : undefined
                           }
                         >
-                          <item.icon size={16} weight={isActive ? "fill" : "regular"} />
+                          <item.icon size={16} weight="fill" />
                           <span>{item.label}</span>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
@@ -389,7 +389,7 @@ export function AppSidebar() {
                     : undefined
                 }
               >
-                <Gear size={16} weight={pathname.startsWith("/app/settings") ? "fill" : "regular"} />
+                <Gear size={16} weight="fill" />
                 <span>Settings</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -478,32 +478,32 @@ export function AppSidebar() {
                   <DropdownMenuSeparator />
 
                   <DropdownMenuItem render={<Link href="/settings" />}>
-                    <Gear size={14} />
+                    <Gear size={14} weight="fill" />
                     Settings
                   </DropdownMenuItem>
                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger>
-                      {theme === "dark" ? <Moon size={14} /> : <Sun size={14} />}
+                      {theme === "dark" ? <Moon size={14} weight="fill" /> : <Sun size={14} weight="fill" />}
                       Theme
                     </DropdownMenuSubTrigger>
                     <DropdownMenuSubContent>
                       <DropdownMenuItem onClick={() => setTheme("light")}>
-                        <Sun size={14} />
+                        <Sun size={14} weight="fill" />
                         Light
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => setTheme("dark")}>
-                        <Moon size={14} />
+                        <Moon size={14} weight="fill" />
                         Dark
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => setTheme("system")}>
-                        <Desktop size={14} />
+                        <Desktop size={14} weight="fill" />
                         System
                       </DropdownMenuItem>
                     </DropdownMenuSubContent>
                   </DropdownMenuSub>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => signOut()}>
-                    <SignOut size={14} />
+                    <SignOut size={14} weight="fill" />
                     Sign out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
