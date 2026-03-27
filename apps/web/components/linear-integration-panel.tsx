@@ -111,42 +111,32 @@ function StatusMappingRow({
   disabled: boolean
   onChange: (status: TaskStatus, value: string) => void
 }) {
-  const selectedState = states.find((state) => state.id === value) ?? null
-  const selectValue = selectedState ? selectedState.id : ""
+  const selectValue = value && states.some((s) => s.id === value) ? value : ""
 
   return (
-    <div className="grid gap-3 px-5 py-4 md:grid-cols-[minmax(0,180px)_minmax(0,1fr)] md:items-center">
-      <div>
-        <p className="text-sm font-medium text-foreground">
-          {TASK_STATUS_LABELS[status]}
-        </p>
-        <p className="text-xs text-muted-foreground">Median board status</p>
-      </div>
-
-      <div className="space-y-2">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <HugeiconsIcon icon={ArrowRight01Icon} size={12} strokeWidth={1.8} />
-          <select
-            value={selectValue}
-            disabled={disabled}
-            onChange={(event) => onChange(status, event.target.value)}
-            className="h-9 w-full rounded-none border border-border bg-background px-3 text-sm text-foreground transition-colors outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:opacity-60"
-          >
-            <option value="">Use automatic mapping</option>
-            {states.map((state) => (
-              <option key={state.id} value={state.id}>
-                {state.name} ({formatWorkflowStateType(state.type)})
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <p className="text-xs text-muted-foreground">
-          {selectedState
-            ? `${selectedState.name} • ${formatWorkflowStateType(selectedState.type)}`
-            : "Automatic mapping falls back to Median's default Linear status matching."}
-        </p>
-      </div>
+    <div className="flex items-center gap-3 px-4 py-2.5">
+      <span className="w-24 shrink-0 text-sm text-foreground">
+        {TASK_STATUS_LABELS[status]}
+      </span>
+      <HugeiconsIcon
+        icon={ArrowRight01Icon}
+        size={12}
+        strokeWidth={1.8}
+        className="shrink-0 text-muted-foreground/50"
+      />
+      <select
+        value={selectValue}
+        disabled={disabled}
+        onChange={(event) => onChange(status, event.target.value)}
+        className="h-8 min-w-0 flex-1 rounded-none border border-border bg-background px-2.5 text-sm text-foreground transition-colors outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:opacity-60"
+      >
+        <option value="">Automatic</option>
+        {states.map((state) => (
+          <option key={state.id} value={state.id}>
+            {state.name} ({formatWorkflowStateType(state.type)})
+          </option>
+        ))}
+      </select>
     </div>
   )
 }
@@ -478,48 +468,31 @@ export function LinearIntegrationPanel() {
 
           <div className="rounded-none border border-border bg-card">
             <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-3.5">
-              <div className="flex items-center gap-3">
-                <HugeiconsIcon
-                  icon={ArrowRight01Icon}
-                  size={15}
-                  strokeWidth={1.8}
-                  className="text-muted-foreground"
-                />
-                <div>
-                  <h3 className="text-sm font-medium">Status mapping</h3>
-                  <p className="text-xs text-muted-foreground">
-                    Remap how Median statuses align with this Linear team&apos;s
-                    workflow states.
-                  </p>
-                </div>
-              </div>
-
-              <Button
-                type="button"
-                size="sm"
-                onClick={handleSaveMappings}
-                disabled={
-                  !hasMappingChanges ||
-                  isSavingMappings ||
-                  isLoadingWorkflowStates
-                }
-              >
-                <HugeiconsIcon
-                  icon={CheckmarkBadge01Icon}
-                  size={13}
-                  strokeWidth={1.8}
-                />
-                {isSavingMappings ? "Saving..." : "Save changes"}
-              </Button>
+              <h3 className="text-sm font-medium">Status mapping</h3>
+              {hasMappingChanges && (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleSaveMappings}
+                  disabled={isSavingMappings}
+                >
+                  <HugeiconsIcon
+                    icon={CheckmarkBadge01Icon}
+                    size={13}
+                    strokeWidth={1.8}
+                  />
+                  {isSavingMappings ? "Saving..." : "Save"}
+                </Button>
+              )}
             </div>
 
             {isLoadingWorkflowStates ? (
               <div className="px-5 py-6 text-sm text-muted-foreground">
-                Loading current Linear workflow states...
+                Loading workflow states...
               </div>
             ) : workflowStates.length > 0 ? (
               <>
-                <div className="divide-y divide-border">
+                <div className="divide-y divide-border/50 py-1">
                   {TASK_STATUSES.map((status) => (
                     <StatusMappingRow
                       key={status}
@@ -532,30 +505,21 @@ export function LinearIntegrationPanel() {
                   ))}
                 </div>
 
-                {missingMappedStatuses.length > 0 ? (
+                {missingMappedStatuses.length > 0 && (
                   <div className="border-t border-border bg-muted/30 px-5 py-3">
                     <p className="text-xs text-muted-foreground">
-                      Some saved mappings point to workflow states that no
-                      longer exist in Linear. Median will fall back to automatic
-                      mapping for{" "}
                       {missingMappedStatuses
-                        .map((status) => TASK_STATUS_LABELS[status])
+                        .map((s) => TASK_STATUS_LABELS[s])
                         .join(", ")}{" "}
-                      until you save a replacement.
+                      mapped to deleted Linear states — using automatic mapping
+                      until updated.
                     </p>
                   </div>
-                ) : null}
-
-                <div className="border-t border-border bg-muted/30 px-5 py-3">
-                  <p className="text-xs text-muted-foreground">
-                    Saved mappings apply when importing Linear issues and on the
-                    next sync back to Linear.
-                  </p>
-                </div>
+                )}
               </>
             ) : (
               <div className="px-5 py-6 text-sm text-muted-foreground">
-                No workflow states were returned for this Linear team.
+                No workflow states found for this team.
               </div>
             )}
           </div>
