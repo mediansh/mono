@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react"
+import { createPortal } from "react-dom"
+import { AnimatePresence, motion } from "motion/react"
 import { useMutation } from "convex/react"
 import { useUser } from "@clerk/nextjs"
 import { toast } from "sonner"
@@ -22,7 +24,6 @@ import {
   Sparkle,
   ArrowRight,
 } from "@phosphor-icons/react"
-import { Dialog, DialogContent } from "@workspace/ui/components/dialog"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -456,33 +457,88 @@ export function NewTaskModal({
     }
   }
 
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  // Close on click outside
+  useEffect(() => {
+    if (!open) return
+    function handleClick(e: MouseEvent) {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        onOpenChange(false)
+        resetForm()
+      }
+    }
+    const id = setTimeout(() => {
+      document.addEventListener("mousedown", handleClick)
+    }, 0)
+    return () => {
+      clearTimeout(id)
+      document.removeEventListener("mousedown", handleClick)
+    }
+  }, [open, onOpenChange])
+
+  // Lock body scroll when open
+  useEffect(() => {
+    if (!open) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [open])
+
+  // Escape to close
+  useEffect(() => {
+    if (!open) return
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        onOpenChange(false)
+        resetForm()
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [open, onOpenChange])
+
   const statusLabel =
     STATUS_OPTIONS.find((s) => s.id === status)?.label ?? "Status"
   const priorityLabel =
     PRIORITY_OPTIONS.find((p) => p.id === priority)?.label ?? "Priority"
 
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(val) => {
-        onOpenChange(val)
-        if (!val) resetForm()
-      }}
-    >
-      <DialogContent
-        showCloseButton={false}
-        className="flex max-w-2xl flex-col gap-0 p-0"
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-            e.preventDefault()
-            if (activeTab === "manual") {
-              handleCreate()
-            } else {
-              handleGenerateTasks()
-            }
-          }
-        }}
-      >
+  if (typeof document === "undefined") return null
+
+  return createPortal(
+    <AnimatePresence>
+      {open && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15, ease: [0.23, 1, 0.32, 1] }}
+            className="fixed inset-0 z-50 bg-black/50"
+          />
+
+          {/* Panel */}
+          <motion.div
+            ref={panelRef}
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.15, ease: [0.23, 1, 0.32, 1] }}
+            className="fixed top-[min(20%,180px)] left-1/2 z-50 w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 overflow-hidden rounded-none border border-border/50 bg-background shadow-2xl ring-1 ring-white/[0.05]"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault()
+                if (activeTab === "manual") {
+                  handleCreate()
+                } else {
+                  handleGenerateTasks()
+                }
+              }
+            }}
+          >
         {/* Header with tabs */}
         <div className="flex items-center justify-between border-b border-border px-4">
           <div className="flex items-center gap-0">
@@ -766,7 +822,10 @@ export function NewTaskModal({
             </div>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>,
+    document.body
   )
 }
