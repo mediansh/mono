@@ -7,7 +7,6 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowRight01Icon,
   CheckmarkBadge01Icon,
-  InformationCircleIcon,
   LaptopCheckIcon,
   Link01Icon,
   RotateRight06Icon,
@@ -291,27 +290,6 @@ export function LinearIntegrationPanel() {
             </div>
           </div>
 
-          {/* How it works */}
-          <div className="rounded-none border border-dashed border-border p-5">
-            <div className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              <HugeiconsIcon icon={InformationCircleIcon} size={14} strokeWidth={1.8} />
-              How it works
-            </div>
-            <div className="grid gap-2.5 text-sm text-muted-foreground">
-              <div className="flex items-start gap-2.5">
-                <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center text-[10px] font-semibold text-muted-foreground/60">1</span>
-                <span>New Median tasks create or update matching Linear issues inside this team.</span>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center text-[10px] font-semibold text-muted-foreground/60">2</span>
-                <span>Linear issue updates arrive through a webhook and patch the matching Median task.</span>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center text-[10px] font-semibold text-muted-foreground/60">3</span>
-                <span>The manual sync button backfills existing issues and pushes unsynced Median work.</span>
-              </div>
-            </div>
-          </div>
         </motion.div>
 
         <Dialog open={disconnectOpen} onOpenChange={setDisconnectOpen}>
@@ -461,27 +439,6 @@ export function LinearIntegrationPanel() {
           </div>
         </div>
 
-        {/* How it works */}
-        <div className="rounded-none border border-dashed border-border p-5">
-          <div className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            <HugeiconsIcon icon={InformationCircleIcon} size={14} strokeWidth={1.8} />
-            How it works
-          </div>
-          <div className="grid gap-2.5 text-sm text-muted-foreground">
-            <div className="flex items-start gap-2.5">
-              <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center text-[10px] font-semibold text-muted-foreground/60">1</span>
-              <span>Enter your Linear API key and select the team to sync with.</span>
-            </div>
-            <div className="flex items-start gap-2.5">
-              <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center text-[10px] font-semibold text-muted-foreground/60">2</span>
-              <span>Median runs an initial sync and creates a webhook for live updates.</span>
-            </div>
-            <div className="flex items-start gap-2.5">
-              <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center text-[10px] font-semibold text-muted-foreground/60">3</span>
-              <span>Tasks stay mirrored: requests become backlog, shipped maps to done.</span>
-            </div>
-          </div>
-        </div>
       </motion.div>
     </div>
   )
