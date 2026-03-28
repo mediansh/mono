@@ -965,7 +965,7 @@ const SortableListRow = memo(function SortableListRow({
         {...listeners}
         onClick={handleClick}
         onContextMenu={handleContextMenu}
-        className={`group flex cursor-pointer touch-none items-center gap-3 border-b border-l-2 border-border px-4 py-2 select-none transition-all duration-150 hover:bg-accent/40 active:cursor-grabbing ${PRIORITY_ACCENT[task.priority]} ${isSelected ? "bg-primary/[0.06] hover:bg-primary/[0.10]" : "bg-background"}`}
+        className={`group flex cursor-pointer touch-none items-center gap-3 border-b border-l-2 border-border px-4 py-2 select-none transition-all duration-150 hover:bg-accent/40 ${PRIORITY_ACCENT[task.priority]} ${isSelected ? "bg-primary/[0.06] hover:bg-primary/[0.10]" : "bg-background"}`}
       >
         {/* Checkbox */}
         <div
