@@ -851,6 +851,7 @@ const SortableListRow = memo(function SortableListRow({
   task,
   isSelected,
   hasSelection,
+  isDraggedAway,
   canManageTasks,
   onSelect,
   onToggleSelect,
@@ -860,6 +861,7 @@ const SortableListRow = memo(function SortableListRow({
   task: Task
   isSelected: boolean
   hasSelection: boolean
+  isDraggedAway: boolean
   canManageTasks: boolean
   onSelect: (task: Task) => void
   onToggleSelect: (taskId: string, shiftKey: boolean) => void
@@ -882,7 +884,7 @@ const SortableListRow = memo(function SortableListRow({
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    opacity: isDragging ? 0.3 : 1,
+    opacity: isDragging || isDraggedAway ? 0.3 : 1,
     willChange: transform ? "transform" : undefined,
   }
 
@@ -943,11 +945,27 @@ const SortableListRow = memo(function SortableListRow({
   )
 })
 
-function DragOverlayListRow({ task }: { task: Task }) {
+function DragOverlayListRow({ task, dragCount }: { task: Task; dragCount: number }) {
   return (
-    <div className="flex w-fit max-w-sm items-center gap-2.5 border-2 border-border bg-background px-3.5 py-2 shadow-none">
-      <div className="shrink-0">{getStatusIcon(task.status, 13)}</div>
-      <span className="truncate text-[13px] font-medium">{task.title}</span>
+    <div className="relative">
+      {/* Stacked cards behind for multi-drag */}
+      {dragCount > 1 && (
+        <>
+          <div className="absolute inset-0 translate-x-1.5 translate-y-1.5 border-2 border-border bg-muted" />
+          {dragCount > 2 && (
+            <div className="absolute inset-0 translate-x-3 translate-y-3 border-2 border-border bg-muted/60" />
+          )}
+        </>
+      )}
+      <div className="relative flex w-fit max-w-sm items-center gap-2.5 border-2 border-border bg-background px-3.5 py-2 shadow-none">
+        <div className="shrink-0">{getStatusIcon(task.status, 13)}</div>
+        <span className="truncate text-[13px] font-medium">{task.title}</span>
+        {dragCount > 1 && (
+          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
+            {dragCount}
+          </span>
+        )}
+      </div>
     </div>
   )
 }
@@ -959,6 +977,7 @@ function ListGroup({
   isDropTarget,
   collapsed,
   selectedTaskIds,
+  draggedTaskIds,
   canManageTasks,
   onToggleCollapsed,
   onSelectTask,
@@ -972,6 +991,7 @@ function ListGroup({
   isDropTarget?: boolean
   collapsed: boolean
   selectedTaskIds: Set<string>
+  draggedTaskIds: Set<string>
   canManageTasks: boolean
   onToggleCollapsed: () => void
   onSelectTask: (task: Task) => void
@@ -1016,7 +1036,7 @@ function ListGroup({
             <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
               {tasks.length === 0 ? null : (
                 tasks.map((task) => (
-                  <SortableListRow key={task.id} task={task} isSelected={selectedTaskIds.has(task.id)} hasSelection={hasSelection} canManageTasks={canManageTasks} onSelect={onSelectTask} onToggleSelect={onToggleSelectTask} onUpdate={onUpdateTask} onDelete={onDeleteTask} />
+                  <SortableListRow key={task.id} task={task} isSelected={selectedTaskIds.has(task.id)} hasSelection={hasSelection} isDraggedAway={draggedTaskIds.has(task.id)} canManageTasks={canManageTasks} onSelect={onSelectTask} onToggleSelect={onToggleSelectTask} onUpdate={onUpdateTask} onDelete={onDeleteTask} />
                 ))
               )}
             </SortableContext>
@@ -1448,6 +1468,7 @@ function ListView({
   canManageTasks,
   onToggleCollapsedColumn,
   onMoveTask,
+  onMoveMultipleTasks,
   onUpdateTask,
   onDeleteTask,
   onBulkUpdateTasks,
@@ -1461,6 +1482,7 @@ function ListView({
   canManageTasks: boolean
   onToggleCollapsedColumn: (status: Status) => void
   onMoveTask: (taskId: string, toStatus: Status, toIndex: number) => void
+  onMoveMultipleTasks: (taskIds: string[], toStatus: Status, toIndex: number) => void
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void
   onDeleteTask: (taskId: string) => void
   onBulkUpdateTasks: (taskIds: string[], updates: Partial<Pick<Task, "status" | "priority" | "labels">>) => void
@@ -1472,6 +1494,7 @@ function ListView({
   const visibleColumns = COLUMNS.filter((c) => !hiddenColumns.includes(c.id) && c.id !== "requests")
   const showRequests = !hiddenColumns.includes("requests")
   const [activeTask, setActiveTask] = useState<Task | null>(null)
+  const [draggedTaskIds, setDraggedTaskIds] = useState<Set<string>>(new Set())
   const [overColumn, setOverColumn] = useState<Status | null>(null)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
@@ -1620,7 +1643,16 @@ function ListView({
   function handleDragStart(event: DragStartEvent) {
     if (!canManageTasks) return
     const task = event.active.data.current?.task as Task | undefined
-    if (task) setActiveTask(task)
+    if (!task) return
+    setActiveTask(task)
+
+    // If the dragged task is part of the selection, drag all selected tasks
+    // Otherwise, drag just this one task
+    if (selectedTaskIds.has(task.id) && selectedTaskIds.size > 1) {
+      setDraggedTaskIds(new Set(selectedTaskIds))
+    } else {
+      setDraggedTaskIds(new Set([task.id]))
+    }
   }
 
   function handleDragOver(event: DragOverEvent) {
@@ -1649,7 +1681,9 @@ function ListView({
   function handleDragEnd(event: DragEndEvent) {
     if (!canManageTasks) return
     const { active, over } = event
+    const currentDraggedIds = draggedTaskIds
     setActiveTask(null)
+    setDraggedTaskIds(new Set())
     setOverColumn(null)
 
     if (!over) return
@@ -1668,6 +1702,20 @@ function ListView({
     // Block dragging into requests
     if (targetColumn === "requests") return
 
+    const isMultiDrag = currentDraggedIds.size > 1
+
+    if (isMultiDrag) {
+      // Multi-drag: move all dragged tasks to target column
+      const targetIndex = over.data.current?.type === "column"
+        ? tasksByColumn[targetColumn].length
+        : Math.max(0, tasksByColumn[targetColumn].findIndex((t) => t.id === overId))
+
+      onMoveMultipleTasks(Array.from(currentDraggedIds), targetColumn, targetIndex)
+      handleClearSelection()
+      return
+    }
+
+    // Single drag
     if (over.data.current?.type === "column") {
       onMoveTask(activeId, targetColumn, tasksByColumn[targetColumn].length)
       return
@@ -1729,6 +1777,7 @@ function ListView({
               isDropTarget={overColumn === column.id && activeTaskSource !== null && activeTaskSource !== column.id}
               collapsed={collapsedColumns.includes(column.id)}
               selectedTaskIds={selectedTaskIds}
+              draggedTaskIds={draggedTaskIds}
               canManageTasks={canManageTasks}
               onToggleCollapsed={() => onToggleCollapsedColumn(column.id)}
               onSelectTask={handleSelectTask}
@@ -1740,7 +1789,7 @@ function ListView({
         })}
       </div>
       <DragOverlay dropAnimation={null}>
-        {activeTask ? <DragOverlayListRow task={activeTask} /> : null}
+        {activeTask ? <DragOverlayListRow task={activeTask} dragCount={draggedTaskIds.size} /> : null}
       </DragOverlay>
     </DndContext>
 
@@ -1980,6 +2029,27 @@ export function KanbanBoard() {
     })
   }
 
+  function handleMoveMultipleTasks(taskIds: string[], toStatus: Status, toIndex: number) {
+    if (!workspaceId || !taskDocs || !canManageTasks) return
+
+    const validIds = taskIds.filter((id) => !id.startsWith("optimistic:"))
+    if (validIds.length === 0) return
+
+    let current = taskDocs
+    for (let i = 0; i < validIds.length; i++) {
+      current = moveTaskDocs(current, validIds[i]!, toStatus, toIndex + i)
+    }
+    setWorkspaceTasks(workspaceId, current)
+    void reorderTasks({
+      workspaceId,
+      changes: current.map((item) => ({
+        taskId: item._id as Id<"tasks">,
+        status: item.status,
+        order: item.order,
+      })),
+    })
+  }
+
   function handleBulkUpdateTasks(taskIds: string[], updates: Partial<Pick<Task, "status" | "priority" | "labels">>) {
     if (!workspaceId || !taskDocs || !canManageTasks) return
 
@@ -2097,6 +2167,7 @@ export function KanbanBoard() {
           canManageTasks={canManageTasks}
           onToggleCollapsedColumn={handleToggleCollapsedColumn}
           onMoveTask={handleMoveTask}
+          onMoveMultipleTasks={handleMoveMultipleTasks}
           onUpdateTask={handleUpdateTask}
           onDeleteTask={handleDeleteTask}
           onBulkUpdateTasks={handleBulkUpdateTasks}
