@@ -1417,19 +1417,27 @@ export const upsertTaskFromGitHubIssue = internalMutation({
       } else {
         const hasPendingLocalChanges =
           getTaskUpdatedAt(linkedTask) > existingLink.lastSyncedAt
+        const nextStatus = deriveTaskStatusFromIssueState(
+          linkedTask.status,
+          issue.state
+        )
+        const shouldApplyGithubIssueContent = !hasPendingLocalChanges
+        const shouldApplyGithubIssueStatus =
+          nextStatus !== linkedTask.status &&
+          (!hasPendingLocalChanges || issue.state === "closed")
 
-        if (!hasPendingLocalChanges) {
-          const nextStatus = deriveTaskStatusFromIssueState(
-            linkedTask.status,
-            issue.state
-          )
-          const updates: Partial<Doc<"tasks">> = {
+        if (shouldApplyGithubIssueContent || shouldApplyGithubIssueStatus) {
+          const updates: Partial<Doc<"tasks">> = shouldApplyGithubIssueContent
+            ? {
             title: nextTitle,
             description: nextDescription,
             updatedAt: githubUpdatedAt,
           }
+            : {
+                updatedAt: Math.max(getTaskUpdatedAt(linkedTask), githubUpdatedAt),
+              }
 
-          if (nextStatus !== linkedTask.status) {
+          if (shouldApplyGithubIssueStatus) {
             const workspaceTasks = await ctx.db
               .query("tasks")
               .withIndex("by_workspace", (q) =>
@@ -1443,7 +1451,10 @@ export const upsertTaskFromGitHubIssue = internalMutation({
             ).length
           }
 
-          if (!linkedTask.source || linkedTask.source.platform === "github") {
+          if (
+            shouldApplyGithubIssueContent &&
+            (!linkedTask.source || linkedTask.source.platform === "github")
+          ) {
             updates.source = nextSource
           }
 
