@@ -27,7 +27,13 @@ export const DEFAULT_WORKSPACE_LABELS: { name: string; color: string }[] = [
   { name: "improvement", color: "#06b6d4" },
 ]
 
-export const REQUEST_SOURCES = ["discord", "slack", "x", "linear"] as const
+export const REQUEST_SOURCES = [
+  "discord",
+  "slack",
+  "x",
+  "linear",
+  "github",
+] as const
 
 export type TaskStatus = (typeof TASK_STATUSES)[number]
 export type TaskPriority = (typeof TASK_PRIORITIES)[number]

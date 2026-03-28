@@ -36,6 +36,24 @@ In the X developer portal, the app must be configured as a web-capable app and t
 
 - `{CONVEX_SITE_URL}/x/oauth/callback`
 
+## GitHub integration env
+
+The GitHub integration expects these server env vars to be present:
+
+- `GITHUB_APP_ID`
+- `GITHUB_APP_SLUG`
+- `GITHUB_APP_PRIVATE_KEY`
+- `GITHUB_WEBHOOK_SECRET`
+- `CONVEX_SITE_URL`
+
+The GitHub App should be configured with:
+
+- Setup URL: `{CONVEX_SITE_URL}/github/callback`
+- Webhook URL: `{CONVEX_SITE_URL}/github/webhook`
+- Webhook secret: the value of `GITHUB_WEBHOOK_SECRET`
+
+Install the app into the repositories you want the workspace to sync. Median lets you narrow that installed set down further inside the GitHub integration page.
+
 ## Adding components
 
 To add components to the web app, run:

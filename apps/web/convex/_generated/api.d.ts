@@ -10,6 +10,7 @@
 
 import type * as discord from "../discord.js";
 import type * as discordFeedback from "../discordFeedback.js";
+import type * as github from "../github.js";
 import type * as http from "../http.js";
 import type * as linear from "../linear.js";
 import type * as permissions from "../permissions.js";
@@ -27,6 +28,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   discord: typeof discord;
   discordFeedback: typeof discordFeedback;
+  github: typeof github;
   http: typeof http;
   linear: typeof linear;
   permissions: typeof permissions;

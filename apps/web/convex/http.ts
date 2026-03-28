@@ -1,4 +1,5 @@
 import { httpRouter } from "convex/server"
+import { githubInstallCallback, githubWebhook } from "./github"
 import { linearWebhook } from "./linear"
 import { xOAuthCallback, xWebhook } from "./x"
 
@@ -8,6 +9,18 @@ http.route({
   path: "/linear/webhook",
   method: "POST",
   handler: linearWebhook,
+})
+
+http.route({
+  path: "/github/callback",
+  method: "GET",
+  handler: githubInstallCallback,
+})
+
+http.route({
+  path: "/github/webhook",
+  method: "POST",
+  handler: githubWebhook,
 })
 
 http.route({

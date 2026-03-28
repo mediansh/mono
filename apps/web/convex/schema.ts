@@ -165,6 +165,91 @@ export default defineSchema({
     receivedAt: v.number(),
   }).index("by_delivery", ["deliveryId"]),
 
+  githubInstallStates: defineTable({
+    workspaceId: v.id("workspaces"),
+    initiatedByUserId: v.string(),
+    state: v.string(),
+    redirectUrl: v.string(),
+    expiresAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_state", ["state"])
+    .index("by_workspace", ["workspaceId"]),
+
+  githubWorkspaceIntegrations: defineTable({
+    workspaceId: v.id("workspaces"),
+    installationId: v.string(),
+    accountId: v.string(),
+    accountLogin: v.string(),
+    accountType: v.string(),
+    repositories: v.array(
+      v.object({
+        id: v.string(),
+        name: v.string(),
+        fullName: v.string(),
+        ownerLogin: v.string(),
+        defaultBranch: v.optional(v.string()),
+        isPrivate: v.boolean(),
+      })
+    ),
+    selectedRepoIds: v.array(v.string()),
+    defaultRepoId: v.optional(v.string()),
+    connectedAt: v.number(),
+    connectedByUserId: v.string(),
+    lastSyncedAt: v.optional(v.number()),
+  })
+    .index("by_workspace", ["workspaceId"])
+    .index("by_installation", ["installationId"]),
+
+  githubTaskLinks: defineTable({
+    workspaceId: v.id("workspaces"),
+    taskId: v.id("tasks"),
+    installationId: v.string(),
+    githubRepositoryId: v.string(),
+    githubRepositoryName: v.string(),
+    githubRepositoryFullName: v.string(),
+    githubIssueId: v.string(),
+    githubIssueNumber: v.number(),
+    githubIssueUrl: v.string(),
+    lastGithubUpdatedAt: v.optional(v.string()),
+    lastSyncedAt: v.number(),
+  })
+    .index("by_workspace", ["workspaceId"])
+    .index("by_task", ["taskId"])
+    .index("by_github_issue", ["githubIssueId"]),
+
+  githubWebhookDeliveries: defineTable({
+    deliveryId: v.string(),
+    workspaceId: v.id("workspaces"),
+    installationId: v.string(),
+    eventType: v.string(),
+    action: v.optional(v.string()),
+    receivedAt: v.number(),
+  })
+    .index("by_delivery", ["deliveryId"])
+    .index("by_workspace_received_at", ["workspaceId", "receivedAt"]),
+
+  githubTaskDevelopmentRefs: defineTable({
+    workspaceId: v.id("workspaces"),
+    taskId: v.id("tasks"),
+    refType: v.union(v.literal("commit"), v.literal("pull_request")),
+    githubRepositoryId: v.string(),
+    githubRepositoryFullName: v.string(),
+    githubObjectId: v.string(),
+    commitSha: v.optional(v.string()),
+    pullRequestNumber: v.optional(v.number()),
+    url: v.optional(v.string()),
+    state: v.optional(v.string()),
+    isOpen: v.optional(v.boolean()),
+    isMerged: v.optional(v.boolean()),
+    isDefaultBranch: v.optional(v.boolean()),
+    firstSeenAt: v.number(),
+    lastSeenAt: v.number(),
+  })
+    .index("by_task", ["taskId"])
+    .index("by_task_object", ["taskId", "githubObjectId"])
+    .index("by_workspace", ["workspaceId"]),
+
   xOAuthStates: defineTable({
     workspaceId: v.id("workspaces"),
     initiatedByUserId: v.string(),
@@ -331,7 +416,8 @@ export default defineSchema({
           v.literal("discord"),
           v.literal("slack"),
           v.literal("x"),
-          v.literal("linear")
+          v.literal("linear"),
+          v.literal("github")
         ),
         url: v.string(),
         author: v.string(),

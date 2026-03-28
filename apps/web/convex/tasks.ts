@@ -40,7 +40,8 @@ const taskSourceValidator = v.object({
     v.literal("discord"),
     v.literal("slack"),
     v.literal("x"),
-    v.literal("linear")
+    v.literal("linear"),
+    v.literal("github")
   ),
   url: v.string(),
   author: v.string(),
@@ -64,7 +65,7 @@ type CreateTaskInput = {
   priority: "urgent" | "high" | "medium" | "low" | "none"
   labels: string[]
   source?: {
-    platform: "discord" | "slack" | "x" | "linear"
+    platform: "discord" | "slack" | "x" | "linear" | "github"
     url: string
     author: string
   }
@@ -179,6 +180,12 @@ async function queueLinearSync(ctx: MutationCtx, taskId: Id<"tasks">) {
   })
 }
 
+async function queueGitHubSync(ctx: MutationCtx, taskId: Id<"tasks">) {
+  await ctx.scheduler.runAfter(0, internal.github.syncTaskToGitHubIssue, {
+    taskId,
+  })
+}
+
 async function queueLinearIssueDeletion(
   ctx: MutationCtx,
   workspaceId: Id<"workspaces">,
@@ -208,6 +215,12 @@ async function clearLinearTaskLink(ctx: MutationCtx, taskId: Id<"tasks">) {
   }
 }
 
+async function clearGitHubTaskLink(ctx: MutationCtx, taskId: Id<"tasks">) {
+  await ctx.runMutation(internal.github.deleteGitHubTaskLinkByTaskId, {
+    taskId,
+  })
+}
+
 export const listByWorkspace = query({
   args: {
     workspaceId: v.id("workspaces"),
@@ -229,6 +242,7 @@ export const createTask = mutation({
     ])
     if (createdTasks[0]) {
       await queueLinearSync(ctx, createdTasks[0]._id)
+      await queueGitHubSync(ctx, createdTasks[0]._id)
     }
     return createdTasks[0]
   },
@@ -247,6 +261,7 @@ export const createTasks = mutation({
     )
     for (const task of createdTasks) {
       await queueLinearSync(ctx, task._id)
+      await queueGitHubSync(ctx, task._id)
     }
     return createdTasks
   },
@@ -271,6 +286,7 @@ export const createTasksFromDiscordFeedback = mutation({
     )
     for (const task of createdTasks) {
       await queueLinearSync(ctx, task._id)
+      await queueGitHubSync(ctx, task._id)
     }
     return createdTasks
   },
@@ -289,6 +305,7 @@ export const createTasksFromDiscordFeedbackInternal = internalMutation({
     )
     for (const task of createdTasks) {
       await queueLinearSync(ctx, task._id)
+      await queueGitHubSync(ctx, task._id)
     }
     return createdTasks
   },
@@ -307,6 +324,7 @@ export const createTasksFromFeedbackInternal = internalMutation({
     )
     for (const task of createdTasks) {
       await queueLinearSync(ctx, task._id)
+      await queueGitHubSync(ctx, task._id)
     }
     return createdTasks
   },
@@ -475,6 +493,7 @@ export const updateTask = mutation({
       args.priority !== undefined
     ) {
       await queueLinearSync(ctx, args.taskId)
+      await queueGitHubSync(ctx, args.taskId)
     }
 
     // Queue Discord notifications for status transitions on tasks with a Discord source
@@ -578,6 +597,7 @@ export const reorderTasks = mutation({
       const taskBeforeUpdate = tasksBeforeUpdate.get(change.taskId)
       if (taskBeforeUpdate && change.status !== taskBeforeUpdate.status) {
         await queueLinearSync(ctx, change.taskId)
+        await queueGitHubSync(ctx, change.taskId)
       }
     }
 
@@ -659,6 +679,7 @@ export const deleteTask = mutation({
     await requireTaskWriteAccess(ctx, task.workspaceId)
     await queueLinearIssueDeletion(ctx, task.workspaceId, args.taskId)
     await clearLinearTaskLink(ctx, args.taskId)
+    await clearGitHubTaskLink(ctx, args.taskId)
     await ctx.db.delete(args.taskId)
   },
 })
@@ -694,6 +715,7 @@ export const bulkUpdateTasks = mutation({
       await ctx.db.patch(taskId, updates)
       if (args.status !== undefined || args.priority !== undefined) {
         await queueLinearSync(ctx, taskId)
+        await queueGitHubSync(ctx, taskId)
       }
 
       // Queue Discord notifications for status transitions
@@ -772,6 +794,7 @@ export const bulkDeleteTasks = mutation({
       }
       await queueLinearIssueDeletion(ctx, args.workspaceId, taskId)
       await clearLinearTaskLink(ctx, taskId)
+      await clearGitHubTaskLink(ctx, taskId)
       await ctx.db.delete(taskId)
     }
   },
@@ -792,6 +815,7 @@ export const clearDemoTasks = mutation({
     for (const task of tasks) {
       await queueLinearIssueDeletion(ctx, args.workspaceId, task._id)
       await clearLinearTaskLink(ctx, task._id)
+      await clearGitHubTaskLink(ctx, task._id)
       await ctx.db.delete(task._id)
     }
 
