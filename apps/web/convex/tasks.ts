@@ -179,6 +179,24 @@ async function queueLinearSync(ctx: MutationCtx, taskId: Id<"tasks">) {
   })
 }
 
+async function queueLinearIssueDeletion(
+  ctx: MutationCtx,
+  workspaceId: Id<"workspaces">,
+  taskId: Id<"tasks">
+) {
+  const link = await ctx.db
+    .query("linearTaskLinks")
+    .withIndex("by_task", (q) => q.eq("taskId", taskId))
+    .unique()
+
+  if (!link) return
+
+  await ctx.scheduler.runAfter(0, internal.linear.deleteLinearIssue, {
+    workspaceId,
+    linearIssueId: link.linearIssueId,
+  })
+}
+
 async function clearLinearTaskLink(ctx: MutationCtx, taskId: Id<"tasks">) {
   const link = await ctx.db
     .query("linearTaskLinks")
@@ -596,6 +614,7 @@ export const deleteTask = mutation({
     if (!task) throw new Error("Task not found")
 
     await requireTaskWriteAccess(ctx, task.workspaceId)
+    await queueLinearIssueDeletion(ctx, task.workspaceId, args.taskId)
     await clearLinearTaskLink(ctx, args.taskId)
     await ctx.db.delete(args.taskId)
   },
@@ -708,6 +727,7 @@ export const bulkDeleteTasks = mutation({
       if (!task || task.workspaceId !== args.workspaceId) {
         throw new Error("Task not found")
       }
+      await queueLinearIssueDeletion(ctx, args.workspaceId, taskId)
       await clearLinearTaskLink(ctx, taskId)
       await ctx.db.delete(taskId)
     }
@@ -727,6 +747,7 @@ export const clearDemoTasks = mutation({
     }
 
     for (const task of tasks) {
+      await queueLinearIssueDeletion(ctx, args.workspaceId, task._id)
       await clearLinearTaskLink(ctx, task._id)
       await ctx.db.delete(task._id)
     }

@@ -652,6 +652,30 @@ async function issueUpdate(
   return data.issueUpdate.issue
 }
 
+async function issueDelete(apiKey: string, issueId: string) {
+  const data = await linearGraphql<{
+    issueDelete: {
+      success: boolean
+    }
+  }>(
+    apiKey,
+    `
+      mutation DeleteIssue($issueId: String!) {
+        issueDelete(id: $issueId) {
+          success
+        }
+      }
+    `,
+    {
+      issueId,
+    }
+  )
+
+  if (!data.issueDelete.success) {
+    throw new Error("Failed to delete the Linear issue")
+  }
+}
+
 function buildLinearWebhookUrl(webhookToken: string) {
   const baseUrl =
     process.env.CONVEX_SITE_URL ?? process.env.NEXT_PUBLIC_CONVEX_SITE_URL
@@ -1693,6 +1717,38 @@ export const syncTaskToLinearIssue = internalAction({
       skipped: false,
       operation,
     }
+  },
+})
+
+export const deleteLinearIssue = internalAction({
+  args: {
+    workspaceId: v.id("workspaces"),
+    linearIssueId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const integration = await ctx.runQuery(
+      internal.linear.getLinearIntegrationForWorkspace,
+      {
+        workspaceId: args.workspaceId,
+      }
+    )
+
+    if (!integration) {
+      return { skipped: true }
+    }
+
+    const issue = await fetchIssueById(integration.apiKey, args.linearIssueId)
+    if (!issue) {
+      return { skipped: true }
+    }
+
+    await issueDelete(integration.apiKey, args.linearIssueId)
+    await ctx.runMutation(internal.linear.markLinearIntegrationSyncedAt, {
+      integrationId: integration._id,
+      syncedAt: Date.now(),
+    })
+
+    return { skipped: false }
   },
 })
 
