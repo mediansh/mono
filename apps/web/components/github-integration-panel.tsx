@@ -5,7 +5,6 @@ import { useAction, useMutation, useQuery } from "convex/react"
 import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  CheckmarkBadge01Icon,
   InformationCircleIcon,
   Link01Icon,
   RotateRight06Icon,
@@ -14,6 +13,7 @@ import {
 import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { Button } from "@workspace/ui/components/button"
+import { Switch } from "@workspace/ui/components/switch"
 import {
   Dialog,
   DialogContent,
@@ -21,7 +21,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workspace/ui/components/dialog"
-import { Switch } from "@workspace/ui/components/switch"
 import { api } from "@/convex/_generated/api"
 import { SettingsAccessState } from "@/components/settings-access-state"
 import { useWorkspace } from "@/components/workspace-provider"
@@ -69,80 +68,6 @@ function GitHubIntegrationSkeleton() {
     <div className="mx-auto w-full max-w-2xl px-10 py-10">
       <div className="mb-8 h-12 bg-muted/30" />
       <div className="h-36 border border-border bg-card/50" />
-    </div>
-  )
-}
-
-function RepoSelectionRow({
-  id,
-  name,
-  subtitle,
-  selected,
-  isDefault,
-  disabled,
-  onToggle,
-  onMakeDefault,
-}: {
-  id: string
-  name: string
-  subtitle: string
-  selected: boolean
-  isDefault: boolean
-  disabled: boolean
-  onToggle: (id: string) => void
-  onMakeDefault: (id: string) => void
-}) {
-  return (
-    <div className="flex items-center gap-3 border-b border-border/70 px-4 py-3 last:border-b-0">
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => onToggle(id)}
-        className={`flex size-4 shrink-0 items-center justify-center rounded-none border transition-colors ${
-          selected ? "border-foreground bg-foreground text-background" : "border-border bg-background text-transparent"
-        } disabled:cursor-not-allowed disabled:opacity-60`}
-        aria-pressed={selected}
-      >
-        <span className="text-[10px] leading-none">✓</span>
-      </button>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-foreground">{name}</p>
-        <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
-      </div>
-      <button
-        type="button"
-        disabled={disabled || !selected}
-        onClick={() => onMakeDefault(id)}
-        className={`rounded-none border px-2 py-1 text-[11px] font-medium transition-colors ${
-          isDefault
-            ? "border-foreground bg-foreground text-background"
-            : "border-border bg-background text-muted-foreground hover:text-foreground"
-        } disabled:cursor-not-allowed disabled:opacity-60`}
-      >
-        {isDefault ? "Default" : "Set default"}
-      </button>
-    </div>
-  )
-}
-
-function FeatureToggleRow({
-  label,
-  description,
-  checked,
-  onCheckedChange,
-}: {
-  label: string
-  description: ReactNode
-  checked: boolean
-  onCheckedChange: (checked: boolean) => void
-}) {
-  return (
-    <div className="flex items-center gap-4 px-5 py-4">
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-foreground">{label}</p>
-        <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
-      </div>
-      <Switch checked={checked} onCheckedChange={onCheckedChange} />
     </div>
   )
 }
@@ -222,6 +147,8 @@ export function GitHubIntegrationPanel() {
   if (integrationState === undefined) {
     return <GitHubIntegrationSkeleton />
   }
+
+  const workspace = currentWorkspace
 
   function handleToggleRepo(repoId: string) {
     setSelectedRepoIds((current) => {
@@ -356,6 +283,7 @@ export function GitHubIntegrationPanel() {
     }
   }
 
+  /* ── Disconnected state ── */
   if (!integration) {
     return (
       <Stagger className="mx-auto w-full max-w-2xl px-10 py-10">
@@ -363,7 +291,7 @@ export function GitHubIntegrationPanel() {
           <motion.div variants={fadeUp}>
             <h2 className="text-lg font-semibold tracking-tight">GitHub</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Install a GitHub App to sync issues one-to-one with Median tasks and drive Ready/Shipped automatically from PRs and commits.
+              Install a GitHub App to sync issues with Median tasks and automate workflows from PRs and commits.
             </p>
           </motion.div>
 
@@ -375,35 +303,48 @@ export function GitHubIntegrationPanel() {
               <div className="flex-1">
                 <h3 className="text-sm font-medium">Not connected</h3>
                 <p className="text-xs text-muted-foreground">
-                  Connect selected repositories to import issues and detect PR or commit references like <span className="font-mono">MDN-123</span>.
+                  Connect selected repositories to import issues and detect PR or commit references like <span className="font-mono text-foreground/70">MDN-123</span>.
                 </p>
               </div>
-              <Button
-                type="button"
-                onClick={handleConnect}
-                disabled={isConnecting}
-                className="rounded-none"
-              >
-                <HugeiconsIcon icon={Link01Icon} size={16} strokeWidth={1.8} className="mr-2" />
+              <Button type="button" onClick={handleConnect} disabled={isConnecting}>
+                <HugeiconsIcon icon={Link01Icon} size={15} strokeWidth={1.8} />
                 {isConnecting ? "Connecting..." : "Connect"}
               </Button>
             </div>
+
+            <div className="border-t border-border bg-muted/30 px-5 py-3">
+              <p className="text-xs text-muted-foreground">
+                You&apos;ll be redirected to GitHub to install the Median app.
+              </p>
+            </div>
           </motion.div>
 
-          <motion.div variants={fadeUp} className="rounded-none border border-border bg-card/60 p-5">
-            <div className="flex items-start gap-3">
-              <HugeiconsIcon icon={InformationCircleIcon} size={18} strokeWidth={1.8} className="mt-0.5 text-muted-foreground" />
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <p>Open pull requests mentioning a task code move that task to Ready.</p>
-                <p>Merged pull requests or default-branch commits mentioning a task code move that task to Shipped.</p>
-                <p>Median-created tasks automatically create linked GitHub issues in the default repository you choose after installation.</p>
+          <motion.div variants={fadeUp} className="rounded-none border border-dashed border-border p-5">
+            <div className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              <HugeiconsIcon icon={InformationCircleIcon} size={14} strokeWidth={1.8} />
+              How it works
+            </div>
+            <div className="grid gap-2.5 text-sm text-muted-foreground">
+              <div className="flex items-start gap-2.5">
+                <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center text-[10px] font-semibold text-muted-foreground/60">1</span>
+                <span>Open PRs mentioning a task code move that task to Ready.</span>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center text-[10px] font-semibold text-muted-foreground/60">2</span>
+                <span>Merged PRs or default-branch commits move that task to Shipped.</span>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center text-[10px] font-semibold text-muted-foreground/60">3</span>
+                <span>Median-created tasks automatically open linked GitHub issues in your default repo.</span>
               </div>
             </div>
           </motion.div>
 
           {(callbackUrl || webhookUrl) && (
-            <motion.div variants={fadeUp} className="rounded-none border border-border bg-card/60 p-5">
-              <p className="mb-3 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">GitHub App Configuration</p>
+            <motion.div variants={fadeUp} className="rounded-none border border-dashed border-border p-5">
+              <div className="mb-3 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                GitHub App URLs
+              </div>
               <div className="space-y-2">
                 {callbackUrl && (
                   <div>
@@ -418,9 +359,6 @@ export function GitHubIntegrationPanel() {
                   </div>
                 )}
               </div>
-              <p className="mt-3 text-xs text-muted-foreground">
-                Ensure these URLs match the Setup URL and Webhook URL in your GitHub App settings.
-              </p>
             </motion.div>
           )}
         </div>
@@ -428,6 +366,7 @@ export function GitHubIntegrationPanel() {
     )
   }
 
+  /* ── Connected state ── */
   return (
     <Stagger className="mx-auto w-full max-w-2xl px-10 py-10">
       <div className="flex flex-col gap-6">
@@ -438,6 +377,7 @@ export function GitHubIntegrationPanel() {
           </p>
         </motion.div>
 
+        {/* Connection status card */}
         <motion.div variants={fadeUp} className="rounded-none border border-border bg-card">
           <div className="flex items-center gap-4 p-5">
             <div className="flex size-10 items-center justify-center rounded-none bg-foreground/5">
@@ -446,129 +386,164 @@ export function GitHubIntegrationPanel() {
             <div className="min-w-0 flex-1">
               <h3 className="truncate text-sm font-medium">{integration.accountLogin}</h3>
               <p className="text-xs text-muted-foreground">
-                {integration.accountType} account connected {formatTimestamp(integration.connectedAt)}
+                {integration.accountType} account &middot; {integration.issueLinkCount} linked issue{integration.issueLinkCount === 1 ? "" : "s"} &middot; Last sync {formatTimestamp(integration.lastSyncedAt)}
               </p>
             </div>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleSync}
-                disabled={isSyncing}
-                className="rounded-none"
-              >
-                <HugeiconsIcon icon={RotateRight06Icon} size={16} strokeWidth={1.8} className="mr-2" />
-                {isSyncing ? "Syncing..." : "Sync now"}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setDisconnectOpen(true)}
-                className="rounded-none"
-              >
-                <HugeiconsIcon icon={Unlink01Icon} size={16} strokeWidth={1.8} className="mr-2" />
-                Disconnect
-              </Button>
-            </div>
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600">
+              <span className="size-1.5 bg-emerald-500" />
+              Connected
+            </span>
           </div>
-          <div className="grid gap-px border-t border-border bg-border sm:grid-cols-3">
-            <div className="bg-card px-4 py-3">
-              <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Issue Links</p>
-              <p className="mt-1 text-sm text-foreground">{integration.issueLinkCount}</p>
-            </div>
-            <div className="bg-card px-4 py-3">
-              <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Repositories</p>
-              <p className="mt-1 text-sm text-foreground">{integration.selectedRepoIds.length} selected</p>
-            </div>
-            <div className="bg-card px-4 py-3">
-              <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Last Sync</p>
-              <p className="mt-1 text-sm text-foreground">{formatTimestamp(integration.lastSyncedAt)}</p>
-            </div>
-          </div>
-        </motion.div>
 
-        <motion.div variants={fadeUp} className="rounded-none border border-border bg-card">
-          <div className="border-b border-border px-5 py-4">
-            <h3 className="text-sm font-medium">Repository Selection</h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Selected repositories participate in issue sync and PR or commit detection. The default repository is where Median-created tasks open new GitHub issues.
-            </p>
-          </div>
-          <div>
-            {repositories.map((repository) => (
-              <RepoSelectionRow
-                key={repository.id}
-                id={repository.id}
-                name={repository.fullName}
-                subtitle={`${repository.isPrivate ? "Private" : "Public"}${repository.defaultBranch ? ` • default branch ${repository.defaultBranch}` : ""}`}
-                selected={selectedRepoIds.includes(repository.id)}
-                isDefault={defaultRepoId === repository.id}
-                disabled={isSaving}
-                onToggle={handleToggleRepo}
-                onMakeDefault={handleMakeDefault}
-              />
-            ))}
-          </div>
-          <div className="flex items-center justify-between border-t border-border px-5 py-4">
-            <p className="text-xs text-muted-foreground">
-              Default repo: {repositories.find((repository) => repository.id === defaultRepoId)?.fullName ?? "None"}
-            </p>
+          <div className="flex items-center justify-between border-t border-border bg-muted/30 px-5 py-3">
             <Button
               type="button"
-              onClick={handleSaveRepositories}
-              disabled={isSaving || !hasSelectionChanges}
-              className="rounded-none"
+              variant="ghost"
+              size="sm"
+              onClick={handleSync}
+              disabled={isSyncing}
+              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
             >
-              <HugeiconsIcon icon={CheckmarkBadge01Icon} size={16} strokeWidth={1.8} className="mr-2" />
-              {isSaving ? "Saving..." : "Save selection"}
+              <HugeiconsIcon icon={RotateRight06Icon} size={13} strokeWidth={1.8} className={isSyncing ? "animate-spin" : ""} />
+              {isSyncing ? "Syncing..." : "Sync now"}
+            </Button>
+            <Button type="button" variant="destructive" size="sm" onClick={() => setDisconnectOpen(true)}>
+              <HugeiconsIcon icon={Unlink01Icon} size={13} strokeWidth={1.8} />
+              Disconnect
             </Button>
           </div>
         </motion.div>
 
+        {/* Repositories */}
         <motion.div variants={fadeUp} className="rounded-none border border-border bg-card">
-          <div className="border-b border-border px-5 py-4">
-            <h3 className="text-sm font-medium">Automations</h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Choose which GitHub automations are active for this workspace.
+          <div className="border-b border-border px-5 py-3.5">
+            <h3 className="text-sm font-medium">Repositories</h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Select which repositories sync with Median. The default repo is where new issues are created.
             </p>
           </div>
-          <div className="divide-y divide-border">
-            <FeatureToggleRow
-              label="Issue sync"
-              description="Keep linked tasks and GitHub issues in sync. Manual sync re-imports selected repositories before pushing local changes back."
-              checked={integration.issueSyncEnabled}
-              onCheckedChange={(checked) => handleToggleFeature("issueSyncEnabled", checked)}
-            />
-            <FeatureToggleRow
-              label="PR automation"
-              description={<>Open PRs mentioning a task code like <span className="font-mono text-foreground/70">MDN-123</span> move it to Ready. Merged PRs move it to Shipped.</>}
-              checked={integration.prAutomationEnabled}
-              onCheckedChange={(checked) => handleToggleFeature("prAutomationEnabled", checked)}
-            />
-            <FeatureToggleRow
-              label="Commit automation"
-              description="Default-branch commits mentioning a task code move it to Shipped. Other branches move it to In Progress."
-              checked={integration.commitAutomationEnabled}
-              onCheckedChange={(checked) => handleToggleFeature("commitAutomationEnabled", checked)}
-            />
+
+          <div className="max-h-64 overflow-y-auto">
+            {repositories.map((repository) => {
+              const isSelected = selectedRepoIds.includes(repository.id)
+              const isDefault = defaultRepoId === repository.id
+              return (
+                <div key={repository.id} className="flex items-center gap-3 border-b border-border/50 px-5 py-3 last:border-b-0">
+                  <button
+                    type="button"
+                    disabled={isSaving}
+                    onClick={() => handleToggleRepo(repository.id)}
+                    className={`flex size-3.5 shrink-0 items-center justify-center rounded-[3px] border transition-colors ${
+                      isSelected ? "border-foreground bg-foreground" : "border-muted-foreground/30"
+                    } disabled:cursor-not-allowed disabled:opacity-60`}
+                    aria-pressed={isSelected}
+                  >
+                    {isSelected ? (
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="text-background">
+                        <path d="M2.5 5L4.5 7L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    ) : null}
+                  </button>
+                  <div className="min-w-0 flex-1">
+                    <p className={`truncate text-sm ${isSelected ? "text-foreground" : "text-muted-foreground"}`}>
+                      {repository.fullName}
+                    </p>
+                  </div>
+                  {isSelected && (
+                    <button
+                      type="button"
+                      disabled={isSaving}
+                      onClick={() => handleMakeDefault(repository.id)}
+                      className={`rounded-none px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                        isDefault
+                          ? "bg-foreground text-background"
+                          : "text-muted-foreground hover:text-foreground"
+                      } disabled:cursor-not-allowed disabled:opacity-60`}
+                    >
+                      {isDefault ? "Default" : "Set default"}
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {hasSelectionChanges && (
+            <div className="flex items-center justify-end border-t border-border px-5 py-3">
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSaveRepositories}
+                disabled={isSaving}
+              >
+                {isSaving ? "Saving..." : "Save changes"}
+              </Button>
+            </div>
+          )}
+        </motion.div>
+
+        {/* Automations */}
+        <motion.div variants={fadeUp} className="rounded-none border border-border bg-card">
+          <div className="border-b border-border px-5 py-3.5">
+            <h3 className="text-sm font-medium">Automations</h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Choose which GitHub events update task statuses automatically.
+            </p>
+          </div>
+          <div className="divide-y divide-border/50">
+            <div className="flex items-center gap-4 px-5 py-4">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-foreground">Issue sync</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Keep linked tasks and GitHub issues in sync.</p>
+              </div>
+              <Switch
+                checked={integration.issueSyncEnabled}
+                onCheckedChange={(checked) => handleToggleFeature("issueSyncEnabled", checked)}
+              />
+            </div>
+            <div className="flex items-center gap-4 px-5 py-4">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-foreground">PR automation</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Open PRs mentioning <span className="font-mono text-foreground/70">MDN-123</span> set Ready. Merged PRs set Shipped.
+                </p>
+              </div>
+              <Switch
+                checked={integration.prAutomationEnabled}
+                onCheckedChange={(checked) => handleToggleFeature("prAutomationEnabled", checked)}
+              />
+            </div>
+            <div className="flex items-center gap-4 px-5 py-4">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-foreground">Commit automation</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Default-branch commits set Shipped. Other branches set In Progress.</p>
+              </div>
+              <Switch
+                checked={integration.commitAutomationEnabled}
+                onCheckedChange={(checked) => handleToggleFeature("commitAutomationEnabled", checked)}
+              />
+            </div>
           </div>
         </motion.div>
       </div>
 
       <Dialog open={disconnectOpen} onOpenChange={setDisconnectOpen}>
-        <DialogContent className="rounded-none">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Disconnect GitHub?</DialogTitle>
+            <DialogTitle>Disconnect GitHub</DialogTitle>
             <DialogDescription>
-              This removes the workspace installation metadata and Median-side links. It does not uninstall the GitHub App from GitHub.
+              This will remove the connection between{" "}
+              <span className="font-medium text-foreground">{integration.accountLogin}</span>{" "}
+              and{" "}
+              <span className="font-medium text-foreground">{workspace.name}</span>.
+              It does not uninstall the GitHub App from GitHub.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setDisconnectOpen(false)} className="rounded-none">
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" className="flex-1" onClick={() => setDisconnectOpen(false)}>
               Cancel
             </Button>
-            <Button type="button" onClick={handleDisconnect} disabled={isDisconnecting} className="rounded-none">
-              <HugeiconsIcon icon={Unlink01Icon} size={16} strokeWidth={1.8} className="mr-2" />
+            <Button type="button" variant="destructive" className="flex-1" disabled={isDisconnecting} onClick={handleDisconnect}>
               {isDisconnecting ? "Disconnecting..." : "Disconnect"}
             </Button>
           </div>
