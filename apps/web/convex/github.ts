@@ -1344,7 +1344,11 @@ export const listWorkspaceTaskSyncStates = internalQuery({
 export const applyGitHubDerivedTaskStatus = internalMutation({
   args: {
     taskId: v.id("tasks"),
-    status: v.union(v.literal("ready"), v.literal("shipped")),
+    status: v.union(
+      v.literal("in_progress"),
+      v.literal("ready"),
+      v.literal("shipped")
+    ),
   },
   handler: async (ctx, args) => {
     const task = await ctx.db.get(args.taskId)
@@ -1954,6 +1958,7 @@ export const processPullRequestWebhook = internalAction({
     title: v.string(),
     body: v.optional(v.string()),
     state: v.string(),
+    draft: v.boolean(),
     merged: v.boolean(),
   },
   handler: async (ctx, args): Promise<{ matchedTaskCount: number }> => {
@@ -1979,7 +1984,9 @@ export const processPullRequestWebhook = internalAction({
     })
     const nextStatus = args.merged
       ? "shipped"
-      : args.state === "open"
+      : args.state === "open" && args.draft
+        ? "in_progress"
+        : args.state === "open"
         ? "ready"
         : null
 
@@ -1993,7 +2000,7 @@ export const processPullRequestWebhook = internalAction({
         githubObjectId: `pr:${args.githubRepositoryId}:${args.pullRequestNumber}`,
         pullRequestNumber: args.pullRequestNumber,
         url: args.url,
-        state: args.state,
+        state: args.merged ? "merged" : args.draft ? "draft" : args.state,
         isOpen: args.state === "open",
         isMerged: args.merged,
       })
@@ -2068,12 +2075,10 @@ export const processPushWebhook = internalAction({
           isDefaultBranch: args.isDefaultBranch,
         })
 
-        if (args.isDefaultBranch) {
-          await ctx.runMutation(internal.github.applyGitHubDerivedTaskStatus, {
-            taskId: task._id,
-            status: "shipped",
-          })
-        }
+        await ctx.runMutation(internal.github.applyGitHubDerivedTaskStatus, {
+          taskId: task._id,
+          status: args.isDefaultBranch ? "shipped" : "in_progress",
+        })
       }
 
       matchedTaskCount += tasks.length
@@ -2312,6 +2317,7 @@ export const githubWebhook = httpAction(async (ctx, request) => {
         title: pullRequest.title,
         body: normalizeOptionalText(pullRequest.body),
         state: pullRequest.state ?? "closed",
+        draft: Boolean(pullRequest.draft),
         merged: Boolean(pullRequest.merged),
       })
 
