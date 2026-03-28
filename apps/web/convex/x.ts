@@ -84,6 +84,11 @@ type XSubscriptionListResponse = {
 type XReplayResponse = {
   created_at?: string
   job_id?: string
+  for_user_id?: string
+  replay_event?: {
+    created_at?: string
+    job_id?: string
+  }
   errors?: Array<{
     title?: string
     type?: string
@@ -798,27 +803,48 @@ async function requestReplayJob(webhookId: string, lookbackMinutes: number) {
     },
   })
 
-  const payload = (await response.json()) as XReplayResponse
-  if (!response.ok || !payload.job_id) {
+  const rawBody = await response.text()
+  let payload: XReplayResponse = {}
+
+  if (rawBody.trim().length > 0) {
+    try {
+      payload = JSON.parse(rawBody) as XReplayResponse
+    } catch {
+      if (!response.ok) {
+        throw new Error(rawBody)
+      }
+      throw new Error(`Unexpected X replay response: ${rawBody}`)
+    }
+  }
+
+  const jobId = payload.job_id ?? payload.replay_event?.job_id
+  const createdAt =
+    payload.created_at ??
+    payload.replay_event?.created_at ??
+    new Date().toISOString()
+
+  if (!response.ok || !jobId) {
     const message =
       payload.errors
         ?.map((error) => error.detail ?? error.title ?? error.type)
         .filter(Boolean)
         .join(", ") ??
-      `Failed to create an X replay job (${response.status})`
+      (rawBody.trim().length > 0
+        ? `Unexpected X replay response (${response.status}): ${rawBody}`
+        : `Failed to create an X replay job (${response.status})`)
     throw new Error(message)
   }
 
   logInfo("Requested X replay job", {
     webhookId,
-    jobId: payload.job_id,
+    jobId,
     fromDate: endpoint.searchParams.get("from_date"),
     toDate: endpoint.searchParams.get("to_date"),
   })
 
   return {
-    jobId: payload.job_id,
-    createdAt: payload.created_at ?? new Date().toISOString(),
+    jobId,
+    createdAt,
     fromDate: endpoint.searchParams.get("from_date")!,
     toDate: endpoint.searchParams.get("to_date")!,
   }
