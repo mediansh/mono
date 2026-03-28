@@ -648,7 +648,11 @@ function RequestsGroup({
   const hiddenCount = tasks.length - REQUESTS_PREVIEW_LIMIT
 
   return (
-    <div>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.25, ease: "easeOut" }}
+    >
       {/* Group header — distinct style */}
       <button
         onClick={onToggleCollapsed}
@@ -705,7 +709,7 @@ function RequestsGroup({
             )}
           </div>
         )}
-    </div>
+    </motion.div>
   )
 }
 
@@ -907,6 +911,8 @@ const ListRowContent = memo(function ListRowContent({ task }: { task: Task }) {
 
 const SortableListRow = memo(function SortableListRow({
   task,
+  rowIndex,
+  groupDelay,
   isSelected,
   hasSelection,
   isDraggedAway,
@@ -917,6 +923,8 @@ const SortableListRow = memo(function SortableListRow({
   onDelete,
 }: {
   task: Task
+  rowIndex: number
+  groupDelay: number
   isSelected: boolean
   hasSelection: boolean
   isDraggedAway: boolean
@@ -940,10 +948,13 @@ const SortableListRow = memo(function SortableListRow({
     disabled: !canManageTasks,
   })
 
-  const style = {
+  const [hasAnimated, setHasAnimated] = useState(false)
+  const rowDelay = groupDelay + Math.min(rowIndex, 8) * 0.02
+  const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
-    opacity: isDragging || isDraggedAway ? 0.3 : 1,
+    opacity: isDragging || isDraggedAway ? 0.3 : undefined,
     willChange: transform ? "transform" : undefined,
+    ...(!hasAnimated ? { animation: `kanban-row-in 0.25s ease-out ${rowDelay}s both` } : {}),
   }
 
   const handleClick = useCallback((e: ReactMouseEvent) => {
@@ -974,6 +985,7 @@ const SortableListRow = memo(function SortableListRow({
         {...listeners}
         onClick={handleClick}
         onContextMenu={handleContextMenu}
+        onAnimationEnd={() => setHasAnimated(true)}
         className={`group flex cursor-pointer touch-none items-center gap-3 border-b border-l-2 border-border px-4 py-2 select-none transition-all duration-150 hover:bg-accent/40 ${PRIORITY_ACCENT[task.priority]} ${isSelected ? "bg-primary/[0.06] hover:bg-primary/[0.10]" : "bg-background"}`}
       >
         {/* Checkbox */}
@@ -1068,8 +1080,11 @@ function ListGroup({
   })
 
   return (
-    <div
+    <motion.div
       ref={setNodeRef}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.25, delay: groupIndex * 0.04, ease: "easeOut" }}
       style={isDropTarget ? { outline: "2px solid var(--primary)", outlineOffset: "-2px", borderRadius: "0px" } : undefined}
     >
       {/* Group header */}
@@ -1093,14 +1108,14 @@ function ListGroup({
           <div>
             <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
               {tasks.length === 0 ? null : (
-                tasks.map((task) => (
-                  <SortableListRow key={task.id} task={task} isSelected={selectedTaskIds.has(task.id)} hasSelection={hasSelection} isDraggedAway={draggedTaskIds.has(task.id)} canManageTasks={canManageTasks} onSelect={onSelectTask} onToggleSelect={onToggleSelectTask} onUpdate={onUpdateTask} onDelete={onDeleteTask} />
+                tasks.map((task, rowIndex) => (
+                  <SortableListRow key={task.id} task={task} rowIndex={rowIndex} groupDelay={groupIndex * 0.04} isSelected={selectedTaskIds.has(task.id)} hasSelection={hasSelection} isDraggedAway={draggedTaskIds.has(task.id)} canManageTasks={canManageTasks} onSelect={onSelectTask} onToggleSelect={onToggleSelectTask} onUpdate={onUpdateTask} onDelete={onDeleteTask} />
                 ))
               )}
             </SortableContext>
           </div>
         )}
-    </div>
+    </motion.div>
   )
 }
 
