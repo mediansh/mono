@@ -76,6 +76,7 @@ import {
   type TaskStatus as Status,
 } from "@/lib/task-board"
 import {
+  getLocalFirstStoreSnapshot,
   setCollapsedWorkspaceColumns,
   setWorkspaceTasks,
   updateWorkspaceTasks,
@@ -1921,48 +1922,58 @@ export function KanbanBoard() {
   }
 
   function handleAcceptRequest(task: Task) {
-    if (!workspaceId || !taskDocs || !canManageTasks) return
-    const prevTasks = taskDocs
-    const nextTasks = moveTaskDocs(taskDocs, task.id, "todo", 0)
-    setWorkspaceTasks(workspaceId, nextTasks)
+    if (!workspaceId || !canManageTasks) return
+    let snapshotBefore: TaskDoc[] | undefined
+    updateWorkspaceTasks(workspaceId, (current) => {
+      snapshotBefore = current
+      return moveTaskDocs(current, task.id, "todo", 0)
+    })
     toast.success(`Accepted "${task.title}" → Todo`)
+    // Read the freshly-written state for the server call
+    const freshTasks = getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
     void reorderTasks({
       workspaceId,
-      changes: nextTasks.map((item) => ({
+      changes: freshTasks.map((item) => ({
         taskId: item._id as Id<"tasks">,
         status: item.status,
         order: item.order,
       })),
     }).catch(() => {
-      setWorkspaceTasks(workspaceId, prevTasks)
+      if (snapshotBefore) setWorkspaceTasks(workspaceId, snapshotBefore)
       toast.error("Failed to accept request. Try again.")
     })
   }
 
   function handleDenyRequest(task: Task) {
     if (!workspaceId || !canManageTasks || task.id.startsWith("optimistic:")) return
-    const prevTasks = taskDocs ?? []
-    updateWorkspaceTasks(workspaceId, (tasks) => tasks.filter((item) => item._id !== task.id))
+    let removedTask: TaskDoc | undefined
+    updateWorkspaceTasks(workspaceId, (current) => {
+      removedTask = current.find((item) => item._id === task.id)
+      return current.filter((item) => item._id !== task.id)
+    })
     toast.success(`Denied "${task.title}".`)
     void deleteTask({ taskId: task.id as Id<"tasks"> }).catch(() => {
-      updateWorkspaceTasks(workspaceId, (tasks) => sortTaskDocs([...tasks, ...prevTasks.filter((t) => t._id === task.id)]))
+      if (removedTask) {
+        updateWorkspaceTasks(workspaceId, (current) => sortTaskDocs([...current, removedTask!]))
+      }
       toast.error("Failed to deny request. Try again.")
     })
   }
 
   function handleUpdateTask(taskId: string, updates: Partial<Task>) {
-    if (!workspaceId || !taskDocs || !canManageTasks) return
+    if (!workspaceId || !canManageTasks) return
 
     if (updates.status) {
-      const currentTask = taskDocs.find((task) => task._id === taskId)
-      if (!currentTask) return
-
-      const targetIndex = taskDocs.filter((task) => task.status === updates.status).length
-      const nextTasks = moveTaskDocs(taskDocs, taskId, updates.status, targetIndex)
-      setWorkspaceTasks(workspaceId, nextTasks)
+      updateWorkspaceTasks(workspaceId, (current) => {
+        const currentTask = current.find((task) => task._id === taskId)
+        if (!currentTask) return current
+        const targetIndex = current.filter((task) => task.status === updates.status).length
+        return moveTaskDocs(current, taskId, updates.status!, targetIndex)
+      })
+      const freshTasks = getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
       void reorderTasks({
         workspaceId,
-        changes: nextTasks.map((item) => ({
+        changes: freshTasks.map((item) => ({
           taskId: item._id as Id<"tasks">,
           status: item.status,
           order: item.order,
@@ -2015,13 +2026,15 @@ export function KanbanBoard() {
   }
 
   function handleMoveTask(taskId: string, toStatus: Status, toIndex: number) {
-    if (!workspaceId || !taskDocs || !canManageTasks || taskId.startsWith("optimistic:")) return
+    if (!workspaceId || !canManageTasks || taskId.startsWith("optimistic:")) return
 
-    const nextTasks = moveTaskDocs(taskDocs, taskId, toStatus, toIndex)
-    setWorkspaceTasks(workspaceId, nextTasks)
+    updateWorkspaceTasks(workspaceId, (current) =>
+      moveTaskDocs(current, taskId, toStatus, toIndex)
+    )
+    const freshTasks = getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
     void reorderTasks({
       workspaceId,
-      changes: nextTasks.map((item) => ({
+      changes: freshTasks.map((item) => ({
         taskId: item._id as Id<"tasks">,
         status: item.status,
         order: item.order,
@@ -2030,19 +2043,22 @@ export function KanbanBoard() {
   }
 
   function handleMoveMultipleTasks(taskIds: string[], toStatus: Status, toIndex: number) {
-    if (!workspaceId || !taskDocs || !canManageTasks) return
+    if (!workspaceId || !canManageTasks) return
 
     const validIds = taskIds.filter((id) => !id.startsWith("optimistic:"))
     if (validIds.length === 0) return
 
-    let current = taskDocs
-    for (let i = 0; i < validIds.length; i++) {
-      current = moveTaskDocs(current, validIds[i]!, toStatus, toIndex + i)
-    }
-    setWorkspaceTasks(workspaceId, current)
+    updateWorkspaceTasks(workspaceId, (current) => {
+      let result = current
+      for (let i = 0; i < validIds.length; i++) {
+        result = moveTaskDocs(result, validIds[i]!, toStatus, toIndex + i)
+      }
+      return result
+    })
+    const freshTasks = getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
     void reorderTasks({
       workspaceId,
-      changes: current.map((item) => ({
+      changes: freshTasks.map((item) => ({
         taskId: item._id as Id<"tasks">,
         status: item.status,
         order: item.order,
@@ -2051,22 +2067,25 @@ export function KanbanBoard() {
   }
 
   function handleBulkUpdateTasks(taskIds: string[], updates: Partial<Pick<Task, "status" | "priority" | "labels">>) {
-    if (!workspaceId || !taskDocs || !canManageTasks) return
+    if (!workspaceId || !canManageTasks) return
 
     const validIds = taskIds.filter((id) => !id.startsWith("optimistic:"))
     if (validIds.length === 0) return
 
     // Optimistic update
     if (updates.status) {
-      let current = taskDocs
-      for (const id of validIds) {
-        const targetIndex = current.filter((t) => t.status === updates.status).length
-        current = moveTaskDocs(current, id, updates.status!, targetIndex)
-      }
-      setWorkspaceTasks(workspaceId, current)
+      updateWorkspaceTasks(workspaceId, (current) => {
+        let result = current
+        for (const id of validIds) {
+          const targetIndex = result.filter((t) => t.status === updates.status).length
+          result = moveTaskDocs(result, id, updates.status!, targetIndex)
+        }
+        return result
+      })
+      const freshTasks = getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
       void reorderTasks({
         workspaceId,
-        changes: current.map((item) => ({
+        changes: freshTasks.map((item) => ({
           taskId: item._id as Id<"tasks">,
           status: item.status,
           order: item.order,
