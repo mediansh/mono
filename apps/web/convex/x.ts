@@ -49,8 +49,9 @@ type XWebhookRecord = {
 }
 
 type XWebhookListResponse = {
-  data?: {
-    webhooks?: XWebhookRecord[]
+  data?: XWebhookRecord[]
+  meta?: {
+    result_count?: number
   }
 }
 
@@ -591,7 +592,7 @@ async function fetchWebhooks() {
   if (!response.ok) {
     throw new Error("Failed to load X webhooks")
   }
-  const webhooks = data.data?.webhooks ?? []
+  const webhooks = Array.isArray(data.data) ? data.data : []
   logInfo("Loaded X webhooks", {
     webhookCount: webhooks.length,
     callbackUrl: getWebhookUrl(),
@@ -612,6 +613,7 @@ async function createWebhook(url: string) {
     data?: {
       id?: string
       webhook_id?: string
+      valid?: boolean
     }
   }
   if (!response.ok) {
@@ -621,6 +623,7 @@ async function createWebhook(url: string) {
   logInfo("Created X webhook", {
     webhookId,
     callbackUrl: url,
+    valid: data.data?.valid ?? null,
   })
   return webhookId
 }
@@ -656,7 +659,7 @@ async function ensureWebhook() {
       callbackUrl,
       valid: existing?.valid ?? null,
     })
-    if (existing?.valid === false) {
+    if (existing?.valid !== true) {
       await validateWebhook(webhookId)
     }
     return webhookId
@@ -666,6 +669,7 @@ async function ensureWebhook() {
   if (!createdWebhookId) {
     throw new Error("X did not return a webhook ID")
   }
+  await validateWebhook(createdWebhookId)
   return createdWebhookId
 }
 
@@ -788,19 +792,20 @@ async function requestReplayJob(webhookId: string, lookbackMinutes: number) {
   const safeLookbackMinutes = Math.max(1, Math.min(lookbackMinutes, 24 * 60))
   const toDate = new Date()
   const fromDate = new Date(toDate.getTime() - safeLookbackMinutes * 60 * 1000)
-  const endpoint = new URL(
-    `https://api.x.com/2/account_activity/replay/webhooks/${encodeURIComponent(
-      webhookId
-    )}/subscriptions/all`
-  )
-  endpoint.searchParams.set("from_date", formatReplayTimestamp(fromDate))
-  endpoint.searchParams.set("to_date", formatReplayTimestamp(toDate))
+  const fromDateStr = formatReplayTimestamp(fromDate)
+  const toDateStr = formatReplayTimestamp(toDate)
 
-  const response = await fetch(endpoint.toString(), {
+  const response = await fetch("https://api.x.com/2/webhooks/replay", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${getXBearerToken()}`,
+      "Content-Type": "application/json",
     },
+    body: JSON.stringify({
+      webhook_id: webhookId,
+      from_date: fromDateStr,
+      to_date: toDateStr,
+    }),
   })
 
   const rawBody = await response.text()
@@ -838,15 +843,15 @@ async function requestReplayJob(webhookId: string, lookbackMinutes: number) {
   logInfo("Requested X replay job", {
     webhookId,
     jobId,
-    fromDate: endpoint.searchParams.get("from_date"),
-    toDate: endpoint.searchParams.get("to_date"),
+    fromDate: fromDateStr,
+    toDate: toDateStr,
   })
 
   return {
     jobId,
     createdAt,
-    fromDate: endpoint.searchParams.get("from_date")!,
-    toDate: endpoint.searchParams.get("to_date")!,
+    fromDate: fromDateStr,
+    toDate: toDateStr,
   }
 }
 
