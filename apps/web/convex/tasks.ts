@@ -186,6 +186,25 @@ async function queueGitHubSync(ctx: MutationCtx, taskId: Id<"tasks">) {
   })
 }
 
+async function queueGitHubIssueClosure(
+  ctx: MutationCtx,
+  workspaceId: Id<"workspaces">,
+  taskId: Id<"tasks">
+) {
+  const link = await ctx.db
+    .query("githubTaskLinks")
+    .withIndex("by_task", (q) => q.eq("taskId", taskId))
+    .unique()
+
+  if (!link) return
+
+  await ctx.scheduler.runAfter(0, internal.github.closeLinkedGitHubIssue, {
+    workspaceId,
+    githubRepositoryFullName: link.githubRepositoryFullName,
+    githubIssueNumber: link.githubIssueNumber,
+  })
+}
+
 async function queueLinearIssueDeletion(
   ctx: MutationCtx,
   workspaceId: Id<"workspaces">,
@@ -677,6 +696,7 @@ export const deleteTask = mutation({
     if (!task) throw new Error("Task not found")
 
     await requireTaskWriteAccess(ctx, task.workspaceId)
+    await queueGitHubIssueClosure(ctx, task.workspaceId, args.taskId)
     await queueLinearIssueDeletion(ctx, task.workspaceId, args.taskId)
     await clearLinearTaskLink(ctx, args.taskId)
     await clearGitHubTaskLink(ctx, args.taskId)
@@ -792,6 +812,7 @@ export const bulkDeleteTasks = mutation({
       if (!task || task.workspaceId !== args.workspaceId) {
         throw new Error("Task not found")
       }
+      await queueGitHubIssueClosure(ctx, args.workspaceId, taskId)
       await queueLinearIssueDeletion(ctx, args.workspaceId, taskId)
       await clearLinearTaskLink(ctx, taskId)
       await clearGitHubTaskLink(ctx, taskId)
@@ -813,6 +834,7 @@ export const clearDemoTasks = mutation({
     }
 
     for (const task of tasks) {
+      await queueGitHubIssueClosure(ctx, args.workspaceId, task._id)
       await queueLinearIssueDeletion(ctx, args.workspaceId, task._id)
       await clearLinearTaskLink(ctx, task._id)
       await clearGitHubTaskLink(ctx, task._id)

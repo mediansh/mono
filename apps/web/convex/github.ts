@@ -633,9 +633,9 @@ async function updateRepositoryIssue(
   repositoryFullName: string,
   issueNumber: number,
   input: {
-    title: string
+    title?: string
     body?: string
-    state: "open" | "closed"
+    state?: "open" | "closed"
   }
 ) {
   return await githubRequest<GitHubRestIssue>(
@@ -692,6 +692,21 @@ function getTaskUpdatedAt(task: Doc<"tasks">) {
 
 function mapIssueStateToNewTaskStatus(state: "open" | "closed"): TaskStatus {
   return state === "closed" ? "shipped" : "todo"
+}
+
+function deriveTaskStatusFromIssueState(
+  currentStatus: TaskStatus,
+  state: "open" | "closed"
+): TaskStatus {
+  if (state === "closed") {
+    return currentStatus === "archive" ? "archive" : "shipped"
+  }
+
+  if (currentStatus === "shipped" || currentStatus === "archive") {
+    return "todo"
+  }
+
+  return currentStatus
 }
 
 function formatStatusRedirect(
@@ -1147,6 +1162,54 @@ export const deleteGitHubTaskLinkByTaskId = internalMutation({
   },
 })
 
+export const closeLinkedGitHubIssue = internalAction({
+  args: {
+    workspaceId: v.id("workspaces"),
+    githubRepositoryFullName: v.string(),
+    githubIssueNumber: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const integration = await ctx.runQuery(
+      internal.github.getGitHubIntegrationForWorkspace,
+      {
+        workspaceId: args.workspaceId,
+      }
+    )
+
+    if (!integration) {
+      return { skipped: true as const, reason: "no_integration" as const }
+    }
+
+    const installationToken = await createInstallationAccessToken(
+      integration.installationId
+    )
+
+    try {
+      await updateRepositoryIssue(
+        installationToken,
+        args.githubRepositoryFullName,
+        args.githubIssueNumber,
+        {
+          state: "closed",
+        }
+      )
+    } catch (error) {
+      if (error instanceof GitHubApiError && error.status === 404) {
+        return { skipped: true as const, reason: "not_found" as const }
+      }
+
+      throw error
+    }
+
+    await ctx.runMutation(internal.github.markGitHubIntegrationSyncedAt, {
+      integrationId: integration._id,
+      syncedAt: Date.now(),
+    })
+
+    return { skipped: false as const }
+  },
+})
+
 export const recordGitHubWebhookDelivery = internalMutation({
   args: {
     deliveryId: v.string(),
@@ -1352,10 +1415,28 @@ export const upsertTaskFromGitHubIssue = internalMutation({
           getTaskUpdatedAt(linkedTask) > existingLink.lastSyncedAt
 
         if (!hasPendingLocalChanges) {
+          const nextStatus = deriveTaskStatusFromIssueState(
+            linkedTask.status,
+            issue.state
+          )
           const updates: Partial<Doc<"tasks">> = {
             title: nextTitle,
             description: nextDescription,
             updatedAt: githubUpdatedAt,
+          }
+
+          if (nextStatus !== linkedTask.status) {
+            const workspaceTasks = await ctx.db
+              .query("tasks")
+              .withIndex("by_workspace", (q) =>
+                q.eq("workspaceId", integration.workspaceId)
+              )
+              .collect()
+
+            updates.status = nextStatus
+            updates.order = workspaceTasks.filter(
+              (task) => task._id !== linkedTask._id && task.status === nextStatus
+            ).length
           }
 
           if (!linkedTask.source || linkedTask.source.platform === "github") {
@@ -1408,10 +1489,21 @@ export const upsertTaskFromGitHubIssue = internalMutation({
       )
 
     if (matchedTask) {
+      const nextStatus = deriveTaskStatusFromIssueState(
+        matchedTask.status,
+        issue.state
+      )
       const updates: Partial<Doc<"tasks">> = {
         title: nextTitle,
         description: nextDescription,
         updatedAt: githubUpdatedAt,
+      }
+
+      if (nextStatus !== matchedTask.status) {
+        updates.status = nextStatus
+        updates.order = workspaceTasks.filter(
+          (task) => task._id !== matchedTask._id && task.status === nextStatus
+        ).length
       }
 
       if (!matchedTask.source || matchedTask.source.platform === "github") {
@@ -1432,6 +1524,10 @@ export const upsertTaskFromGitHubIssue = internalMutation({
         lastGithubUpdatedAt: issue.updatedAt,
       })
       return matchedTask._id
+    }
+
+    if (issue.state === "closed") {
+      return null
     }
 
     const nextTaskNumber =
@@ -1672,12 +1768,14 @@ export const performWorkspaceGitHubSync = internalAction({
       const issues = await listRepositoryIssues(installationToken, repository)
       for (const issue of issues) {
         importedIssueStates.set(issue.id, issue.state)
-        await ctx.runMutation(internal.github.upsertTaskFromGitHubIssue, {
+        const taskId = await ctx.runMutation(internal.github.upsertTaskFromGitHubIssue, {
           integrationId: integration._id,
           issue,
         })
+        if (taskId) {
+          importedCount += 1
+        }
       }
-      importedCount += issues.length
     }
 
     const taskSyncStates = await ctx.runQuery(
