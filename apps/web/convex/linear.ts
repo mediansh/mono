@@ -51,6 +51,7 @@ type LinearIssue = {
   description: string | null
   url: string | null
   priority: number | null
+  archivedAt?: string | null
   createdAt: string
   updatedAt: string
   state: {
@@ -421,6 +422,7 @@ async function fetchIssueById(apiKey: string, issueId: string) {
           description
           url
           priority
+          archivedAt
           createdAt
           updatedAt
           state {
@@ -435,6 +437,30 @@ async function fetchIssueById(apiKey: string, issueId: string) {
   )
 
   return data.issue
+}
+
+async function issueUnarchive(apiKey: string, issueId: string) {
+  const data = await linearGraphql<{
+    issueUnarchive: {
+      success: boolean
+    }
+  }>(
+    apiKey,
+    `
+      mutation UnarchiveIssue($issueId: String!) {
+        issueUnarchive(id: $issueId) {
+          success
+        }
+      }
+    `,
+    {
+      issueId,
+    }
+  )
+
+  if (!data.issueUnarchive.success) {
+    throw new Error("Failed to unarchive the Linear issue")
+  }
 }
 
 async function fetchTeamIssues(apiKey: string, teamId: string) {
@@ -712,6 +738,11 @@ async function syncTaskToLinear(
   }
 
   if (link) {
+    const existingIssue = await fetchIssueById(integration.apiKey, link.linearIssueId)
+    if (existingIssue?.archivedAt && task.status !== "archive") {
+      await issueUnarchive(integration.apiKey, link.linearIssueId)
+    }
+
     const updatedIssue = await issueUpdate(
       integration.apiKey,
       link.linearIssueId,
