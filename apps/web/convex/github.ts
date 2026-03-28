@@ -328,10 +328,46 @@ function pemToArrayBuffer(pem: string) {
   return base64DecodeToBytes(content).buffer
 }
 
+function pkcs1ToPkcs8(pkcs1Der: ArrayBuffer): ArrayBuffer {
+  const pkcs1Bytes = new Uint8Array(pkcs1Der)
+  // ASN.1 PKCS#8 header for RSA:
+  // SEQUENCE { version INTEGER 0, algorithm AlgorithmIdentifier { OID rsaEncryption, NULL }, privateKey OCTET STRING }
+  const pkcs8Header = new Uint8Array([
+    0x30, 0x82, 0x00, 0x00, // SEQUENCE (length placeholder)
+    0x02, 0x01, 0x00, // INTEGER 0 (version)
+    0x30, 0x0d, // SEQUENCE (AlgorithmIdentifier)
+    0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01, // OID rsaEncryption
+    0x05, 0x00, // NULL
+    0x04, 0x82, 0x00, 0x00, // OCTET STRING (length placeholder)
+  ])
+
+  const totalLength = pkcs8Header.length + pkcs1Bytes.length
+  const result = new Uint8Array(totalLength)
+  result.set(pkcs8Header)
+  result.set(pkcs1Bytes, pkcs8Header.length)
+
+  // Patch outer SEQUENCE length (totalLength - 4 for tag + length bytes)
+  const outerLen = totalLength - 4
+  result[2] = (outerLen >> 8) & 0xff
+  result[3] = outerLen & 0xff
+
+  // Patch OCTET STRING length (pkcs1 key length)
+  const octetOffset = pkcs8Header.length - 2
+  result[octetOffset] = (pkcs1Bytes.length >> 8) & 0xff
+  result[octetOffset + 1] = pkcs1Bytes.length & 0xff
+
+  return result.buffer
+}
+
 async function importGitHubPrivateKey() {
+  const pem = getGitHubAppPrivateKey()
+  const isPkcs1 = pem.includes("BEGIN RSA PRIVATE KEY")
+  const der = pemToArrayBuffer(pem)
+  const keyData = isPkcs1 ? pkcs1ToPkcs8(der) : der
+
   return await crypto.subtle.importKey(
     "pkcs8",
-    pemToArrayBuffer(getGitHubAppPrivateKey()),
+    keyData,
     {
       name: "RSASSA-PKCS1-v1_5",
       hash: "SHA-256",
