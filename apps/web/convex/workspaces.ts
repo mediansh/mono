@@ -263,8 +263,18 @@ export const deleteWorkspace = mutation({
     const workspace = await ctx.db.get(args.workspaceId)
     if (!workspace) throw new Error("Workspace not found")
 
-    const [members, invites, tasks, discordIntegrations, linearIntegrations, linearTaskLinks, pairedCodes] =
-      await Promise.all([
+    const [
+      members,
+      invites,
+      tasks,
+      discordIntegrations,
+      linearIntegrations,
+      linearTaskLinks,
+      pairedCodes,
+      xIntegrations,
+      xPosts,
+      xOAuthStates,
+    ] = await Promise.all([
       ctx.db
         .query("workspaceMembers")
         .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
@@ -293,6 +303,18 @@ export const deleteWorkspace = mutation({
         .query("discordPairingCodes")
         .withIndex("by_paired_workspace", (q) => q.eq("pairedWorkspaceId", args.workspaceId))
         .collect(),
+      ctx.db
+        .query("xWorkspaceIntegrations")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+        .collect(),
+      ctx.db
+        .query("xPosts")
+        .withIndex("by_workspace_created_at", (q) => q.eq("workspaceId", args.workspaceId))
+        .collect(),
+      ctx.db
+        .query("xOAuthStates")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+        .collect(),
     ])
 
     for (const task of tasks) {
@@ -317,6 +339,18 @@ export const deleteWorkspace = mutation({
 
     for (const pairingCode of pairedCodes) {
       await ctx.db.delete(pairingCode._id)
+    }
+
+    for (const post of xPosts) {
+      await ctx.db.delete(post._id)
+    }
+
+    for (const oauthState of xOAuthStates) {
+      await ctx.db.delete(oauthState._id)
+    }
+
+    for (const integration of xIntegrations) {
+      await ctx.db.delete(integration._id)
     }
 
     for (const member of members) {

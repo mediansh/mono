@@ -21,6 +21,17 @@ The root dev command now starts:
 4. Set `CLERK_JWT_ISSUER_DOMAIN` to your Clerk issuer domain.
 5. Run `pnpm dev` and finish the Convex CLI prompts in the Convex task tab.
 
+## X integration env
+
+The X integration expects these server env vars to be present:
+
+- `X_API_KEY`
+- `X_API_SECRET`
+- `X_API_BEARER_TOKEN`
+- `X_TOKEN_ENCRYPTION_KEY`
+
+`CONVEX_SITE_URL` must point at the public Convex site URL because the X webhook and OAuth callback are registered against Convex HTTP routes.
+
 ## Adding components
 
 To add components to the web app, run:

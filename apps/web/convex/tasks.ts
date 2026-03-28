@@ -294,6 +294,24 @@ export const createTasksFromDiscordFeedbackInternal = internalMutation({
   },
 })
 
+export const createTasksFromFeedbackInternal = internalMutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    tasks: v.array(taskInputValidator),
+  },
+  handler: async (ctx, args) => {
+    const createdTasks = await insertTasksForWorkspace(
+      ctx,
+      args.workspaceId,
+      args.tasks
+    )
+    for (const task of createdTasks) {
+      await queueLinearSync(ctx, task._id)
+    }
+    return createdTasks
+  },
+})
+
 export const getTaskSnapshotForDiscord = query({
   args: {
     botSecret: v.string(),
@@ -326,6 +344,31 @@ export const getTaskSnapshotForDiscord = query({
 })
 
 export const getTaskSnapshotForDiscordInternal = internalQuery({
+  args: {
+    workspaceId: v.id("workspaces"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const tasks = await getWorkspaceTasks(ctx, args.workspaceId)
+    const limit = Math.min(args.limit ?? 50, 100)
+
+    return tasks
+      .filter((task) => task.status !== "archive")
+      .slice(0, limit)
+      .map((task) => ({
+        taskId: task._id,
+        taskCode: task.taskCode,
+        title: task.title,
+        description: task.description ?? null,
+        status: task.status,
+        priority: task.priority,
+        labels: task.labels,
+        sourceUrl: task.source?.url ?? null,
+      }))
+  },
+})
+
+export const getTaskSnapshotForFeedbackInternal = internalQuery({
   args: {
     workspaceId: v.id("workspaces"),
     limit: v.optional(v.number()),

@@ -165,6 +165,67 @@ export default defineSchema({
     receivedAt: v.number(),
   }).index("by_delivery", ["deliveryId"]),
 
+  xOAuthStates: defineTable({
+    workspaceId: v.id("workspaces"),
+    initiatedByUserId: v.string(),
+    requestToken: v.string(),
+    requestTokenSecretEncrypted: v.string(),
+    redirectUrl: v.string(),
+    expiresAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_request_token", ["requestToken"])
+    .index("by_workspace", ["workspaceId"]),
+
+  xWorkspaceIntegrations: defineTable({
+    workspaceId: v.id("workspaces"),
+    xUserId: v.string(),
+    username: v.string(),
+    name: v.optional(v.string()),
+    profileImageUrl: v.optional(v.string()),
+    accessTokenEncrypted: v.string(),
+    accessTokenSecretEncrypted: v.string(),
+    webhookId: v.string(),
+    connectedAt: v.number(),
+    connectedByUserId: v.string(),
+    lastProcessedPostId: v.optional(v.string()),
+    lastProcessedPostCreatedAt: v.optional(v.number()),
+    lastProcessedAt: v.optional(v.number()),
+    lastIngestedPostId: v.optional(v.string()),
+    lastIngestedPostCreatedAt: v.optional(v.number()),
+    lastIngestedAt: v.optional(v.number()),
+    feedbackProcessingState: v.optional(
+      v.union(v.literal("idle"), v.literal("scheduled"), v.literal("running"))
+    ),
+    feedbackProcessingWorkId: v.optional(v.string()),
+    feedbackProcessingNeedsRerun: v.optional(v.boolean()),
+    feedbackProcessingQueuedAt: v.optional(v.number()),
+    feedbackProcessingStartedAt: v.optional(v.number()),
+    feedbackProcessingCompletedAt: v.optional(v.number()),
+    feedbackProcessingLastError: v.optional(v.string()),
+    additionalContext: v.optional(v.string()),
+  })
+    .index("by_workspace", ["workspaceId"])
+    .index("by_x_user", ["xUserId"]),
+
+  xPosts: defineTable({
+    workspaceId: v.id("workspaces"),
+    integrationId: v.id("xWorkspaceIntegrations"),
+    forUserId: v.string(),
+    postId: v.string(),
+    permalink: v.string(),
+    authorId: v.string(),
+    authorUsername: v.string(),
+    authorName: v.optional(v.string()),
+    content: v.string(),
+    inReplyToUserId: v.optional(v.string()),
+    postCreatedAt: v.number(),
+    receivedAt: v.number(),
+  })
+    .index("by_integration_post", ["integrationId", "postId"])
+    .index("by_integration_created_at", ["integrationId", "postCreatedAt"])
+    .index("by_workspace_created_at", ["workspaceId", "postCreatedAt"]),
+
   discordMessages: defineTable({
     workspaceId: v.id("workspaces"),
     integrationId: v.id("discordWorkspaceIntegrations"),

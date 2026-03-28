@@ -1,0 +1,384 @@
+"use client"
+
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react"
+import { useAction, useMutation, useQuery } from "convex/react"
+import { motion } from "motion/react"
+import { HugeiconsIcon } from "@hugeicons/react"
+import {
+  Alert02Icon,
+  Link01Icon,
+  MessageNotificationIcon,
+  TextIcon,
+  Time04Icon,
+  Unlink01Icon,
+} from "@hugeicons/core-free-icons"
+import { useRouter, useSearchParams } from "next/navigation"
+import { toast } from "sonner"
+import { Button } from "@workspace/ui/components/button"
+import { Textarea } from "@workspace/ui/components/textarea"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@workspace/ui/components/dialog"
+import { api } from "@/convex/_generated/api"
+import { SettingsAccessState } from "@/components/settings-access-state"
+import { useWorkspace } from "@/components/workspace-provider"
+import { hasWorkspaceAdminPermission } from "@/lib/workspace-permissions"
+
+function formatTimestamp(timestamp: number | null) {
+  if (!timestamp) return "Not yet"
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(timestamp)
+}
+
+function XBrandIcon({ size = 20, className }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  )
+}
+
+function Stagger({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <motion.div
+      initial="hidden"
+      animate="show"
+      variants={{ show: { transition: { staggerChildren: 0.06 } } }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 8 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] as const } },
+}
+
+function XIntegrationSkeleton() {
+  return (
+    <div className="mx-auto w-full max-w-2xl px-10 py-10">
+      <div className="mb-8 h-12 bg-muted/30" />
+      <div className="h-36 border border-border bg-card/50" />
+    </div>
+  )
+}
+
+export function XIntegrationPanel() {
+  const { currentWorkspace } = useWorkspace()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const [isConnecting, setIsConnecting] = useState(false)
+  const [isDisconnecting, setIsDisconnecting] = useState(false)
+  const [disconnectOpen, setDisconnectOpen] = useState(false)
+  const [additionalContext, setAdditionalContext] = useState("")
+  const [settingsInitialized, setSettingsInitialized] = useState(false)
+  const contextSaveTimer = useRef<NodeJS.Timeout | null>(null)
+
+  const integrationState = useQuery(
+    api.x.getWorkspaceXIntegration,
+    currentWorkspace ? { workspaceId: currentWorkspace._id } : "skip"
+  )
+  const beginConnect = useAction(api.x.beginWorkspaceXConnect)
+  const disconnectIntegration = useAction(api.x.disconnectWorkspaceXIntegration)
+  const updateSettings = useMutation(api.x.updateXIntegrationSettings)
+
+  const integration = integrationState?.integration ?? null
+  const workspaceId = currentWorkspace?._id ?? null
+
+  useEffect(() => {
+    if (integration && !settingsInitialized) {
+      setAdditionalContext(integration.additionalContext)
+      setSettingsInitialized(true)
+    }
+    if (!integration && settingsInitialized) {
+      setAdditionalContext("")
+      setSettingsInitialized(false)
+    }
+  }, [integration, settingsInitialized])
+
+  useEffect(() => {
+    const status = searchParams.get("x_status")
+    const message = searchParams.get("x_message")
+    if (!status) return
+
+    if (status === "connected") {
+      toast.success(message ?? "X account connected.")
+    } else {
+      toast.error(message ?? "Failed to connect X.")
+    }
+
+    router.replace("/app/integrations/x")
+  }, [router, searchParams])
+
+  const processingLabel = useMemo(() => {
+    if (!integration) return "Idle"
+    if (integration.feedbackProcessingState === "running") return "Processing inbound posts"
+    if (integration.feedbackProcessingState === "scheduled") return "Queued for processing"
+    return "Listening for mentions and replies"
+  }, [integration])
+
+  if (!currentWorkspace) return null
+  if (!hasWorkspaceAdminPermission(currentWorkspace.role)) {
+    return (
+      <div className="mx-auto w-full max-w-2xl px-10 py-10">
+        <SettingsAccessState />
+      </div>
+    )
+  }
+  if (integrationState === undefined) {
+    return <XIntegrationSkeleton />
+  }
+
+  function saveContext(value: string) {
+    if (!workspaceId) return
+    if (contextSaveTimer.current) clearTimeout(contextSaveTimer.current)
+    contextSaveTimer.current = setTimeout(() => {
+      void updateSettings({
+        workspaceId,
+        additionalContext: value,
+      })
+    }, 800)
+  }
+
+  function handleContextChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
+    const value = event.target.value
+    setAdditionalContext(value)
+    saveContext(value)
+  }
+
+  async function handleConnect() {
+    if (!workspaceId) return
+    setIsConnecting(true)
+    try {
+      const redirectUrl = typeof window !== "undefined"
+        ? `${window.location.origin}/app/integrations/x`
+        : "/app/integrations/x"
+      const result = await beginConnect({
+        workspaceId,
+        redirectUrl,
+      })
+      window.location.assign(result.authorizeUrl)
+    } catch (error) {
+      setIsConnecting(false)
+      toast.error(error instanceof Error ? error.message : "Failed to start the X connection.")
+    }
+  }
+
+  async function handleDisconnect() {
+    if (!workspaceId) return
+    setIsDisconnecting(true)
+    try {
+      await disconnectIntegration({ workspaceId })
+      setDisconnectOpen(false)
+      toast.success("X account disconnected.")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to disconnect X.")
+    } finally {
+      setIsDisconnecting(false)
+    }
+  }
+
+  if (integration) {
+    return (
+      <Stagger className="mx-auto w-full max-w-2xl px-10 py-10">
+        <div className="flex flex-col gap-6">
+          <motion.div variants={fadeUp}>
+            <h2 className="text-lg font-semibold tracking-tight">X (Twitter)</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Route inbound mentions and replies into Median request tasks.
+            </p>
+          </motion.div>
+
+          <motion.div variants={fadeUp} className="rounded-none border border-border bg-card">
+            <div className="flex items-center gap-4 p-5">
+              <div className="flex size-10 items-center justify-center overflow-hidden rounded-none bg-foreground/5">
+                {integration.profileImageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={integration.profileImageUrl}
+                    alt={integration.username}
+                    className="size-full object-cover"
+                  />
+                ) : (
+                  <XBrandIcon size={20} className="text-foreground" />
+                )}
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-medium">
+                  {integration.name ?? `@${integration.username}`}
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  @{integration.username} connected {formatTimestamp(integration.connectedAt)}
+                </p>
+              </div>
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600">
+                <span className="size-1.5 bg-emerald-500" />
+                Connected
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between border-t border-border bg-muted/30 px-5 py-3">
+              <p className="text-xs text-muted-foreground">
+                Median is watching mentions and replies for {currentWorkspace.name}.
+              </p>
+              <Button type="button" variant="destructive" size="sm" onClick={() => setDisconnectOpen(true)}>
+                <HugeiconsIcon icon={Unlink01Icon} size={13} strokeWidth={1.8} />
+                Disconnect
+              </Button>
+            </div>
+          </motion.div>
+
+          <motion.div variants={fadeUp} className="grid gap-px overflow-hidden rounded-none border border-border bg-border md:grid-cols-3">
+            <div className="bg-card p-4">
+              <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                <HugeiconsIcon icon={MessageNotificationIcon} size={14} strokeWidth={1.8} />
+                Status
+              </div>
+              <p className="text-sm text-foreground">{processingLabel}</p>
+            </div>
+            <div className="bg-card p-4">
+              <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                <HugeiconsIcon icon={Time04Icon} size={14} strokeWidth={1.8} />
+                Last Ingested
+              </div>
+              <p className="text-sm text-foreground">{formatTimestamp(integration.lastIngestedAt)}</p>
+            </div>
+            <div className="bg-card p-4">
+              <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                <HugeiconsIcon icon={Alert02Icon} size={14} strokeWidth={1.8} />
+                Last Processed
+              </div>
+              <p className="text-sm text-foreground">{formatTimestamp(integration.lastProcessedAt)}</p>
+            </div>
+          </motion.div>
+
+          {integration.feedbackProcessingLastError ? (
+            <motion.div variants={fadeUp} className="rounded-none border border-destructive/20 bg-destructive/5 p-4">
+              <div className="mb-1 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-destructive">
+                <HugeiconsIcon icon={Alert02Icon} size={14} strokeWidth={1.8} />
+                Last Worker Error
+              </div>
+              <p className="text-sm text-foreground">{integration.feedbackProcessingLastError}</p>
+            </motion.div>
+          ) : null}
+
+          <motion.div variants={fadeUp} className="rounded-none border border-border bg-card">
+            <div className="flex items-center gap-3 border-b border-border px-5 py-3.5">
+              <HugeiconsIcon icon={TextIcon} size={15} strokeWidth={1.8} className="text-muted-foreground" />
+              <div className="flex-1">
+                <h3 className="text-sm font-medium">Additional context</h3>
+                <p className="text-xs text-muted-foreground">
+                  Describe your product so the AI can better interpret incoming X feedback.
+                </p>
+              </div>
+            </div>
+            <div className="p-5">
+              <Textarea
+                value={additionalContext}
+                onChange={handleContextChange}
+                placeholder="e.g. Median is a project management tool for small teams. Common feedback themes include task management workflows, collaboration handoffs, and integration pain points..."
+                rows={4}
+                className="resize-none text-sm"
+              />
+              <p className="mt-2 text-[11px] text-muted-foreground/60">
+                This context is used when Median classifies mentions and replies into request tasks. Changes save automatically.
+              </p>
+            </div>
+          </motion.div>
+        </div>
+
+        <Dialog open={disconnectOpen} onOpenChange={setDisconnectOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Disconnect X</DialogTitle>
+              <DialogDescription>
+                This will stop routing mentions and replies from{" "}
+                <span className="font-medium text-foreground">@{integration.username}</span> into{" "}
+                <span className="font-medium text-foreground">{currentWorkspace.name}</span>.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" className="flex-1" onClick={() => setDisconnectOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="button" variant="destructive" className="flex-1" disabled={isDisconnecting} onClick={handleDisconnect}>
+                {isDisconnecting ? "Disconnecting..." : "Disconnect"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </Stagger>
+    )
+  }
+
+  return (
+    <Stagger className="mx-auto w-full max-w-2xl px-10 py-10">
+      <div className="flex flex-col gap-6">
+        <motion.div variants={fadeUp}>
+          <h2 className="text-lg font-semibold tracking-tight">X (Twitter)</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Connect an X account and turn mentions or replies into request tasks automatically.
+          </p>
+        </motion.div>
+
+        <motion.div variants={fadeUp} className="rounded-none border border-border bg-card">
+          <div className="flex items-center gap-4 p-5">
+            <div className="flex size-10 items-center justify-center rounded-none bg-foreground/5">
+              <XBrandIcon size={20} className="text-foreground" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-medium">Not connected</h3>
+              <p className="text-xs text-muted-foreground">
+                Authorize one company or support account for this workspace.
+              </p>
+            </div>
+            <Button type="button" onClick={handleConnect} disabled={isConnecting}>
+              <HugeiconsIcon icon={Link01Icon} size={15} strokeWidth={1.8} />
+              {isConnecting ? "Redirecting..." : "Connect"}
+            </Button>
+          </div>
+
+          <div className="border-t border-border bg-muted/30 px-5 py-3">
+            <p className="text-xs text-muted-foreground">
+              Median will subscribe a shared webhook and listen for inbound mentions plus replies to the connected account.
+            </p>
+          </div>
+        </motion.div>
+
+        <motion.div variants={fadeUp} className="rounded-none border border-dashed border-border p-5">
+          <div className="grid gap-2.5 text-sm text-muted-foreground">
+            <div className="flex items-start gap-2.5">
+              <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center text-[10px] font-semibold text-muted-foreground/60">1</span>
+              <span>Authorize the X account you want Median to monitor.</span>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center text-[10px] font-semibold text-muted-foreground/60">2</span>
+              <span>Median stores inbound mentions and replies through the X webhook.</span>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center text-[10px] font-semibold text-muted-foreground/60">3</span>
+              <span>The AI classifies those posts the same way Discord feedback becomes request tasks.</span>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </Stagger>
+  )
+}
