@@ -686,6 +686,10 @@ function mapTaskStatusToIssueState(status: TaskStatus) {
   return status === "shipped" || status === "archive" ? "closed" : "open"
 }
 
+function getTaskUpdatedAt(task: Doc<"tasks">) {
+  return task.updatedAt ?? task._creationTime
+}
+
 function mapIssueStateToNewTaskStatus(state: "open" | "closed"): TaskStatus {
   return state === "closed" ? "shipped" : "todo"
 }
@@ -1344,17 +1348,23 @@ export const upsertTaskFromGitHubIssue = internalMutation({
       if (!linkedTask) {
         await ctx.db.delete(existingLink._id)
       } else {
-        const updates: Partial<Doc<"tasks">> = {
-          title: nextTitle,
-          description: nextDescription,
-          updatedAt: githubUpdatedAt,
+        const hasPendingLocalChanges =
+          getTaskUpdatedAt(linkedTask) > existingLink.lastSyncedAt
+
+        if (!hasPendingLocalChanges) {
+          const updates: Partial<Doc<"tasks">> = {
+            title: nextTitle,
+            description: nextDescription,
+            updatedAt: githubUpdatedAt,
+          }
+
+          if (!linkedTask.source || linkedTask.source.platform === "github") {
+            updates.source = nextSource
+          }
+
+          await ctx.db.patch(linkedTask._id, updates)
         }
 
-        if (!linkedTask.source || linkedTask.source.platform === "github") {
-          updates.source = nextSource
-        }
-
-        await ctx.db.patch(linkedTask._id, updates)
         await ctx.db.patch(existingLink._id, {
           githubRepositoryId: issue.repository.id,
           githubRepositoryName: issue.repository.name,
@@ -1362,7 +1372,9 @@ export const upsertTaskFromGitHubIssue = internalMutation({
           githubIssueNumber: issue.number,
           githubIssueUrl: issue.htmlUrl,
           lastGithubUpdatedAt: issue.updatedAt,
-          lastSyncedAt: Date.now(),
+          lastSyncedAt: hasPendingLocalChanges
+            ? existingLink.lastSyncedAt
+            : Date.now(),
         })
         return linkedTask._id
       }
@@ -1638,11 +1650,28 @@ export const performWorkspaceGitHubSync = internalAction({
     const selectedRepositories: GitHubRepository[] = repositories.filter(
       (repository: GitHubRepository) => selectedRepoIds.has(repository.id)
     )
+    const taskSyncStatesBeforeImport = await ctx.runQuery(
+      internal.github.listWorkspaceTaskSyncStates,
+      {
+        workspaceId: args.workspaceId,
+      }
+    )
+    const forcedPushTaskIds = new Set(
+      taskSyncStatesBeforeImport
+        .filter(
+          (item) =>
+            item.link === null ||
+            getTaskUpdatedAt(item.task) > item.link.lastSyncedAt
+        )
+        .map((item) => String(item.task._id))
+    )
+    const importedIssueStates = new Map<string, "open" | "closed">()
 
     let importedCount = 0
     for (const repository of selectedRepositories) {
       const issues = await listRepositoryIssues(installationToken, repository)
       for (const issue of issues) {
+        importedIssueStates.set(issue.id, issue.state)
         await ctx.runMutation(internal.github.upsertTaskFromGitHubIssue, {
           integrationId: integration._id,
           issue,
@@ -1660,9 +1689,18 @@ export const performWorkspaceGitHubSync = internalAction({
     let pushedCount = 0
 
     for (const item of taskSyncStates) {
-      const taskUpdatedAt = item.task.updatedAt ?? item.task._creationTime
+      const taskUpdatedAt = getTaskUpdatedAt(item.task)
+      const importedIssueState = item.link
+        ? importedIssueStates.get(item.link.githubIssueId)
+        : undefined
+      const hasImportedStateMismatch =
+        importedIssueState !== undefined &&
+        importedIssueState !== mapTaskStatusToIssueState(item.task.status)
       const needsPush =
-        item.link === null || taskUpdatedAt > item.link.lastSyncedAt
+        item.link === null ||
+        forcedPushTaskIds.has(String(item.task._id)) ||
+        taskUpdatedAt > item.link.lastSyncedAt ||
+        hasImportedStateMismatch
 
       if (!needsPush) continue
 
