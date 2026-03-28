@@ -274,17 +274,46 @@ function parseTimestamp(value?: string) {
   return Number.isFinite(parsed) ? parsed : Date.now()
 }
 
+function bytesToBinaryString(bytes: Uint8Array) {
+  let result = ""
+  const chunkSize = 0x8000
+
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    const chunk = bytes.subarray(index, index + chunkSize)
+    result += String.fromCharCode(...chunk)
+  }
+
+  return result
+}
+
+function base64EncodeBytes(bytes: Uint8Array) {
+  return btoa(bytesToBinaryString(bytes))
+}
+
+function base64DecodeToBytes(value: string) {
+  const binary = atob(value)
+  const bytes = new Uint8Array(binary.length)
+
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index)
+  }
+
+  return bytes
+}
+
+function bytesToHex(bytes: Uint8Array) {
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")
+}
+
 function base64UrlEncodeString(value: string) {
-  return Buffer.from(value, "utf8")
-    .toString("base64")
+  return base64EncodeBytes(new TextEncoder().encode(value))
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=+$/g, "")
 }
 
 function base64UrlEncodeBytes(bytes: Uint8Array) {
-  return Buffer.from(bytes)
-    .toString("base64")
+  return base64EncodeBytes(bytes)
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=+$/g, "")
@@ -296,7 +325,7 @@ function pemToArrayBuffer(pem: string) {
     .replace(/-----END [^-]+-----/g, "")
     .replace(/\s+/g, "")
 
-  return Uint8Array.from(Buffer.from(content, "base64")).buffer
+  return base64DecodeToBytes(content).buffer
 }
 
 async function importGitHubPrivateKey() {
@@ -662,12 +691,13 @@ async function signWebhookPayload(secret: string, bodyText: string) {
     new TextEncoder().encode(bodyText)
   )
 
-  return `sha256=${Buffer.from(signature).toString("hex")}`
+  return `sha256=${bytesToHex(new Uint8Array(signature))}`
 }
 
 function timingSafeEqualString(left: string, right: string) {
-  const leftBuffer = Buffer.from(left, "utf8")
-  const rightBuffer = Buffer.from(right, "utf8")
+  const encoder = new TextEncoder()
+  const leftBuffer = encoder.encode(left)
+  const rightBuffer = encoder.encode(right)
   if (leftBuffer.length !== rightBuffer.length) return false
   let mismatch = 0
 
