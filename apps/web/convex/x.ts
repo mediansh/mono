@@ -64,6 +64,28 @@ type XSubscriptionCreateResponse = {
   }>
 }
 
+type XSubscriptionListResponse = {
+  data?: {
+    application_id?: string
+    webhook_id?: string
+    webhook_url?: string
+    subscriptions?: Array<{
+      user_id?: string
+    }>
+  }
+  errors?: Array<{
+    title?: string
+    type?: string
+    detail?: string
+    status?: number
+  }>
+}
+
+type XReplayResponse = {
+  created_at?: string
+  job_id?: string
+}
+
 type XWebhookMention = {
   id?: string | number
   id_str?: string
@@ -119,6 +141,11 @@ type XInspectionResult = {
   }
   subscription: {
     active: boolean
+  }
+  subscriptions: {
+    total: number
+    subscribedUserIds: string[]
+    includesConnectedUser: boolean
   }
   recentDeliveries: Array<{
     _id: Id<"xWebhookDeliveries">
@@ -704,6 +731,87 @@ async function fetchSubscriptionStatus(
   return payload?.data?.subscribed === true
 }
 
+async function listSubscriptionsForWebhook(webhookId: string) {
+  const response = await fetch(
+    `https://api.x.com/2/account_activity/webhooks/${encodeURIComponent(
+      webhookId
+    )}/subscriptions/all/list`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${getXBearerToken()}`,
+      },
+    }
+  )
+
+  const payload = (await response.json()) as XSubscriptionListResponse
+  if (!response.ok) {
+    const message =
+      payload.errors
+        ?.map((error) => error.detail ?? error.title ?? error.type)
+        .filter(Boolean)
+        .join(", ") ?? "Failed to list X webhook subscriptions"
+    throw new Error(message)
+  }
+
+  return {
+    applicationId: payload.data?.application_id ?? null,
+    webhookId: payload.data?.webhook_id ?? webhookId,
+    webhookUrl: payload.data?.webhook_url ?? null,
+    subscribedUserIds: (payload.data?.subscriptions ?? [])
+      .map((subscription) => normalizeId(subscription.user_id))
+      .filter((value): value is string => Boolean(value)),
+  }
+}
+
+function formatReplayTimestamp(date: Date) {
+  const year = date.getUTCFullYear().toString().padStart(4, "0")
+  const month = (date.getUTCMonth() + 1).toString().padStart(2, "0")
+  const day = date.getUTCDate().toString().padStart(2, "0")
+  const hours = date.getUTCHours().toString().padStart(2, "0")
+  const minutes = date.getUTCMinutes().toString().padStart(2, "0")
+  return `${year}${month}${day}${hours}${minutes}`
+}
+
+async function requestReplayJob(webhookId: string, lookbackMinutes: number) {
+  const safeLookbackMinutes = Math.max(1, Math.min(lookbackMinutes, 24 * 60))
+  const toDate = new Date()
+  const fromDate = new Date(toDate.getTime() - safeLookbackMinutes * 60 * 1000)
+  const endpoint = new URL(
+    `https://api.x.com/2/account_activity/replay/webhooks/${encodeURIComponent(
+      webhookId
+    )}/subscriptions/all`
+  )
+  endpoint.searchParams.set("from_date", formatReplayTimestamp(fromDate))
+  endpoint.searchParams.set("to_date", formatReplayTimestamp(toDate))
+
+  const response = await fetch(endpoint.toString(), {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${getXBearerToken()}`,
+    },
+  })
+
+  const payload = (await response.json()) as XReplayResponse
+  if (!response.ok || !payload.job_id) {
+    throw new Error("Failed to create an X replay job")
+  }
+
+  logInfo("Requested X replay job", {
+    webhookId,
+    jobId: payload.job_id,
+    fromDate: endpoint.searchParams.get("from_date"),
+    toDate: endpoint.searchParams.get("to_date"),
+  })
+
+  return {
+    jobId: payload.job_id,
+    createdAt: payload.created_at ?? new Date().toISOString(),
+    fromDate: endpoint.searchParams.get("from_date")!,
+    toDate: endpoint.searchParams.get("to_date")!,
+  }
+}
+
 async function deleteSubscription(webhookId: string, userId: string) {
   const response = await fetch(
     `https://api.x.com/2/account_activity/webhooks/${encodeURIComponent(
@@ -1246,15 +1354,17 @@ export const inspectWorkspaceXIntegration = action({
       throw new Error("No X integration found for this workspace")
     }
 
-    const [recentDeliveries, webhooks]: [
+    const [recentDeliveries, webhooks, subscriptions]: [
       Doc<"xWebhookDeliveries">[],
       XWebhookRecord[],
+      Awaited<ReturnType<typeof listSubscriptionsForWebhook>>,
     ] = await Promise.all([
       ctx.runQuery(internal.x.getRecentWorkspaceWebhookDeliveriesInternal, {
         integrationId: integration._id,
         limit: 10,
       }),
       fetchWebhooks(),
+      listSubscriptionsForWebhook(integration.webhookId),
     ])
 
     const matchingWebhook =
@@ -1277,6 +1387,7 @@ export const inspectWorkspaceXIntegration = action({
       webhookFound: matchingWebhook !== null,
       webhookValid: matchingWebhook?.valid ?? null,
       subscriptionActive,
+      listedSubscriptionCount: subscriptions.subscribedUserIds.length,
       recentDeliveryCount: recentDeliveries.length,
     })
 
@@ -1291,6 +1402,13 @@ export const inspectWorkspaceXIntegration = action({
       subscription: {
         active: subscriptionActive,
       },
+      subscriptions: {
+        total: subscriptions.subscribedUserIds.length,
+        subscribedUserIds: subscriptions.subscribedUserIds,
+        includesConnectedUser: subscriptions.subscribedUserIds.includes(
+          integration.xUserId
+        ),
+      },
       recentDeliveries: recentDeliveries.map((delivery: Doc<"xWebhookDeliveries">) => ({
         _id: delivery._id,
         status: delivery.status,
@@ -1303,6 +1421,42 @@ export const inspectWorkspaceXIntegration = action({
         receivedAt: delivery.receivedAt,
       })),
     }
+  },
+})
+
+export const replayWorkspaceXIntegration = action({
+  args: {
+    workspaceId: v.id("workspaces"),
+    lookbackMinutes: v.optional(v.number()),
+  },
+  handler: async (
+    ctx,
+    args
+  ): Promise<{
+    jobId: string
+    createdAt: string
+    fromDate: string
+    toDate: string
+  }> => {
+    await ctx.runMutation(internal.x.assertWorkspaceAdminAccess, {
+      workspaceId: args.workspaceId,
+    })
+
+    const integration = await ctx.runQuery(
+      internal.x.getWorkspaceIntegrationInternal,
+      {
+        workspaceId: args.workspaceId,
+      }
+    )
+
+    if (!integration) {
+      throw new Error("No X integration found for this workspace")
+    }
+
+    return await requestReplayJob(
+      integration.webhookId,
+      args.lookbackMinutes ?? 30
+    )
   },
 })
 

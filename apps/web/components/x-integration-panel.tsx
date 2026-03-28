@@ -15,6 +15,7 @@ import {
   Link01Icon,
   MessageNotificationIcon,
   RefreshIcon,
+  Rocket01Icon,
   TextIcon,
   Time04Icon,
   Unlink01Icon,
@@ -92,6 +93,11 @@ type XDiagnostics = {
   subscription: {
     active: boolean
   }
+  subscriptions: {
+    total: number
+    subscribedUserIds: string[]
+    includesConnectedUser: boolean
+  }
   recentDeliveries: Array<{
     _id: string
     status: "received" | "accepted" | "ignored" | "error"
@@ -116,6 +122,7 @@ export function XIntegrationPanel() {
   const [settingsInitialized, setSettingsInitialized] = useState(false)
   const [diagnostics, setDiagnostics] = useState<XDiagnostics | null>(null)
   const [isRefreshingDiagnostics, setIsRefreshingDiagnostics] = useState(false)
+  const [isRequestingReplay, setIsRequestingReplay] = useState(false)
   const contextSaveTimer = useRef<NodeJS.Timeout | null>(null)
 
   const integrationState = useQuery(
@@ -125,6 +132,7 @@ export function XIntegrationPanel() {
   const beginConnect = useAction(api.x.beginWorkspaceXConnect)
   const disconnectIntegration = useAction(api.x.disconnectWorkspaceXIntegration)
   const inspectIntegration = useAction(api.x.inspectWorkspaceXIntegration)
+  const replayIntegration = useAction(api.x.replayWorkspaceXIntegration)
   const updateSettings = useMutation(api.x.updateXIntegrationSettings)
 
   const integration = integrationState?.integration ?? null
@@ -267,6 +275,24 @@ export function XIntegrationPanel() {
     }
   }
 
+  async function handleReplay() {
+    if (!workspaceId) return
+    setIsRequestingReplay(true)
+    try {
+      const result = await replayIntegration({
+        workspaceId,
+        lookbackMinutes: 30,
+      })
+      toast.success(
+        `Requested X replay job ${result.jobId} for ${result.fromDate} to ${result.toDate}.`
+      )
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to request an X replay job.")
+    } finally {
+      setIsRequestingReplay(false)
+    }
+  }
+
   if (integration) {
     return (
       <Stagger className="mx-auto w-full max-w-2xl px-10 py-10">
@@ -364,6 +390,10 @@ export function XIntegrationPanel() {
                 <HugeiconsIcon icon={RefreshIcon} size={13} strokeWidth={1.8} />
                 {isRefreshingDiagnostics ? "Refreshing..." : "Refresh"}
               </Button>
+              <Button type="button" variant="outline" size="sm" onClick={handleReplay} disabled={isRequestingReplay}>
+                <HugeiconsIcon icon={Rocket01Icon} size={13} strokeWidth={1.8} />
+                {isRequestingReplay ? "Requesting..." : "Replay 30m"}
+              </Button>
             </div>
             <div className="grid gap-px border-b border-border bg-border md:grid-cols-3">
               <div className="bg-card px-5 py-4">
@@ -389,6 +419,19 @@ export function XIntegrationPanel() {
               <p className="text-[11px] text-muted-foreground/70">
                 Callback URL: {integration.webhookCallbackUrl}
               </p>
+              <p className="mt-1 text-[11px] text-muted-foreground/70">
+                Subscription list: {diagnostics ? `${diagnostics.subscriptions.total} total` : "Loading..."}
+                {diagnostics?.subscriptions.includesConnectedUser === true
+                  ? ` · connected user present`
+                  : diagnostics
+                    ? ` · connected user missing`
+                    : ""}
+              </p>
+              {diagnostics && diagnostics.subscriptions.subscribedUserIds.length > 0 ? (
+                <p className="mt-1 break-all text-[11px] text-muted-foreground/70">
+                  User IDs: {diagnostics.subscriptions.subscribedUserIds.join(", ")}
+                </p>
+              ) : null}
             </div>
             <div className="px-5 py-4">
               <div className="mb-3 flex items-center justify-between">
