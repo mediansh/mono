@@ -799,6 +799,8 @@ export const getWorkspaceGitHubIntegration = query({
 
     return {
       canManage: membership.role === "admin" || membership.role === "owner",
+      callbackUrl: getGitHubCallbackUrl(),
+      webhookUrl: getGitHubWebhookUrl(),
       integration: integration
         ? {
             _id: integration._id,
@@ -811,8 +813,6 @@ export const getWorkspaceGitHubIntegration = query({
             connectedAt: integration.connectedAt,
             lastSyncedAt: integration.lastSyncedAt ?? null,
             issueLinkCount: links.length,
-            callbackUrl: getGitHubCallbackUrl(),
-            webhookUrl: getGitHubWebhookUrl(),
           }
         : null,
     }

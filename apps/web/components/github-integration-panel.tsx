@@ -147,6 +147,8 @@ export function GitHubIntegrationPanel() {
   const disconnectIntegration = useAction(api.github.disconnectWorkspaceGitHubIntegration)
 
   const integration = integrationState?.integration ?? null
+  const callbackUrl = integrationState?.callbackUrl ?? null
+  const webhookUrl = integrationState?.webhookUrl ?? null
 
   useEffect(() => {
     const status = searchParams.get("github_status")
@@ -354,6 +356,29 @@ export function GitHubIntegrationPanel() {
               </div>
             </div>
           </motion.div>
+
+          {(callbackUrl || webhookUrl) && (
+            <motion.div variants={fadeUp} className="rounded-none border border-border bg-card/60 p-5">
+              <p className="mb-3 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">GitHub App Configuration</p>
+              <div className="space-y-2">
+                {callbackUrl && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Setup URL (post-installation redirect)</p>
+                    <p className="mt-0.5 break-all font-mono text-xs text-foreground">{callbackUrl}</p>
+                  </div>
+                )}
+                {webhookUrl && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Webhook URL</p>
+                    <p className="mt-0.5 break-all font-mono text-xs text-foreground">{webhookUrl}</p>
+                  </div>
+                )}
+              </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Ensure these URLs match the Setup URL and Webhook URL in your GitHub App settings.
+              </p>
+            </motion.div>
+          )}
         </div>
       </Stagger>
     )
