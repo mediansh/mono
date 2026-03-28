@@ -159,31 +159,50 @@ function percentEncode(value: string) {
     )
 }
 
+function bytesToBinaryString(bytes: Uint8Array) {
+  let result = ""
+  const chunkSize = 0x8000
+
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    const chunk = bytes.subarray(index, index + chunkSize)
+    result += String.fromCharCode(...chunk)
+  }
+
+  return result
+}
+
+function binaryStringToBytes(value: string) {
+  const bytes = new Uint8Array(value.length)
+  for (let index = 0; index < value.length; index += 1) {
+    bytes[index] = value.charCodeAt(index)
+  }
+  return bytes
+}
+
 function base64UrlEncode(bytes: Uint8Array) {
-  return Buffer.from(bytes)
-    .toString("base64")
+  return btoa(bytesToBinaryString(bytes))
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=+$/g, "")
 }
 
 function base64Encode(bytes: Uint8Array) {
-  return Buffer.from(bytes).toString("base64")
+  return btoa(bytesToBinaryString(bytes))
 }
 
 function decodeBase64(value: string) {
-  return Uint8Array.from(Buffer.from(value, "base64"))
+  return binaryStringToBytes(atob(value))
 }
 
 function timingSafeEqualString(left: string, right: string) {
-  const leftBuffer = Buffer.from(left)
-  const rightBuffer = Buffer.from(right)
-  if (leftBuffer.length !== rightBuffer.length) {
+  const leftBytes = new TextEncoder().encode(left)
+  const rightBytes = new TextEncoder().encode(right)
+  if (leftBytes.length !== rightBytes.length) {
     return false
   }
   let mismatch = 0
-  for (let index = 0; index < leftBuffer.length; index += 1) {
-    mismatch |= leftBuffer[index]! ^ rightBuffer[index]!
+  for (let index = 0; index < leftBytes.length; index += 1) {
+    mismatch |= leftBytes[index]! ^ rightBytes[index]!
   }
   return mismatch === 0
 }
@@ -224,11 +243,11 @@ async function decryptSecret(value: string) {
     throw new Error("Invalid encrypted X token payload")
   }
   const key = await importAesKey()
-  const iv = Uint8Array.from(
-    Buffer.from(ivEncoded.replace(/-/g, "+").replace(/_/g, "/"), "base64")
+  const iv = decodeBase64(
+    ivEncoded.replace(/-/g, "+").replace(/_/g, "/")
   )
-  const payload = Uint8Array.from(
-    Buffer.from(payloadEncoded.replace(/-/g, "+").replace(/_/g, "/"), "base64")
+  const payload = decodeBase64(
+    payloadEncoded.replace(/-/g, "+").replace(/_/g, "/")
   )
   const decrypted = await crypto.subtle.decrypt(
     {
