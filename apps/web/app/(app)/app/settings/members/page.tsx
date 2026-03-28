@@ -1,8 +1,9 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import { useMutation, useQuery } from "convex/react"
 import { Trash, Link as LinkIcon, Envelope } from "@phosphor-icons/react"
+import { motion } from "motion/react"
 import { toast } from "sonner"
 import type { Id } from "@/convex/_generated/dataModel"
 import { api } from "@/convex/_generated/api"
@@ -16,6 +17,24 @@ import {
 import { SettingsAccessState } from "@/components/settings-access-state"
 
 const inviteRoleOptions: WorkspaceInviteRole[] = ["guest", "member", "admin"]
+
+function Stagger({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <motion.div
+      initial="hidden"
+      animate="show"
+      variants={{ show: { transition: { staggerChildren: 0.06 } } }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 8 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] as const } },
+}
 
 function formatExpiry(timestamp: number) {
   return new Intl.DateTimeFormat(undefined, {
@@ -209,17 +228,17 @@ export default function MembersSettingsPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-10 py-10">
+    <Stagger className="mx-auto w-full max-w-2xl px-10 py-10">
       {/* Header */}
-      <div className="mb-8">
+      <motion.div variants={fadeUp} className="mb-8">
         <h2 className="text-base font-semibold">Members</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Invite teammates and manage who has access to this workspace.
         </p>
-      </div>
+      </motion.div>
 
       {/* Invite card */}
-      <div className="rounded-none border border-border bg-card">
+      <motion.div variants={fadeUp} className="rounded-none border border-border bg-card">
         {/* Invite mode tabs */}
         <div className="flex items-center gap-1 border-b border-border px-5 pt-4 pb-0">
           <button
@@ -320,11 +339,11 @@ export default function MembersSettingsPage() {
             </div>
           )}
         </div>
-      </div>
+      </motion.div>
 
       {/* Pending invites */}
       {invites.length > 0 && (
-        <div className="mt-8">
+        <motion.div variants={fadeUp} className="mt-8">
           <h3 className="mb-3 text-sm font-medium">
             Pending invites
             <span className="ml-1.5 text-muted-foreground">({invites.length})</span>
@@ -370,11 +389,11 @@ export default function MembersSettingsPage() {
               ))}
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* Members list */}
-      <div className="mt-8">
+      <motion.div variants={fadeUp} className="mt-8">
         <h3 className="mb-3 text-sm font-medium">
           Members
           <span className="ml-1.5 text-muted-foreground">({members.length})</span>
@@ -443,7 +462,7 @@ export default function MembersSettingsPage() {
             ))}
           </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </Stagger>
   )
 }

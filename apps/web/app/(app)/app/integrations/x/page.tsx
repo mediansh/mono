@@ -1,19 +1,31 @@
 "use client"
 
+import { motion } from "motion/react"
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 8 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] as const } },
+}
+
 export default function XIntegrationPage() {
   return (
-    <div className="mx-auto w-full max-w-2xl px-10 py-10">
+    <motion.div
+      initial="hidden"
+      animate="show"
+      variants={{ show: { transition: { staggerChildren: 0.06 } } }}
+      className="mx-auto w-full max-w-2xl px-10 py-10"
+    >
       <div
         className="flex flex-col gap-6"
       >
-        <div>
+        <motion.div variants={fadeUp}>
           <h2 className="text-lg font-semibold tracking-tight">X (Twitter)</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Turn tweets and mentions into request tasks automatically.
           </p>
-        </div>
+        </motion.div>
 
-        <div className="rounded-none border border-border bg-card p-6">
+        <motion.div variants={fadeUp} className="rounded-none border border-border bg-card p-6">
           <div className="flex items-center gap-4">
             <div className="flex size-10 items-center justify-center rounded-none bg-foreground/5">
               <svg width={20} height={20} viewBox="0 0 24 24" fill="currentColor" className="text-foreground">
@@ -30,14 +42,14 @@ export default function XIntegrationPage() {
               Connect
             </button>
           </div>
-        </div>
+        </motion.div>
 
-        <div className="rounded-none border border-dashed border-border p-6 text-center">
+        <motion.div variants={fadeUp} className="rounded-none border border-dashed border-border p-6 text-center">
           <p className="text-sm text-muted-foreground">
             Once connected, mentions and replies will appear as request tasks with a link back to the original tweet.
           </p>
-        </div>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   )
 }

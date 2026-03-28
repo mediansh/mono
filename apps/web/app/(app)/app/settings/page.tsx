@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, type ReactNode } from "react"
 import { useMutation } from "convex/react"
 import { Image, Trash } from "@phosphor-icons/react"
 import { Facehash } from "facehash"
@@ -9,6 +9,7 @@ import { useWorkspace } from "@/components/workspace-provider"
 import { useRouter } from "next/navigation"
 import { hasWorkspaceAdminPermission } from "@/lib/workspace-permissions"
 import { SettingsAccessState } from "@/components/settings-access-state"
+import { motion } from "motion/react"
 import {
   Dialog,
   DialogContent,
@@ -16,6 +17,24 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@workspace/ui/components/dialog"
+
+function Stagger({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <motion.div
+      initial="hidden"
+      animate="show"
+      variants={{ show: { transition: { staggerChildren: 0.06 } } }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 8 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] as const } },
+}
 
 export default function GeneralSettingsPage() {
   const router = useRouter()
@@ -110,17 +129,17 @@ export default function GeneralSettingsPage() {
   const hasChanges = name.trim() !== currentWorkspace.name || iconFile !== null
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-10 py-10">
+    <Stagger className="mx-auto w-full max-w-2xl px-10 py-10">
       {/* Header */}
-      <div className="mb-8">
+      <motion.div variants={fadeUp} className="mb-8">
         <h2 className="text-base font-semibold">General</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Manage your workspace profile and settings.
         </p>
-      </div>
+      </motion.div>
 
       {/* Workspace profile card */}
-      <form onSubmit={handleSave}>
+      <motion.form variants={fadeUp} onSubmit={handleSave}>
         <div className="rounded-none border border-border bg-card">
           {/* Logo section */}
           <div className="flex items-center gap-4 border-b border-border p-5">
@@ -204,11 +223,11 @@ export default function GeneralSettingsPage() {
             </div>
           </div>
         </div>
-      </form>
+      </motion.form>
 
       {/* Danger zone */}
       {currentWorkspace.role === "owner" ? (
-        <div className="mt-8">
+        <motion.div variants={fadeUp} className="mt-8">
           <h3 className="mb-3 text-sm font-medium text-destructive">Danger zone</h3>
           <div className="rounded-none border border-destructive/20 bg-card">
             <div className="flex items-center justify-between p-5">
@@ -228,7 +247,7 @@ export default function GeneralSettingsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </motion.div>
       ) : null}
 
       {/* Delete confirmation modal */}
@@ -284,6 +303,6 @@ export default function GeneralSettingsPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </Stagger>
   )
 }

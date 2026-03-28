@@ -4,6 +4,7 @@ import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useMutation } from "convex/react"
 import { Image as ImageIcon } from "@phosphor-icons/react"
+import { motion } from "motion/react"
 import { Facehash } from "facehash"
 import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
@@ -98,7 +99,12 @@ export default function WorkspaceSetupPage() {
   return (
     <div className="flex min-h-svh">
       {/* Left half - Form */}
-      <div className="flex w-full flex-col justify-center px-8 py-12 sm:px-12 lg:w-1/2 lg:px-20">
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+        className="flex w-full flex-col justify-center px-8 py-12 sm:px-12 lg:w-1/2 lg:px-20"
+      >
         <div className="mx-auto w-full max-w-sm">
           {/* Logo */}
           <div className="mb-10">
@@ -188,12 +194,23 @@ export default function WorkspaceSetupPage() {
             </button>
           </form>
         </div>
-      </div>
+      </motion.div>
 
       {/* Right half - Branding */}
-      <div className="hidden flex-col items-center justify-center bg-card border-l border-border lg:flex lg:w-1/2">
-        <Logo symbolOnly className="size-32" />
-      </div>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6, delay: 0.15, ease: "easeOut" }}
+        className="hidden flex-col items-center justify-center bg-card border-l border-border lg:flex lg:w-1/2"
+      >
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+        >
+          <Logo symbolOnly className="size-32" />
+        </motion.div>
+      </motion.div>
     </div>
   )
 }

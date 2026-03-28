@@ -6,6 +6,7 @@ import { useMutation, useQuery } from "convex/react"
 import { useAuth } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
 import { SealCheck, Link as LinkIcon, Users } from "@phosphor-icons/react"
+import { motion } from "motion/react"
 import { toast } from "sonner"
 import { api } from "@/convex/_generated/api"
 import { RoleBadge } from "@/components/role-badge"
@@ -41,7 +42,10 @@ export function InvitePageClient({ token }: { token: string }) {
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(4,150,255,0.16),_transparent_38%),linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.95))] px-6 py-20 dark:bg-[radial-gradient(circle_at_top,_rgba(4,150,255,0.18),_transparent_32%),linear-gradient(180deg,_rgba(10,15,23,1),_rgba(10,15,23,0.96))]">
-      <div
+      <motion.div
+        initial={{ opacity: 0, y: 16, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
         className="mx-auto flex w-full max-w-xl flex-col gap-6 rounded-none border-2 border-border bg-background p-8 shadow-none"
       >
         <div className="flex size-14 items-center justify-center rounded-none border border-border bg-accent">
@@ -133,7 +137,7 @@ export function InvitePageClient({ token }: { token: string }) {
             )}
           </>
         )}
-      </div>
+      </motion.div>
     </main>
   )
 }

@@ -2,6 +2,7 @@
 
 import { createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react"
 import { createPortal } from "react-dom"
+import { motion } from "motion/react"
 import { useConvexAuth, useMutation, useQuery } from "convex/react"
 import { toast } from "sonner"
 import {
@@ -334,12 +335,20 @@ function BoardLoadingState() {
 function EmptyBoardState({ onCreateTask }: { onCreateTask: () => void }) {
   return (
     <div className="flex h-full items-center justify-center px-6">
-      <div
+      <motion.div
+        initial={{ opacity: 0, y: 12, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
         className="w-full max-w-md border-2 border-border bg-card p-8 text-center"
       >
-        <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-none bg-accent text-foreground">
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.3, delay: 0.1, ease: [0.25, 0.1, 0.25, 1] }}
+          className="mx-auto mb-4 flex size-12 items-center justify-center rounded-none bg-accent text-foreground"
+        >
           <SealCheck size={22} weight="fill" />
-        </div>
+        </motion.div>
         <h2 className="text-pretty text-xl font-semibold tracking-tight">No tasks yet</h2>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
           This workspace starts empty now. Create your first task and the board will fill in immediately.
@@ -350,7 +359,7 @@ function EmptyBoardState({ onCreateTask }: { onCreateTask: () => void }) {
         >
           Create first task
         </button>
-      </div>
+      </motion.div>
     </div>
   )
 }

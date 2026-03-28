@@ -3,11 +3,17 @@
 import { useState, useEffect, useId } from "react"
 import { useMutation } from "convex/react"
 import { Plus, Trash } from "@phosphor-icons/react"
+import { motion, AnimatePresence } from "motion/react"
 import { DEFAULT_WORKSPACE_LABELS } from "@/lib/task-board"
 import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
 import { hasWorkspaceAdminPermission } from "@/lib/workspace-permissions"
 import { SettingsAccessState } from "@/components/settings-access-state"
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 8 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] as const } },
+}
 
 export default function LabelsSettingsPage() {
   const { currentWorkspace } = useWorkspace()
@@ -71,22 +77,33 @@ export default function LabelsSettingsPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-10 py-10">
+    <motion.div
+      initial="hidden"
+      animate="show"
+      variants={{ show: { transition: { staggerChildren: 0.06 } } }}
+      className="mx-auto w-full max-w-2xl px-10 py-10"
+    >
       {/* Header */}
-      <div className="mb-8">
+      <motion.div variants={fadeUp} className="mb-8">
         <h2 className="text-base font-semibold">Labels</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Manage the labels available for tasks in this workspace.
         </p>
-      </div>
+      </motion.div>
 
       {/* Labels card */}
-      <div className="rounded-none border border-border bg-card">
+      <motion.div variants={fadeUp} className="rounded-none border border-border bg-card">
         <div className="p-5">
           <div className="flex flex-col gap-2">
+            <AnimatePresence initial={false}>
               {labels.map((label, index) => (
-                <div
+                <motion.div
                   key={label.key}
+                  layout
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
                   className="group flex items-center gap-2.5"
                 >
                   <input
@@ -118,8 +135,9 @@ export default function LabelsSettingsPage() {
                   >
                     <Trash size={14} />
                   </button>
-                </div>
+                </motion.div>
               ))}
+            </AnimatePresence>
           </div>
 
           <button
@@ -153,7 +171,7 @@ export default function LabelsSettingsPage() {
             </button>
           </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }
