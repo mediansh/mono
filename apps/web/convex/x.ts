@@ -8,7 +8,7 @@ import {
   query,
 } from "./_generated/server"
 import { internal } from "./_generated/api"
-import type { Id } from "./_generated/dataModel"
+import type { Doc, Id } from "./_generated/dataModel"
 import {
   requireWorkspaceAccess,
   requireWorkspaceAdminAccess,
@@ -107,6 +107,52 @@ type XWebhookPayload = {
     job_id?: string
     webhook_id?: string
   }
+}
+
+type XInspectionResult = {
+  callbackUrl: string
+  integrationUsername: string
+  webhook: {
+    id: string
+    found: boolean
+    valid: boolean | null
+  }
+  subscription: {
+    active: boolean
+  }
+  recentDeliveries: Array<{
+    _id: Id<"xWebhookDeliveries">
+    status: Doc<"xWebhookDeliveries">["status"]
+    eventKind: Doc<"xWebhookDeliveries">["eventKind"]
+    summary: string
+    forUserId: string | null
+    tweetCreateEventCount: number | null
+    acceptedPostCount: number | null
+    ignoredReason: string | null
+    receivedAt: number
+  }>
+}
+
+function logInfo(message: string, details?: Record<string, unknown>) {
+  if (details) {
+    console.log("[convex:x]", message, details)
+    return
+  }
+
+  console.log("[convex:x]", message)
+}
+
+function logError(
+  message: string,
+  error: unknown,
+  details?: Record<string, unknown>
+) {
+  if (details) {
+    console.error("[convex:x]", message, details, error)
+    return
+  }
+
+  console.error("[convex:x]", message, error)
 }
 
 function getRequiredEnv(name: string) {
@@ -507,7 +553,12 @@ async function fetchWebhooks() {
   if (!response.ok) {
     throw new Error("Failed to load X webhooks")
   }
-  return data.data?.webhooks ?? []
+  const webhooks = data.data?.webhooks ?? []
+  logInfo("Loaded X webhooks", {
+    webhookCount: webhooks.length,
+    callbackUrl: getWebhookUrl(),
+  })
+  return webhooks
 }
 
 async function createWebhook(url: string) {
@@ -528,7 +579,12 @@ async function createWebhook(url: string) {
   if (!response.ok) {
     throw new Error("Failed to create X webhook")
   }
-  return data.data?.id ?? data.data?.webhook_id ?? null
+  const webhookId = data.data?.id ?? data.data?.webhook_id ?? null
+  logInfo("Created X webhook", {
+    webhookId,
+    callbackUrl: url,
+  })
+  return webhookId
 }
 
 async function validateWebhook(webhookId: string) {
@@ -544,6 +600,9 @@ async function validateWebhook(webhookId: string) {
   if (!response.ok) {
     throw new Error("Failed to validate X webhook")
   }
+  logInfo("Validated X webhook", {
+    webhookId,
+  })
 }
 
 async function ensureWebhook() {
@@ -554,6 +613,11 @@ async function ensureWebhook() {
 
   const webhookId = existing?.id ?? existing?.webhook_id ?? null
   if (webhookId) {
+    logInfo("Reusing existing X webhook", {
+      webhookId,
+      callbackUrl,
+      valid: existing?.valid ?? null,
+    })
     if (existing?.valid === false) {
       await validateWebhook(webhookId)
     }
@@ -593,6 +657,9 @@ async function createSubscription(
 
   const payload = (await response.json()) as XSubscriptionCreateResponse
   if (response.ok && payload.data?.subscribed) {
+    logInfo("Created X subscription", {
+      webhookId,
+    })
     return
   }
 
@@ -600,6 +667,9 @@ async function createSubscription(
     (error) => error.title === "DuplicateSubscriptionFailed"
   )
   if (duplicate) {
+    logInfo("X subscription already existed", {
+      webhookId,
+    })
     return
   }
 
@@ -607,6 +677,31 @@ async function createSubscription(
     payload.errors?.map((error) => error.message ?? error.title).join(", ") ??
     "Failed to subscribe the X account"
   throw new Error(message)
+}
+
+async function fetchSubscriptionStatus(
+  webhookId: string,
+  accessToken: string,
+  accessTokenSecret: string
+) {
+  const endpoint = `https://api.x.com/2/account_activity/webhooks/${encodeURIComponent(
+    webhookId
+  )}/subscriptions/all`
+  const response = await signedUserRequest(
+    "GET",
+    endpoint,
+    accessToken,
+    accessTokenSecret
+  )
+  const payload = (await response.json().catch(() => null)) as
+    | { data?: { subscribed?: boolean } }
+    | null
+
+  if (!response.ok) {
+    throw new Error("Failed to inspect the X subscription")
+  }
+
+  return payload?.data?.subscribed === true
 }
 
 async function deleteSubscription(webhookId: string, userId: string) {
@@ -751,6 +846,15 @@ export const getWorkspaceXIntegration = query({
       .query("xWorkspaceIntegrations")
       .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
       .unique()
+    const recentDeliveries = integration
+      ? await ctx.db
+          .query("xWebhookDeliveries")
+          .withIndex("by_integration_received_at", (q) =>
+            q.eq("integrationId", integration._id)
+          )
+          .order("desc")
+          .take(10)
+      : []
 
     return {
       canManage: membership.role === "admin" || membership.role === "owner",
@@ -770,6 +874,18 @@ export const getWorkspaceXIntegration = query({
             feedbackProcessingLastError:
               integration.feedbackProcessingLastError ?? null,
             additionalContext: integration.additionalContext ?? "",
+            webhookCallbackUrl: getWebhookUrl(),
+            recentDeliveries: recentDeliveries.map((delivery) => ({
+              _id: delivery._id,
+              status: delivery.status,
+              eventKind: delivery.eventKind,
+              summary: delivery.summary,
+              forUserId: delivery.forUserId ?? null,
+              tweetCreateEventCount: delivery.tweetCreateEventCount ?? null,
+              acceptedPostCount: delivery.acceptedPostCount ?? null,
+              ignoredReason: delivery.ignoredReason ?? null,
+              receivedAt: delivery.receivedAt,
+            })),
           }
         : null,
     }
@@ -794,6 +910,22 @@ export const getWorkspaceIntegrationInternal = internalQuery({
       .query("xWorkspaceIntegrations")
       .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
       .unique()
+  },
+})
+
+export const getRecentWorkspaceWebhookDeliveriesInternal = internalQuery({
+  args: {
+    integrationId: v.id("xWorkspaceIntegrations"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("xWebhookDeliveries")
+      .withIndex("by_integration_received_at", (q) =>
+        q.eq("integrationId", args.integrationId)
+      )
+      .order("desc")
+      .take(Math.min(args.limit ?? 10, 25))
   },
 })
 
@@ -872,8 +1004,17 @@ export const clearWorkspaceXIntegrationInternal = internalMutation({
           q.eq("integrationId", integration._id)
         )
         .collect()
+      const deliveries = await ctx.db
+        .query("xWebhookDeliveries")
+        .withIndex("by_integration_received_at", (q) =>
+          q.eq("integrationId", integration._id)
+        )
+        .collect()
 
       await Promise.all(posts.map((post) => ctx.db.delete(post._id)))
+      await Promise.all(
+        deliveries.map((delivery) => ctx.db.delete(delivery._id))
+      )
       await ctx.db.delete(integration._id)
     }
 
@@ -911,8 +1052,17 @@ export const saveWorkspaceIntegrationInternal = internalMutation({
           q.eq("integrationId", existing._id)
         )
         .collect()
+      const deliveries = await ctx.db
+        .query("xWebhookDeliveries")
+        .withIndex("by_integration_received_at", (q) =>
+          q.eq("integrationId", existing._id)
+        )
+        .collect()
 
       await Promise.all(posts.map((post) => ctx.db.delete(post._id)))
+      await Promise.all(
+        deliveries.map((delivery) => ctx.db.delete(delivery._id))
+      )
       await ctx.db.delete(existing._id)
     }
 
@@ -928,6 +1078,37 @@ export const saveWorkspaceIntegrationInternal = internalMutation({
       connectedAt: Date.now(),
       connectedByUserId: args.connectedByUserId,
       feedbackProcessingState: "idle",
+    })
+  },
+})
+
+export const logWebhookDeliveryInternal = internalMutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    integrationId: v.id("xWorkspaceIntegrations"),
+    status: v.union(
+      v.literal("received"),
+      v.literal("accepted"),
+      v.literal("ignored"),
+      v.literal("error")
+    ),
+    eventKind: v.union(
+      v.literal("crc"),
+      v.literal("tweet_create"),
+      v.literal("replay_status"),
+      v.literal("other")
+    ),
+    summary: v.string(),
+    forUserId: v.optional(v.string()),
+    tweetCreateEventCount: v.optional(v.number()),
+    acceptedPostCount: v.optional(v.number()),
+    ignoredReason: v.optional(v.string()),
+    requestId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("xWebhookDeliveries", {
+      ...args,
+      receivedAt: Date.now(),
     })
   },
 })
@@ -969,6 +1150,12 @@ export const beginWorkspaceXConnect = action({
     if (!["http:", "https:"].includes(redirectUrl.protocol)) {
       throw new Error("Invalid redirect URL")
     }
+
+    logInfo("Starting X OAuth connect flow", {
+      workspaceId: args.workspaceId,
+      callbackUrl: getOAuthCallbackUrl(),
+      redirectUrl: redirectUrl.toString(),
+    })
 
     const state = await requestOAuthToken({
       callbackUrl: getOAuthCallbackUrl(),
@@ -1039,6 +1226,86 @@ export const disconnectWorkspaceXIntegration = action({
   },
 })
 
+export const inspectWorkspaceXIntegration = action({
+  args: {
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args): Promise<XInspectionResult> => {
+    await ctx.runMutation(internal.x.assertWorkspaceAdminAccess, {
+      workspaceId: args.workspaceId,
+    })
+
+    const integration = await ctx.runQuery(
+      internal.x.getWorkspaceIntegrationInternal,
+      {
+        workspaceId: args.workspaceId,
+      }
+    )
+
+    if (!integration) {
+      throw new Error("No X integration found for this workspace")
+    }
+
+    const [recentDeliveries, webhooks]: [
+      Doc<"xWebhookDeliveries">[],
+      XWebhookRecord[],
+    ] = await Promise.all([
+      ctx.runQuery(internal.x.getRecentWorkspaceWebhookDeliveriesInternal, {
+        integrationId: integration._id,
+        limit: 10,
+      }),
+      fetchWebhooks(),
+    ])
+
+    const matchingWebhook =
+      webhooks.find((webhook: XWebhookRecord) => webhook.url === getWebhookUrl()) ??
+      null
+
+    const accessToken = await decryptSecret(integration.accessTokenEncrypted)
+    const accessTokenSecret = await decryptSecret(
+      integration.accessTokenSecretEncrypted
+    )
+    const subscriptionActive = await fetchSubscriptionStatus(
+      integration.webhookId,
+      accessToken,
+      accessTokenSecret
+    )
+
+    logInfo("Inspected X integration", {
+      workspaceId: args.workspaceId,
+      integrationId: integration._id,
+      webhookFound: matchingWebhook !== null,
+      webhookValid: matchingWebhook?.valid ?? null,
+      subscriptionActive,
+      recentDeliveryCount: recentDeliveries.length,
+    })
+
+    return {
+      callbackUrl: getWebhookUrl(),
+      integrationUsername: integration.username,
+      webhook: {
+        id: integration.webhookId,
+        found: matchingWebhook !== null,
+        valid: matchingWebhook?.valid ?? null,
+      },
+      subscription: {
+        active: subscriptionActive,
+      },
+      recentDeliveries: recentDeliveries.map((delivery: Doc<"xWebhookDeliveries">) => ({
+        _id: delivery._id,
+        status: delivery.status,
+        eventKind: delivery.eventKind,
+        summary: delivery.summary,
+        forUserId: delivery.forUserId ?? null,
+        tweetCreateEventCount: delivery.tweetCreateEventCount ?? null,
+        acceptedPostCount: delivery.acceptedPostCount ?? null,
+        ignoredReason: delivery.ignoredReason ?? null,
+        receivedAt: delivery.receivedAt,
+      })),
+    }
+  },
+})
+
 export const recordInboundPostInternal = internalMutation({
   args: {
     integrationId: v.id("xWorkspaceIntegrations"),
@@ -1055,6 +1322,10 @@ export const recordInboundPostInternal = internalMutation({
   handler: async (ctx, args) => {
     const integration = await ctx.db.get(args.integrationId)
     if (!integration) {
+      logInfo("Skipped inbound X post because integration was missing", {
+        integrationId: args.integrationId,
+        postId: args.postId,
+      })
       return {
         accepted: false,
         duplicate: false,
@@ -1069,6 +1340,10 @@ export const recordInboundPostInternal = internalMutation({
       .unique()
 
     if (existingPost) {
+      logInfo("Skipped duplicate inbound X post", {
+        integrationId: args.integrationId,
+        postId: args.postId,
+      })
       return {
         accepted: false,
         duplicate: true,
@@ -1098,6 +1373,13 @@ export const recordInboundPostInternal = internalMutation({
 
     await ctx.scheduler.runAfter(0, internal.xFeedback.scheduleFeedbackDetection, {
       integrationId: args.integrationId,
+    })
+
+    logInfo("Stored inbound X post", {
+      integrationId: args.integrationId,
+      workspaceId: integration.workspaceId,
+      postId: args.postId,
+      authorUsername: args.authorUsername,
     })
 
     return {
@@ -1148,6 +1430,11 @@ export const xOAuthCallback = httpAction(async (ctx, request) => {
   }
 
   try {
+    logInfo("Completing X OAuth callback", {
+      workspaceId: state.workspaceId,
+      requestToken,
+    })
+
     const requestTokenSecret = await decryptSecret(
       state.requestTokenSecretEncrypted
     )
@@ -1183,6 +1470,13 @@ export const xOAuthCallback = httpAction(async (ctx, request) => {
       stateId: state._id,
     })
 
+    logInfo("Completed X integration connect", {
+      workspaceId: state.workspaceId,
+      xUserId: me.id,
+      username: me.username,
+      webhookId,
+    })
+
     return Response.redirect(
       formatStatusRedirect(
         state.redirectUrl,
@@ -1192,6 +1486,10 @@ export const xOAuthCallback = httpAction(async (ctx, request) => {
       302
     )
   } catch (error) {
+    logError("Failed to complete X OAuth callback", error, {
+      workspaceId: state.workspaceId,
+      requestToken,
+    })
     const message =
       error instanceof Error ? error.message : "Failed to connect the X account"
     return Response.redirect(
@@ -1215,6 +1513,10 @@ export const xWebhook = httpAction(async (ctx, request) => {
       getXApiSecret(),
       crcToken
     )}`
+
+    logInfo("Responded to X webhook CRC check", {
+      callbackUrl: getWebhookUrl(),
+    })
 
     return Response.json({ response_token: responseToken })
   }
@@ -1241,6 +1543,10 @@ export const xWebhook = httpAction(async (ctx, request) => {
   const payload = JSON.parse(bodyText) as XWebhookPayload
   const forUserId = normalizeId(payload.for_user_id)
   if (!forUserId) {
+    logInfo("Ignored X webhook without for_user_id", {
+      hasReplayStatus: Boolean(payload.replay_job_status),
+      tweetCreateEventCount: payload.tweet_create_events?.length ?? 0,
+    })
     return new Response("Ignored", { status: 200 })
   }
 
@@ -1248,24 +1554,98 @@ export const xWebhook = httpAction(async (ctx, request) => {
     xUserId: forUserId,
   })
   if (!integration) {
+    logInfo("Ignored X webhook for unknown subscribed user", {
+      forUserId,
+      tweetCreateEventCount: payload.tweet_create_events?.length ?? 0,
+    })
     return new Response("Ignored", { status: 200 })
   }
 
-  const inboundPosts = extractRelevantInboundPosts(payload, integration)
-  for (const post of inboundPosts) {
-    await ctx.runMutation(internal.x.recordInboundPostInternal, {
-      integrationId: integration._id,
-      forUserId: post.forUserId,
-      postId: post.postId,
-      permalink: post.permalink,
-      authorId: post.authorId,
-      authorUsername: post.authorUsername,
-      authorName: post.authorName,
-      content: post.content,
-      inReplyToUserId: post.inReplyToUserId,
-      postCreatedAt: post.postCreatedAt,
-    })
-  }
+  const tweetCreateEventCount = payload.tweet_create_events?.length ?? 0
+  const eventKind = payload.replay_job_status
+    ? "replay_status"
+    : tweetCreateEventCount > 0
+      ? "tweet_create"
+      : "other"
 
-  return new Response("OK", { status: 200 })
+  try {
+    const inboundPosts = extractRelevantInboundPosts(payload, integration)
+    let acceptedPostCount = 0
+
+    logInfo("Received X webhook delivery", {
+      integrationId: integration._id,
+      workspaceId: integration.workspaceId,
+      forUserId,
+      eventKind,
+      tweetCreateEventCount,
+      acceptedCandidateCount: inboundPosts.length,
+    })
+
+    for (const post of inboundPosts) {
+      const result = await ctx.runMutation(internal.x.recordInboundPostInternal, {
+        integrationId: integration._id,
+        forUserId: post.forUserId,
+        postId: post.postId,
+        permalink: post.permalink,
+        authorId: post.authorId,
+        authorUsername: post.authorUsername,
+        authorName: post.authorName,
+        content: post.content,
+        inReplyToUserId: post.inReplyToUserId,
+        postCreatedAt: post.postCreatedAt,
+      })
+      if (result.accepted) {
+        acceptedPostCount += 1
+      }
+    }
+
+    const ignoredReason =
+      tweetCreateEventCount > 0 && acceptedPostCount === 0
+        ? "No tweet_create events matched the current mention/reply filters."
+        : undefined
+
+    await ctx.runMutation(internal.x.logWebhookDeliveryInternal, {
+      workspaceId: integration.workspaceId,
+      integrationId: integration._id,
+      status: acceptedPostCount > 0 ? "accepted" : "ignored",
+      eventKind,
+      summary:
+        acceptedPostCount > 0
+          ? `Accepted ${acceptedPostCount} inbound post${acceptedPostCount === 1 ? "" : "s"}.`
+          : tweetCreateEventCount > 0
+            ? "Received tweet_create events, but none matched the current filters."
+            : payload.replay_job_status
+              ? "Received replay status update from X."
+              : "Received an X webhook delivery with no tweet_create events.",
+      forUserId,
+      tweetCreateEventCount,
+      acceptedPostCount,
+      ignoredReason,
+      requestId: request.headers.get("x-request-id") ?? undefined,
+    })
+
+    return new Response("OK", { status: 200 })
+  } catch (error) {
+    logError("Failed to process X webhook delivery", error, {
+      integrationId: integration._id,
+      workspaceId: integration.workspaceId,
+      forUserId,
+      eventKind,
+      tweetCreateEventCount,
+    })
+    await ctx.runMutation(internal.x.logWebhookDeliveryInternal, {
+      workspaceId: integration.workspaceId,
+      integrationId: integration._id,
+      status: "error",
+      eventKind,
+      summary: "Failed to process an inbound X webhook delivery.",
+      forUserId,
+      tweetCreateEventCount,
+      acceptedPostCount: 0,
+      ignoredReason:
+        error instanceof Error ? error.message : "Unknown X webhook error",
+      requestId: request.headers.get("x-request-id") ?? undefined,
+    })
+    return new Response("Error", { status: 500 })
+  }
 })

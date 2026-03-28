@@ -226,6 +226,32 @@ export default defineSchema({
     .index("by_integration_created_at", ["integrationId", "postCreatedAt"])
     .index("by_workspace_created_at", ["workspaceId", "postCreatedAt"]),
 
+  xWebhookDeliveries: defineTable({
+    workspaceId: v.id("workspaces"),
+    integrationId: v.id("xWorkspaceIntegrations"),
+    status: v.union(
+      v.literal("received"),
+      v.literal("accepted"),
+      v.literal("ignored"),
+      v.literal("error")
+    ),
+    eventKind: v.union(
+      v.literal("crc"),
+      v.literal("tweet_create"),
+      v.literal("replay_status"),
+      v.literal("other")
+    ),
+    summary: v.string(),
+    forUserId: v.optional(v.string()),
+    tweetCreateEventCount: v.optional(v.number()),
+    acceptedPostCount: v.optional(v.number()),
+    ignoredReason: v.optional(v.string()),
+    requestId: v.optional(v.string()),
+    receivedAt: v.number(),
+  })
+    .index("by_workspace_received_at", ["workspaceId", "receivedAt"])
+    .index("by_integration_received_at", ["integrationId", "receivedAt"]),
+
   discordMessages: defineTable({
     workspaceId: v.id("workspaces"),
     integrationId: v.id("discordWorkspaceIntegrations"),

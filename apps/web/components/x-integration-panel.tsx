@@ -14,6 +14,7 @@ import {
   Alert02Icon,
   Link01Icon,
   MessageNotificationIcon,
+  RefreshIcon,
   TextIcon,
   Time04Icon,
   Unlink01Icon,
@@ -80,6 +81,30 @@ function XIntegrationSkeleton() {
   )
 }
 
+type XDiagnostics = {
+  callbackUrl: string
+  integrationUsername: string
+  webhook: {
+    id: string
+    found: boolean
+    valid: boolean | null
+  }
+  subscription: {
+    active: boolean
+  }
+  recentDeliveries: Array<{
+    _id: string
+    status: "received" | "accepted" | "ignored" | "error"
+    eventKind: "crc" | "tweet_create" | "replay_status" | "other"
+    summary: string
+    forUserId: string | null
+    tweetCreateEventCount: number | null
+    acceptedPostCount: number | null
+    ignoredReason: string | null
+    receivedAt: number
+  }>
+}
+
 export function XIntegrationPanel() {
   const { currentWorkspace } = useWorkspace()
   const router = useRouter()
@@ -89,6 +114,8 @@ export function XIntegrationPanel() {
   const [disconnectOpen, setDisconnectOpen] = useState(false)
   const [additionalContext, setAdditionalContext] = useState("")
   const [settingsInitialized, setSettingsInitialized] = useState(false)
+  const [diagnostics, setDiagnostics] = useState<XDiagnostics | null>(null)
+  const [isRefreshingDiagnostics, setIsRefreshingDiagnostics] = useState(false)
   const contextSaveTimer = useRef<NodeJS.Timeout | null>(null)
 
   const integrationState = useQuery(
@@ -97,6 +124,7 @@ export function XIntegrationPanel() {
   )
   const beginConnect = useAction(api.x.beginWorkspaceXConnect)
   const disconnectIntegration = useAction(api.x.disconnectWorkspaceXIntegration)
+  const inspectIntegration = useAction(api.x.inspectWorkspaceXIntegration)
   const updateSettings = useMutation(api.x.updateXIntegrationSettings)
 
   const integration = integrationState?.integration ?? null
@@ -126,6 +154,36 @@ export function XIntegrationPanel() {
 
     router.replace("/app/integrations/x")
   }, [router, searchParams])
+
+  useEffect(() => {
+    if (!integration || !workspaceId || diagnostics) {
+      return
+    }
+
+    const connectedWorkspaceId = workspaceId
+    let isActive = true
+
+    async function loadDiagnostics() {
+      setIsRefreshingDiagnostics(true)
+      try {
+        const result = await inspectIntegration({ workspaceId: connectedWorkspaceId })
+        if (!isActive) return
+        setDiagnostics(result as XDiagnostics)
+      } catch {
+        if (!isActive) return
+      } finally {
+        if (isActive) {
+          setIsRefreshingDiagnostics(false)
+        }
+      }
+    }
+
+    void loadDiagnostics()
+
+    return () => {
+      isActive = false
+    }
+  }, [diagnostics, inspectIntegration, integration, workspaceId])
 
   const processingLabel = useMemo(() => {
     if (!integration) return "Idle"
@@ -192,6 +250,20 @@ export function XIntegrationPanel() {
       toast.error(error instanceof Error ? error.message : "Failed to disconnect X.")
     } finally {
       setIsDisconnecting(false)
+    }
+  }
+
+  async function handleRefreshDiagnostics() {
+    if (!workspaceId) return
+    setIsRefreshingDiagnostics(true)
+    try {
+      const result = await inspectIntegration({ workspaceId })
+      setDiagnostics(result as XDiagnostics)
+      toast.success("X diagnostics refreshed.")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to refresh X diagnostics.")
+    } finally {
+      setIsRefreshingDiagnostics(false)
     }
   }
 
@@ -278,6 +350,79 @@ export function XIntegrationPanel() {
               <p className="text-sm text-foreground">{integration.feedbackProcessingLastError}</p>
             </motion.div>
           ) : null}
+
+          <motion.div variants={fadeUp} className="rounded-none border border-border bg-card">
+            <div className="flex items-center gap-3 border-b border-border px-5 py-3.5">
+              <HugeiconsIcon icon={Alert02Icon} size={15} strokeWidth={1.8} className="text-muted-foreground" />
+              <div className="flex-1">
+                <h3 className="text-sm font-medium">Delivery diagnostics</h3>
+                <p className="text-xs text-muted-foreground">
+                  Check whether X sees the webhook and whether the connected account is subscribed.
+                </p>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={handleRefreshDiagnostics} disabled={isRefreshingDiagnostics}>
+                <HugeiconsIcon icon={RefreshIcon} size={13} strokeWidth={1.8} />
+                {isRefreshingDiagnostics ? "Refreshing..." : "Refresh"}
+              </Button>
+            </div>
+            <div className="grid gap-px border-b border-border bg-border md:grid-cols-3">
+              <div className="bg-card px-5 py-4">
+                <p className="mb-1 text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">Webhook</p>
+                <p className="text-sm text-foreground">
+                  {diagnostics ? (diagnostics.webhook.found ? "Found on X" : "Missing on X") : "Loading..."}
+                </p>
+              </div>
+              <div className="bg-card px-5 py-4">
+                <p className="mb-1 text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">Webhook Valid</p>
+                <p className="text-sm text-foreground">
+                  {diagnostics ? (diagnostics.webhook.valid === null ? "Unknown" : diagnostics.webhook.valid ? "Valid" : "Invalid") : "Loading..."}
+                </p>
+              </div>
+              <div className="bg-card px-5 py-4">
+                <p className="mb-1 text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">Subscription</p>
+                <p className="text-sm text-foreground">
+                  {diagnostics ? (diagnostics.subscription.active ? `Active for @${diagnostics.integrationUsername}` : "Not active") : "Loading..."}
+                </p>
+              </div>
+            </div>
+            <div className="border-b border-border px-5 py-3">
+              <p className="text-[11px] text-muted-foreground/70">
+                Callback URL: {integration.webhookCallbackUrl}
+              </p>
+            </div>
+            <div className="px-5 py-4">
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">Recent deliveries</p>
+                <p className="text-[11px] text-muted-foreground/70">
+                  {integration.recentDeliveries.length} stored
+                </p>
+              </div>
+              {integration.recentDeliveries.length > 0 ? (
+                <div className="flex flex-col gap-2">
+                  {integration.recentDeliveries.map((delivery) => (
+                    <div key={delivery._id} className="border border-border px-3 py-2.5 text-xs">
+                      <div className="mb-1 flex items-center justify-between gap-3">
+                        <span className="font-medium text-foreground">{delivery.summary}</span>
+                        <span className="text-muted-foreground">{formatTimestamp(delivery.receivedAt)}</span>
+                      </div>
+                      <p className="text-muted-foreground">
+                        {delivery.eventKind} · status {delivery.status}
+                        {delivery.tweetCreateEventCount !== null ? ` · tweets ${delivery.tweetCreateEventCount}` : ""}
+                        {delivery.acceptedPostCount !== null ? ` · accepted ${delivery.acceptedPostCount}` : ""}
+                      </p>
+                      {delivery.ignoredReason ? (
+                        <p className="mt-1 text-muted-foreground">{delivery.ignoredReason}</p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No webhook deliveries have been recorded for this workspace yet.
+                </p>
+              )}
+            </div>
+          </motion.div>
 
           <motion.div variants={fadeUp} className="rounded-none border border-border bg-card">
             <div className="flex items-center gap-3 border-b border-border px-5 py-3.5">
