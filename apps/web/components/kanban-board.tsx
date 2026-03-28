@@ -219,24 +219,12 @@ function patchTaskDocs(
 }
 
 function mergeLiveTaskDocs(currentTasks: TaskDoc[] | undefined, liveTasks: Doc<"tasks">[]) {
-  const pendingTasks = (currentTasks ?? []).filter((task) => task._syncStatus === "pending")
+  const liveTaskIds = new Set(liveTasks.map((task) => String(task._id)))
+  const pendingTasks = (currentTasks ?? []).filter(
+    (task) => task._syncStatus === "pending" && !liveTaskIds.has(task._id)
+  )
 
-  // Build a map of local tasks that were optimistically moved (status/order differs from server)
-  const localByIdMap = new Map<string, TaskDoc>()
-  for (const task of currentTasks ?? []) {
-    if (!task._syncStatus) localByIdMap.set(task._id, task)
-  }
-
-  const merged = liveTasks.map((liveTask) => {
-    const localTask = localByIdMap.get(liveTask._id)
-    if (localTask && (localTask.status !== liveTask.status || localTask.order !== liveTask.order)) {
-      // Keep the local optimistic version until server catches up
-      return localTask
-    }
-    return liveTask
-  })
-
-  return sortTaskDocs([...merged, ...pendingTasks])
+  return sortTaskDocs([...liveTasks, ...pendingTasks])
 }
 
 function areTaskDocListsEqual(left: TaskDoc[] | undefined, right: TaskDoc[]) {
