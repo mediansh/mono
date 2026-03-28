@@ -362,6 +362,20 @@ function parseOAuthFormBody(value: string): OAuthTokenResponse {
 async function fetchTextOrThrow(response: Response) {
   const text = await response.text()
   if (!response.ok) {
+    if (
+      response.status === 417 &&
+      text.includes("oauth_callback value 'oob'")
+    ) {
+      throw new Error(
+        `Your X app is configured as a desktop/native app. Change it to a web-capable app in the X developer portal and allowlist this callback URL exactly: ${getOAuthCallbackUrl()}`
+      )
+    }
+
+    const xXmlError = text.match(/<error code="(\d+)">([^<]+)<\/error>/)
+    if (xXmlError?.[2]) {
+      throw new Error(xXmlError[2])
+    }
+
     throw new Error(text || `X request failed with ${response.status}`)
   }
   return text

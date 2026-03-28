@@ -32,6 +32,10 @@ The X integration expects these server env vars to be present:
 
 `CONVEX_SITE_URL` must point at the public Convex site URL because the X webhook and OAuth callback are registered against Convex HTTP routes.
 
+In the X developer portal, the app must be configured as a web-capable app and the callback URL must match:
+
+- `{CONVEX_SITE_URL}/x/oauth/callback`
+
 ## Adding components
 
 To add components to the web app, run:
