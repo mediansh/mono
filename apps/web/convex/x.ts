@@ -84,6 +84,12 @@ type XSubscriptionListResponse = {
 type XReplayResponse = {
   created_at?: string
   job_id?: string
+  errors?: Array<{
+    title?: string
+    type?: string
+    detail?: string
+    status?: number
+  }>
 }
 
 type XWebhookMention = {
@@ -794,7 +800,13 @@ async function requestReplayJob(webhookId: string, lookbackMinutes: number) {
 
   const payload = (await response.json()) as XReplayResponse
   if (!response.ok || !payload.job_id) {
-    throw new Error("Failed to create an X replay job")
+    const message =
+      payload.errors
+        ?.map((error) => error.detail ?? error.title ?? error.type)
+        .filter(Boolean)
+        .join(", ") ??
+      `Failed to create an X replay job (${response.status})`
+    throw new Error(message)
   }
 
   logInfo("Requested X replay job", {
