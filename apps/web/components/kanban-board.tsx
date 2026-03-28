@@ -2,6 +2,7 @@
 
 import { createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react"
 import { createPortal } from "react-dom"
+import { AnimatePresence, motion } from "motion/react"
 import { useConvexAuth, useMutation, useQuery } from "convex/react"
 import { toast } from "sonner"
 import {
@@ -496,7 +497,13 @@ const RequestRow = memo(function RequestRow({
   const { colors: labelColors } = useLabelConfig()
 
   return (
-    <div onClick={() => onSelect(task)} className="cursor-pointer rounded-none border border-border bg-background p-3 transition-colors hover:border-border/80 hover:bg-accent/20 dark:bg-card">
+    <motion.div
+      layout
+      initial={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
+      onClick={() => onSelect(task)}
+      className="cursor-pointer rounded-none border border-border bg-background p-3 transition-colors hover:border-border/80 hover:bg-accent/20 dark:bg-card"
+    >
       {/* Top row: source + date */}
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -559,7 +566,7 @@ const RequestRow = memo(function RequestRow({
           Deny
         </button>
       </div>
-    </div>
+    </motion.div>
   )
 })
 
@@ -614,16 +621,18 @@ function RequestsGroup({
       {!collapsed && (
           <div>
             <div className="grid grid-cols-1 gap-2 px-4 py-3 sm:grid-cols-2 lg:grid-cols-3">
-              {visibleTasks.map((task) => (
-                <RequestRow
-                  key={task.id}
-                  task={task}
-                  canManageTasks={canManageTasks}
-                  onAccept={onAccept}
-                  onDeny={onDeny}
-                  onSelect={onSelectTask}
-                />
-              ))}
+              <AnimatePresence mode="popLayout">
+                {visibleTasks.map((task) => (
+                  <RequestRow
+                    key={task.id}
+                    task={task}
+                    canManageTasks={canManageTasks}
+                    onAccept={onAccept}
+                    onDeny={onDeny}
+                    onSelect={onSelectTask}
+                  />
+                ))}
+              </AnimatePresence>
             </div>
             {hasMore && !showAll && (
               <div className="px-4 pb-3">
