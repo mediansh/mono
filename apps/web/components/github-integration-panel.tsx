@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState, type ReactNode } from "react"
-import { useAction, useQuery } from "convex/react"
+import { useAction, useMutation, useQuery } from "convex/react"
 import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -21,6 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workspace/ui/components/dialog"
+import { Switch } from "@workspace/ui/components/switch"
 import { api } from "@/convex/_generated/api"
 import { SettingsAccessState } from "@/components/settings-access-state"
 import { useWorkspace } from "@/components/workspace-provider"
@@ -124,6 +125,28 @@ function RepoSelectionRow({
   )
 }
 
+function FeatureToggleRow({
+  label,
+  description,
+  checked,
+  onCheckedChange,
+}: {
+  label: string
+  description: ReactNode
+  checked: boolean
+  onCheckedChange: (checked: boolean) => void
+}) {
+  return (
+    <div className="flex items-center gap-4 px-5 py-4">
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-foreground">{label}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+      </div>
+      <Switch checked={checked} onCheckedChange={onCheckedChange} />
+    </div>
+  )
+}
+
 export function GitHubIntegrationPanel() {
   const { currentWorkspace } = useWorkspace()
   const router = useRouter()
@@ -145,6 +168,7 @@ export function GitHubIntegrationPanel() {
   const saveRepositories = useAction(api.github.updateWorkspaceGitHubRepositories)
   const syncIntegration = useAction(api.github.syncWorkspaceGitHubIntegration)
   const disconnectIntegration = useAction(api.github.disconnectWorkspaceGitHubIntegration)
+  const updateFeatureToggles = useMutation(api.github.updateWorkspaceGitHubFeatureToggles)
 
   const integration = integrationState?.integration ?? null
   const callbackUrl = integrationState?.callbackUrl ?? null
@@ -290,6 +314,26 @@ export function GitHubIntegrationPanel() {
       )
     } finally {
       setIsSyncing(false)
+    }
+  }
+
+  async function handleToggleFeature(
+    field: "issueSyncEnabled" | "prAutomationEnabled" | "commitAutomationEnabled",
+    checked: boolean
+  ) {
+    if (!currentWorkspace || !integration) return
+
+    try {
+      await updateFeatureToggles({
+        workspaceId: currentWorkspace._id,
+        issueSyncEnabled: field === "issueSyncEnabled" ? checked : integration.issueSyncEnabled,
+        prAutomationEnabled: field === "prAutomationEnabled" ? checked : integration.prAutomationEnabled,
+        commitAutomationEnabled: field === "commitAutomationEnabled" ? checked : integration.commitAutomationEnabled,
+      })
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update automation setting."
+      )
     }
   }
 
@@ -481,14 +525,32 @@ export function GitHubIntegrationPanel() {
           </div>
         </motion.div>
 
-        <motion.div variants={fadeUp} className="rounded-none border border-border bg-card/60 p-5">
-          <div className="flex items-start gap-3">
-            <HugeiconsIcon icon={InformationCircleIcon} size={18} strokeWidth={1.8} className="mt-0.5 text-muted-foreground" />
-            <div className="space-y-2 text-sm text-muted-foreground">
-              <p>Ready automation: any open PR mentioning a task code such as <span className="font-mono">MDN-123</span> moves that task to Ready.</p>
-              <p>Shipped automation: merged PRs or default-branch commits mentioning the task code move it to Shipped.</p>
-              <p>Issue sync: linked tasks and issues stay one-to-one, and manual sync re-imports selected repositories before pushing local task changes back to GitHub.</p>
-            </div>
+        <motion.div variants={fadeUp} className="rounded-none border border-border bg-card">
+          <div className="border-b border-border px-5 py-4">
+            <h3 className="text-sm font-medium">Automations</h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Choose which GitHub automations are active for this workspace.
+            </p>
+          </div>
+          <div className="divide-y divide-border">
+            <FeatureToggleRow
+              label="Issue sync"
+              description="Keep linked tasks and GitHub issues in sync. Manual sync re-imports selected repositories before pushing local changes back."
+              checked={integration.issueSyncEnabled}
+              onCheckedChange={(checked) => handleToggleFeature("issueSyncEnabled", checked)}
+            />
+            <FeatureToggleRow
+              label="PR automation"
+              description={<>Open PRs mentioning a task code like <span className="font-mono text-foreground/70">MDN-123</span> move it to Ready. Merged PRs move it to Shipped.</>}
+              checked={integration.prAutomationEnabled}
+              onCheckedChange={(checked) => handleToggleFeature("prAutomationEnabled", checked)}
+            />
+            <FeatureToggleRow
+              label="Commit automation"
+              description="Default-branch commits mentioning a task code move it to Shipped. Other branches move it to In Progress."
+              checked={integration.commitAutomationEnabled}
+              onCheckedChange={(checked) => handleToggleFeature("commitAutomationEnabled", checked)}
+            />
           </div>
         </motion.div>
       </div>

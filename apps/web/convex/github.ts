@@ -5,6 +5,7 @@ import {
   internalAction,
   internalMutation,
   internalQuery,
+  mutation,
   query,
 } from "./_generated/server"
 import type { Doc, Id } from "./_generated/dataModel"
@@ -865,6 +866,9 @@ export const getWorkspaceGitHubIntegration = query({
             repositories: integration.repositories,
             selectedRepoIds: integration.selectedRepoIds,
             defaultRepoId: integration.defaultRepoId ?? null,
+            issueSyncEnabled: integration.issueSyncEnabled ?? true,
+            prAutomationEnabled: integration.prAutomationEnabled ?? true,
+            commitAutomationEnabled: integration.commitAutomationEnabled ?? true,
             connectedAt: integration.connectedAt,
             lastSyncedAt: integration.lastSyncedAt ?? null,
             issueLinkCount: links.length,
@@ -1599,6 +1603,14 @@ export const syncIssueFromWebhook = internalAction({
     issue: githubIssueValidator,
   },
   handler: async (ctx, args) => {
+    const integration = await ctx.runQuery(
+      internal.github.getGitHubIntegrationById,
+      { integrationId: args.integrationId }
+    )
+    if (!integration || integration.issueSyncEnabled === false) {
+      return { ok: false, skipped: true }
+    }
+
     await ctx.runMutation(internal.github.upsertTaskFromGitHubIssue, {
       integrationId: args.integrationId,
       issue: args.issue,
@@ -1630,6 +1642,10 @@ export const syncTaskToGitHubIssue = internalAction({
     })
 
     if (!snapshot) {
+      return { skipped: true }
+    }
+
+    if (snapshot.integration.issueSyncEnabled === false) {
       return { skipped: true }
     }
 
@@ -1881,6 +1897,33 @@ export const beginWorkspaceGitHubConnect = action({
   },
 })
 
+export const updateWorkspaceGitHubFeatureToggles = mutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    issueSyncEnabled: v.boolean(),
+    prAutomationEnabled: v.boolean(),
+    commitAutomationEnabled: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    await requireWorkspaceAdminAccess(ctx, args.workspaceId)
+
+    const integration = await ctx.db
+      .query("githubWorkspaceIntegrations")
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .unique()
+
+    if (!integration) {
+      throw new Error("GitHub integration not found")
+    }
+
+    await ctx.db.patch(integration._id, {
+      issueSyncEnabled: args.issueSyncEnabled,
+      prAutomationEnabled: args.prAutomationEnabled,
+      commitAutomationEnabled: args.commitAutomationEnabled,
+    })
+  },
+})
+
 export const updateWorkspaceGitHubRepositories = action({
   args: {
     workspaceId: v.id("workspaces"),
@@ -1984,6 +2027,10 @@ export const processPullRequestWebhook = internalAction({
       throw new Error("GitHub integration not found")
     }
 
+    if (linkedIntegration.prAutomationEnabled === false) {
+      return { matchedTaskCount: 0 }
+    }
+
     const taskCodes = extractTaskCodes(args.title, args.body)
     if (taskCodes.length === 0) {
       return { matchedTaskCount: 0 }
@@ -2060,6 +2107,10 @@ export const processPushWebhook = internalAction({
       })
     if (!integration) {
       throw new Error("GitHub integration not found")
+    }
+
+    if (integration.commitAutomationEnabled === false) {
+      return { matchedTaskCount: 0 }
     }
 
     let matchedTaskCount = 0
