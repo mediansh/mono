@@ -2,7 +2,6 @@
 
 import { createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react"
 import { createPortal } from "react-dom"
-import { AnimatePresence, motion } from "motion/react"
 import { useConvexAuth, useMutation, useQuery } from "convex/react"
 import { toast } from "sonner"
 import {
@@ -481,12 +480,14 @@ function SourceIcon({ platform, size = 14 }: { platform: RequestSource; size?: n
 
 const RequestRow = memo(function RequestRow({
   task,
+  dismissed,
   onAccept,
   onDeny,
   onSelect,
   canManageTasks,
 }: {
   task: Task
+  dismissed: boolean
   onAccept: (task: Task) => void
   onDeny: (task: Task) => void
   onSelect: (task: Task) => void
@@ -496,14 +497,12 @@ const RequestRow = memo(function RequestRow({
   const config = source ? SOURCE_CONFIG[source.platform] : null
   const { colors: labelColors } = useLabelConfig()
 
+  if (dismissed) {
+    return <div className="invisible" aria-hidden />
+  }
+
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
-      onClick={() => onSelect(task)}
-      className="cursor-pointer rounded-none border border-border bg-background p-3 transition-colors hover:border-border/80 hover:bg-accent/20 dark:bg-card"
-    >
+    <div onClick={() => onSelect(task)} className="cursor-pointer rounded-none border border-border bg-background p-3 transition-colors hover:border-border/80 hover:bg-accent/20 dark:bg-card">
       {/* Top row: source + date */}
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -566,7 +565,7 @@ const RequestRow = memo(function RequestRow({
           Deny
         </button>
       </div>
-    </motion.div>
+    </div>
   )
 })
 
@@ -594,6 +593,31 @@ function RequestsGroup({
   onSelectTask: (task: Task) => void
 }) {
   const [showAll, setShowAll] = useState(false)
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set())
+
+  // Clean up dismissed IDs that are no longer in the task list
+  useEffect(() => {
+    if (dismissedIds.size === 0) return
+    const taskIdSet = new Set(tasks.map((t) => t.id))
+    setDismissedIds((prev) => {
+      const next = new Set<string>()
+      for (const id of prev) {
+        if (taskIdSet.has(id)) next.add(id)
+      }
+      return next.size === prev.size ? prev : next
+    })
+  }, [tasks]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleAccept = useCallback((task: Task) => {
+    setDismissedIds((prev) => new Set(prev).add(task.id))
+    onAccept(task)
+  }, [onAccept])
+
+  const handleDeny = useCallback((task: Task) => {
+    setDismissedIds((prev) => new Set(prev).add(task.id))
+    onDeny(task)
+  }, [onDeny])
+
   const hasMore = tasks.length > REQUESTS_PREVIEW_LIMIT
   const visibleTasks = showAll ? tasks : tasks.slice(0, REQUESTS_PREVIEW_LIMIT)
   const hiddenCount = tasks.length - REQUESTS_PREVIEW_LIMIT
@@ -621,18 +645,17 @@ function RequestsGroup({
       {!collapsed && (
           <div>
             <div className="grid grid-cols-1 gap-2 px-4 py-3 sm:grid-cols-2 lg:grid-cols-3">
-              <AnimatePresence mode="popLayout">
-                {visibleTasks.map((task) => (
-                  <RequestRow
-                    key={task.id}
-                    task={task}
-                    canManageTasks={canManageTasks}
-                    onAccept={onAccept}
-                    onDeny={onDeny}
-                    onSelect={onSelectTask}
-                  />
-                ))}
-              </AnimatePresence>
+              {visibleTasks.map((task) => (
+                <RequestRow
+                  key={task.id}
+                  task={task}
+                  dismissed={dismissedIds.has(task.id)}
+                  canManageTasks={canManageTasks}
+                  onAccept={handleAccept}
+                  onDeny={handleDeny}
+                  onSelect={onSelectTask}
+                />
+              ))}
             </div>
             {hasMore && !showAll && (
               <div className="px-4 pb-3">
