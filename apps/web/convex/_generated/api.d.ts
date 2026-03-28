@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as cli from "../cli.js";
 import type * as discord from "../discord.js";
 import type * as discordFeedback from "../discordFeedback.js";
 import type * as github from "../github.js";
@@ -26,6 +27,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  cli: typeof cli;
   discord: typeof discord;
   discordFeedback: typeof discordFeedback;
   github: typeof github;

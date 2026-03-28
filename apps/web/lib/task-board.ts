@@ -33,6 +33,7 @@ export const REQUEST_SOURCES = [
   "x",
   "linear",
   "github",
+  "cli",
 ] as const
 
 export type TaskStatus = (typeof TASK_STATUSES)[number]

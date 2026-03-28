@@ -1,0 +1,36 @@
+{
+	"name": "@median/cli",
+	"version": "0.1.0",
+	"type": "module",
+	"description": "Median task management CLI for developers and AI agents",
+	"files": [
+		"dist/cli",
+		"dist/cli.cmd",
+		"dist/*-bun-*"
+	],
+	"bin": {
+		"mdn": "dist/cli"
+	},
+	"scripts": {
+		"dev": "bun run src/cli.ts",
+		"build": "crust build --target linux-x64 --target linux-arm64 --target darwin-x64 --target darwin-arm64 --target windows-x64",
+		"package": "crust build --package",
+		"publish": "crust publish --stage-dir dist/npm",
+		"start": "./dist/cli",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"convex": "^1.34.0"
+	},
+	"devDependencies": {
+		"@crustjs/core": "latest",
+		"@crustjs/crust": "latest",
+		"@crustjs/plugins": "latest",
+		"@crustjs/prompts": "latest",
+		"@crustjs/style": "latest",
+		"@crustjs/store": "latest",
+		"@crustjs/skills": "latest",
+		"@types/bun": "latest",
+		"typescript": "^5"
+	}
+}

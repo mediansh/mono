@@ -382,6 +382,18 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_task", ["taskId"]),
 
+  cliApiKeys: defineTable({
+    workspaceId: v.id("workspaces"),
+    keyHash: v.string(),
+    keyPrefix: v.string(),
+    label: v.string(),
+    createdByUserId: v.string(),
+    lastUsedAt: v.optional(v.number()),
+    revokedAt: v.optional(v.number()),
+  })
+    .index("by_workspace", ["workspaceId"])
+    .index("by_key_hash", ["keyHash"]),
+
   tasks: defineTable({
     workspaceId: v.id("workspaces"),
     taskCode: v.string(),
@@ -420,7 +432,8 @@ export default defineSchema({
           v.literal("slack"),
           v.literal("x"),
           v.literal("linear"),
-          v.literal("github")
+          v.literal("github"),
+          v.literal("cli")
         ),
         url: v.string(),
         author: v.string(),

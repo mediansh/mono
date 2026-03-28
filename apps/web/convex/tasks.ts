@@ -41,7 +41,8 @@ const taskSourceValidator = v.object({
     v.literal("slack"),
     v.literal("x"),
     v.literal("linear"),
-    v.literal("github")
+    v.literal("github"),
+    v.literal("cli")
   ),
   url: v.string(),
   author: v.string(),
@@ -65,7 +66,7 @@ type CreateTaskInput = {
   priority: "urgent" | "high" | "medium" | "low" | "none"
   labels: string[]
   source?: {
-    platform: "discord" | "slack" | "x" | "linear" | "github"
+    platform: "discord" | "slack" | "x" | "linear" | "github" | "cli"
     url: string
     author: string
   }
