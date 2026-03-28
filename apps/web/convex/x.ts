@@ -83,8 +83,12 @@ type XSubscriptionListResponse = {
 }
 
 type XReplayResponse = {
-  created_at?: string
+  data?: {
+    job_id?: string
+    created_at?: string
+  }
   job_id?: string
+  created_at?: string
   for_user_id?: string
   replay_event?: {
     created_at?: string
@@ -822,8 +826,10 @@ async function requestReplayJob(webhookId: string, lookbackMinutes: number) {
     }
   }
 
-  const jobId = payload.job_id ?? payload.replay_event?.job_id
+  const jobId =
+    payload.data?.job_id ?? payload.job_id ?? payload.replay_event?.job_id
   const createdAt =
+    payload.data?.created_at ??
     payload.created_at ??
     payload.replay_event?.created_at ??
     new Date().toISOString()
@@ -1738,10 +1744,19 @@ export const xWebhook = httpAction(async (ctx, request) => {
   }
 
   const payload = JSON.parse(bodyText) as XWebhookPayload
+
+  if (payload.replay_job_status && !payload.for_user_id) {
+    logInfo("Received X replay job status", {
+      jobId: payload.replay_job_status.job_id ?? null,
+      jobState: payload.replay_job_status.job_state ?? null,
+      description: payload.replay_job_status.job_state_description ?? null,
+    })
+    return new Response("OK", { status: 200 })
+  }
+
   const forUserId = normalizeId(payload.for_user_id)
   if (!forUserId) {
     logInfo("Ignored X webhook without for_user_id", {
-      hasReplayStatus: Boolean(payload.replay_job_status),
       tweetCreateEventCount: payload.tweet_create_events?.length ?? 0,
     })
     return new Response("Ignored", { status: 200 })
