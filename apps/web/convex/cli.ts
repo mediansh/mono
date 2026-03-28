@@ -305,18 +305,27 @@ export const updateTaskStatus = mutation({
 
 // ── Dashboard functions (Clerk auth) ─────────────────────────────────
 
-function generateRandomKey(): string {
+function generateRandomSecret(): string {
   const chars =
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
   const keyLength = 40
   const randomBytes = new Uint8Array(keyLength)
   crypto.getRandomValues(randomBytes)
-  return (
-    "mdn_" +
-    Array.from(randomBytes)
-      .map((b) => chars[b % chars.length])
-      .join("")
-  )
+  return Array.from(randomBytes)
+    .map((b) => chars[b % chars.length])
+    .join("")
+}
+
+function toBase64Url(text: string): string {
+  return btoa(text).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")
+}
+
+// Key format: mdn_<base64url(convexUrl)>.<secret>
+// The CLI extracts the URL from the key. The server hashes the full key.
+function generateApiKeyWithUrl(convexUrl: string): string {
+  const encodedUrl = toBase64Url(convexUrl)
+  const secret = generateRandomSecret()
+  return `mdn_${encodedUrl}.${secret}`
 }
 
 export const generateApiKey = mutation({
@@ -327,9 +336,10 @@ export const generateApiKey = mutation({
   handler: async (ctx, args) => {
     await requireWorkspaceAdminAccess(ctx, args.workspaceId)
 
-    const plainKey = generateRandomKey()
+    const convexUrl = process.env.CONVEX_SITE_URL ?? process.env.CONVEX_URL ?? ""
+    const plainKey = generateApiKeyWithUrl(convexUrl)
     const keyHash = await sha256(plainKey)
-    const keyPrefix = plainKey.slice(0, 12) + "..."
+    const keyPrefix = plainKey.slice(0, 16) + "..."
 
     await ctx.db.insert("cliApiKeys", {
       workspaceId: args.workspaceId,

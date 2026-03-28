@@ -11,6 +11,23 @@ const store = createStore({
   },
 })
 
+// Key format: mdn_<base64url(convexUrl)>.<secret>
+export function parseConvexUrlFromKey(apiKey: string): string | null {
+  if (!apiKey.startsWith("mdn_")) return null
+  const withoutPrefix = apiKey.slice(4) // remove "mdn_"
+  const dotIndex = withoutPrefix.indexOf(".")
+  if (dotIndex === -1) return null
+
+  const encoded = withoutPrefix.slice(0, dotIndex)
+  try {
+    // Restore base64 padding and standard chars
+    const padded = encoded.replace(/-/g, "+").replace(/_/g, "/")
+    return atob(padded)
+  } catch {
+    return null
+  }
+}
+
 export async function getConfig() {
   const config = await store.read()
   if (!config.apiKey || !config.convexUrl) {

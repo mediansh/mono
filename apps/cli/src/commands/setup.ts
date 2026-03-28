@@ -2,9 +2,9 @@ import type { Crust } from "@crustjs/core"
 import { input, confirm, spinner } from "@crustjs/prompts"
 import { style } from "@crustjs/style"
 import { MedianApi } from "../lib/api.ts"
-import { saveConfig, isConfigured } from "../lib/config.ts"
+import { saveConfig, isConfigured, parseConvexUrlFromKey } from "../lib/config.ts"
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
-import { resolve, dirname } from "node:path"
+import { resolve } from "node:path"
 
 const s = style
 
@@ -52,52 +52,21 @@ export function registerSetupCommand<T extends Crust<any, any, any>>(
         }
       }
 
-      // Auto-detect Convex URL by walking up the directory tree
-      let detectedUrl = ""
-      let searchDir = process.cwd()
-      while (searchDir !== dirname(searchDir)) {
-        // Check common locations: root .env.local, apps/web/.env.local
-        for (const candidate of [
-          resolve(searchDir, ".env.local"),
-          resolve(searchDir, "apps/web/.env.local"),
-        ]) {
-          if (!detectedUrl && existsSync(candidate)) {
-            const content = readFileSync(candidate, "utf-8")
-            const match = content.match(/NEXT_PUBLIC_CONVEX_URL=(.+)/)
-            if (match?.[1]) {
-              detectedUrl = match[1].trim()
-            }
-          }
-        }
-        if (detectedUrl) break
-        searchDir = dirname(searchDir)
-      }
-
-      let convexUrl: string
-      if (detectedUrl) {
-        console.log(`  ${s.green("\u2713")} Detected Convex URL: ${s.dim(detectedUrl)}`)
-        convexUrl = detectedUrl
-      } else {
-        convexUrl = await input({
-          message: "Convex deployment URL",
-          placeholder: "https://your-deployment.convex.cloud",
-          validate: (value) => {
-            if (!value.startsWith("https://") || !value.includes("convex"))
-              return "Must be a valid Convex deployment URL"
-            return true
-          },
-        })
-      }
-
       const apiKey = await input({
         message: "API key (from Settings > API Keys)",
         placeholder: "mdn_...",
         validate: (value) => {
           if (!value.startsWith("mdn_")) return "API key must start with mdn_"
           if (value.length < 20) return "API key is too short"
+          if (!parseConvexUrlFromKey(value))
+            return "Invalid API key format"
           return true
         },
       })
+
+      // Extract the Convex URL from the key
+      const convexUrl = parseConvexUrlFromKey(apiKey)!
+      console.log(`  ${s.dim("Endpoint:")} ${s.dim(convexUrl)}`)
 
       // Validate the key
       const api = new MedianApi(convexUrl, apiKey)
