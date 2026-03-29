@@ -738,7 +738,10 @@ async function syncTaskToLinear(
   }
 
   if (link) {
-    const existingIssue = await fetchIssueById(integration.apiKey, link.linearIssueId)
+    const existingIssue = await fetchIssueById(
+      integration.apiKey,
+      link.linearIssueId
+    )
     if (existingIssue?.archivedAt && task.status !== "archive") {
       await issueUnarchive(integration.apiKey, link.linearIssueId)
     }
@@ -1155,15 +1158,11 @@ export const listWorkspaceTaskSyncStates = internalQuery({
 
 export const upsertTaskFromLinearIssue = internalMutation({
   args: {
-    integrationId: v.id("linearWorkspaceIntegrations"),
+    workspaceId: v.id("workspaces"),
+    statusMappings: linearStatusMappingsValidator,
     issue: linearIssueValidator,
   },
   handler: async (ctx, args) => {
-    const integration = await ctx.db.get(args.integrationId)
-    if (!integration) {
-      throw new Error("Linear integration not found")
-    }
-
     const issue: LinearIssue = {
       id: args.issue.id,
       identifier: args.issue.identifier,
@@ -1182,7 +1181,7 @@ export const upsertTaskFromLinearIssue = internalMutation({
         : null,
     }
 
-    const workspace = await ctx.db.get(integration.workspaceId)
+    const workspace = await ctx.db.get(args.workspaceId)
     if (!workspace) {
       throw new Error("Workspace not found")
     }
@@ -1194,7 +1193,7 @@ export const upsertTaskFromLinearIssue = internalMutation({
 
     const taskStatus = mapLinearStateToTaskStatus(
       issue,
-      integration.statusMappings
+      normalizeStatusMappings(args.statusMappings)
     )
     const taskPriority = mapLinearPriorityToTask(issue.priority)
     const nextDescription = normalizeOptionalText(issue.description)
@@ -1226,7 +1225,7 @@ export const upsertTaskFromLinearIssue = internalMutation({
           const workspaceTasks = await ctx.db
             .query("tasks")
             .withIndex("by_workspace", (q) =>
-              q.eq("workspaceId", integration.workspaceId)
+              q.eq("workspaceId", args.workspaceId)
             )
             .collect()
           updates.status = taskStatus
@@ -1252,15 +1251,11 @@ export const upsertTaskFromLinearIssue = internalMutation({
 
     const workspaceTasks = await ctx.db
       .query("tasks")
-      .withIndex("by_workspace", (q) =>
-        q.eq("workspaceId", integration.workspaceId)
-      )
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
       .collect()
     const workspaceLinks = await ctx.db
       .query("linearTaskLinks")
-      .withIndex("by_workspace", (q) =>
-        q.eq("workspaceId", integration.workspaceId)
-      )
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
       .collect()
 
     const linkedTaskIds = new Set(workspaceLinks.map((link) => link.taskId))
@@ -1293,7 +1288,7 @@ export const upsertTaskFromLinearIssue = internalMutation({
 
       await ctx.db.patch(matchedTask._id, updates)
       await ctx.db.insert("linearTaskLinks", {
-        workspaceId: integration.workspaceId,
+        workspaceId: args.workspaceId,
         taskId: matchedTask._id,
         linearIssueId: issue.id,
         linearIssueIdentifier: issue.identifier,
@@ -1310,7 +1305,7 @@ export const upsertTaskFromLinearIssue = internalMutation({
         ...workspaceTasks.map((task) => task.taskNumber)
       ) + 1
     const createdTaskId = await ctx.db.insert("tasks", {
-      workspaceId: integration.workspaceId,
+      workspaceId: args.workspaceId,
       taskCode: `${workspace.prefix || "MED"}-${nextTaskNumber}`,
       taskNumber: nextTaskNumber,
       title: issue.title.trim(),
@@ -1337,7 +1332,7 @@ export const upsertTaskFromLinearIssue = internalMutation({
     })
 
     await ctx.db.insert("linearTaskLinks", {
-      workspaceId: integration.workspaceId,
+      workspaceId: args.workspaceId,
       taskId: createdTaskId,
       linearIssueId: issue.id,
       linearIssueIdentifier: issue.identifier,
@@ -1616,7 +1611,8 @@ export const performWorkspaceLinearSync = internalAction({
     )
     for (const issue of teamIssues) {
       await ctx.runMutation(internal.linear.upsertTaskFromLinearIssue, {
-        integrationId: integration._id,
+        workspaceId: args.workspaceId,
+        statusMappings: normalizeStatusMappings(integration.statusMappings),
         issue: {
           id: issue.id,
           identifier: issue.identifier,
@@ -1806,7 +1802,8 @@ export const syncLinearIssueFromWebhook = internalAction({
     }
 
     await ctx.runMutation(internal.linear.upsertTaskFromLinearIssue, {
-      integrationId: integration._id,
+      workspaceId: integration.workspaceId,
+      statusMappings: normalizeStatusMappings(integration.statusMappings),
       issue: {
         id: issue.id,
         identifier: issue.identifier,
