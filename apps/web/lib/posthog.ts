@@ -4,7 +4,7 @@ export function initPostHog() {
   if (typeof window === "undefined") return
   if (posthog.__loaded) return
 
-  const key = process.env.NEXT_PUBLIC_POSTHOG_KEY
+  const key = process.env.NEXT_PUBLIC_POSTHOG_KEY ?? process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN
   if (!key) return
 
   posthog.init(key, {
