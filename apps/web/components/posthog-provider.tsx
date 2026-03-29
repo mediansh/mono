@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react"
 import { useAuth, useUser } from "@clerk/nextjs"
 import { usePathname, useSearchParams } from "next/navigation"
-import { posthog } from "@/lib/posthog"
+import { initPostHog, posthog } from "@/lib/posthog"
 
 function PostHogPageView() {
   const pathname = usePathname()
@@ -49,6 +49,11 @@ function PostHogIdentifier() {
 }
 
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
+  // Init after hydration to avoid injecting <script> tags before React takes over
+  useEffect(() => {
+    initPostHog()
+  }, [])
+
   return (
     <>
       <PostHogIdentifier />

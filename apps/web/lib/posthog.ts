@@ -21,9 +21,4 @@ export function initPostHog() {
   })
 }
 
-// Init eagerly on module load (client-side only)
-if (typeof window !== "undefined") {
-  initPostHog()
-}
-
 export { posthog }
