@@ -1,30 +1,14 @@
 ---
-title: "Median CLI"
-description: "Task management for developers and AI agents, straight from the terminal."
+title: "Median"
+description: "Task management for developers and AI agents."
 ---
 
-Median is a task management platform built for modern development workflows. The `mdn` CLI lets you create, track, and update tasks without leaving your terminal — and it works just as well for AI agents as it does for humans.
-
-## Why Median?
-
-<Columns cols={3}>
-  <Card title="Agent-native" icon="robot">
-    Every command supports an `--agent` flag. Agents can pick up tasks, update statuses, and create new work autonomously.
-  </Card>
-  <Card title="CLI-first" icon="terminal">
-    No browser required. List, create, and update tasks from the command line with a single binary.
-  </Card>
-  <Card title="Real-time sync" icon="arrows-rotate">
-    Changes sync instantly to the Median dashboard and across your entire team.
-  </Card>
-</Columns>
+Median is a CLI-first task management tool. Create, track, and update tasks from the terminal. Works for humans and AI agents.
 
 ## Quick start
 
-Get up and running in under a minute.
-
 <Steps>
-  <Step title="Install the CLI">
+  <Step title="Install">
     ```bash
     npm install -g @mediansh/cli
     ```
@@ -33,7 +17,7 @@ Get up and running in under a minute.
     ```bash
     mdn setup
     ```
-    Paste your API key when prompted. You can find it in your [Median dashboard](https://median.sh) under workspace settings.
+    Paste your API key from [Settings > API Keys](https://median.sh) when prompted.
   </Step>
   <Step title="List your tasks">
     ```bash
@@ -46,31 +30,15 @@ Get up and running in under a minute.
 
 <Columns cols={2}>
   <Card title="mdn tasks" icon="list-check" href="/cli/tasks">
-    List and filter tasks by status, priority, label, or agent.
+    List and filter tasks.
   </Card>
   <Card title="mdn create" icon="plus" href="/cli/create">
-    Create new tasks interactively or with flags.
+    Create new tasks.
   </Card>
   <Card title="mdn status" icon="arrows-spin" href="/cli/status">
-    Update the status of any task in your workspace.
+    Update task status.
   </Card>
   <Card title="mdn setup" icon="gear" href="/cli/setup">
-    Authenticate and connect to your Median workspace.
+    Connect to your workspace.
   </Card>
 </Columns>
-
-## For AI agents
-
-Median is designed to work with AI coding agents like Claude Code, Cursor, Copilot, and more. Agents identify themselves with the `--agent` flag, and their activity is tracked across the dashboard.
-
-```bash
-# Agent picks up a task
-mdn status MED-42 in_progress --agent claude-code
-
-# Agent completes the task
-mdn status MED-42 ready --agent claude-code
-```
-
-<Card title="Agent integration guide" icon="bolt" href="/cli/agents">
-  Learn how to set up Median for your AI agents.
-</Card>

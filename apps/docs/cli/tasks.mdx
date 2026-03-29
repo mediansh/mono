@@ -1,9 +1,7 @@
 ---
 title: "mdn tasks"
-description: "List and filter tasks in your workspace."
+description: "List and filter tasks."
 ---
-
-The `tasks` command lists all tasks in your Median workspace. Use flags to filter by status, priority, label, or agent.
 
 ## Usage
 
@@ -15,8 +13,8 @@ mdn tasks [flags]
 
 | Flag | Short | Description |
 | --- | --- | --- |
-| `--status <status>` | `-s` | Filter by task status |
-| `--priority <priority>` | `-p` | Filter by task priority |
+| `--status <status>` | `-s` | Filter by status |
+| `--priority <priority>` | `-p` | Filter by priority |
 | `--label <label>` | `-l` | Filter by label |
 | `--agent <name>` | | Identify the calling agent |
 | `--json` | | Output raw JSON |
@@ -33,60 +31,34 @@ mdn tasks --status todo
 # Filter by priority
 mdn tasks --priority urgent
 
-# Filter by label
-mdn tasks --label bug
-
 # Combine filters
 mdn tasks --status in_progress --priority high
 
-# Agent-identified listing
+# Agent-identified
 mdn tasks --agent claude-code
 
-# Machine-readable output
-mdn tasks --json
+# JSON output for scripting
+mdn tasks --json | jq '.[] | .taskCode'
 ```
 
-## Output format
-
-The default output is a formatted table:
+## Output
 
 ```
   Median Workspace Tasks
 
-  Code         Title                                  Status          Priority    Agent
-  ────────────────────────────────────────────────────────────────────────────────────────
-  MED-42       Fix authentication bug                 In Progress     !! Urgent   ⚡ claude-code
-  MED-43       Add dark mode support                  Todo            ↑ High
-  MED-44       Update API documentation               Ready           ─ Medium
+  Code         Title                          Status          Priority    Agent
+  ──────────────────────────────────────────────────────────────────────────────
+  MED-42       Fix authentication bug         In Progress     !! Urgent   claude-code
+  MED-43       Add dark mode support          Todo            ↑ High
+  MED-44       Update API documentation       Ready           ─ Medium
 
   3 tasks
 ```
 
-### Status colors
+### Statuses
 
-| Status | Color |
-| --- | --- |
-| `requests` | Magenta |
-| `todo` | Blue |
-| `in_progress` | Yellow |
-| `ready` | Cyan |
-| `shipped` | Green |
-| `archive` | Gray |
+`requests` | `todo` | `in_progress` | `ready` | `shipped` | `archive`
 
-### Priority indicators
+### Priorities
 
-| Priority | Display |
-| --- | --- |
-| `urgent` | `!! Urgent` |
-| `high` | `↑ High` |
-| `medium` | `─ Medium` |
-| `low` | `↓ Low` |
-| `none` | `None` |
-
-## JSON output
-
-Pass `--json` to get machine-readable output, useful for piping into other tools:
-
-```bash
-mdn tasks --json | jq '.[] | .taskCode'
-```
+`urgent` (`!!`) | `high` (`↑`) | `medium` (`─`) | `low` (`↓`) | `none`

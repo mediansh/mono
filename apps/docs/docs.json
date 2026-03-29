@@ -1,6 +1,6 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "sequoia",
+  "theme": "palm",
   "name": "Median",
   "colors": {
     "primary": "#171717",
@@ -11,12 +11,24 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Documentation",
+        "tab": "Home",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "index",
+              "agents",
+              "ai-tools"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "CLI",
         "groups": [
           {
             "group": "Getting started",
             "pages": [
-              "index",
               "cli/installation",
               "cli/setup"
             ]
@@ -27,13 +39,6 @@
               "cli/tasks",
               "cli/create",
               "cli/status"
-            ]
-          },
-          {
-            "group": "Integrations",
-            "pages": [
-              "cli/agents",
-              "cli/ai-tools"
             ]
           }
         ]
