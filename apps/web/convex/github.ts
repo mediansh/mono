@@ -1012,6 +1012,9 @@ export const saveWorkspaceGitHubIntegration = internalMutation({
     repositories: v.array(githubRepositoryValidator),
     selectedRepoIds: v.array(v.string()),
     defaultRepoId: v.optional(v.string()),
+    issueSyncEnabled: v.boolean(),
+    prAutomationEnabled: v.boolean(),
+    commitAutomationEnabled: v.boolean(),
     connectedByUserId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -1033,6 +1036,11 @@ export const saveWorkspaceGitHubIntegration = internalMutation({
       repositories: args.repositories,
       selectedRepoIds: selection.selectedRepoIds,
       defaultRepoId: selection.defaultRepoId,
+      issueSyncEnabled: existing?.issueSyncEnabled ?? args.issueSyncEnabled,
+      prAutomationEnabled:
+        existing?.prAutomationEnabled ?? args.prAutomationEnabled,
+      commitAutomationEnabled:
+        existing?.commitAutomationEnabled ?? args.commitAutomationEnabled,
       connectedAt: existing?.connectedAt ?? Date.now(),
       connectedByUserId: args.connectedByUserId,
       lastSyncedAt: existing?.lastSyncedAt,
@@ -2207,6 +2215,7 @@ export const githubInstallCallback = httpAction(async (ctx, request) => {
     const installation = await fetchInstallation(installationId)
     const installationToken = await createInstallationAccessToken(installationId)
     const repositories = await listInstallationRepositories(installationToken)
+    const issueSyncEnabledByDefault = false
 
     await ctx.runMutation(internal.github.clearWorkspaceGitHubIntegration, {
       workspaceId: state.workspaceId,
@@ -2222,6 +2231,9 @@ export const githubInstallCallback = httpAction(async (ctx, request) => {
         repositories,
         selectedRepoIds: repositories.map((repository) => repository.id),
         defaultRepoId: repositories[0]?.id,
+        issueSyncEnabled: issueSyncEnabledByDefault,
+        prAutomationEnabled: true,
+        commitAutomationEnabled: true,
         connectedByUserId: state.initiatedByUserId,
       }
     )
@@ -2230,12 +2242,12 @@ export const githubInstallCallback = httpAction(async (ctx, request) => {
       stateId: state._id,
     })
 
-    const syncResult = await ctx.runAction(
-      internal.github.performWorkspaceGitHubSync,
-      {
+    let syncResult: WorkspaceGitHubSyncResult | null = null
+    if (issueSyncEnabledByDefault && repositories.length > 0) {
+      syncResult = await ctx.runAction(internal.github.performWorkspaceGitHubSync, {
         workspaceId: state.workspaceId,
-      }
-    )
+      })
+    }
 
     logInfo("Completed GitHub installation callback", {
       workspaceId: state.workspaceId,
@@ -2245,11 +2257,16 @@ export const githubInstallCallback = httpAction(async (ctx, request) => {
       syncResult,
     })
 
+    const message =
+      syncResult === null
+        ? `Connected ${installation.accountLogin}. Issue sync is off by default, so Median won't import GitHub issues until you enable it or run a manual sync.`
+        : `Connected ${installation.accountLogin} and synced ${syncResult.importedCount} GitHub issue${syncResult.importedCount === 1 ? "" : "s"}.`
+
     return Response.redirect(
       formatStatusRedirect(
         state.redirectUrl,
         "connected",
-        `Connected ${installation.accountLogin} and synced ${syncResult.importedCount} GitHub issue${syncResult.importedCount === 1 ? "" : "s"}.`
+        message
       ),
       302
     )
