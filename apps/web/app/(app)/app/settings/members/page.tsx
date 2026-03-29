@@ -15,6 +15,13 @@ import {
   type WorkspaceInviteRole,
 } from "@/lib/workspace-permissions"
 import { SettingsAccessState } from "@/components/settings-access-state"
+import {
+  trackInviteLinkCreated,
+  trackInviteEmailSent,
+  trackMemberRoleChanged,
+  trackMemberRemoved,
+  trackInviteRevoked,
+} from "@/lib/analytics"
 
 const inviteRoleOptions: WorkspaceInviteRole[] = ["guest", "member", "admin"]
 
@@ -148,6 +155,7 @@ export default function MembersSettingsPage() {
       const invite = await createInviteLink({ workspaceId, role: linkRole })
       const inviteUrl = getInviteUrl(invite.token)
       await navigator.clipboard.writeText(inviteUrl)
+      trackInviteLinkCreated({ role: linkRole })
       toast.success(`${getRoleLabel(linkRole)} invite link copied.`)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to create invite link.")
@@ -181,6 +189,7 @@ export default function MembersSettingsPage() {
       }
 
       setEmailValue("")
+      trackInviteEmailSent({ role: emailRole })
       toast.success(
         invite.reused ? "Existing email invite re-sent." : "Invite email sent successfully."
       )
@@ -195,6 +204,7 @@ export default function MembersSettingsPage() {
     setBusyMemberId(memberId)
     try {
       await updateMemberRole({ memberId, role })
+      trackMemberRoleChanged({ newRole: role })
       toast.success(`Role changed to ${getRoleLabel(role).toLowerCase()}.`)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to update role.")
@@ -207,6 +217,7 @@ export default function MembersSettingsPage() {
     setBusyMemberId(memberId)
     try {
       await removeMember({ memberId })
+      trackMemberRemoved()
       toast.success("Member removed.")
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to remove member.")
@@ -219,6 +230,7 @@ export default function MembersSettingsPage() {
     setBusyInviteId(inviteId)
     try {
       await revokeInvite({ inviteId })
+      trackInviteRevoked()
       toast.success("Invite revoked.")
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to revoke invite.")

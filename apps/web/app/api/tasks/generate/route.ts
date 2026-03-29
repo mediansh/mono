@@ -3,6 +3,7 @@ import { generateText } from "ai"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { withAxiom, logger } from "@/lib/logger"
+import { getPostHogServerClient } from "@/lib/posthog-server"
 
 import { TASK_PRIORITIES, TASK_STATUSES } from "@/lib/task-board"
 
@@ -78,8 +79,9 @@ export const POST = withAxiom(async (request: Request) => {
         ? availableLabels.join(", ")
         : "No predefined labels available."
 
-    const { text } = await generateText({
-      model: "anthropic/claude-haiku-4.5",
+    const model = "anthropic/claude-haiku-4.5"
+    const result = await generateText({
+      model,
       system: [
         "You generate actionable task objects for a project management app.",
         `Workspace: ${workspaceName}.`,
@@ -100,7 +102,7 @@ export const POST = withAxiom(async (request: Request) => {
       prompt,
     })
 
-    const rawObject = JSON.parse(extractJsonObject(text))
+    const rawObject = JSON.parse(extractJsonObject(result.text))
     const validatedObject = generatedTasksSchema.parse(rawObject)
 
     const normalizedTasks = validatedObject.tasks.map((task) => ({
@@ -111,20 +113,60 @@ export const POST = withAxiom(async (request: Request) => {
       labels: task.labels.filter((label) => availableLabels.includes(label)),
     }))
 
+    const durationMs = Date.now() - start
+
     logger.info("Tasks generated successfully", {
       userId,
       taskCount: normalizedTasks.length,
-      durationMs: Date.now() - start,
+      durationMs,
     })
+
+    // Track LLM generation metrics in PostHog
+    const posthog = getPostHogServerClient()
+    if (posthog) {
+      posthog.capture({
+        distinctId: userId,
+        event: "llm_generation",
+        properties: {
+          model,
+          feature: "task_generation",
+          prompt_length: prompt.length,
+          input_tokens: result.usage?.inputTokens,
+          output_tokens: result.usage?.outputTokens,
+          total_tokens: (result.usage?.inputTokens ?? 0) + (result.usage?.outputTokens ?? 0),
+          duration_ms: durationMs,
+          task_count: normalizedTasks.length,
+          success: true,
+          finish_reason: result.finishReason,
+        },
+      })
+    }
 
     return NextResponse.json({ tasks: normalizedTasks })
   } catch (error) {
+    const durationMs = Date.now() - start
+
     logger.error("AI task generation failed", {
       userId,
       error: error instanceof Error ? error.message : "Unknown error",
       stack: error instanceof Error ? error.stack : undefined,
-      durationMs: Date.now() - start,
+      durationMs,
     })
+
+    const posthog = getPostHogServerClient()
+    if (posthog) {
+      posthog.capture({
+        distinctId: userId,
+        event: "llm_generation",
+        properties: {
+          model: "anthropic/claude-haiku-4.5",
+          feature: "task_generation",
+          duration_ms: durationMs,
+          success: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        },
+      })
+    }
 
     return NextResponse.json(
       { error: "Unable to generate tasks right now." },

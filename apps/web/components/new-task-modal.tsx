@@ -33,6 +33,12 @@ import {
 } from "@workspace/ui/components/dropdown-menu"
 import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
+import {
+  trackTaskCreated,
+  trackTasksGeneratedAI,
+  trackNewTaskModalOpened,
+  trackAIPromptTabSelected,
+} from "@/lib/analytics"
 import type { Doc } from "@/convex/_generated/dataModel"
 import { hasTaskWritePermission } from "@/lib/workspace-permissions"
 import {
@@ -328,6 +334,15 @@ export function NewTaskModal({
         attachments,
       })
 
+      trackTaskCreated({
+        status,
+        priority,
+        labelCount: labels.length,
+        hasDescription: !!description.trim(),
+        hasAttachments: attachments.length > 0,
+        source: "manual",
+      })
+
       if (createMore) {
         resetForm({ keepOpen: true, nextStatus: status })
         requestAnimationFrame(() => titleRef.current?.focus())
@@ -349,6 +364,7 @@ export function NewTaskModal({
 
     setError("")
     setIsGenerating(true)
+    const genStart = Date.now()
     const toastId = toast.loading("Generating tasks...")
     const controller = new AbortController()
     const timeoutId = window.setTimeout(() => controller.abort(), 15000)
@@ -405,6 +421,12 @@ export function NewTaskModal({
         ...tasks,
         ...createdTasks,
       ])
+
+      trackTasksGeneratedAI({
+        promptLength: aiPrompt.trim().length,
+        taskCount: generatedTasks.length,
+        durationMs: Date.now() - genStart,
+      })
 
       toast.success(
         generatedTasks.length === 1
@@ -557,7 +579,10 @@ export function NewTaskModal({
               )}
             </button>
             <button
-              onClick={() => setActiveTab("ai")}
+              onClick={() => {
+                setActiveTab("ai")
+                trackAIPromptTabSelected()
+              }}
               className={`relative flex items-center gap-1.5 px-3 py-3 text-sm font-medium transition-colors ${
                 activeTab === "ai"
                   ? "text-foreground"

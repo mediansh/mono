@@ -86,6 +86,17 @@ import {
 } from "@/lib/local-first-store"
 import { hasTaskWritePermission } from "@/lib/workspace-permissions"
 import { useSearchPaletteTaskEvent } from "@/components/search-palette"
+import {
+  trackTaskUpdated,
+  trackTaskDeleted,
+  trackTaskMoved,
+  trackTasksBulkUpdated,
+  trackTasksBulkDeleted,
+  trackRequestAccepted,
+  trackRequestDenied,
+  trackColumnToggled,
+  trackNewTaskModalOpened,
+} from "@/lib/analytics"
 
 interface Task extends Omit<TaskDoc, "_syncStatus"> {
   id: string
@@ -2016,6 +2027,7 @@ export function KanbanBoard() {
       toast.error("Guests can only view tasks.")
       return
     }
+    trackNewTaskModalOpened({ defaultStatus: status })
     setModalDefaultStatus(status)
     setModalOpen(true)
   }
@@ -2027,9 +2039,12 @@ export function KanbanBoard() {
   function handleToggleCollapsedColumn(status: Status) {
     if (!workspaceId) return
 
-    const nextCollapsed = collapsedColumns.includes(status)
-      ? collapsedColumns.filter((column) => column !== status)
-      : [...collapsedColumns, status]
+    const willCollapse = !collapsedColumns.includes(status)
+    trackColumnToggled({ column: status, collapsed: willCollapse })
+
+    const nextCollapsed = willCollapse
+      ? [...collapsedColumns, status]
+      : collapsedColumns.filter((column) => column !== status)
 
     setCollapsedWorkspaceColumns(workspaceId, nextCollapsed)
   }
@@ -2042,6 +2057,7 @@ export function KanbanBoard() {
       return moveTaskDocs(current, task.id, "todo", 0)
     })
     toast.success(`Accepted "${task.title}" → Todo`)
+    trackRequestAccepted({ taskId: task.id })
     if (isDevTask(task.id)) return
     // Read the freshly-written state for the server call
     const freshTasks = getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
@@ -2066,6 +2082,7 @@ export function KanbanBoard() {
       return current.filter((item) => item._id !== task.id)
     })
     toast.success(`Denied "${task.title}".`)
+    trackRequestDenied({ taskId: task.id })
     if (isDevTask(task.id)) return
     void deleteTask({ taskId: task.id as Id<"tasks"> }).catch(() => {
       if (removedTask) {
@@ -2077,6 +2094,8 @@ export function KanbanBoard() {
 
   function handleUpdateTask(taskId: string, updates: Partial<Task>) {
     if (!workspaceId || !canManageTasks) return
+
+    trackTaskUpdated({ taskId, fields: Object.keys(updates) })
 
     if (updates.status) {
       updateWorkspaceTasks(workspaceId, (current) => {
@@ -2127,6 +2146,8 @@ export function KanbanBoard() {
     const deletedTask = taskDocs.find((task) => task._id === taskId)
     if (!deletedTask) return
 
+    trackTaskDeleted({ taskId })
+
     updateWorkspaceTasks(workspaceId, (tasks) =>
       tasks.filter((t) => t._id !== taskId)
     )
@@ -2151,6 +2172,9 @@ export function KanbanBoard() {
 
   function handleMoveTask(taskId: string, toStatus: Status, toIndex: number) {
     if (!workspaceId || !canManageTasks || taskId.startsWith("optimistic:")) return
+
+    const fromTask = (getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []).find((t) => t._id === taskId)
+    trackTaskMoved({ taskId, fromStatus: fromTask?.status ?? "unknown", toStatus, method: "drag" })
 
     updateWorkspaceTasks(workspaceId, (current) =>
       moveTaskDocs(current, taskId, toStatus, toIndex)
@@ -2201,6 +2225,10 @@ export function KanbanBoard() {
 
     const validIds = taskIds.filter((id) => !id.startsWith("optimistic:"))
     if (validIds.length === 0) return
+
+    const field = updates.status ? "status" : updates.priority ? "priority" : "labels"
+    const value = updates.status ?? updates.priority ?? (updates.labels ?? []).join(",")
+    trackTasksBulkUpdated({ taskCount: validIds.length, field, value })
 
     const realIds = validIds.filter((id) => !isDevTask(id))
 
@@ -2257,6 +2285,8 @@ export function KanbanBoard() {
 
     const validIds = taskIds.filter((id) => !id.startsWith("optimistic:"))
     if (validIds.length === 0) return
+
+    trackTasksBulkDeleted({ taskCount: validIds.length })
 
     const realIds = validIds.filter((id) => !isDevTask(id))
     const deletedTasks = taskDocs.filter((t) => validIds.includes(t._id))

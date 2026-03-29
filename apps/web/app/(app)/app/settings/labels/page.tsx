@@ -9,6 +9,7 @@ import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
 import { hasWorkspaceAdminPermission } from "@/lib/workspace-permissions"
 import { SettingsAccessState } from "@/components/settings-access-state"
+import { trackLabelsSaved } from "@/lib/analytics"
 
 const fadeUp = {
   hidden: { opacity: 0, y: 8 },
@@ -67,6 +68,7 @@ export default function LabelsSettingsPage() {
         workspaceId: currentWorkspace._id,
         labels: cleaned,
       })
+      trackLabelsSaved({ labelCount: cleaned.length })
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch {

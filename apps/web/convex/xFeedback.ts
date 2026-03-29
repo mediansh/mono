@@ -1,5 +1,6 @@
 import { generateText, Output } from "ai"
 import { google } from "@ai-sdk/google"
+import { trackLLMGeneration, trackFeedbackProcessing } from "./posthog"
 import { Workpool, vOnCompleteArgs } from "@convex-dev/workpool"
 import { makeFunctionReference } from "convex/server"
 import { v } from "convex/values"
@@ -522,6 +523,7 @@ export const processFeedbackWindow = internalAction({
     integrationId: v.id("xWorkspaceIntegrations"),
   },
   handler: async (ctx, args): Promise<ProcessFeedbackWindowResult> => {
+    const processingStart = Date.now()
     const acquired = await ctx.runMutation(
       markFeedbackProcessingRunningMutation,
       {
@@ -583,7 +585,8 @@ export const processFeedbackWindow = internalAction({
         )
       }
 
-      const { text: classificationText } = await generateText({
+      const classifierStart = Date.now()
+      const classifierResult = await generateText({
         model: google("gemma-3-27b-it"),
         system: classifierSystemParts.join(" "),
         prompt: [
@@ -593,9 +596,24 @@ export const processFeedbackWindow = internalAction({
           transcript,
         ].join("\n\n"),
       })
+      const classifierDurationMs = Date.now() - classifierStart
+
+      trackLLMGeneration({
+        distinctId: feedbackWindow.integration.workspaceId,
+        model: "google/gemma-3-27b-it",
+        feature: "x_feedback_classifier",
+        inputTokens: classifierResult.usage?.inputTokens,
+        outputTokens: classifierResult.usage?.outputTokens,
+        durationMs: classifierDurationMs,
+        success: true,
+        metadata: {
+          integration_id: args.integrationId,
+          pending_post_count: pendingPosts.length,
+        },
+      })
 
       const classification = feedbackClassificationSchema.parse(
-        JSON.parse(extractJsonObject(classificationText))
+        JSON.parse(extractJsonObject(classifierResult.text))
       )
 
       const latestPendingPost = pendingPosts.at(-1)
@@ -674,7 +692,8 @@ export const processFeedbackWindow = internalAction({
         )
       }
 
-      const { output: extracted } = await generateText({
+      const extractorStart = Date.now()
+      const extractorResult = await generateText({
         model: "anthropic/claude-haiku-4.5",
         output: Output.object({ schema: extractedFeedbackTasksSchema }),
         system: extractorSystemParts.join(" "),
@@ -690,6 +709,22 @@ export const processFeedbackWindow = internalAction({
             )
             .join("\n"),
         ].join("\n\n"),
+      })
+      const extractorDurationMs = Date.now() - extractorStart
+      const extracted = extractorResult.output
+
+      trackLLMGeneration({
+        distinctId: feedbackWindow.integration.workspaceId,
+        model: "anthropic/claude-haiku-4.5",
+        feature: "x_feedback_extractor",
+        inputTokens: extractorResult.usage?.inputTokens,
+        outputTokens: extractorResult.usage?.outputTokens,
+        durationMs: extractorDurationMs,
+        success: true,
+        metadata: {
+          integration_id: args.integrationId,
+          relevant_post_count: relevantPosts.length,
+        },
       })
 
       if (!extracted) {
@@ -748,6 +783,20 @@ export const processFeedbackWindow = internalAction({
       logInfo("Finished X feedback processing attempt", {
         integrationId: args.integrationId,
         createdTaskCount: extracted.tasks.length,
+      })
+
+      trackFeedbackProcessing({
+        distinctId: feedbackWindow.integration.workspaceId,
+        platform: "x",
+        integrationId: args.integrationId,
+        workspaceId: feedbackWindow.integration.workspaceId,
+        messageCount: pendingPosts.length,
+        isProductFeedback: classification.isProductFeedback,
+        confidence: classification.confidence,
+        createdTaskCount: extracted.tasks.length,
+        classifierDurationMs,
+        extractorDurationMs,
+        totalDurationMs: Date.now() - processingStart,
       })
 
       return {

@@ -26,6 +26,11 @@ import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
 import { SettingsAccessState } from "@/components/settings-access-state"
 import { hasWorkspaceAdminPermission } from "@/lib/workspace-permissions"
+import {
+  trackIntegrationConnected,
+  trackIntegrationDisconnected,
+  trackIntegrationSettingsChanged,
+} from "@/lib/analytics"
 
 function formatTimestamp(timestamp: number) {
   return new Intl.DateTimeFormat(undefined, {
@@ -139,6 +144,7 @@ export function DiscordPairingPanel() {
         workspaceId: currentWorkspace._id,
         respondForMeMode: mode,
       })
+      trackIntegrationSettingsChanged({ platform: "discord", setting: "respond_mode" })
     } catch {
       setRespondForMeMode(previousMode)
       toast.error("Failed to update setting.")
@@ -206,6 +212,7 @@ export function DiscordPairingPanel() {
         code: pairingCode,
       })
       setPairingCode("")
+      trackIntegrationConnected({ platform: "discord" })
       toast.success(`${result.guildName} is now paired to ${workspace.name}.`)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to pair Discord server.")
@@ -219,6 +226,7 @@ export function DiscordPairingPanel() {
     try {
       await disconnectIntegration({ workspaceId: workspace._id })
       setDisconnectOpen(false)
+      trackIntegrationDisconnected({ platform: "discord" })
       toast.success("Discord server disconnected.")
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to disconnect Discord.")

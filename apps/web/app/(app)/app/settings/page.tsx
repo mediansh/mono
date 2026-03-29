@@ -8,6 +8,7 @@ import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
 import { useRouter } from "next/navigation"
 import { hasWorkspaceAdminPermission } from "@/lib/workspace-permissions"
+import { trackWorkspaceUpdated, trackWorkspaceDeleted } from "@/lib/analytics"
 import { SettingsAccessState } from "@/components/settings-access-state"
 import { motion } from "motion/react"
 import {
@@ -99,6 +100,10 @@ export default function GeneralSettingsPage() {
         name: name.trim(),
         ...(newIconId ? { iconId: newIconId as any } : {}),
       })
+      const changedFields: string[] = []
+      if (name.trim() !== currentWorkspace.name) changedFields.push("name")
+      if (newIconId) changedFields.push("icon")
+      trackWorkspaceUpdated({ fields: changedFields })
       setIconFile(null)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
@@ -114,6 +119,7 @@ export default function GeneralSettingsPage() {
     setDeleting(true)
     try {
       await deleteWorkspace({ workspaceId: currentWorkspace._id })
+      trackWorkspaceDeleted()
       const remaining = workspaces.filter((w) => w._id !== currentWorkspace._id)
       if (remaining[0]) {
         switchWorkspace(remaining[0]._id)

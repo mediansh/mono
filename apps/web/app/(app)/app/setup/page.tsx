@@ -9,6 +9,7 @@ import { Facehash } from "facehash"
 import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
 import { Logo } from "@/components/logo"
+import { trackWorkspaceCreated } from "@/lib/analytics"
 
 function Spinner() {
   return (
@@ -77,6 +78,7 @@ export default function WorkspaceSetupPage() {
       }
 
       await createWorkspace({ name: name.trim(), iconId: iconId as any })
+      trackWorkspaceCreated({ hasLogo: !!iconId })
       router.push("/app")
     } catch {
       setError("Failed to create workspace. Please try again.")

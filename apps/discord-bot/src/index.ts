@@ -16,6 +16,7 @@ import {
   SlashCommandBuilder,
 } from "discord.js"
 import { logger } from "./logger.js"
+import { captureBot, flushPostHog } from "./posthog.js"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, "../../..")
@@ -212,6 +213,11 @@ async function syncGuildChannelsToConvex(guildId: string) {
       channels: textChannels,
     })
 
+    captureBot("guild_channels_synced", {
+      guild_id: guildId,
+      guild_name: guild.name,
+      channel_count: textChannels.length,
+    })
     logger.info("Synced guild channels to Convex", {
       scope: "sync",
       guildId,
@@ -288,6 +294,11 @@ async function processPendingNotifications() {
           status: "sent",
         })
 
+        captureBot("notification_sent", {
+          notification_type: notification.type,
+          task_code: notification.taskCode,
+          channel_id: notification.channelId,
+        })
         logger.info("Sent Discord notification", {
           scope: "responder",
           notificationId: notification._id,
@@ -337,6 +348,11 @@ client.once(Events.ClientReady, async (readyClient) => {
     5 * 60 * 1000
   )
 
+  captureBot("bot_started", {
+    bot_tag: readyClient.user.tag,
+    guild_count: readyClient.guilds.cache.size,
+  })
+
   logger.info("Discord bot ready", {
     scope: "startup",
     botTag: readyClient.user.tag,
@@ -376,6 +392,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
         `Pairing code for **${interaction.guild.name}**: \`${result.code}\``,
         `Open Median, go to Discord integrations, and enter it before <t:${expiresAt}:R>.`,
       ].join("\n"),
+    })
+    captureBot("pairing_code_issued", {
+      guild_id: interaction.guildId,
+      guild_name: interaction.guild.name,
+      issued_by: interaction.user.username,
     })
     logger.info("Issued pairing code", {
       scope: "pair",
@@ -449,6 +470,12 @@ client.on(Events.MessageCreate, async (message: Message) => {
       return
     }
 
+    captureBot("message_ingested", {
+      guild_id: message.guildId,
+      channel_id: message.channelId,
+      workspace_id: result.integration.workspaceId,
+      content_length: content.length,
+    })
     logger.info("Stored message and resolved integration", {
       scope: "message",
       guildId: message.guildId,
@@ -471,14 +498,14 @@ client.on(Events.MessageCreate, async (message: Message) => {
 
 process.on("SIGINT", async () => {
   logger.info("Shutting down", { scope: "lifecycle" })
-  await logger.flush()
+  await Promise.all([logger.flush(), flushPostHog()])
   client.destroy()
   process.exit(0)
 })
 
 process.on("SIGTERM", async () => {
   logger.info("Shutting down", { scope: "lifecycle" })
-  await logger.flush()
+  await Promise.all([logger.flush(), flushPostHog()])
   client.destroy()
   process.exit(0)
 })
