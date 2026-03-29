@@ -32,3 +32,17 @@ To create a new task:
 ```
 mdn create --title "Description" --status todo --priority medium --agent <your-agent-name>
 ```
+
+## Commit Messages & Pull Requests
+
+Always include the Median task ID in commit messages and PR titles so tasks get marked automatically.
+
+```
+git commit -m "MDN-42 fix: resolve auth token expiry"
+```
+
+For pull requests, include the task ID in the title:
+
+```
+MDN-42 fix: resolve auth token expiry
+```
