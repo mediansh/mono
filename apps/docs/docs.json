@@ -3,9 +3,9 @@
   "theme": "sequoia",
   "name": "Median",
   "colors": {
-    "primary": "#18E299",
-    "light": "#33ff99",
-    "dark": "#0C8C5E"
+    "primary": "#0a0a0a",
+    "light": "#0a0a0a",
+    "dark": "#d0d0d0"
   },
   "favicon": "/favicon.svg",
   "navigation": {
