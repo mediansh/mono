@@ -138,6 +138,26 @@ function getStatusIcon(status: Status, size = 14) {
   }
 }
 
+const AGENT_ICONS: Record<string, string> = {
+  "claude-code": "⚡",
+  "codex": "🔮",
+  "cursor": "▸",
+  "copilot": "●",
+  "windsurf": "🏄",
+  "gemini": "♦",
+  "cline": "◆",
+}
+
+function getActiveAgent(task: Task): string | null {
+  if (task.status !== "in_progress") return null
+  if (!task.source || task.source.platform !== "cli" || task.source.author === "cli") return null
+  return task.source.author
+}
+
+function getAgentIcon(agentName: string): string {
+  return AGENT_ICONS[agentName.toLowerCase().trim()] ?? "🤖"
+}
+
 function getColumnIcon(status: Status) {
   return getStatusIcon(status, 15)
 }
@@ -891,8 +911,19 @@ function TaskContextMenu({
 
 // ── List View Components ──
 
+const AgentBadge = memo(function AgentBadge({ agentName }: { agentName: string }) {
+  return (
+    <span className="flex shrink-0 items-center gap-1 rounded-none border border-yellow-500/25 bg-yellow-500/10 px-1.5 py-0.5 text-[10px] font-medium text-yellow-500">
+      <SpinnerGap size={10} className="animate-spin" />
+      <span>{getAgentIcon(agentName)}</span>
+      <span className="max-w-[80px] truncate">{agentName}</span>
+    </span>
+  )
+})
+
 const ListRowContent = memo(function ListRowContent({ task }: { task: Task }) {
   const { colors: labelColors } = useLabelConfig()
+  const activeAgent = getActiveAgent(task)
   return (
     <>
       <span className="w-14 shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground/50">{task.taskCode}</span>
@@ -900,6 +931,7 @@ const ListRowContent = memo(function ListRowContent({ task }: { task: Task }) {
       <div className="shrink-0">{getStatusIcon(task.status)}</div>
       <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground/90">{task.title}</span>
       <div className="flex shrink-0 items-center gap-1.5">
+        {activeAgent && <AgentBadge agentName={activeAgent} />}
         {(task.labels ?? []).map((label) => (
           <span
             key={label}
