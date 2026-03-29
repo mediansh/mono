@@ -17,8 +17,7 @@
             "group": "Overview",
             "pages": [
               "index",
-              "agents",
-              "ai-tools"
+              "agents"
             ]
           }
         ]
