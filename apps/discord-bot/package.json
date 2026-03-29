@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@ai-sdk/google": "^2.0.12",
+    "@axiomhq/js": "^1.5.0",
+    "@axiomhq/logging": "^0.2.0",
     "ai": "^6.0.134",
     "convex": "^1.34.0",
     "discord.js": "^14.22.1",

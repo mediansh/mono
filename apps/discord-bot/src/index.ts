@@ -15,6 +15,7 @@ import {
   Routes,
   SlashCommandBuilder,
 } from "discord.js"
+import { logger } from "./logger.js"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, "../../..")
@@ -156,7 +157,8 @@ const pairCommand = new SlashCommandBuilder()
 async function registerCommands() {
   const rest = new REST({ version: "10" }).setToken(discordToken)
 
-  logInfo("startup", "Registering slash commands", {
+  logger.info("Registering slash commands", {
+    scope: "startup",
     applicationId: discordApplicationId,
     commands: [pairCommand.name],
   })
@@ -165,7 +167,7 @@ async function registerCommands() {
     body: [pairCommand.toJSON()],
   })
 
-  logInfo("startup", "Slash commands registered")
+  logger.info("Slash commands registered", { scope: "startup" })
 }
 
 function normalizeMessageContent(content: string) {
@@ -180,32 +182,6 @@ function summarizeText(text: string, limit = 120) {
   return `${text.slice(0, limit - 1)}...`
 }
 
-function logInfo(
-  scope: string,
-  message: string,
-  details?: Record<string, unknown>
-) {
-  if (details) {
-    console.log(`[discord-bot:${scope}] ${message}`, details)
-    return
-  }
-
-  console.log(`[discord-bot:${scope}] ${message}`)
-}
-
-function logError(
-  scope: string,
-  message: string,
-  error: unknown,
-  details?: Record<string, unknown>
-) {
-  if (details) {
-    console.error(`[discord-bot:${scope}] ${message}`, details, error)
-    return
-  }
-
-  console.error(`[discord-bot:${scope}] ${message}`, error)
-}
 
 async function syncGuildChannelsToConvex(guildId: string) {
   try {
@@ -236,13 +212,18 @@ async function syncGuildChannelsToConvex(guildId: string) {
       channels: textChannels,
     })
 
-    logInfo("sync", "Synced guild channels to Convex", {
+    logger.info("Synced guild channels to Convex", {
+      scope: "sync",
       guildId,
       guildName: guild.name,
       channelCount: textChannels.length,
     })
   } catch (error) {
-    logError("sync", "Failed to sync guild channels", error, { guildId })
+    logger.error("Failed to sync guild channels", {
+      scope: "sync",
+      guildId,
+      error: error instanceof Error ? error.message : String(error),
+    })
   }
 }
 
@@ -264,7 +245,8 @@ async function processPendingNotifications() {
 
     if (notifications.length === 0) return
 
-    logInfo("responder", "Processing pending notifications", {
+    logger.info("Processing pending notifications", {
+      scope: "responder",
       count: notifications.length,
     })
 
@@ -306,14 +288,17 @@ async function processPendingNotifications() {
           status: "sent",
         })
 
-        logInfo("responder", "Sent Discord notification", {
+        logger.info("Sent Discord notification", {
+          scope: "responder",
           notificationId: notification._id,
           type: notification.type,
           taskCode: notification.taskCode,
         })
       } catch (notifError) {
-        logError("responder", "Failed to send notification", notifError, {
+        logger.error("Failed to send notification", {
+          scope: "responder",
           notificationId: notification._id,
+          error: notifError instanceof Error ? notifError.message : String(notifError),
         })
         await convex
           .mutation(markDiscordNotificationSentMutation, {
@@ -325,7 +310,10 @@ async function processPendingNotifications() {
       }
     }
   } catch (error) {
-    logError("responder", "Failed to poll pending notifications", error)
+    logger.error("Failed to poll pending notifications", {
+      scope: "responder",
+      error: error instanceof Error ? error.message : String(error),
+    })
   }
 }
 
@@ -333,7 +321,7 @@ function startNotificationPolling() {
   setInterval(() => {
     void processPendingNotifications()
   }, 10_000)
-  logInfo("responder", "Notification polling started", { intervalMs: 10_000 })
+  logger.info("Notification polling started", { scope: "responder", intervalMs: 10_000 })
 }
 
 client.once(Events.ClientReady, async (readyClient) => {
@@ -349,7 +337,8 @@ client.once(Events.ClientReady, async (readyClient) => {
     5 * 60 * 1000
   )
 
-  logInfo("startup", "Discord bot ready", {
+  logger.info("Discord bot ready", {
+    scope: "startup",
     botTag: readyClient.user.tag,
     applicationId: discordApplicationId,
     convexUrl,
@@ -388,7 +377,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
         `Open Median, go to Discord integrations, and enter it before <t:${expiresAt}:R>.`,
       ].join("\n"),
     })
-    logInfo("pair", "Issued pairing code", {
+    logger.info("Issued pairing code", {
+      scope: "pair",
       guildId: interaction.guildId,
       guildName: interaction.guild.name,
       channelId: interaction.channelId ?? null,
@@ -396,9 +386,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
       expiresAt,
     })
   } catch (error) {
-    logError("pair", "Failed to issue pairing code", error, {
+    logger.error("Failed to issue pairing code", {
+      scope: "pair",
       guildId: interaction.guildId,
       guildName: interaction.guild?.name ?? null,
+      error: error instanceof Error ? error.message : String(error),
     })
     await interaction.reply({
       flags: MessageFlags.Ephemeral,
@@ -415,7 +407,8 @@ client.on(Events.MessageCreate, async (message: Message) => {
 
   const content = normalizeMessageContent(message.content)
   if (!content) {
-    logInfo("message", "Ignoring empty message", {
+    logger.info("Ignoring empty message", {
+      scope: "message",
       guildId: message.guildId,
       channelId: message.channelId,
       messageId: message.id,
@@ -424,7 +417,8 @@ client.on(Events.MessageCreate, async (message: Message) => {
     return
   }
 
-  logInfo("message", "Received Discord message", {
+  logger.info("Received Discord message", {
+    scope: "message",
     guildId: message.guildId,
     channelId: message.channelId,
     messageId: message.id,
@@ -445,7 +439,8 @@ client.on(Events.MessageCreate, async (message: Message) => {
     })
 
     if (!result.accepted || !result.integration) {
-      logInfo("message", "Message was not accepted for processing", {
+      logger.info("Message was not accepted for processing", {
+        scope: "message",
         guildId: message.guildId,
         channelId: message.channelId,
         messageId: message.id,
@@ -454,7 +449,8 @@ client.on(Events.MessageCreate, async (message: Message) => {
       return
     }
 
-    logInfo("message", "Stored message and resolved integration", {
+    logger.info("Stored message and resolved integration", {
+      scope: "message",
       guildId: message.guildId,
       channelId: message.channelId,
       messageId: message.id,
@@ -463,12 +459,28 @@ client.on(Events.MessageCreate, async (message: Message) => {
       guildName: result.integration.guildName,
     })
   } catch (error) {
-    logError("message", "Failed to record Discord message", error, {
+    logger.error("Failed to record Discord message", {
+      scope: "message",
       guildId: message.guildId,
       channelId: message.channelId,
       messageId: message.id,
+      error: error instanceof Error ? error.message : String(error),
     })
   }
+})
+
+process.on("SIGINT", async () => {
+  logger.info("Shutting down", { scope: "lifecycle" })
+  await logger.flush()
+  client.destroy()
+  process.exit(0)
+})
+
+process.on("SIGTERM", async () => {
+  logger.info("Shutting down", { scope: "lifecycle" })
+  await logger.flush()
+  client.destroy()
+  process.exit(0)
 })
 
 void client.login(discordToken)

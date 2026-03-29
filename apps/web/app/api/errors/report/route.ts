@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server"
 import { NextResponse } from "next/server"
 import { z } from "zod"
+import { withAxiom, logger } from "@/lib/logger"
 
 const errorReportSchema = z.object({
   source: z.enum([
@@ -18,7 +19,7 @@ const errorReportSchema = z.object({
     .optional(),
 })
 
-export async function POST(request: Request) {
+export const POST = withAxiom(async (request: Request) => {
   const { userId } = await auth()
 
   try {
@@ -26,6 +27,7 @@ export async function POST(request: Request) {
     const parsed = errorReportSchema.safeParse(body)
 
     if (!parsed.success) {
+      logger.warn("Invalid error report payload", { userId })
       return NextResponse.json(
         { error: "Invalid error report." },
         { status: 400 }
@@ -34,17 +36,17 @@ export async function POST(request: Request) {
 
     const report = parsed.data
 
-    console.error("[median:error]", {
+    logger.error("Client error reported", {
       ...report,
       userId: userId ?? null,
-      timestamp: new Date().toISOString(),
     })
 
     return NextResponse.json({ ok: true })
   } catch {
+    logger.error("Failed to process error report", { userId })
     return NextResponse.json(
       { error: "Unable to record error." },
       { status: 500 }
     )
   }
-}
+})

@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server"
 import { generateText } from "ai"
 import { NextResponse } from "next/server"
 import { z } from "zod"
+import { withAxiom, logger } from "@/lib/logger"
 
 import { TASK_PRIORITIES, TASK_STATUSES } from "@/lib/task-board"
 
@@ -37,7 +38,7 @@ function extractJsonObject(text: string) {
   return text.slice(start, end + 1)
 }
 
-export async function POST(request: Request) {
+export const POST = withAxiom(async (request: Request) => {
   const { userId } = await auth()
 
   if (!userId) {
@@ -45,21 +46,33 @@ export async function POST(request: Request) {
   }
 
   if (!process.env.AI_GATEWAY_API_KEY) {
+    logger.error("Missing AI_GATEWAY_API_KEY", { userId })
     return NextResponse.json(
       { error: "Missing AI_GATEWAY_API_KEY." },
       { status: 500 }
     )
   }
 
+  const start = Date.now()
+
   try {
     const body = await request.json()
     const parsed = requestSchema.safeParse(body)
 
     if (!parsed.success) {
+      logger.warn("Invalid task generation request", { userId })
       return NextResponse.json({ error: "Invalid request." }, { status: 400 })
     }
 
     const { prompt, workspaceName, availableLabels } = parsed.data
+
+    logger.info("Generating tasks with AI", {
+      userId,
+      workspaceName,
+      promptLength: prompt.length,
+      labelCount: availableLabels.length,
+    })
+
     const labelsText =
       availableLabels.length > 0
         ? availableLabels.join(", ")
@@ -98,12 +111,19 @@ export async function POST(request: Request) {
       labels: task.labels.filter((label) => availableLabels.includes(label)),
     }))
 
+    logger.info("Tasks generated successfully", {
+      userId,
+      taskCount: normalizedTasks.length,
+      durationMs: Date.now() - start,
+    })
+
     return NextResponse.json({ tasks: normalizedTasks })
   } catch (error) {
-    console.error("[median:ai-task-generation]", {
-      message: error instanceof Error ? error.message : "Unknown error",
-      stack: error instanceof Error ? error.stack : undefined,
+    logger.error("AI task generation failed", {
       userId,
+      error: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+      durationMs: Date.now() - start,
     })
 
     return NextResponse.json(
@@ -111,4 +131,4 @@ export async function POST(request: Request) {
       { status: 500 }
     )
   }
-}
+})

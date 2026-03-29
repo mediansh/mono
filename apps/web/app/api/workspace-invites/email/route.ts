@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { Inbound } from "@inboundemail/sdk"
 import { getRoleLabel } from "@/lib/workspace-permissions"
+import { withAxiom, logger } from "@/lib/logger"
 
 const bodySchema = z.object({
   email: z.string().email(),
@@ -11,7 +12,7 @@ const bodySchema = z.object({
   inviteUrl: z.string().url(),
 })
 
-export async function POST(request: Request) {
+export const POST = withAxiom(async (request: Request) => {
   const { userId } = await auth()
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -19,6 +20,7 @@ export async function POST(request: Request) {
 
   const apiKey = process.env.INBOUND_API_KEY
   if (!apiKey) {
+    logger.error("INBOUND_API_KEY is not configured", { userId })
     return NextResponse.json(
       { error: "INBOUND_API_KEY is not configured" },
       { status: 500 }
@@ -33,6 +35,13 @@ export async function POST(request: Request) {
     const inviterName = user?.fullName ?? user?.firstName ?? "A teammate"
     const roleLabel = getRoleLabel(body.role)
     const inbound = new Inbound(apiKey)
+
+    logger.info("Sending workspace invite email", {
+      userId,
+      recipientEmail: body.email,
+      role: body.role,
+      workspaceName: body.workspaceName,
+    })
 
     const { error } = await inbound.emails.send({
       from: fromEmail,
@@ -50,15 +59,30 @@ export async function POST(request: Request) {
     })
 
     if (error) {
+      logger.error("Invite email failed to send", {
+        userId,
+        recipientEmail: body.email,
+        error: typeof error === "string" ? error : "Unknown email error",
+      })
       return NextResponse.json(
         { error: typeof error === "string" ? error : "Invite email failed to send" },
         { status: 502 }
       )
     }
 
+    logger.info("Invite email sent successfully", {
+      userId,
+      recipientEmail: body.email,
+      workspaceName: body.workspaceName,
+    })
+
     return NextResponse.json({ ok: true })
   } catch (error) {
     const message = error instanceof Error ? error.message : "Invalid request"
+    logger.error("Workspace invite email failed", {
+      userId,
+      error: message,
+    })
     return NextResponse.json({ error: message }, { status: 400 })
   }
-}
+})

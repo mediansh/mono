@@ -2,11 +2,14 @@ import type { Metadata } from "next"
 import { Suspense } from "react"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Agentation } from "agentation"
+import { Analytics } from "@vercel/analytics/next"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 import "@workspace/ui/globals.css"
 import { Providers } from "@/components/providers"
 import { RoutePrefetch } from "@/components/route-prefetch"
 import { cn } from "@workspace/ui/lib/utils"
+import { WebVitals } from "@/components/web-vitals"
 import { DevDebugPanel } from "@/components/dev-debug-panel"
 import { DevNetworkInterceptor } from "@/components/dev-network-interceptor"
 import { DevErrorTrigger } from "@/components/dev-error-trigger"
@@ -52,6 +55,9 @@ export default function RootLayout({
             {children}
           </Providers>
         </Suspense>
+        <WebVitals />
+        <Analytics />
+        <SpeedInsights />
         {process.env.NODE_ENV === "development" && (
           <>
             <Agentation />
