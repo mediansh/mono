@@ -6,7 +6,7 @@ import { posthog } from "@/lib/posthog"
  */
 export function capture(event: string, properties?: Record<string, unknown>) {
   try {
-    if (typeof window !== "undefined" && posthog.__loaded) {
+    if (typeof window !== "undefined" && posthog?.__loaded) {
       posthog.capture(event, properties)
     }
   } catch {

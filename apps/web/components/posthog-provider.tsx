@@ -3,14 +3,14 @@
 import { useEffect, useRef } from "react"
 import { useAuth, useUser } from "@clerk/nextjs"
 import { usePathname, useSearchParams } from "next/navigation"
-import { getPostHogClient, posthog } from "@/lib/posthog"
+import { posthog } from "@/lib/posthog"
 
 function PostHogPageView() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    if (!pathname || !posthog.__loaded) return
+    if (!pathname) return
 
     let url = window.origin + pathname
     const params = searchParams?.toString()
@@ -28,7 +28,7 @@ function PostHogIdentifier() {
   const identified = useRef(false)
 
   useEffect(() => {
-    if (!isLoaded || !posthog.__loaded) return
+    if (!isLoaded) return
 
     if (userId && !identified.current) {
       posthog.identify(userId, {
@@ -49,10 +49,6 @@ function PostHogIdentifier() {
 }
 
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
-  useEffect(() => {
-    getPostHogClient()
-  }, [])
-
   return (
     <>
       <PostHogIdentifier />

@@ -1,26 +1,29 @@
 import posthog from "posthog-js"
 
-const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY
-const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com"
+export function initPostHog() {
+  if (typeof window === "undefined") return
+  if (posthog.__loaded) return
 
-let initialized = false
+  const key = process.env.NEXT_PUBLIC_POSTHOG_KEY
+  if (!key) return
 
-export function getPostHogClient() {
-  if (typeof window === "undefined") return null
-  if (!POSTHOG_KEY) return null
+  posthog.init(key, {
+    api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com",
+    person_profiles: "identified_only",
+    capture_pageview: false,
+    capture_pageleave: true,
+    autocapture: true,
+    loaded: (ph) => {
+      if (process.env.NODE_ENV === "development") {
+        ph.debug()
+      }
+    },
+  })
+}
 
-  if (!initialized) {
-    posthog.init(POSTHOG_KEY, {
-      api_host: POSTHOG_HOST,
-      person_profiles: "identified_only",
-      capture_pageview: false, // we handle this manually via Next.js router
-      capture_pageleave: true,
-      autocapture: true,
-    })
-    initialized = true
-  }
-
-  return posthog
+// Init eagerly on module load (client-side only)
+if (typeof window !== "undefined") {
+  initPostHog()
 }
 
 export { posthog }
