@@ -36,6 +36,9 @@ import {
   ClipboardText,
   BoundingBox,
   Trash,
+  Plus,
+  ListPlus,
+  Shuffle,
 } from "@phosphor-icons/react"
 import {
   useDevDebug,
@@ -52,9 +55,16 @@ import {
   TASK_PRIORITIES,
   TASK_STATUS_LABELS,
   DEFAULT_WORKSPACE_LABELS,
+  REQUEST_SOURCES,
   type TaskStatus,
   type TaskPriority,
+  type RequestSource,
 } from "@/lib/task-board"
+import {
+  getLocalFirstStoreSnapshot,
+  updateWorkspaceTasks,
+  type LocalTaskDoc,
+} from "@/lib/local-first-store"
 
 // ─── Section wrapper ───────────────────────────────────────────────
 
@@ -241,6 +251,299 @@ function useBreakpoint() {
   return bp
 }
 
+// ─── Select row ───────────────────────────────────────────────────
+
+function SelectRow<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+  renderLabel,
+}: {
+  label: string
+  value: T
+  options: readonly T[]
+  onChange: (v: T) => void
+  renderLabel?: (v: T) => string
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-[11px] text-white/60 shrink-0">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value as T)}
+        className="min-w-0 flex-1 rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-white/70 ring-1 ring-white/10 outline-none focus:ring-blue-500/50"
+      >
+        {options.map((opt) => (
+          <option key={opt} value={opt} className="bg-[#1a1a1a] text-white/80">
+            {renderLabel ? renderLabel(opt) : opt}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
+// ─── Text input row ───────────────────────────────────────────────
+
+function TextInputRow({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-[11px] text-white/60 shrink-0">{label}</span>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="min-w-0 flex-1 rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-white/70 ring-1 ring-white/10 outline-none placeholder:text-white/20 focus:ring-blue-500/50"
+      />
+    </div>
+  )
+}
+
+// ─── Mock task helpers ────────────────────────────────────────────
+
+const MOCK_TITLES = [
+  "Add dark mode toggle to settings",
+  "Fix sidebar collapse animation jitter",
+  "Implement CSV export for tasks",
+  "API rate limiting returns wrong status code",
+  "Refactor notification service",
+  "Add drag-and-drop file upload",
+  "Mobile nav doesn't close on route change",
+  "Upgrade dependencies to latest",
+  "Add Stripe webhook retry logic",
+  "Performance regression on task list",
+  "User avatar upload crops incorrectly",
+  "Add keyboard shortcut for quick-add task",
+  "Search filter doesn't clear on workspace switch",
+  "Add custom label color picker",
+  "Integrate Linear two-way sync",
+]
+
+const MOCK_AUTHORS = [
+  "alex_dev", "sarah.m", "@jcole_ui", "devops-dan", "ux_marie",
+  "backend_bob", "@frontend_fey", "qabot", "pm_liz", "cto_mike",
+]
+
+const MOCK_ASSIGNEES = [
+  { name: "Abdul", avatar: "" },
+  { name: "Sarah", avatar: "" },
+  { name: "Alex", avatar: "" },
+  { name: "Jordan", avatar: "" },
+]
+
+function randomFrom<T>(arr: readonly T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)]!
+}
+
+let devTaskCounter = 9000
+
+function generateMockTask(overrides: Partial<{
+  title: string
+  status: TaskStatus
+  priority: TaskPriority
+  labels: string[]
+  assigneeName: string
+  sourcePlatform: RequestSource | "none"
+  description: string
+}>): LocalTaskDoc {
+  devTaskCounter++
+  const store = getLocalFirstStoreSnapshot()
+  const workspaceId = store.currentWorkspaceId ?? "dev_workspace"
+  const workspace = store.workspaces.find((w) => w._id === workspaceId)
+  const prefix = workspace?.prefix ?? "DEV"
+  const status = overrides.status ?? randomFrom(TASK_STATUSES)
+  const priority = overrides.priority ?? randomFrom(TASK_PRIORITIES)
+  const labelPool = (workspace?.labels ?? DEFAULT_WORKSPACE_LABELS).map((l) => l.name)
+
+  const labels = overrides.labels ??
+    (Math.random() > 0.4
+      ? [randomFrom(labelPool)]
+      : [])
+
+  const assignee = overrides.assigneeName
+    ? { name: overrides.assigneeName, avatar: "" }
+    : status !== "requests" && Math.random() > 0.3
+      ? randomFrom(MOCK_ASSIGNEES)
+      : undefined
+
+  const sourcePlatform = overrides.sourcePlatform ?? (status === "requests" ? randomFrom(REQUEST_SOURCES) : "none")
+  const source = sourcePlatform !== "none"
+    ? { platform: sourcePlatform as RequestSource, url: `https://example.com/${sourcePlatform}/${devTaskCounter}`, author: randomFrom(MOCK_AUTHORS) }
+    : undefined
+
+  const existingTasks = store.tasksByWorkspace[workspaceId] ?? []
+  const maxOrder = existingTasks
+    .filter((t) => t.status === status)
+    .reduce((max, t) => Math.max(max, t.order), -1)
+
+  return {
+    _id: `dev_task_${devTaskCounter}`,
+    _creationTime: Date.now(),
+    workspaceId: workspaceId as any,
+    taskCode: `${prefix}-${devTaskCounter}`,
+    taskNumber: devTaskCounter,
+    title: overrides.title || randomFrom(MOCK_TITLES),
+    description: overrides.description,
+    status,
+    priority,
+    labels,
+    order: maxOrder + 1,
+    project: "Median V1",
+    assignee,
+    source,
+    createdAtLabel: new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date()),
+  }
+}
+
+function injectTask(task: LocalTaskDoc) {
+  const store = getLocalFirstStoreSnapshot()
+  const workspaceId = store.currentWorkspaceId
+  if (!workspaceId) {
+    toast.error("No active workspace — can't inject task")
+    return
+  }
+  updateWorkspaceTasks(workspaceId, (tasks) => [...tasks, task])
+  toast.success(`Injected ${task.taskCode}`)
+}
+
+function injectBulkTasks(count: number) {
+  const store = getLocalFirstStoreSnapshot()
+  const workspaceId = store.currentWorkspaceId
+  if (!workspaceId) {
+    toast.error("No active workspace — can't inject tasks")
+    return
+  }
+  const newTasks: LocalTaskDoc[] = []
+  for (let i = 0; i < count; i++) {
+    newTasks.push(generateMockTask({}))
+  }
+  updateWorkspaceTasks(workspaceId, (tasks) => [...tasks, ...newTasks])
+  toast.success(`Injected ${count} mock tasks`)
+}
+
+function clearDevTasks() {
+  const store = getLocalFirstStoreSnapshot()
+  const workspaceId = store.currentWorkspaceId
+  if (!workspaceId) return
+  updateWorkspaceTasks(workspaceId, (tasks) =>
+    tasks.filter((t) => !t._id.startsWith("dev_task_"))
+  )
+  toast.success("Cleared all dev-injected tasks")
+}
+
+// ─── Task injector form ───────────────────────────────────────────
+
+function TaskInjectorForm({ onClose }: { onClose: () => void }) {
+  const [title, setTitle] = useState("")
+  const [description, setDescription] = useState("")
+  const [status, setStatus] = useState<TaskStatus>("todo")
+  const [priority, setPriority] = useState<TaskPriority>("medium")
+  const [selectedLabels, setSelectedLabels] = useState<string[]>([])
+  const [assignee, setAssignee] = useState("")
+  const [sourcePlatform, setSourcePlatform] = useState<RequestSource | "none">("none")
+
+  const store = getLocalFirstStoreSnapshot()
+  const workspace = store.workspaces.find((w) => w._id === store.currentWorkspaceId)
+  const labelPool = (workspace?.labels ?? DEFAULT_WORKSPACE_LABELS).map((l) => l.name)
+
+  const handleSubmit = () => {
+    const task = generateMockTask({
+      title: title || undefined,
+      description: description || undefined,
+      status,
+      priority,
+      labels: selectedLabels.length > 0 ? selectedLabels : undefined,
+      assigneeName: assignee || undefined,
+      sourcePlatform,
+    })
+    injectTask(task)
+    // Reset form
+    setTitle("")
+    setDescription("")
+    onClose()
+  }
+
+  return (
+    <div className="space-y-2">
+      <TextInputRow label="Title" value={title} onChange={setTitle} placeholder="Random if empty" />
+      <TextInputRow label="Description" value={description} onChange={setDescription} placeholder="Optional" />
+      <SelectRow
+        label="Status"
+        value={status}
+        options={TASK_STATUSES}
+        onChange={setStatus}
+        renderLabel={(s) => TASK_STATUS_LABELS[s]}
+      />
+      <SelectRow
+        label="Priority"
+        value={priority}
+        options={TASK_PRIORITIES}
+        onChange={setPriority}
+      />
+      <SelectRow
+        label="Source"
+        value={sourcePlatform}
+        options={["none", ...REQUEST_SOURCES] as const}
+        onChange={(v) => setSourcePlatform(v as RequestSource | "none")}
+      />
+      <TextInputRow label="Assignee" value={assignee} onChange={setAssignee} placeholder="Name or empty" />
+
+      {/* Labels multi-select */}
+      <div className="space-y-1">
+        <span className="text-[11px] text-white/60">Labels</span>
+        <div className="flex flex-wrap gap-1">
+          {labelPool.map((label) => {
+            const active = selectedLabels.includes(label)
+            return (
+              <Pill
+                key={label}
+                label={label}
+                active={active}
+                onClick={() =>
+                  setSelectedLabels(
+                    active
+                      ? selectedLabels.filter((l) => l !== label)
+                      : [...selectedLabels, label]
+                  )
+                }
+                color="purple"
+              />
+            )
+          })}
+        </div>
+      </div>
+
+      <div className="flex gap-1 pt-1">
+        <button
+          onClick={handleSubmit}
+          className="flex flex-1 items-center justify-center gap-1 rounded bg-blue-500/20 px-2 py-1 text-[11px] font-medium text-blue-300 ring-1 ring-blue-500/30 transition-colors hover:bg-blue-500/30"
+        >
+          <Plus size={12} />
+          Add Task
+        </button>
+        <button
+          onClick={onClose}
+          className="rounded bg-white/5 px-2 py-1 text-[11px] text-white/40 ring-1 ring-white/10 transition-colors hover:bg-white/10"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main panel ────────────────────────────────────────────────────
 
 function DevDebugPanelContent() {
@@ -406,6 +709,69 @@ function DevDebugPanelContent() {
               value={debug.simulateNoWorkspace}
               onChange={(v) => setDevDebug("simulateNoWorkspace", v)}
             />
+          </Section>
+
+          {/* ── Task Injector ──────────────────── */}
+          <Section title="Task Injector" icon={ListPlus} id="tasks" expandedSection={debug.expandedSection} onToggle={toggleSection}>
+            <TaskInjectorForm onClose={() => toggleSection("tasks")} />
+
+            <div className="border-t border-white/10 pt-2 mt-2 space-y-1">
+              <p className="text-[10px] text-white/30 mb-1">Quick inject</p>
+              <div className="grid grid-cols-2 gap-1">
+                <ActionButton label="Random task" icon={Shuffle} onClick={() => injectTask(generateMockTask({}))} />
+                <ActionButton label="+5 random" icon={Shuffle} onClick={() => injectBulkTasks(5)} />
+                <ActionButton label="+10 random" icon={Shuffle} onClick={() => injectBulkTasks(10)} />
+                <ActionButton label="+25 random" icon={Shuffle} onClick={() => injectBulkTasks(25)} />
+              </div>
+
+              <p className="text-[10px] text-white/30 mt-2 mb-1">By status (1 each)</p>
+              <div className="flex flex-wrap gap-1">
+                {TASK_STATUSES.map((s) => (
+                  <Pill
+                    key={s}
+                    label={TASK_STATUS_LABELS[s]}
+                    active={false}
+                    onClick={() => injectTask(generateMockTask({ status: s }))}
+                    color="blue"
+                  />
+                ))}
+              </div>
+
+              <p className="text-[10px] text-white/30 mt-2 mb-1">By priority (1 each)</p>
+              <div className="flex flex-wrap gap-1">
+                {TASK_PRIORITIES.map((p) => (
+                  <Pill
+                    key={p}
+                    label={p}
+                    active={false}
+                    onClick={() => injectTask(generateMockTask({ priority: p }))}
+                    color={p === "urgent" ? "red" : p === "high" ? "yellow" : "neutral"}
+                  />
+                ))}
+              </div>
+
+              <p className="text-[10px] text-white/30 mt-2 mb-1">By source (1 each)</p>
+              <div className="flex flex-wrap gap-1">
+                {REQUEST_SOURCES.map((src) => (
+                  <Pill
+                    key={src}
+                    label={src}
+                    active={false}
+                    onClick={() => injectTask(generateMockTask({ status: "requests", sourcePlatform: src }))}
+                    color="green"
+                  />
+                ))}
+              </div>
+
+              <div className="pt-2">
+                <ActionButton
+                  label="Clear all dev tasks"
+                  icon={Trash}
+                  variant="destructive"
+                  onClick={clearDevTasks}
+                />
+              </div>
+            </div>
           </Section>
 
           {/* ── Network ─────────────────────────── */}
