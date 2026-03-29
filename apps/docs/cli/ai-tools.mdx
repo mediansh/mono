@@ -1,0 +1,63 @@
+---
+title: "AI tool guides"
+description: "Set up Median with your AI coding tools."
+---
+
+Median works with any AI coding tool that can run shell commands. Here's how to configure the most popular ones.
+
+## Claude Code
+
+Claude Code reads `CLAUDE.md` for project instructions. Running `mdn setup` automatically adds Median task instructions to this file.
+
+```bash
+# Claude Code will automatically see these instructions
+mdn setup
+```
+
+Claude Code can then run commands like `mdn tasks --agent claude-code` and `mdn status MED-42 in_progress --agent claude-code` as part of its workflow.
+
+## Cursor
+
+Add Median instructions to your `.cursorrules` or project-level rules file:
+
+```markdown
+## Task management
+
+Use the Median CLI to manage tasks:
+- Check tasks: `mdn tasks --agent cursor`
+- Pick up: `mdn status <CODE> in_progress --agent cursor`
+- Complete: `mdn status <CODE> ready --agent cursor`
+- Create: `mdn create --title "..." --agent cursor`
+```
+
+## Windsurf
+
+Add Median instructions to your `.windsurfrules` file:
+
+```markdown
+## Task management
+
+Use the Median CLI to manage tasks:
+- Check tasks: `mdn tasks --agent windsurf`
+- Pick up: `mdn status <CODE> in_progress --agent windsurf`
+- Complete: `mdn status <CODE> ready --agent windsurf`
+- Create: `mdn create --title "..." --agent windsurf`
+```
+
+## Copilot
+
+For GitHub Copilot in VS Code, add instructions to `.github/copilot-instructions.md`:
+
+```markdown
+## Task management
+
+Use the Median CLI to manage tasks:
+- Check tasks: `mdn tasks --agent copilot`
+- Pick up: `mdn status <CODE> in_progress --agent copilot`
+- Complete: `mdn status <CODE> ready --agent copilot`
+- Create: `mdn create --title "..." --agent copilot`
+```
+
+## Other tools
+
+Any AI tool that can execute shell commands works with Median. Pass the tool's name as the `--agent` flag so activity is tracked correctly in the dashboard.

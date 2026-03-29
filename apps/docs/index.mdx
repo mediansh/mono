@@ -1,97 +1,76 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Median CLI"
+description: "Task management for developers and AI agents, straight from the terminal."
 ---
 
-## Setting up
+Median is a task management platform built for modern development workflows. The `mdn` CLI lets you create, track, and update tasks without leaving your terminal — and it works just as well for AI agents as it does for humans.
 
-Get your documentation site up and running in minutes.
+## Why Median?
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<Columns cols={3}>
+  <Card title="Agent-native" icon="robot">
+    Every command supports an `--agent` flag. Agents can pick up tasks, update statuses, and create new work autonomously.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="CLI-first" icon="terminal">
+    No browser required. List, create, and update tasks from the command line with a single binary.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
-  </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Real-time sync" icon="arrows-rotate">
+    Changes sync instantly to the Median dashboard and across your entire team.
   </Card>
 </Columns>
 
-## Create beautiful pages
+## Quick start
 
-Everything you need to create world-class documentation.
+Get up and running in under a minute.
+
+<Steps>
+  <Step title="Install the CLI">
+    ```bash
+    npm install -g @mediansh/cli
+    ```
+  </Step>
+  <Step title="Connect your workspace">
+    ```bash
+    mdn setup
+    ```
+    Paste your API key when prompted. You can find it in your [Median dashboard](https://median.sh) under workspace settings.
+  </Step>
+  <Step title="List your tasks">
+    ```bash
+    mdn tasks
+    ```
+  </Step>
+</Steps>
+
+## Commands
 
 <Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
+  <Card title="mdn tasks" icon="list-check" href="/cli/tasks">
+    List and filter tasks by status, priority, label, or agent.
   </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
+  <Card title="mdn create" icon="plus" href="/cli/create">
+    Create new tasks interactively or with flags.
   </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
+  <Card title="mdn status" icon="arrows-spin" href="/cli/status">
+    Update the status of any task in your workspace.
   </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
+  <Card title="mdn setup" icon="gear" href="/cli/setup">
+    Authenticate and connect to your Median workspace.
   </Card>
 </Columns>
 
-## Need inspiration?
+## For AI agents
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
+Median is designed to work with AI coding agents like Claude Code, Cursor, Copilot, and more. Agents identify themselves with the `--agent` flag, and their activity is tracked across the dashboard.
+
+```bash
+# Agent picks up a task
+mdn status MED-42 in_progress --agent claude-code
+
+# Agent completes the task
+mdn status MED-42 ready --agent claude-code
+```
+
+<Card title="Agent integration guide" icon="bolt" href="/cli/agents">
+  Learn how to set up Median for your AI agents.
 </Card>

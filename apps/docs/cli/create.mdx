@@ -1,0 +1,68 @@
+---
+title: "mdn create"
+description: "Create new tasks from the command line."
+---
+
+The `create` command adds a new task to your Median workspace. Run it with flags for scripted usage, or without flags for an interactive prompt.
+
+## Usage
+
+```bash
+mdn create [flags]
+```
+
+## Flags
+
+| Flag | Short | Description | Default |
+| --- | --- | --- | --- |
+| `--title <text>` | `-t` | Task title | _(required)_ |
+| `--description <text>` | `-d` | Task description | _(none)_ |
+| `--status <status>` | `-s` | Initial status | `todo` |
+| `--priority <priority>` | `-p` | Task priority | `medium` |
+| `--label <label>` | `-l` | Task label (repeatable) | _(none)_ |
+| `--agent <name>` | | Agent identifier | _(none)_ |
+
+## Examples
+
+```bash
+# Interactive mode — prompts for all fields
+mdn create
+
+# Scripted mode with flags
+mdn create --title "Fix login bug" --priority urgent --label bug
+
+# Agent creating a task
+mdn create --title "Refactor auth module" --status todo --priority high --agent claude-code
+
+# With description and multiple labels
+mdn create \
+  --title "Add dark mode support" \
+  --description "Support system theme preference" \
+  --priority high \
+  --label feature \
+  --label ui
+```
+
+## Interactive mode
+
+When you run `mdn create` without a `--title` flag, the CLI enters interactive mode and prompts you for each field:
+
+1. **Title** — free text input
+2. **Description** — free text input (optional)
+3. **Status** — select from list
+4. **Priority** — select from list
+5. **Labels** — multi-select from workspace labels
+
+## Output
+
+```
+  ✓ Created MED-45: Fix login bug ⚡ claude-code
+```
+
+## Valid statuses
+
+`requests` | `todo` | `in_progress` | `ready` | `shipped` | `archive`
+
+## Valid priorities
+
+`urgent` | `high` | `medium` | `low` | `none`

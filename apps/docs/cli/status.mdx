@@ -1,0 +1,73 @@
+---
+title: "mdn status"
+description: "Update the status of a task."
+---
+
+The `status` command changes the status of an existing task in your workspace.
+
+## Usage
+
+```bash
+mdn status <task-code> <new-status> [flags]
+```
+
+## Arguments
+
+| Argument | Description |
+| --- | --- |
+| `task-code` | The task code (e.g. `MED-42`) |
+| `new-status` | The new status to set |
+
+## Flags
+
+| Flag | Description |
+| --- | --- |
+| `--agent <name>` | Identify the calling agent |
+
+## Examples
+
+```bash
+# Move a task to in progress
+mdn status MED-42 in_progress
+
+# Mark a task as ready
+mdn status MED-42 ready --agent claude-code
+
+# Ship a completed task
+mdn status MED-42 shipped
+
+# Archive a task
+mdn status MED-42 archive
+```
+
+## Output
+
+```
+  ✓ MED-42: Fix authentication bug
+     Todo → In Progress ⚡ claude-code
+```
+
+## Valid statuses
+
+| Status | Description |
+| --- | --- |
+| `requests` | Incoming request, not yet triaged |
+| `todo` | Triaged and ready to be picked up |
+| `in_progress` | Actively being worked on |
+| `ready` | Work is done, awaiting review or merge |
+| `shipped` | Deployed or released |
+| `archive` | No longer relevant |
+
+There are no restrictions on status transitions — any status can move to any other status.
+
+## Typical workflow
+
+```bash
+# 1. Pick up a task
+mdn status MED-42 in_progress --agent claude-code
+
+# 2. Do the work...
+
+# 3. Mark as ready
+mdn status MED-42 ready --agent claude-code
+```

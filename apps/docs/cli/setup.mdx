@@ -1,0 +1,57 @@
+---
+title: "Setup"
+description: "Connect the Median CLI to your workspace."
+---
+
+The `mdn setup` command authenticates the CLI with your Median workspace using an API key.
+
+## Usage
+
+```bash
+mdn setup
+```
+
+The CLI will prompt you for your API key. You can find it in your [Median dashboard](https://median.sh) under **Settings > API Keys**.
+
+## API key format
+
+Median API keys follow this format:
+
+```
+mdn_<encoded-url>.<secret>
+```
+
+The CLI validates that your key:
+- Starts with `mdn_`
+- Is at least 20 characters long
+- Contains a valid encoded workspace URL
+
+## What happens during setup
+
+<Steps>
+  <Step title="Authentication">
+    The CLI validates your API key against the Median backend and retrieves your workspace info.
+  </Step>
+  <Step title="Local configuration">
+    Your credentials are saved to `~/.config/mdn/` for future commands. The stored config includes your workspace ID, name, and task prefix.
+  </Step>
+  <Step title="Agent instructions">
+    The CLI optionally appends usage instructions to `CLAUDE.md` and `AGENTS.md` in your current directory, so AI agents know how to interact with Median.
+  </Step>
+</Steps>
+
+## Reconfiguring
+
+If you need to switch workspaces or update your API key, run `mdn setup` again. The CLI will ask if you want to overwrite your existing configuration.
+
+## Configuration location
+
+All config is stored in `~/.config/mdn/`. The stored fields are:
+
+| Field | Description |
+| --- | --- |
+| `apiKey` | Your Median API key |
+| `convexUrl` | Backend URL (extracted from key) |
+| `workspaceId` | Workspace identifier |
+| `workspaceName` | Human-readable workspace name |
+| `workspacePrefix` | Task code prefix (e.g. `MED`) |
