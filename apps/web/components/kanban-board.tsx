@@ -157,6 +157,10 @@ function getPriorityIcon(priority: Priority, size = 14) {
   }
 }
 
+function isDevTask(id: string) {
+  return id.startsWith("dev_task_")
+}
+
 function sortTaskDocs(tasks: TaskDoc[]) {
   return [...tasks].sort((a, b) => {
     const statusDiff = STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
@@ -2006,11 +2010,12 @@ export function KanbanBoard() {
       return moveTaskDocs(current, task.id, "todo", 0)
     })
     toast.success(`Accepted "${task.title}" → Todo`)
+    if (isDevTask(task.id)) return
     // Read the freshly-written state for the server call
     const freshTasks = getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
     void reorderTasks({
       workspaceId,
-      changes: freshTasks.map((item) => ({
+      changes: freshTasks.filter((item) => !isDevTask(item._id)).map((item) => ({
         taskId: item._id as Id<"tasks">,
         status: item.status,
         order: item.order,
@@ -2029,6 +2034,7 @@ export function KanbanBoard() {
       return current.filter((item) => item._id !== task.id)
     })
     toast.success(`Denied "${task.title}".`)
+    if (isDevTask(task.id)) return
     void deleteTask({ taskId: task.id as Id<"tasks"> }).catch(() => {
       if (removedTask) {
         updateWorkspaceTasks(workspaceId, (current) => sortTaskDocs([...current, removedTask!]))
@@ -2047,15 +2053,17 @@ export function KanbanBoard() {
         const targetIndex = current.filter((task) => task.status === updates.status).length
         return moveTaskDocs(current, taskId, updates.status!, targetIndex)
       })
-      const freshTasks = getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
-      void reorderTasks({
-        workspaceId,
-        changes: freshTasks.map((item) => ({
-          taskId: item._id as Id<"tasks">,
-          status: item.status,
-          order: item.order,
-        })),
-      })
+      if (!isDevTask(taskId)) {
+        const freshTasks = getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
+        void reorderTasks({
+          workspaceId,
+          changes: freshTasks.filter((item) => !isDevTask(item._id)).map((item) => ({
+            taskId: item._id as Id<"tasks">,
+            status: item.status,
+            order: item.order,
+          })),
+        })
+      }
       return
     }
 
@@ -2069,6 +2077,8 @@ export function KanbanBoard() {
         labels: updates.labels,
       })
     )
+
+    if (isDevTask(taskId)) return
 
     void updateTask({
       taskId: taskId as Id<"tasks">,
@@ -2088,6 +2098,11 @@ export function KanbanBoard() {
     updateWorkspaceTasks(workspaceId, (tasks) =>
       tasks.filter((t) => t._id !== taskId)
     )
+
+    if (isDevTask(taskId)) {
+      toast.success(`Deleted "${deletedTask.title}".`)
+      return
+    }
 
     void deleteTask({ taskId: taskId as Id<"tasks"> })
       .then(() => {
@@ -2109,14 +2124,17 @@ export function KanbanBoard() {
       moveTaskDocs(current, taskId, toStatus, toIndex)
     )
     const freshTasks = getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
-    void reorderTasks({
-      workspaceId,
-      changes: freshTasks.map((item) => ({
-        taskId: item._id as Id<"tasks">,
-        status: item.status,
-        order: item.order,
-      })),
-    })
+    const realChanges = freshTasks.filter((item) => !isDevTask(item._id))
+    if (realChanges.length > 0) {
+      void reorderTasks({
+        workspaceId,
+        changes: realChanges.map((item) => ({
+          taskId: item._id as Id<"tasks">,
+          status: item.status,
+          order: item.order,
+        })),
+      })
+    }
   }
 
   function handleMoveMultipleTasks(taskIds: string[], toStatus: Status, toIndex: number) {
@@ -2133,14 +2151,17 @@ export function KanbanBoard() {
       return result
     })
     const freshTasks = getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
-    void reorderTasks({
-      workspaceId,
-      changes: freshTasks.map((item) => ({
-        taskId: item._id as Id<"tasks">,
-        status: item.status,
-        order: item.order,
-      })),
-    })
+    const realChanges = freshTasks.filter((item) => !isDevTask(item._id))
+    if (realChanges.length > 0) {
+      void reorderTasks({
+        workspaceId,
+        changes: realChanges.map((item) => ({
+          taskId: item._id as Id<"tasks">,
+          status: item.status,
+          order: item.order,
+        })),
+      })
+    }
   }
 
   function handleBulkUpdateTasks(taskIds: string[], updates: Partial<Pick<Task, "status" | "priority" | "labels">>) {
@@ -2148,6 +2169,8 @@ export function KanbanBoard() {
 
     const validIds = taskIds.filter((id) => !id.startsWith("optimistic:"))
     if (validIds.length === 0) return
+
+    const realIds = validIds.filter((id) => !isDevTask(id))
 
     // Optimistic update
     if (updates.status) {
@@ -2159,17 +2182,21 @@ export function KanbanBoard() {
         }
         return result
       })
-      const freshTasks = getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
-      void reorderTasks({
-        workspaceId,
-        changes: freshTasks.map((item) => ({
-          taskId: item._id as Id<"tasks">,
-          status: item.status,
-          order: item.order,
-        })),
-      }).then(() => {
+      if (realIds.length > 0) {
+        const freshTasks = getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
+        void reorderTasks({
+          workspaceId,
+          changes: freshTasks.filter((item) => !isDevTask(item._id)).map((item) => ({
+            taskId: item._id as Id<"tasks">,
+            status: item.status,
+            order: item.order,
+          })),
+        }).then(() => {
+          toast.success(`Updated ${validIds.length} task${validIds.length > 1 ? "s" : ""}.`)
+        })
+      } else {
         toast.success(`Updated ${validIds.length} task${validIds.length > 1 ? "s" : ""}.`)
-      })
+      }
     } else {
       updateWorkspaceTasks(workspaceId, (tasks) =>
         tasks.map((task) =>
@@ -2178,14 +2205,18 @@ export function KanbanBoard() {
             : task
         )
       )
-      void bulkUpdateTasks({
-        workspaceId,
-        taskIds: validIds as Id<"tasks">[],
-        priority: updates.priority,
-        labels: updates.labels,
-      }).then(() => {
+      if (realIds.length > 0) {
+        void bulkUpdateTasks({
+          workspaceId,
+          taskIds: realIds as Id<"tasks">[],
+          priority: updates.priority,
+          labels: updates.labels,
+        }).then(() => {
+          toast.success(`Updated ${validIds.length} task${validIds.length > 1 ? "s" : ""}.`)
+        })
+      } else {
         toast.success(`Updated ${validIds.length} task${validIds.length > 1 ? "s" : ""}.`)
-      })
+      }
     }
   }
 
@@ -2195,15 +2226,21 @@ export function KanbanBoard() {
     const validIds = taskIds.filter((id) => !id.startsWith("optimistic:"))
     if (validIds.length === 0) return
 
+    const realIds = validIds.filter((id) => !isDevTask(id))
     const deletedTasks = taskDocs.filter((t) => validIds.includes(t._id))
 
     updateWorkspaceTasks(workspaceId, (tasks) =>
       tasks.filter((t) => !validIds.includes(t._id))
     )
 
+    if (realIds.length === 0) {
+      toast.success(`Deleted ${validIds.length} task${validIds.length > 1 ? "s" : ""}.`)
+      return
+    }
+
     void bulkDeleteTasks({
       workspaceId,
-      taskIds: validIds as Id<"tasks">[],
+      taskIds: realIds as Id<"tasks">[],
     })
       .then(() => {
         toast.success(`Deleted ${validIds.length} task${validIds.length > 1 ? "s" : ""}.`)

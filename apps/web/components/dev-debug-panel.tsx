@@ -763,6 +763,60 @@ function DevDebugPanelContent() {
                 ))}
               </div>
 
+              <p className="text-[10px] text-white/30 mt-2 mb-1">Presets</p>
+              <div className="grid grid-cols-1 gap-1">
+                <ActionButton label="Full board (all columns)" icon={ListPlus} onClick={() => {
+                  const store = getLocalFirstStoreSnapshot()
+                  const wId = store.currentWorkspaceId
+                  if (!wId) { toast.error("No active workspace"); return }
+                  const tasks: LocalTaskDoc[] = []
+                  for (const s of TASK_STATUSES) {
+                    const count = s === "requests" ? 3 : s === "archive" ? 1 : 2
+                    for (let i = 0; i < count; i++) {
+                      tasks.push(generateMockTask({ status: s }))
+                    }
+                  }
+                  updateWorkspaceTasks(wId, (existing) => [...existing, ...tasks])
+                  toast.success(`Injected ${tasks.length} tasks across all columns`)
+                }} />
+                <ActionButton label="Agent/CLI batch (5 tasks)" icon={ListPlus} onClick={() => {
+                  const store = getLocalFirstStoreSnapshot()
+                  const wId = store.currentWorkspaceId
+                  if (!wId) { toast.error("No active workspace"); return }
+                  const agentTasks: LocalTaskDoc[] = [
+                    generateMockTask({ title: "Refactor auth middleware", status: "todo", priority: "high", labels: ["improvement"], sourcePlatform: "cli" }),
+                    generateMockTask({ title: "Fix rate limiter edge case", status: "in_progress", priority: "urgent", labels: ["bug"], sourcePlatform: "cli" }),
+                    generateMockTask({ title: "Add pagination to API", status: "todo", priority: "medium", labels: ["feature"], sourcePlatform: "cli" }),
+                    generateMockTask({ title: "Update deps & audit", status: "ready", priority: "low", labels: ["improvement"], sourcePlatform: "cli" }),
+                    generateMockTask({ title: "Write integration tests", status: "in_progress", priority: "medium", labels: ["improvement"], sourcePlatform: "cli" }),
+                  ]
+                  updateWorkspaceTasks(wId, (existing) => [...existing, ...agentTasks])
+                  toast.success("Injected 5 CLI/agent tasks")
+                }} />
+                <ActionButton label="Mixed feedback inbox" icon={ListPlus} onClick={() => {
+                  const store = getLocalFirstStoreSnapshot()
+                  const wId = store.currentWorkspaceId
+                  if (!wId) { toast.error("No active workspace"); return }
+                  const sources: RequestSource[] = ["discord", "x", "github", "slack", "linear"]
+                  const feedbackTasks: LocalTaskDoc[] = sources.map((src) =>
+                    generateMockTask({ status: "requests", sourcePlatform: src })
+                  )
+                  updateWorkspaceTasks(wId, (existing) => [...existing, ...feedbackTasks])
+                  toast.success("Injected 5 feedback requests from mixed sources")
+                }} />
+                <ActionButton label="Overloaded column (20 in Todo)" icon={ListPlus} onClick={() => {
+                  const store = getLocalFirstStoreSnapshot()
+                  const wId = store.currentWorkspaceId
+                  if (!wId) { toast.error("No active workspace"); return }
+                  const tasks: LocalTaskDoc[] = []
+                  for (let i = 0; i < 20; i++) {
+                    tasks.push(generateMockTask({ status: "todo" }))
+                  }
+                  updateWorkspaceTasks(wId, (existing) => [...existing, ...tasks])
+                  toast.success("Injected 20 tasks into Todo")
+                }} />
+              </div>
+
               <div className="pt-2">
                 <ActionButton
                   label="Clear all dev tasks"
