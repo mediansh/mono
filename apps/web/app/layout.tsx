@@ -7,6 +7,9 @@ import "@workspace/ui/globals.css"
 import { Providers } from "@/components/providers"
 import { RoutePrefetch } from "@/components/route-prefetch"
 import { cn } from "@workspace/ui/lib/utils"
+import { DevDebugPanel } from "@/components/dev-debug-panel"
+import { DevNetworkInterceptor } from "@/components/dev-network-interceptor"
+import { DevErrorTrigger } from "@/components/dev-error-trigger"
 
 export const metadata: Metadata = {
   title: {
@@ -49,7 +52,14 @@ export default function RootLayout({
             {children}
           </Providers>
         </Suspense>
-        {process.env.NODE_ENV === "development" && <Agentation />}
+        {process.env.NODE_ENV === "development" && (
+          <>
+            <Agentation />
+            <DevDebugPanel />
+            <DevNetworkInterceptor />
+            <DevErrorTrigger target="global" />
+          </>
+        )}
       </body>
     </html>
   )
