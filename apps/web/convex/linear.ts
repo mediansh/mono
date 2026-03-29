@@ -483,7 +483,7 @@ async function fetchTeamIssues(apiKey: string, teamId: string) {
       `
         query TeamIssues($teamId: String!, $after: String) {
           team(id: $teamId) {
-            issues(first: 100, after: $after, includeArchived: true) {
+            issues(first: 100, after: $after, includeArchived: false) {
               nodes {
                 id
                 identifier
@@ -1056,6 +1056,65 @@ export const recordLinearWebhookDelivery = internalMutation({
   },
 })
 
+export const reconcileMissingLinearIssues = internalMutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    activeLinearIssueIds: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const activeLinearIssueIds = new Set(args.activeLinearIssueIds)
+    const links = await ctx.db
+      .query("linearTaskLinks")
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .collect()
+
+    let archivedCount = 0
+    let deletedCount = 0
+    let unlinkedCount = 0
+
+    for (const link of links) {
+      if (activeLinearIssueIds.has(link.linearIssueId)) {
+        continue
+      }
+
+      const task = await ctx.db.get(link.taskId)
+
+      if (!task) {
+        await ctx.db.delete(link._id)
+        unlinkedCount += 1
+        continue
+      }
+
+      const isImportedArchivedLinearTask =
+        task.status === "archive" && task.source?.platform === "linear"
+
+      if (isImportedArchivedLinearTask) {
+        await ctx.db.delete(link._id)
+        await ctx.db.delete(task._id)
+        deletedCount += 1
+        continue
+      }
+
+      if (task.status !== "archive") {
+        await ctx.db.patch(task._id, {
+          status: "archive",
+          updatedAt: Date.now(),
+        })
+        archivedCount += 1
+      }
+
+      await ctx.db.delete(link._id)
+      unlinkedCount += 1
+    }
+
+    return {
+      archivedCount,
+      deletedCount,
+      unlinkedCount,
+    }
+  },
+})
+
 export const archiveTaskForRemovedLinearIssue = internalMutation({
   args: {
     linearIssueId: v.string(),
@@ -1609,6 +1668,7 @@ export const performWorkspaceLinearSync = internalAction({
       integration.apiKey,
       integration.teamId
     )
+    const activeLinearIssueIds = teamIssues.map((issue) => issue.id)
     for (const issue of teamIssues) {
       await ctx.runMutation(internal.linear.upsertTaskFromLinearIssue, {
         workspaceId: args.workspaceId,
@@ -1633,6 +1693,11 @@ export const performWorkspaceLinearSync = internalAction({
       })
     }
 
+    await ctx.runMutation(internal.linear.reconcileMissingLinearIssues, {
+      workspaceId: args.workspaceId,
+      activeLinearIssueIds,
+    })
+
     const taskSyncStates = await ctx.runQuery(
       internal.linear.listWorkspaceTaskSyncStates,
       {
@@ -1647,6 +1712,10 @@ export const performWorkspaceLinearSync = internalAction({
     const statusMappingsUpdatedAt = integration.statusMappingsUpdatedAt ?? 0
     let pushedCount = 0
     for (const item of taskSyncStates) {
+      if (item.task.status === "archive" && item.link === null) {
+        continue
+      }
+
       const taskUpdatedAt = item.task.updatedAt ?? item.task._creationTime
       const needsPush =
         item.link === null ||
