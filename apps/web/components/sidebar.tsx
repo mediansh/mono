@@ -302,7 +302,7 @@ export function AppSidebar() {
 
         <SidebarContent>
           {/* Search + New */}
-          <SidebarGroup className="gap-1 pt-0">
+          <SidebarGroup className="gap-1 pt-0.5">
             <SidebarGroupContent>
               <SidebarMenu className="gap-1">
                 <SidebarMenuItem>
