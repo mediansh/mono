@@ -66,8 +66,11 @@ const fadeUp = {
 function GitHubIntegrationSkeleton() {
   return (
     <div className="mx-auto w-full max-w-lg px-6 py-6">
-      <div className="mb-8 h-12 bg-muted/30" />
-      <div className="h-36 ring-1 ring-border bg-card/50" />
+      <div className="mb-4 h-8 w-32 rounded-[4px] bg-muted/40" />
+      <div className="flex flex-col gap-2">
+        <div className="h-10 rounded-[4px] bg-muted/30" />
+        <div className="h-20 rounded-[4px] bg-muted/20" />
+      </div>
     </div>
   )
 }
