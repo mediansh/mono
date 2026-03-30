@@ -1842,7 +1842,7 @@ function KanbanColumn({
       </div>
 
       {/* Cards */}
-      <div className="flex-1 overflow-y-auto p-2 scrollbar-hide">
+      <div data-column-scroll className="flex-1 overflow-y-auto p-2 scrollbar-hide">
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
           <div className="flex flex-col gap-2">
             {tasks.map((task, cardIndex) => (
@@ -2060,6 +2060,41 @@ function ColumnBoardView({
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const autoScrollRafRef = useRef<number | null>(null)
 
+  // Smart scroll: vertical wheel scrolls horizontally on the board,
+  // unless the cursor is over a column that can scroll vertically
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    function handleWheel(e: WheelEvent) {
+      // Only intercept vertical scroll (deltaY), not horizontal (deltaX)
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return
+
+      // Find the scrollable column under the cursor
+      const target = e.target as HTMLElement
+      const column = target.closest("[data-column-scroll]") as HTMLElement | null
+
+      if (column) {
+        const canScrollUp = column.scrollTop > 0
+        const canScrollDown = column.scrollTop + column.clientHeight < column.scrollHeight - 1
+        const scrollingDown = e.deltaY > 0
+        const scrollingUp = e.deltaY < 0
+
+        // If the column can scroll in the wheel direction, let it scroll vertically
+        if ((scrollingDown && canScrollDown) || (scrollingUp && canScrollUp)) {
+          return
+        }
+      }
+
+      // Otherwise, convert vertical scroll to horizontal
+      e.preventDefault()
+      container!.scrollBy({ left: e.deltaY, behavior: "auto" })
+    }
+
+    container.addEventListener("wheel", handleWheel, { passive: false })
+    return () => container.removeEventListener("wheel", handleWheel)
+  }, [])
+
   function stopAutoScroll() {
     if (autoScrollRafRef.current !== null) {
       cancelAnimationFrame(autoScrollRafRef.current)
@@ -2190,7 +2225,7 @@ function ColumnBoardView({
                 <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">{tasksByColumn.requests.length}</span>
                 <span className="ml-1 text-[11px] text-muted-foreground/50">from users</span>
               </div>
-              <div className="flex-1 overflow-y-auto p-2 scrollbar-hide">
+              <div data-column-scroll className="flex-1 overflow-y-auto p-2 scrollbar-hide">
                 <div className="flex flex-col gap-2">
                   {tasksByColumn.requests.map((task) => (
                     <RequestRow
