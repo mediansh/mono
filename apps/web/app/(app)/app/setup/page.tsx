@@ -98,14 +98,17 @@ export default function WorkspaceSetupPage() {
     return null
   }
 
+  const inputClass = "h-9 rounded-[4px] bg-card px-3 text-[13px] ring-1 ring-border outline-none transition-all placeholder:text-muted-foreground focus:ring-foreground/30"
+  const buttonClass = "mt-1 flex h-9 items-center justify-center rounded-[4px] bg-primary text-[13px] font-medium text-primary-foreground ring-1 ring-primary-foreground/10 transition-colors hover:bg-primary/90 disabled:opacity-50"
+
   return (
-    <div className="flex min-h-svh">
+    <div className="flex h-svh bg-card p-1.5">
       {/* Left half - Form */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-        className="flex w-full flex-col justify-center px-8 py-12 sm:px-12 lg:w-1/2 lg:px-20"
+        className="flex w-full flex-col justify-center rounded-[4px] bg-background px-8 py-12 ring-1 ring-border sm:px-12 lg:w-1/2 lg:px-20"
       >
         <div className="mx-auto w-full max-w-sm">
           {/* Logo */}
@@ -113,14 +116,14 @@ export default function WorkspaceSetupPage() {
             <Logo className="text-2xl" />
           </div>
 
-          <h1 className="text-2xl font-semibold tracking-tight">Create your workspace</h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">
+          <h1 className="text-xl font-semibold tracking-tight">Create your workspace</h1>
+          <p className="mt-1 text-[13px] text-muted-foreground">
             Name your workspace to get started. You can optionally upload a logo.
           </p>
 
-          <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
+          <form onSubmit={handleSubmit} className="mt-7 flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium">
+              <label className="text-[13px] font-medium">
                 Logo <span className="text-muted-foreground font-normal">(optional)</span>
               </label>
               <input
@@ -133,7 +136,7 @@ export default function WorkspaceSetupPage() {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="group flex size-16 items-center justify-center overflow-hidden rounded-none border border-border bg-card transition-colors hover:bg-muted"
+                className="group flex size-14 items-center justify-center overflow-hidden rounded-[4px] bg-card ring-1 ring-border transition-colors hover:bg-muted"
               >
                 {iconPreview ? (
                   <img
@@ -142,10 +145,10 @@ export default function WorkspaceSetupPage() {
                     className="size-full object-cover"
                   />
                 ) : name.trim() ? (
-                  <Facehash name={name.trim()} size={64} />
+                  <Facehash name={name.trim()} size={56} />
                 ) : (
                   <ImageIcon
-                    size={20}
+                    size={18}
                     className="text-muted-foreground transition-colors group-hover:text-foreground"
                   />
                 )}
@@ -158,7 +161,7 @@ export default function WorkspaceSetupPage() {
                     setIconPreview(null)
                     if (fileInputRef.current) fileInputRef.current.value = ""
                   }}
-                  className="w-fit text-xs text-muted-foreground transition-colors hover:text-foreground"
+                  className="w-fit text-[11px] text-muted-foreground transition-colors hover:text-foreground"
                 >
                   Remove
                 </button>
@@ -166,7 +169,7 @@ export default function WorkspaceSetupPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="workspace-name" className="text-sm font-medium">
+              <label htmlFor="workspace-name" className="text-[13px] font-medium">
                 Workspace name
               </label>
               <input
@@ -179,18 +182,18 @@ export default function WorkspaceSetupPage() {
                   if (error) setError("")
                 }}
                 autoFocus
-                className="h-10 rounded-none border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
+                className={inputClass}
               />
             </div>
 
             {error && (
-              <p className="text-sm text-destructive">{error}</p>
+              <p className="text-[13px] text-destructive">{error}</p>
             )}
 
             <button
               type="submit"
               disabled={loading || !name.trim()}
-              className="mt-1 flex h-10 items-center justify-center rounded-none bg-primary text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+              className={buttonClass}
             >
               {loading ? <Spinner /> : "Create workspace"}
             </button>
@@ -203,14 +206,14 @@ export default function WorkspaceSetupPage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.6, delay: 0.15, ease: "easeOut" }}
-        className="hidden flex-col items-center justify-center bg-card border-l border-border lg:flex lg:w-1/2"
+        className="hidden flex-col items-center justify-center lg:flex lg:w-1/2"
       >
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
         >
-          <Logo symbolOnly className="size-32" />
+          <Logo symbolOnly className="size-28" />
         </motion.div>
       </motion.div>
     </div>
