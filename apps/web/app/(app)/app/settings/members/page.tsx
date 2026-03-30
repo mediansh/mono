@@ -59,41 +59,11 @@ function getInviteUrl(token: string) {
 function MembersSkeleton() {
   return (
     <div className="mx-auto w-full max-w-lg px-6 py-6">
-      <div className="mb-4">
-        <div className="h-5 w-24 rounded bg-muted/60" />
-        <div className="mt-2 h-4 w-72 rounded bg-muted/40" />
-      </div>
-
-      {/* Invite card skeleton */}
-      <div className="rounded-[4px] ring-1 ring-border bg-card">
-        <div className="flex gap-1 border-b border-border px-3.5 pt-4 pb-3">
-          <div className="h-4 w-20 rounded bg-muted/50" />
-          <div className="ml-4 h-4 w-24 rounded bg-muted/50" />
-        </div>
-        <div className="space-y-3 p-3.5">
-          <div className="h-4 w-12 rounded bg-muted/40" />
-          <div className="h-8 w-full rounded-[4px] bg-muted/30" />
-          <div className="h-8 w-40 rounded-[4px] bg-muted/40" />
-        </div>
-      </div>
-
-      {/* Members skeleton */}
-      <div className="mt-4">
-        <div className="mb-3 h-4 w-28 rounded bg-muted/50" />
-        <div className="rounded-[4px] ring-1 ring-border bg-card">
-          <div className="divide-y divide-border">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 px-3.5 py-3">
-                <div className="size-8 rounded-[4px] bg-muted/50" />
-                <div className="flex-1">
-                  <div className="h-4 w-32 rounded bg-muted/50" />
-                  <div className="mt-1.5 h-3 w-44 rounded bg-muted/30" />
-                </div>
-                <div className="h-6 w-16 rounded-[4px] bg-muted/30" />
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="mb-4 h-8 w-28 rounded-[4px] bg-muted/40" />
+      <div className="flex flex-col gap-2">
+        <div className="h-10 rounded-[4px] bg-muted/30" />
+        <div className="h-24 rounded-[4px] bg-muted/20" />
+        <div className="h-16 rounded-[4px] bg-muted/20" />
       </div>
     </div>
   )
@@ -256,7 +226,7 @@ export default function MembersSettingsPage() {
           <button
             type="button"
             onClick={() => setInviteMode("link")}
-            className={`flex items-center gap-1.5 border-b-2 px-3 pb-3 text-[13px] font-medium transition-colors ${
+            className={`flex items-center gap-1.5 border-b-2 px-2.5 pb-2.5 text-[13px] font-medium transition-colors ${
               inviteMode === "link"
                 ? "border-foreground text-foreground"
                 : "border-transparent text-muted-foreground hover:text-foreground"
@@ -268,7 +238,7 @@ export default function MembersSettingsPage() {
           <button
             type="button"
             onClick={() => setInviteMode("email")}
-            className={`flex items-center gap-1.5 border-b-2 px-3 pb-3 text-[13px] font-medium transition-colors ${
+            className={`flex items-center gap-1.5 border-b-2 px-2.5 pb-2.5 text-[13px] font-medium transition-colors ${
               inviteMode === "email"
                 ? "border-foreground text-foreground"
                 : "border-transparent text-muted-foreground hover:text-foreground"
@@ -365,7 +335,7 @@ export default function MembersSettingsPage() {
               {invites.map((invite) => (
                 <div
                   key={invite._id}
-                  className="flex items-center justify-between px-3.5 py-3"
+                  className="flex items-center justify-between px-3.5 py-2.5"
                 >
                   <div className="flex items-center gap-3">
                     <div className="flex size-8 items-center justify-center rounded-[4px] ring-1 ring-border bg-muted/50">
@@ -415,7 +385,7 @@ export default function MembersSettingsPage() {
             {members.map((member) => (
               <div
                 key={member._id}
-                className="group flex items-center justify-between px-3.5 py-3"
+                className="group flex items-center justify-between px-3.5 py-2.5"
               >
                 <div className="flex items-center gap-3">
                   <div className="flex size-8 items-center justify-center overflow-hidden rounded-[4px] ring-1 ring-border bg-muted/50">

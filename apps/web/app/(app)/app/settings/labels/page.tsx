@@ -101,11 +101,8 @@ export default function LabelsSettingsPage() {
               {labels.map((label, index) => (
                 <motion.div
                   key={label.key}
-                  layout
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+                  exit={{ opacity: 0, height: 0, overflow: "hidden" }}
+                  transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
                   className="group flex items-center gap-2.5"
                 >
                   <input
@@ -153,7 +150,7 @@ export default function LabelsSettingsPage() {
         </div>
 
         {/* Save bar */}
-        <div className="flex items-center justify-between border-t border-border bg-muted/30 px-3.5 py-3">
+        <div className="flex items-center justify-between border-t border-border bg-muted/30 px-3.5 py-2">
           <p className="text-[11px] text-muted-foreground">
             {labels.length} label{labels.length !== 1 ? "s" : ""} configured
           </p>

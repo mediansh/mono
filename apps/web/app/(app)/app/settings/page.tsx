@@ -209,7 +209,7 @@ export default function GeneralSettingsPage() {
           </div>
 
           {/* Save bar */}
-          <div className="flex items-center justify-between border-t border-border bg-muted/30 px-3.5 py-3">
+          <div className="flex items-center justify-between border-t border-border bg-muted/30 px-3.5 py-2">
             <p className="text-[11px] text-muted-foreground">
               This is your workspace&apos;s visible name.
             </p>
