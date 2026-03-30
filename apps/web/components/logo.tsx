@@ -45,5 +45,5 @@ export function Logo({
     return <MedianSymbol className={cn("h-[1em] w-auto", className)} />
   }
 
-  return <MedianFull className={cn("h-[1em] w-auto", className)} />
+  return <MedianFull className={cn("h-[1em] w-auto shrink-0", className)} />
 }
