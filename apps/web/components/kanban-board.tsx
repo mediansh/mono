@@ -133,6 +133,9 @@ const LabelConfigContext = createContext<LabelConfig>({
 })
 function useLabelConfig() { return useContext(LabelConfigContext) }
 
+const BoardMountedContext = createContext(false)
+function useBoardMounted() { return useContext(BoardMountedContext) }
+
 const STATUS_LABELS = TASK_STATUS_LABELS
 
 const SORTABLE_TRANSITION = null
@@ -993,6 +996,7 @@ const SortableListRow = memo(function SortableListRow({
   onDelete: (taskId: string) => void
 }) {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
+  const boardMounted = useBoardMounted()
   const {
     attributes,
     listeners,
@@ -1006,7 +1010,7 @@ const SortableListRow = memo(function SortableListRow({
     disabled: !canManageTasks,
   })
 
-  const [hasAnimated, setHasAnimated] = useState(false)
+  const [hasAnimated, setHasAnimated] = useState(boardMounted)
   const rowDelay = groupDelay + Math.min(rowIndex, 8) * 0.02
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -1666,6 +1670,7 @@ const KanbanCard = memo(function KanbanCard({
   onDelete: (taskId: string) => void
 }) {
   const { colors: labelColors } = useLabelConfig()
+  const boardMounted = useBoardMounted()
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
   const activeAgent = getActiveAgent(task)
   const {
@@ -1714,9 +1719,9 @@ const KanbanCard = memo(function KanbanCard({
       <motion.div
         ref={setNodeRef}
         style={style}
-        initial={{ opacity: 0, y: 8, scale: 0.97 }}
+        initial={boardMounted ? false : { opacity: 0, y: 8, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.25, delay: staggerDelay, ease: [0.25, 0.1, 0.25, 1] }}
+        transition={boardMounted ? { duration: 0 } : { duration: 0.25, delay: staggerDelay, ease: [0.25, 0.1, 0.25, 1] }}
         layout
         layoutId={`kanban-card-${task.id}`}
         {...attributes}
@@ -2663,6 +2668,13 @@ export function KanbanBoard() {
   const [modalDefaultStatus, setModalDefaultStatus] = useState<Status>("todo")
   const [hiddenColumns, setHiddenColumns] = useState<Status[]>([])
   const [isCleaningDemoTasks, setIsCleaningDemoTasks] = useState(false)
+  const [boardMounted, setBoardMounted] = useState(false)
+
+  // Mark board as mounted after initial render to suppress entry animations on subsequent updates
+  useEffect(() => {
+    const timer = setTimeout(() => setBoardMounted(true), 800)
+    return () => clearTimeout(timer)
+  }, [])
   const [hasFetchedTasks, setHasFetchedTasks] = useState(false)
   const cleanedWorkspaceIds = useState(() => new Set<string>())[0]
   const lastLoadedWorkspaceIdRef = useRef<string | null>(null)
@@ -3061,6 +3073,7 @@ export function KanbanBoard() {
   }
 
   return (
+    <BoardMountedContext.Provider value={boardMounted}>
     <LabelConfigContext.Provider value={labelConfig}>
     <div className="flex h-full flex-col">
       {!canManageTasks ? (
@@ -3126,5 +3139,6 @@ export function KanbanBoard() {
       />
     </div>
     </LabelConfigContext.Provider>
+    </BoardMountedContext.Provider>
   )
 }
