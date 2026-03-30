@@ -20,12 +20,15 @@ export type LocalTaskDoc = Omit<Doc<"tasks">, "_id"> & {
   _syncStatus?: "pending" | "error"
 }
 
+export type BoardView = "list" | "board"
+
 type LocalFirstStore = {
   version: 1
   currentWorkspaceId: string | null
   workspaces: WorkspaceRecord[]
   tasksByWorkspace: Record<string, LocalTaskDoc[]>
   collapsedColumnsByWorkspace: Record<string, string[]>
+  boardViewByWorkspace: Record<string, BoardView>
 }
 
 const STORAGE_KEY = "median_local_first_store_v1"
@@ -36,6 +39,7 @@ const EMPTY_STORE: LocalFirstStore = {
   workspaces: [],
   tasksByWorkspace: {},
   collapsedColumnsByWorkspace: {},
+  boardViewByWorkspace: {},
 }
 
 let storeCache = EMPTY_STORE
@@ -65,6 +69,11 @@ function sanitizeStore(value: unknown): LocalFirstStore {
       candidate.collapsedColumnsByWorkspace &&
       typeof candidate.collapsedColumnsByWorkspace === "object"
         ? candidate.collapsedColumnsByWorkspace
+        : {},
+    boardViewByWorkspace:
+      candidate.boardViewByWorkspace &&
+      typeof candidate.boardViewByWorkspace === "object"
+        ? candidate.boardViewByWorkspace
         : {},
   }
 }
@@ -220,6 +229,19 @@ export function setCollapsedWorkspaceColumns(
     collapsedColumnsByWorkspace: {
       ...current.collapsedColumnsByWorkspace,
       [workspaceId]: columns,
+    },
+  }))
+}
+
+export function setWorkspaceBoardView(
+  workspaceId: string,
+  view: BoardView
+) {
+  updateLocalFirstStore((current) => ({
+    ...current,
+    boardViewByWorkspace: {
+      ...current.boardViewByWorkspace,
+      [workspaceId]: view,
     },
   }))
 }

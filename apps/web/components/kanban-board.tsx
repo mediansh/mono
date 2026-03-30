@@ -79,11 +79,15 @@ import {
 import {
   getLocalFirstStoreSnapshot,
   setCollapsedWorkspaceColumns,
+  setWorkspaceBoardView,
   setWorkspaceTasks,
   updateWorkspaceTasks,
   useLocalFirstStore,
+  type BoardView,
   type LocalTaskDoc as TaskDoc,
 } from "@/lib/local-first-store"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { LeftToRightListBulletIcon, DashboardSquare01Icon } from "@hugeicons/core-free-icons"
 import { hasTaskWritePermission } from "@/lib/workspace-permissions"
 import { useSearchPaletteTaskEvent } from "@/components/search-palette"
 import {
@@ -1586,6 +1590,568 @@ function BulkActionToolbar({
   )
 }
 
+// ── Kanban Card (for Board View) ──
+
+const KanbanCard = memo(function KanbanCard({
+  task,
+  isSelected,
+  hasSelection,
+  isDraggedAway,
+  canManageTasks,
+  onSelect,
+  onToggleSelect,
+  onUpdate,
+  onDelete,
+}: {
+  task: Task
+  isSelected: boolean
+  hasSelection: boolean
+  isDraggedAway: boolean
+  canManageTasks: boolean
+  onSelect: (task: Task) => void
+  onToggleSelect: (taskId: string, shiftKey: boolean) => void
+  onUpdate: (taskId: string, updates: Partial<Task>) => void
+  onDelete: (taskId: string) => void
+}) {
+  const { colors: labelColors } = useLabelConfig()
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
+  const activeAgent = getActiveAgent(task)
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    isDragging,
+  } = useSortable({
+    id: task.id,
+    data: { type: "task", task },
+    transition: SORTABLE_TRANSITION,
+    disabled: !canManageTasks,
+  })
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    opacity: isDragging || isDraggedAway ? 0.3 : undefined,
+    willChange: transform ? "transform" : undefined,
+  }
+
+  const handleClick = useCallback((e: ReactMouseEvent) => {
+    if (hasSelection) {
+      e.preventDefault()
+      onToggleSelect(task.id, e.shiftKey)
+      return
+    }
+    onSelect(task)
+  }, [onSelect, onToggleSelect, task, hasSelection])
+
+  const handleContextMenu = useCallback((e: ReactMouseEvent) => {
+    e.preventDefault()
+    setContextMenu({ x: e.clientX, y: e.clientY })
+  }, [])
+
+  const handleCheckboxClick = useCallback((e: ReactMouseEvent) => {
+    e.stopPropagation()
+    onToggleSelect(task.id, e.shiftKey)
+  }, [onToggleSelect, task.id])
+
+  return (
+    <>
+      <div
+        ref={setNodeRef}
+        style={style}
+        {...attributes}
+        {...listeners}
+        onClick={handleClick}
+        onContextMenu={handleContextMenu}
+        className={`group cursor-pointer touch-none border border-border bg-background p-3 select-none transition-all duration-150 hover:border-border/80 hover:bg-accent/20 dark:bg-card ${isSelected ? "ring-2 ring-primary/40 bg-primary/[0.06]" : ""}`}
+      >
+        {/* Top: task code + checkbox */}
+        <div className="mb-1.5 flex items-center justify-between">
+          <span className="font-mono text-[10px] tabular-nums text-muted-foreground/50">{task.taskCode}</span>
+          <div
+            onClick={handleCheckboxClick}
+            className={`flex size-3.5 shrink-0 items-center justify-center rounded border transition-all ${
+              isSelected
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-background opacity-0 group-hover:opacity-100"
+            } ${hasSelection ? "!opacity-100" : ""}`}
+          >
+            {isSelected && <Check size={8} weight="bold" />}
+          </div>
+        </div>
+
+        {/* Title */}
+        <p className="mb-2 line-clamp-2 text-[13px] font-medium leading-snug text-foreground/90">{task.title}</p>
+
+        {/* Bottom: priority + labels + agent + date */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <div className="shrink-0">{getPriorityIcon(task.priority, 12)}</div>
+          {activeAgent && <AgentBadge agentName={activeAgent} />}
+          {(task.labels ?? []).map((label) => (
+            <span
+              key={label}
+              className="rounded-none px-1.5 py-0.5 text-[9px] font-medium capitalize"
+              style={{
+                backgroundColor: (labelColors[label] ?? "#888") + "18",
+                color: labelColors[label] ?? "#888",
+              }}
+            >
+              {label}
+            </span>
+          ))}
+          <span className="ml-auto text-[10px] text-muted-foreground/50">{task.createdAt}</span>
+        </div>
+      </div>
+      {contextMenu && (
+        <TaskContextMenu
+          task={task}
+          position={contextMenu}
+          onClose={() => setContextMenu(null)}
+          onUpdate={onUpdate}
+          onDelete={onDelete}
+          canManageTasks={canManageTasks}
+        />
+      )}
+    </>
+  )
+})
+
+// ── Kanban Column (for Board View) ──
+
+function KanbanColumn({
+  column,
+  tasks,
+  isDropTarget,
+  selectedTaskIds,
+  draggedTaskIds,
+  canManageTasks,
+  onSelectTask,
+  onToggleSelectTask,
+  onUpdateTask,
+  onDeleteTask,
+}: {
+  column: (typeof COLUMNS)[number]
+  tasks: Task[]
+  isDropTarget?: boolean
+  selectedTaskIds: Set<string>
+  draggedTaskIds: Set<string>
+  canManageTasks: boolean
+  onSelectTask: (task: Task) => void
+  onToggleSelectTask: (taskId: string, shiftKey: boolean) => void
+  onUpdateTask: (taskId: string, updates: Partial<Task>) => void
+  onDeleteTask: (taskId: string) => void
+}) {
+  const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks])
+  const hasSelection = selectedTaskIds.size > 0
+  const { setNodeRef } = useDroppable({
+    id: column.id,
+    data: {
+      type: "column",
+      columnId: column.id,
+    },
+  })
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`flex h-full w-[280px] shrink-0 flex-col ${isDropTarget ? "ring-2 ring-primary" : ""}`}
+    >
+      {/* Column header */}
+      <div className="flex items-center gap-2 px-3 py-2.5 bg-sidebar/60 dark:bg-accent/30 border-b border-border">
+        {getColumnIcon(column.id)}
+        <span className="text-[13px] font-semibold tracking-tight">{column.label}</span>
+        <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-none bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">{tasks.length}</span>
+      </div>
+
+      {/* Cards */}
+      <div className="flex-1 overflow-y-auto p-2 scrollbar-hide">
+        <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
+          <div className="flex flex-col gap-2">
+            {tasks.map((task) => (
+              <KanbanCard
+                key={task.id}
+                task={task}
+                isSelected={selectedTaskIds.has(task.id)}
+                hasSelection={hasSelection}
+                isDraggedAway={draggedTaskIds.has(task.id)}
+                canManageTasks={canManageTasks}
+                onSelect={onSelectTask}
+                onToggleSelect={onToggleSelectTask}
+                onUpdate={onUpdateTask}
+                onDelete={onDeleteTask}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      </div>
+    </div>
+  )
+}
+
+// ── Board View (Kanban Columns) ──
+
+function ColumnBoardView({
+  tasks,
+  hiddenColumns,
+  canManageTasks,
+  onMoveTask,
+  onMoveMultipleTasks,
+  onUpdateTask,
+  onDeleteTask,
+  onBulkUpdateTasks,
+  onBulkDeleteTasks,
+  onAcceptRequest,
+  onDenyRequest,
+}: {
+  tasks: Task[]
+  hiddenColumns: Status[]
+  canManageTasks: boolean
+  onMoveTask: (taskId: string, toStatus: Status, toIndex: number) => void
+  onMoveMultipleTasks: (taskIds: string[], toStatus: Status, toIndex: number) => void
+  onUpdateTask: (taskId: string, updates: Partial<Task>) => void
+  onDeleteTask: (taskId: string) => void
+  onBulkUpdateTasks: (taskIds: string[], updates: Partial<Pick<Task, "status" | "priority" | "labels">>) => void
+  onBulkDeleteTasks: (taskIds: string[]) => void
+  onAcceptRequest: (task: Task) => void
+  onDenyRequest: (task: Task) => void
+}) {
+  const visibleColumns = COLUMNS.filter((c) => !hiddenColumns.includes(c.id) && c.id !== "requests")
+  const showRequests = !hiddenColumns.includes("requests")
+  const [activeTask, setActiveTask] = useState<Task | null>(null)
+  const [draggedTaskIds, setDraggedTaskIds] = useState<Set<string>>(new Set())
+  const [overColumn, setOverColumn] = useState<Status | null>(null)
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
+  const lastToggledTaskIdRef = useRef<string | null>(null)
+
+  const selectedTask = selectedTaskId ? tasks.find((t) => t.id === selectedTaskId) ?? null : null
+
+  const orderedTaskIds = useMemo(() => {
+    const ids: string[] = []
+    for (const col of visibleColumns) {
+      for (const task of tasks) {
+        if (task.status === col.id) ids.push(task.id)
+      }
+    }
+    return ids
+  }, [tasks, visibleColumns])
+
+  const handleSelectTask = useCallback((task: Task) => {
+    setSelectedTaskId(task.id)
+  }, [])
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("search-palette:board-ready"))
+  }, [])
+
+  useSearchPaletteTaskEvent(useCallback((taskId: string) => {
+    setSelectedTaskId(taskId)
+  }, []))
+
+  const handleToggleSelectTask = useCallback((taskId: string, shiftKey: boolean) => {
+    if (!canManageTasks) return
+    setSelectedTaskIds((prev) => {
+      const next = new Set(prev)
+      if (shiftKey && lastToggledTaskIdRef.current) {
+        const lastIdx = orderedTaskIds.indexOf(lastToggledTaskIdRef.current)
+        const currentIdx = orderedTaskIds.indexOf(taskId)
+        if (lastIdx !== -1 && currentIdx !== -1) {
+          const start = Math.min(lastIdx, currentIdx)
+          const end = Math.max(lastIdx, currentIdx)
+          for (let i = start; i <= end; i++) {
+            const id = orderedTaskIds[i]
+            if (id) next.add(id)
+          }
+          return next
+        }
+      }
+      if (next.has(taskId)) {
+        next.delete(taskId)
+      } else {
+        next.add(taskId)
+      }
+      lastToggledTaskIdRef.current = taskId
+      return next
+    })
+  }, [canManageTasks, orderedTaskIds])
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedTaskIds(new Set())
+    lastToggledTaskIdRef.current = null
+  }, [])
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape" && selectedTaskIds.size > 0) {
+        handleClearSelection()
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "a" && selectedTaskIds.size > 0) {
+        e.preventDefault()
+        setSelectedTaskIds(new Set(orderedTaskIds))
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [selectedTaskIds.size, orderedTaskIds, handleClearSelection])
+
+  useEffect(() => {
+    const taskIdSet = new Set(tasks.map((t) => t.id))
+    setSelectedTaskIds((prev) => {
+      const next = new Set<string>()
+      for (const id of prev) {
+        if (taskIdSet.has(id)) next.add(id)
+      }
+      return next.size === prev.size ? prev : next
+    })
+  }, [tasks])
+
+  const handleBulkChangeStatus = useCallback((status: Status) => {
+    onBulkUpdateTasks(Array.from(selectedTaskIds), { status })
+    handleClearSelection()
+  }, [selectedTaskIds, onBulkUpdateTasks, handleClearSelection])
+
+  const handleBulkChangePriority = useCallback((priority: Priority) => {
+    onBulkUpdateTasks(Array.from(selectedTaskIds), { priority })
+    handleClearSelection()
+  }, [selectedTaskIds, onBulkUpdateTasks, handleClearSelection])
+
+  const handleBulkChangeLabels = useCallback((labels: string[]) => {
+    onBulkUpdateTasks(Array.from(selectedTaskIds), { labels })
+    handleClearSelection()
+  }, [selectedTaskIds, onBulkUpdateTasks, handleClearSelection])
+
+  const handleBulkDelete = useCallback(() => {
+    onBulkDeleteTasks(Array.from(selectedTaskIds))
+    handleClearSelection()
+  }, [selectedTaskIds, onBulkDeleteTasks, handleClearSelection])
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 5 },
+    })
+  )
+
+  const tasksByColumn = useMemo(() => {
+    const map: Record<Status, Task[]> = {
+      requests: [],
+      todo: [],
+      in_progress: [],
+      ready: [],
+      shipped: [],
+      archive: [],
+    }
+    for (const task of tasks) {
+      map[task.status].push(task)
+    }
+    return map
+  }, [tasks])
+
+  function findColumnOfTask(taskId: string): Status | null {
+    for (const col of COLUMNS) {
+      if (tasksByColumn[col.id].some((t) => t.id === taskId)) {
+        return col.id
+      }
+    }
+    return null
+  }
+
+  function handleDragStart(event: DragStartEvent) {
+    if (!canManageTasks) return
+    const task = event.active.data.current?.task as Task | undefined
+    if (!task) return
+    setActiveTask(task)
+    if (selectedTaskIds.has(task.id) && selectedTaskIds.size > 1) {
+      setDraggedTaskIds(new Set(selectedTaskIds))
+    } else {
+      setDraggedTaskIds(new Set([task.id]))
+    }
+  }
+
+  function handleDragOver(event: DragOverEvent) {
+    if (!canManageTasks) return
+    const { over } = event
+    if (!over) { setOverColumn(null); return }
+    const overId = over.id as string
+    const targetCol = over.data.current?.type === "column" ? (over.id as Status) : findColumnOfTask(overId)
+    if (targetCol === "requests") { setOverColumn(null); return }
+    setOverColumn((current) => (current === targetCol ? current : targetCol))
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    if (!canManageTasks) return
+    const { active, over } = event
+    const currentDraggedIds = draggedTaskIds
+    setActiveTask(null)
+    setDraggedTaskIds(new Set())
+    setOverColumn(null)
+    if (!over) return
+
+    const activeId = active.id as string
+    const overId = over.id as string
+    const activeColumn = findColumnOfTask(activeId)
+    const targetColumn = over.data.current?.type === "column" ? (over.id as Status) : findColumnOfTask(overId)
+    if (!activeColumn || !targetColumn) return
+    if (targetColumn === "requests") return
+
+    const isMultiDrag = currentDraggedIds.size > 1
+    if (isMultiDrag) {
+      const targetIndex = over.data.current?.type === "column"
+        ? tasksByColumn[targetColumn].length
+        : Math.max(0, tasksByColumn[targetColumn].findIndex((t) => t.id === overId))
+      onMoveMultipleTasks(Array.from(currentDraggedIds), targetColumn, targetIndex)
+      handleClearSelection()
+      return
+    }
+
+    if (over.data.current?.type === "column") {
+      onMoveTask(activeId, targetColumn, tasksByColumn[targetColumn].length)
+      return
+    }
+    if (activeColumn === targetColumn) {
+      const columnTasks = tasksByColumn[activeColumn]
+      const oldIndex = columnTasks.findIndex((t) => t.id === activeId)
+      const newIndex = columnTasks.findIndex((t) => t.id === overId)
+      if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+        onMoveTask(activeId, activeColumn, newIndex)
+      }
+    } else {
+      onMoveTask(activeId, targetColumn, 0)
+    }
+  }
+
+  const activeTaskSource = activeTask ? activeTask.status : null
+
+  return (
+    <>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={(args) => {
+          const pointerIntersections = pointerWithin(args)
+          if (pointerIntersections.length > 0) return pointerIntersections
+          return closestCenter(args)
+        }}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="flex h-full">
+          {/* Requests column — special treatment */}
+          {showRequests && tasksByColumn.requests.length > 0 && (
+            <div className="flex h-full w-[280px] shrink-0 flex-col border-r border-border">
+              <div className="flex items-center gap-2 px-3 py-2.5 bg-sidebar/40 dark:bg-accent/20 border-b border-border">
+                {getColumnIcon("requests")}
+                <span className="text-[13px] font-semibold tracking-tight">Requests</span>
+                <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-none bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">{tasksByColumn.requests.length}</span>
+                <span className="ml-1 text-[11px] text-muted-foreground/50">from users</span>
+              </div>
+              <div className="flex-1 overflow-y-auto p-2 scrollbar-hide">
+                <div className="flex flex-col gap-2">
+                  {tasksByColumn.requests.map((task) => (
+                    <RequestRow
+                      key={task.id}
+                      task={task}
+                      dismissed={false}
+                      canManageTasks={canManageTasks}
+                      onAccept={onAcceptRequest}
+                      onDeny={onDenyRequest}
+                      onSelect={handleSelectTask}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Regular columns */}
+          {visibleColumns.map((column) => {
+            const columnTasks = tasksByColumn[column.id]
+            return (
+              <div key={column.id} className="border-r border-border last:border-r-0">
+                <KanbanColumn
+                  column={column}
+                  tasks={columnTasks}
+                  isDropTarget={overColumn === column.id && activeTaskSource !== null && activeTaskSource !== column.id}
+                  selectedTaskIds={selectedTaskIds}
+                  draggedTaskIds={draggedTaskIds}
+                  canManageTasks={canManageTasks}
+                  onSelectTask={handleSelectTask}
+                  onToggleSelectTask={handleToggleSelectTask}
+                  onUpdateTask={onUpdateTask}
+                  onDeleteTask={onDeleteTask}
+                />
+              </div>
+            )
+          })}
+        </div>
+        <DragOverlay dropAnimation={null}>
+          {activeTask ? <DragOverlayListRow task={activeTask} dragCount={draggedTaskIds.size} /> : null}
+        </DragOverlay>
+      </DndContext>
+
+      <TaskDetailModal
+        task={selectedTask}
+        onClose={() => setSelectedTaskId(null)}
+        onUpdate={onUpdateTask}
+        onDelete={(taskId) => { onDeleteTask(taskId); setSelectedTaskId(null) }}
+        onAccept={(task) => { onAcceptRequest(task); setSelectedTaskId(null) }}
+        onDeny={(task) => { onDenyRequest(task); setSelectedTaskId(null) }}
+        canManageTasks={canManageTasks}
+      />
+
+      {canManageTasks && selectedTaskIds.size > 0 && (
+        <BulkActionToolbar
+          selectedCount={selectedTaskIds.size}
+          onChangeStatus={handleBulkChangeStatus}
+          onChangePriority={handleBulkChangePriority}
+          onChangeLabels={handleBulkChangeLabels}
+          onDelete={handleBulkDelete}
+          onClearSelection={handleClearSelection}
+        />
+      )}
+    </>
+  )
+}
+
+// ── View Toggle ──
+
+function ViewToggle({
+  view,
+  onViewChange,
+}: {
+  view: BoardView
+  onViewChange: (view: BoardView) => void
+}) {
+  return (
+    <div className="flex items-center rounded-none border border-border bg-sidebar dark:bg-card">
+      <button
+        onClick={() => onViewChange("list")}
+        className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-colors ${
+          view === "list"
+            ? "bg-accent text-foreground"
+            : "text-muted-foreground hover:text-foreground"
+        }`}
+        title="List view"
+      >
+        <HugeiconsIcon icon={LeftToRightListBulletIcon} size={14} />
+        <span>List</span>
+      </button>
+      <div className="h-4 w-px bg-border" />
+      <button
+        onClick={() => onViewChange("board")}
+        className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-colors ${
+          view === "board"
+            ? "bg-accent text-foreground"
+            : "text-muted-foreground hover:text-foreground"
+        }`}
+        title="Board view"
+      >
+        <HugeiconsIcon icon={DashboardSquare01Icon} size={14} />
+        <span>Board</span>
+      </button>
+    </div>
+  )
+}
+
 function ListView({
   tasks,
   hiddenColumns,
@@ -1948,7 +2514,7 @@ function ListView({
 export function KanbanBoard() {
   const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth()
   const { currentWorkspace } = useWorkspace()
-  const { tasksByWorkspace, collapsedColumnsByWorkspace } = useLocalFirstStore()
+  const { tasksByWorkspace, collapsedColumnsByWorkspace, boardViewByWorkspace } = useLocalFirstStore()
   const [modalOpen, setModalOpen] = useState(false)
   const [modalDefaultStatus, setModalDefaultStatus] = useState<Status>("todo")
   const [hiddenColumns, setHiddenColumns] = useState<Status[]>([])
@@ -1968,6 +2534,12 @@ export function KanbanBoard() {
     () => (workspaceId ? (collapsedColumnsByWorkspace[workspaceId] ?? []) as Status[] : []),
     [collapsedColumnsByWorkspace, workspaceId]
   )
+  const boardView: BoardView = workspaceId ? (boardViewByWorkspace[workspaceId] ?? "list") : "list"
+
+  function handleViewChange(view: BoardView) {
+    if (!workspaceId) return
+    setWorkspaceBoardView(workspaceId, view)
+  }
 
   const clearDemoTasks = useMutation(api.tasks.clearDemoTasks)
   const updateTask = useMutation(api.tasks.updateTask)
@@ -2340,36 +2912,51 @@ export function KanbanBoard() {
         </div>
       ) : null}
 
-      {/* Toolbar - only render when there are hidden columns */}
-      {hiddenColumns.length > 0 && (
-        <div
-          className="flex items-center gap-1 overflow-hidden px-4 pb-2"
-        >
+      {/* Toolbar */}
+      <div className="flex items-center gap-1 overflow-hidden px-4 py-2">
+        <ViewToggle view={boardView} onViewChange={handleViewChange} />
+        {hiddenColumns.length > 0 && (
           <HiddenColumnsToolbar
             hiddenColumns={hiddenColumns}
             onShow={handleShowColumn}
             tasks={tasks}
           />
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Content */}
       <div className="min-h-0 flex-1">
-        <ListView
-          tasks={tasks}
-          hiddenColumns={hiddenColumns}
-          collapsedColumns={collapsedColumns}
-          canManageTasks={canManageTasks}
-          onToggleCollapsedColumn={handleToggleCollapsedColumn}
-          onMoveTask={handleMoveTask}
-          onMoveMultipleTasks={handleMoveMultipleTasks}
-          onUpdateTask={handleUpdateTask}
-          onDeleteTask={handleDeleteTask}
-          onBulkUpdateTasks={handleBulkUpdateTasks}
-          onBulkDeleteTasks={handleBulkDeleteTasks}
-          onAcceptRequest={handleAcceptRequest}
-          onDenyRequest={handleDenyRequest}
-        />
+        {boardView === "board" ? (
+          <ColumnBoardView
+            tasks={tasks}
+            hiddenColumns={hiddenColumns}
+            canManageTasks={canManageTasks}
+            onMoveTask={handleMoveTask}
+            onMoveMultipleTasks={handleMoveMultipleTasks}
+            onUpdateTask={handleUpdateTask}
+            onDeleteTask={handleDeleteTask}
+            onBulkUpdateTasks={handleBulkUpdateTasks}
+            onBulkDeleteTasks={handleBulkDeleteTasks}
+            onAcceptRequest={handleAcceptRequest}
+            onDenyRequest={handleDenyRequest}
+          />
+        ) : (
+          <ListView
+            tasks={tasks}
+            hiddenColumns={hiddenColumns}
+            collapsedColumns={collapsedColumns}
+            canManageTasks={canManageTasks}
+            onToggleCollapsedColumn={handleToggleCollapsedColumn}
+            onMoveTask={handleMoveTask}
+            onMoveMultipleTasks={handleMoveMultipleTasks}
+            onUpdateTask={handleUpdateTask}
+            onDeleteTask={handleDeleteTask}
+            onBulkUpdateTasks={handleBulkUpdateTasks}
+            onBulkDeleteTasks={handleBulkDeleteTasks}
+            onAcceptRequest={handleAcceptRequest}
+            onDenyRequest={handleDenyRequest}
+          />
+        )}
       </div>
 
       {/* New task modal */}
