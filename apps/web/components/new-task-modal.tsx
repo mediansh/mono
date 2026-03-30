@@ -315,7 +315,7 @@ export function NewTaskModal({
     ]
   )
 
-  async function handleCreate() {
+  function handleCreate() {
     if (!title.trim() || !currentWorkspace) return
     if (!canManageTasks) {
       setError("Guests can only view tasks.")
@@ -324,35 +324,30 @@ export function NewTaskModal({
 
     setError("")
 
-    try {
-      await createSingleTask({
-        title,
-        description,
-        status,
-        priority,
-        labels,
-        attachments,
-      })
+    const payload = { title, description, status, priority, labels, attachments }
 
-      trackTaskCreated({
-        status,
-        priority,
-        labelCount: labels.length,
-        hasDescription: !!description.trim(),
-        hasAttachments: attachments.length > 0,
-        source: "manual",
-      })
-
-      if (createMore) {
-        resetForm({ keepOpen: true, nextStatus: status })
-        requestAnimationFrame(() => titleRef.current?.focus())
-      } else {
-        onOpenChange(false)
-        resetForm()
-      }
-    } catch {
-      setError("Task creation failed. Try again.")
+    // Close immediately — optimistic insert happens inside createSingleTask
+    if (createMore) {
+      resetForm({ keepOpen: true, nextStatus: status })
+      requestAnimationFrame(() => titleRef.current?.focus())
+    } else {
+      onOpenChange(false)
+      resetForm()
     }
+
+    trackTaskCreated({
+      status: payload.status,
+      priority: payload.priority,
+      labelCount: payload.labels.length,
+      hasDescription: !!payload.description.trim(),
+      hasAttachments: payload.attachments.length > 0,
+      source: "manual",
+    })
+
+    // Fire and forget — optimistic state is already set
+    createSingleTask(payload).catch(() => {
+      toast.error("Task creation failed. Try again.")
+    })
   }
 
   async function handleGenerateTasks() {

@@ -2666,6 +2666,7 @@ export function KanbanBoard() {
   const [hasFetchedTasks, setHasFetchedTasks] = useState(false)
   const cleanedWorkspaceIds = useState(() => new Set<string>())[0]
   const lastLoadedWorkspaceIdRef = useRef<string | null>(null)
+  const lastLocalChangeRef = useRef<number>(0)
 
   const workspaceId = currentWorkspace?._id
   const canManageTasks = hasTaskWritePermission(currentWorkspace?.role)
@@ -2705,6 +2706,12 @@ export function KanbanBoard() {
     }
 
     if (liveTaskDocs === undefined) {
+      return
+    }
+
+    // Skip merge if we have recent local changes (optimistic updates in flight)
+    const msSinceLocalChange = Date.now() - lastLocalChangeRef.current
+    if (msSinceLocalChange < 2000 && hasFetchedTasks) {
       return
     }
 
@@ -2767,6 +2774,7 @@ export function KanbanBoard() {
 
   function handleAcceptRequest(task: Task) {
     if (!workspaceId || !canManageTasks) return
+    lastLocalChangeRef.current = Date.now()
     let snapshotBefore: TaskDoc[] | undefined
     updateWorkspaceTasks(workspaceId, (current) => {
       snapshotBefore = current
@@ -2792,6 +2800,7 @@ export function KanbanBoard() {
 
   function handleDenyRequest(task: Task) {
     if (!workspaceId || !canManageTasks || task.id.startsWith("optimistic:")) return
+    lastLocalChangeRef.current = Date.now()
     let removedTask: TaskDoc | undefined
     updateWorkspaceTasks(workspaceId, (current) => {
       removedTask = current.find((item) => item._id === task.id)
@@ -2810,6 +2819,7 @@ export function KanbanBoard() {
 
   function handleUpdateTask(taskId: string, updates: Partial<Task>) {
     if (!workspaceId || !canManageTasks) return
+    lastLocalChangeRef.current = Date.now()
 
     trackTaskUpdated({ taskId, fields: Object.keys(updates) })
 
@@ -2861,6 +2871,7 @@ export function KanbanBoard() {
 
     const deletedTask = taskDocs.find((task) => task._id === taskId)
     if (!deletedTask) return
+    lastLocalChangeRef.current = Date.now()
 
     trackTaskDeleted({ taskId })
 
@@ -2888,6 +2899,7 @@ export function KanbanBoard() {
 
   function handleMoveTask(taskId: string, toStatus: Status, toIndex: number) {
     if (!workspaceId || !canManageTasks || taskId.startsWith("optimistic:")) return
+    lastLocalChangeRef.current = Date.now()
 
     const fromTask = (getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []).find((t) => t._id === taskId)
     trackTaskMoved({ taskId, fromStatus: fromTask?.status ?? "unknown", toStatus, method: "drag" })
@@ -2911,6 +2923,7 @@ export function KanbanBoard() {
 
   function handleMoveMultipleTasks(taskIds: string[], toStatus: Status, toIndex: number) {
     if (!workspaceId || !canManageTasks) return
+    lastLocalChangeRef.current = Date.now()
 
     const validIds = taskIds.filter((id) => !id.startsWith("optimistic:"))
     if (validIds.length === 0) return
@@ -2938,6 +2951,7 @@ export function KanbanBoard() {
 
   function handleBulkUpdateTasks(taskIds: string[], updates: Partial<Pick<Task, "status" | "priority" | "labels">>) {
     if (!workspaceId || !canManageTasks) return
+    lastLocalChangeRef.current = Date.now()
 
     const validIds = taskIds.filter((id) => !id.startsWith("optimistic:"))
     if (validIds.length === 0) return
@@ -2997,6 +3011,7 @@ export function KanbanBoard() {
   }
 
   function handleBulkDeleteTasks(taskIds: string[]) {
+    lastLocalChangeRef.current = Date.now()
     if (!workspaceId || !taskDocs || !canManageTasks) return
 
     const validIds = taskIds.filter((id) => !id.startsWith("optimistic:"))
