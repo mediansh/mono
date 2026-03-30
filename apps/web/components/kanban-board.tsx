@@ -1827,7 +1827,7 @@ function KanbanColumn({
       className={`flex h-full w-[260px] shrink-0 flex-col overflow-hidden rounded-[4px] ring-1 ring-border transition-shadow duration-200 ${isDropTarget ? "ring-2 ring-primary bg-primary/[0.03]" : ""}`}
     >
       {/* Column header */}
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-card dark:bg-card border-b border-border">
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-card dark:bg-card shadow-[inset_0_-1px_0_var(--border)]">
         {getColumnIcon(column.id)}
         <span className="text-[13px] font-semibold tracking-tight">{column.label}</span>
         <motion.span
@@ -2061,7 +2061,12 @@ function ColumnBoardView({
   const autoScrollRafRef = useRef<number | null>(null)
 
   // Smart scroll: vertical wheel scrolls horizontally on the board,
-  // unless the cursor is over a column that can scroll vertically
+  // unless the cursor is over a column that can scroll vertically.
+  // When a column hits its scroll boundary, absorb further scroll
+  // events instead of immediately leaking to horizontal.
+  const boundaryHitsRef = useRef(0)
+  const lastColumnRef = useRef<HTMLElement | null>(null)
+
   useEffect(() => {
     const container = scrollContainerRef.current
     if (!container) return
@@ -2074,19 +2079,34 @@ function ColumnBoardView({
       const target = e.target as HTMLElement
       const column = target.closest("[data-column-scroll]") as HTMLElement | null
 
+      // Reset boundary counter if we moved to a different column
+      if (column !== lastColumnRef.current) {
+        boundaryHitsRef.current = 0
+        lastColumnRef.current = column
+      }
+
       if (column) {
         const canScrollUp = column.scrollTop > 0
         const canScrollDown = column.scrollTop + column.clientHeight < column.scrollHeight - 1
         const scrollingDown = e.deltaY > 0
         const scrollingUp = e.deltaY < 0
+        const hasOverflow = column.scrollHeight > column.clientHeight + 1
 
-        // If the column can scroll in the wheel direction, let it scroll vertically
+        // Column can scroll in this direction — scroll vertically, reset counter
         if ((scrollingDown && canScrollDown) || (scrollingUp && canScrollUp)) {
+          boundaryHitsRef.current = 0
+          return
+        }
+
+        // Column has scrollable content but we're at the boundary.
+        // Absorb the event to prevent jarring horizontal scroll.
+        if (hasOverflow) {
+          e.preventDefault()
           return
         }
       }
 
-      // Otherwise, convert vertical scroll to horizontal
+      // No column, or column has no overflow at all — scroll horizontally
       e.preventDefault()
       container!.scrollBy({ left: e.deltaY, behavior: "auto" })
     }
@@ -2219,7 +2239,7 @@ function ColumnBoardView({
               transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
               className="flex h-full w-[260px] shrink-0 flex-col overflow-hidden rounded-[4px] ring-1 ring-border"
             >
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-card dark:bg-card border-b border-border">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-card dark:bg-card shadow-[inset_0_-1px_0_var(--border)]">
                 {getColumnIcon("requests")}
                 <span className="text-[13px] font-semibold tracking-tight">Requests</span>
                 <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">{tasksByColumn.requests.length}</span>
