@@ -410,14 +410,26 @@ export function AppSidebar() {
                   </div>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent side="top" align="start" className="w-52 duration-150">
-                  <DropdownMenuGroup>
-                    <DropdownMenuLabel className="font-normal">
-                      <div className="text-[13px] font-medium">{user?.fullName}</div>
-                      <div className="text-[11px] text-muted-foreground">
-                        {user?.primaryEmailAddress?.emailAddress}
+                  {/* Profile header */}
+                  <div className="flex items-center gap-2 px-1.5 py-1.5">
+                    {user?.imageUrl ? (
+                      <img
+                        src={user.imageUrl}
+                        alt={user.fullName ?? "Profile"}
+                        className="h-7 w-7 shrink-0 rounded-[4px] object-cover ring-1 ring-border"
+                      />
+                    ) : (
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[4px] bg-accent text-xs font-medium ring-1 ring-border">
+                        {user?.firstName?.charAt(0) ?? "?"}
                       </div>
-                    </DropdownMenuLabel>
-                  </DropdownMenuGroup>
+                    )}
+                    <div className="flex min-w-0 flex-col">
+                      <span className="truncate text-[13px] font-medium leading-tight">{user?.fullName}</span>
+                      <span className="truncate text-[11px] leading-tight text-muted-foreground">
+                        {user?.primaryEmailAddress?.emailAddress}
+                      </span>
+                    </div>
+                  </div>
                   <DropdownMenuSeparator />
 
                   {/* Workspace switcher */}
@@ -429,71 +441,69 @@ export function AppSidebar() {
                           <DropdownMenuItem
                             key={ws._id}
                             onClick={() => switchWorkspace(ws._id)}
-                            className="items-center"
+                            className="items-center gap-2"
                           >
                             {ws.iconUrl ? (
                               <img
                                 src={ws.iconUrl}
                                 alt={ws.name}
-                                className="!h-4 !w-4 shrink-0 rounded-[3px] object-cover"
+                                className="!h-4 !w-4 shrink-0 rounded-[3px] object-cover ring-1 ring-border"
                               />
                             ) : (
-                              <div className="flex h-4 w-4 shrink-0 items-center justify-center overflow-hidden rounded-[3px]">
+                              <div className="flex h-4 w-4 shrink-0 items-center justify-center overflow-hidden rounded-[3px] ring-1 ring-border">
                                 <Facehash name={ws.name} size={16} />
                               </div>
                             )}
                             <span className="truncate">{ws.name}</span>
                             {ws._id === currentWorkspace?._id && (
                               <Check
-                                size={14}
+                                size={12}
+                                weight="bold"
                                 className="ml-auto text-foreground"
                               />
                             )}
                           </DropdownMenuItem>
                         ))}
+                        <DropdownMenuItem
+                          onClick={() => setCreateModalOpen(true)}
+                        >
+                          <Plus size={14} weight="regular" />
+                          New workspace
+                        </DropdownMenuItem>
                       </DropdownMenuGroup>
                       <DropdownMenuSeparator />
                     </>
                   )}
 
-                  {/* Create workspace */}
                   <DropdownMenuGroup>
-                    <DropdownMenuItem
-                      onClick={() => setCreateModalOpen(true)}
-                    >
-                      <Plus size={14} />
-                      New workspace
+                    <DropdownMenuItem render={<Link href="/settings" />}>
+                      <Gear size={14} weight="regular" />
+                      Settings
                     </DropdownMenuItem>
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        {theme === "dark" ? <Moon size={14} weight="regular" /> : <Sun size={14} weight="regular" />}
+                        Theme
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent>
+                        <DropdownMenuItem onClick={() => setTheme("light")}>
+                          <Sun size={14} weight="regular" />
+                          Light
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setTheme("dark")}>
+                          <Moon size={14} weight="regular" />
+                          Dark
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setTheme("system")}>
+                          <Desktop size={14} weight="regular" />
+                          System
+                        </DropdownMenuItem>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
-
-                  <DropdownMenuItem render={<Link href="/settings" />}>
-                    <Gear size={14} weight="fill" />
-                    Settings
-                  </DropdownMenuItem>
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      {theme === "dark" ? <Moon size={14} weight="fill" /> : <Sun size={14} weight="fill" />}
-                      Theme
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent>
-                      <DropdownMenuItem onClick={() => setTheme("light")}>
-                        <Sun size={14} weight="fill" />
-                        Light
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setTheme("dark")}>
-                        <Moon size={14} weight="fill" />
-                        Dark
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setTheme("system")}>
-                        <Desktop size={14} weight="fill" />
-                        System
-                      </DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuSub>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => signOut()}>
-                    <SignOut size={14} weight="fill" />
+                  <DropdownMenuItem onClick={() => signOut()} className="text-muted-foreground">
+                    <SignOut size={14} weight="regular" />
                     Sign out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
