@@ -18,6 +18,8 @@ function MedianFull({ className }: { className?: string }) {
     <svg
       viewBox="0 0 1388 291"
       fill="currentColor"
+      width="1388"
+      height="291"
       className={className}
     >
       {/* Symbol */}
