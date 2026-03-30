@@ -91,9 +91,9 @@ function LinearBrandMark({ size = 20 }: { size?: number }) {
 
 function LinearSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-2xl px-10 py-10">
+    <div className="mx-auto w-full max-w-lg px-6 py-6">
       <div className="mb-8 h-12 bg-muted/30" />
-      <div className="h-36 border border-border bg-card/50" />
+      <div className="h-36 ring-1 ring-border bg-card/50" />
     </div>
   )
 }
@@ -237,7 +237,7 @@ export function LinearIntegrationPanel() {
   if (!currentWorkspace) return null
   if (!hasWorkspaceAdminPermission(currentWorkspace.role)) {
     return (
-      <div className="mx-auto w-full max-w-2xl px-10 py-10">
+      <div className="mx-auto w-full max-w-lg px-6 py-6">
         <SettingsAccessState />
       </div>
     )
@@ -392,28 +392,28 @@ export function LinearIntegrationPanel() {
 
   if (integration) {
     return (
-      <div className="mx-auto w-full max-w-2xl px-10 py-10">
+      <div className="mx-auto w-full max-w-lg px-6 py-6">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.28, ease: "easeOut" }}
-          className="flex flex-col gap-6"
+          className="flex flex-col gap-3"
         >
           <div>
-            <h2 className="text-lg font-semibold tracking-tight">Linear</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <h2 className="text-[14px] font-semibold tracking-tight">Linear</h2>
+            <p className="mt-0.5 text-[12px] text-muted-foreground">
               Manage the Linear team synced to this workspace.
             </p>
           </div>
 
-          <div className="rounded-[4px] border border-border bg-card">
-            <div className="flex items-center gap-4 p-5">
-              <div className="flex size-10 items-center justify-center rounded-[4px] bg-[#5E6AD2]/10">
+          <div className="rounded-[4px] ring-1 ring-border bg-card">
+            <div className="flex items-center gap-3 p-3.5">
+              <div className="flex size-8 items-center justify-center rounded-[4px] bg-[#5E6AD2]/10">
                 <LinearBrandMark size={20} />
               </div>
               <div className="flex-1">
-                <h3 className="text-sm font-medium">{integration.teamName}</h3>
-                <p className="text-xs text-muted-foreground">
+                <h3 className="text-[13px] font-medium">{integration.teamName}</h3>
+                <p className="text-[11px] text-muted-foreground">
                   {integration.teamKey
                     ? `${integration.teamKey} team`
                     : "Selected team"}{" "}
@@ -425,14 +425,14 @@ export function LinearIntegrationPanel() {
                   ) : null}
                 </p>
               </div>
-              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600">
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-600">
                 <span className="size-1.5 bg-emerald-500" />
                 Connected
               </span>
             </div>
 
-            <div className="flex items-center justify-between border-t border-border bg-muted/30 px-5 py-3">
-              <p className="text-xs text-muted-foreground">
+            <div className="flex items-center justify-between border-t border-border bg-muted/30 px-3.5 py-2">
+              <p className="text-[11px] text-muted-foreground">
                 Last synced {formatTimestamp(integration.lastSyncedAt)}
               </p>
               <div className="flex gap-2">
@@ -466,9 +466,9 @@ export function LinearIntegrationPanel() {
             </div>
           </div>
 
-          <div className="rounded-[4px] border border-border bg-card">
-            <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-3.5">
-              <h3 className="text-sm font-medium">Status mapping</h3>
+          <div className="rounded-[4px] ring-1 ring-border bg-card">
+            <div className="flex items-center justify-between gap-3 border-b border-border px-3.5 py-2.5">
+              <h3 className="text-[13px] font-medium">Status mapping</h3>
               {hasMappingChanges && (
                 <Button
                   type="button"
@@ -487,7 +487,7 @@ export function LinearIntegrationPanel() {
             </div>
 
             {isLoadingWorkflowStates ? (
-              <div className="px-5 py-6 text-sm text-muted-foreground">
+              <div className="px-5 py-6 text-[12px] text-muted-foreground">
                 Loading workflow states...
               </div>
             ) : workflowStates.length > 0 ? (
@@ -506,8 +506,8 @@ export function LinearIntegrationPanel() {
                 </div>
 
                 {missingMappedStatuses.length > 0 && (
-                  <div className="border-t border-border bg-muted/30 px-5 py-3">
-                    <p className="text-xs text-muted-foreground">
+                  <div className="border-t border-border bg-muted/30 px-3.5 py-2">
+                    <p className="text-[11px] text-muted-foreground">
                       {missingMappedStatuses
                         .map((s) => TASK_STATUS_LABELS[s])
                         .join(", ")}{" "}
@@ -518,7 +518,7 @@ export function LinearIntegrationPanel() {
                 )}
               </>
             ) : (
-              <div className="px-5 py-6 text-sm text-muted-foreground">
+              <div className="px-5 py-6 text-[12px] text-muted-foreground">
                 No workflow states found for this team.
               </div>
             )}
@@ -546,7 +546,7 @@ export function LinearIntegrationPanel() {
               <button
                 type="button"
                 onClick={() => setDisconnectOpen(false)}
-                className="flex h-9 flex-1 items-center justify-center rounded-[4px] border border-border text-sm font-medium transition-colors hover:bg-muted"
+                className="flex h-9 flex-1 items-center justify-center rounded-[4px] border border-border text-[13px] font-medium transition-colors hover:bg-muted"
               >
                 Cancel
               </button>
@@ -554,7 +554,7 @@ export function LinearIntegrationPanel() {
                 type="button"
                 disabled={isDisconnecting}
                 onClick={handleDisconnect}
-                className="text-destructive-foreground flex h-9 flex-1 items-center justify-center rounded-[4px] bg-destructive text-sm font-medium transition-colors hover:bg-destructive/90 disabled:opacity-50"
+                className="text-destructive-foreground flex h-9 flex-1 items-center justify-center rounded-[4px] bg-destructive text-[13px] font-medium transition-colors hover:bg-destructive/90 disabled:opacity-50"
               >
                 {isDisconnecting ? "Disconnecting..." : "Disconnect"}
               </button>
@@ -566,39 +566,39 @@ export function LinearIntegrationPanel() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-10 py-10">
+    <div className="mx-auto w-full max-w-lg px-6 py-6">
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.28, ease: "easeOut" }}
-        className="flex flex-col gap-6"
+        className="flex flex-col gap-3"
       >
         <div>
-          <h2 className="text-lg font-semibold tracking-tight">Linear</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h2 className="text-[14px] font-semibold tracking-tight">Linear</h2>
+          <p className="mt-0.5 text-[12px] text-muted-foreground">
             Connect a Linear team to this workspace and keep tasks synced in
             both directions.
           </p>
         </div>
 
-        <div className="rounded-[4px] border border-border bg-card">
-          <div className="flex items-center gap-4 p-5">
-            <div className="flex size-10 items-center justify-center rounded-[4px] bg-[#5E6AD2]/10">
+        <div className="rounded-[4px] ring-1 ring-border bg-card">
+          <div className="flex items-center gap-3 p-3.5">
+            <div className="flex size-8 items-center justify-center rounded-[4px] bg-[#5E6AD2]/10">
               <LinearBrandMark size={20} />
             </div>
             <div className="flex-1">
-              <h3 className="text-sm font-medium">Not connected</h3>
-              <p className="text-xs text-muted-foreground">
+              <h3 className="text-[13px] font-medium">Not connected</h3>
+              <p className="text-[11px] text-muted-foreground">
                 Enter a Linear personal API key to get started.
               </p>
             </div>
           </div>
 
-          <div className="space-y-4 border-t border-border p-5">
+          <div className="space-y-4 border-t border-border p-3.5">
             <div>
               <label
                 htmlFor="linear-api-key"
-                className="mb-2 block text-sm font-medium"
+                className="mb-2 block text-[13px] font-medium"
               >
                 Personal API key
               </label>
@@ -631,7 +631,7 @@ export function LinearIntegrationPanel() {
               <div>
                 <label
                   htmlFor="linear-team"
-                  className="mb-2 block text-sm font-medium"
+                  className="mb-2 block text-[13px] font-medium"
                 >
                   Team
                 </label>
@@ -639,7 +639,7 @@ export function LinearIntegrationPanel() {
                   id="linear-team"
                   value={selectedTeamId}
                   onChange={(event) => setSelectedTeamId(event.target.value)}
-                  className="h-9 w-full rounded-[4px] border border-border bg-background px-3 text-sm transition-colors outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
+                  className="h-9 w-full rounded-[4px] border border-border bg-background px-3 text-[13px] transition-colors outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
                 >
                   {previewTeams.map((team) => (
                     <option key={team.id} value={team.id}>
@@ -687,8 +687,8 @@ export function LinearIntegrationPanel() {
             ) : null}
           </div>
 
-          <div className="flex items-center border-t border-border bg-muted/30 px-5 py-3">
-            <p className="text-xs text-muted-foreground">
+          <div className="flex items-center border-t border-border bg-muted/30 px-3.5 py-2">
+            <p className="text-[11px] text-muted-foreground">
               API keys can be created at Linear &rarr; Settings &rarr; API
               &rarr; Personal API keys.
             </p>

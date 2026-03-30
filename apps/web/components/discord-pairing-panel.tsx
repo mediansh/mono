@@ -70,9 +70,9 @@ const fadeUp = {
 
 function DiscordPairingSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-2xl px-10 py-10">
+    <div className="mx-auto w-full max-w-lg px-6 py-6">
       <div className="mb-8 h-12 bg-muted/30" />
-      <div className="h-36 border border-border bg-card/50" />
+      <div className="h-36 ring-1 ring-border bg-card/50" />
     </div>
   )
 }
@@ -186,7 +186,7 @@ export function DiscordPairingPanel() {
   if (!currentWorkspace) return null
   if (!hasWorkspaceAdminPermission(currentWorkspace.role)) {
     return (
-      <div className="mx-auto w-full max-w-2xl px-10 py-10">
+      <div className="mx-auto w-full max-w-lg px-6 py-6">
         <SettingsAccessState />
       </div>
     )
@@ -239,25 +239,25 @@ export function DiscordPairingPanel() {
   if (integration) {
     return (
       <Stagger
-        className="mx-auto w-full max-w-2xl px-10 py-10"
+        className="mx-auto w-full max-w-lg px-6 py-6"
       >
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-3">
           <motion.div variants={fadeUp}>
-            <h2 className="text-lg font-semibold tracking-tight">Discord</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <h2 className="text-[14px] font-semibold tracking-tight">Discord</h2>
+            <p className="mt-0.5 text-[12px] text-muted-foreground">
               Manage the Discord server paired to this workspace.
             </p>
           </motion.div>
 
           {/* Connection status card */}
-          <motion.div variants={fadeUp} className="rounded-[4px] border border-border bg-card">
-            <div className="flex items-center gap-4 p-5">
-              <div className="flex size-10 items-center justify-center rounded-[4px] bg-[#5865F2]/10">
+          <motion.div variants={fadeUp} className="rounded-[4px] ring-1 ring-border bg-card">
+            <div className="flex items-center gap-3 p-3.5">
+              <div className="flex size-8 items-center justify-center rounded-[4px] bg-[#5865F2]/10">
                 <DiscordBrandIcon size={20} className="text-[#5865F2]" />
               </div>
               <div className="flex-1">
-                <h3 className="text-sm font-medium">{integration.guildName}</h3>
-                <p className="text-xs text-muted-foreground">
+                <h3 className="text-[13px] font-medium">{integration.guildName}</h3>
+                <p className="text-[11px] text-muted-foreground">
                   Paired {formatTimestamp(integration.pairedAt)}
                   {integration.channelId ? (
                     <span className="ml-1 text-muted-foreground/60">
@@ -266,14 +266,14 @@ export function DiscordPairingPanel() {
                   ) : null}
                 </p>
               </div>
-              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600">
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-600">
                 <span className="size-1.5 bg-emerald-500" />
                 Connected
               </span>
             </div>
 
-            <div className="flex items-center justify-between border-t border-border bg-muted/30 px-5 py-3">
-              <p className="text-xs text-muted-foreground">
+            <div className="flex items-center justify-between border-t border-border bg-muted/30 px-3.5 py-2">
+              <p className="text-[11px] text-muted-foreground">
                 Automations from this server are routed to {workspace.name}.
               </p>
               <Button
@@ -291,13 +291,13 @@ export function DiscordPairingPanel() {
           {/* Additional context */}
           <motion.div
             variants={fadeUp}
-            className="rounded-[4px] border border-border bg-card"
+            className="rounded-[4px] ring-1 ring-border bg-card"
           >
-            <div className="flex items-center gap-3 border-b border-border px-5 py-3.5">
+            <div className="flex items-center gap-3 border-b border-border px-3.5 py-2.5">
               <HugeiconsIcon icon={TextIcon} size={15} strokeWidth={1.8} className="text-muted-foreground" />
               <div className="flex-1">
-                <h3 className="text-sm font-medium">Additional context</h3>
-                <p className="text-xs text-muted-foreground">
+                <h3 className="text-[13px] font-medium">Additional context</h3>
+                <p className="text-[11px] text-muted-foreground">
                   Describe your product so the AI can better classify feedback.
                 </p>
               </div>
@@ -308,7 +308,7 @@ export function DiscordPairingPanel() {
                 onChange={handleContextChange}
                 placeholder="e.g. Median is a project management tool for small teams. Key features include task boards, Discord integration, and AI-powered feedback triage..."
                 rows={4}
-                className="resize-none text-sm"
+                className="resize-none text-[13px]"
               />
               <p className="mt-2 text-[11px] text-muted-foreground/60">
                 This context is passed to the AI when scanning messages. Changes save automatically.
@@ -319,25 +319,25 @@ export function DiscordPairingPanel() {
           {/* Respond for me */}
           <motion.div
             variants={fadeUp}
-            className="rounded-[4px] border border-border bg-card"
+            className="rounded-[4px] ring-1 ring-border bg-card"
           >
-            <div className="flex items-center gap-3 border-b border-border px-5 py-3.5">
+            <div className="flex items-center gap-3 border-b border-border px-3.5 py-2.5">
               <HugeiconsIcon icon={SentIcon} size={15} strokeWidth={1.8} className="text-muted-foreground" />
               <div className="flex-1">
-                <h3 className="text-sm font-medium">Respond for me</h3>
-                <p className="text-xs text-muted-foreground">
+                <h3 className="text-[13px] font-medium">Respond for me</h3>
+                <p className="text-[11px] text-muted-foreground">
                   Automatically reply in Discord when a request is received and when the change ships.
                 </p>
               </div>
             </div>
 
-            <div className="flex flex-col gap-0.5 px-5 py-3">
+            <div className="flex flex-col gap-0.5 px-3.5 py-3">
               {(["off", "all", "specific"] as const).map((mode) => (
                 <button
                   key={mode}
                   type="button"
                   onClick={() => handleRespondModeChange(mode)}
-                  className="flex items-center gap-3 rounded-[4px] px-2 py-2 text-left text-sm transition-colors hover:bg-muted/50"
+                  className="flex items-center gap-3 rounded-[4px] px-2 py-2 text-left text-[13px] transition-colors hover:bg-muted/50"
                 >
                   <span
                     className={`flex size-4 shrink-0 items-center justify-center rounded-full border ${
@@ -365,7 +365,7 @@ export function DiscordPairingPanel() {
               >
                 {guildChannels.length === 0 ? (
                   <div className="px-5 py-4">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground/60">
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground/60">
                       <svg className="size-3.5 animate-spin" viewBox="0 0 16 16" fill="none">
                         <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="2" opacity="0.25" />
                         <path d="M14 8a6 6 0 0 0-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -390,7 +390,7 @@ export function DiscordPairingPanel() {
                     {/* Channel list */}
                     <div className="max-h-56 overflow-y-auto px-1.5 py-1.5">
                       {filteredChannels.length === 0 ? (
-                        <p className="px-3 py-2 text-xs text-muted-foreground/50">
+                        <p className="px-3 py-2 text-[11px] text-muted-foreground/50">
                           No channels match "{channelSearch}"
                         </p>
                       ) : (
@@ -492,7 +492,7 @@ export function DiscordPairingPanel() {
               <button
                 type="button"
                 onClick={() => setDisconnectOpen(false)}
-                className="flex h-9 flex-1 items-center justify-center rounded-[4px] border border-border text-sm font-medium transition-colors hover:bg-muted"
+                className="flex h-9 flex-1 items-center justify-center rounded-[4px] border border-border text-[13px] font-medium transition-colors hover:bg-muted"
               >
                 Cancel
               </button>
@@ -500,7 +500,7 @@ export function DiscordPairingPanel() {
                 type="button"
                 disabled={isDisconnecting}
                 onClick={handleDisconnect}
-                className="flex h-9 flex-1 items-center justify-center rounded-[4px] bg-destructive text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:opacity-50"
+                className="flex h-9 flex-1 items-center justify-center rounded-[4px] bg-destructive text-[13px] font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:opacity-50"
               >
                 {isDisconnecting ? "Disconnecting..." : "Disconnect"}
               </button>
@@ -514,32 +514,32 @@ export function DiscordPairingPanel() {
   /* ── Disconnected state: pairing form + how it works ── */
   return (
     <Stagger
-      className="mx-auto w-full max-w-2xl px-10 py-10"
+      className="mx-auto w-full max-w-lg px-6 py-6"
     >
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-3">
         <motion.div variants={fadeUp}>
-          <h2 className="text-lg font-semibold tracking-tight">Discord</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h2 className="text-[14px] font-semibold tracking-tight">Discord</h2>
+          <p className="mt-0.5 text-[12px] text-muted-foreground">
             Pair a Discord server to this workspace with a one-time code.
           </p>
         </motion.div>
 
         {/* Connection card with pairing form */}
-        <motion.div variants={fadeUp} className="rounded-[4px] border border-border bg-card">
-          <div className="flex items-center gap-4 p-5">
-            <div className="flex size-10 items-center justify-center rounded-[4px] bg-[#5865F2]/10">
+        <motion.div variants={fadeUp} className="rounded-[4px] ring-1 ring-border bg-card">
+          <div className="flex items-center gap-3 p-3.5">
+            <div className="flex size-8 items-center justify-center rounded-[4px] bg-[#5865F2]/10">
               <DiscordBrandIcon size={20} className="text-[#5865F2]" />
             </div>
             <div className="flex-1">
-              <h3 className="text-sm font-medium">Not connected</h3>
-              <p className="text-xs text-muted-foreground">
+              <h3 className="text-[13px] font-medium">Not connected</h3>
+              <p className="text-[11px] text-muted-foreground">
                 Run <span className="font-medium text-foreground">/pair</span> in Discord and paste the code below.
               </p>
             </div>
           </div>
 
-          <form onSubmit={handlePairWorkspace} className="border-t border-border p-5">
-            <label htmlFor="pairing-code" className="mb-2 block text-sm font-medium">
+          <form onSubmit={handlePairWorkspace} className="border-t border-border p-3.5">
+            <label htmlFor="pairing-code" className="mb-2 block text-[13px] font-medium">
               Pairing code
             </label>
             <div className="flex gap-2">
@@ -561,8 +561,8 @@ export function DiscordPairingPanel() {
             </div>
           </form>
 
-          <div className="flex items-center border-t border-border bg-muted/30 px-5 py-3">
-            <p className="text-xs text-muted-foreground">
+          <div className="flex items-center border-t border-border bg-muted/30 px-3.5 py-2">
+            <p className="text-[11px] text-muted-foreground">
               Codes expire after 10 minutes and can only be used once.
             </p>
           </div>
@@ -571,13 +571,13 @@ export function DiscordPairingPanel() {
         {/* How it works — only when not connected */}
         <motion.div
           variants={fadeUp}
-          className="rounded-[4px] border border-dashed border-border p-5"
+          className="rounded-[4px] ring-1 ring-border ring-dashed p-3.5"
         >
-          <div className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          <div className="mb-3 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
             <HugeiconsIcon icon={InformationCircleIcon} size={14} strokeWidth={1.8} />
             How it works
           </div>
-          <div className="grid gap-2.5 text-sm text-muted-foreground">
+          <div className="grid gap-2.5 text-[12px] text-muted-foreground">
             <div className="flex items-start gap-2.5">
               <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center text-[10px] font-semibold text-muted-foreground/60">1</span>
               <span>Add the Median bot to your Discord server.</span>
