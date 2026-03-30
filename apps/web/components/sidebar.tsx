@@ -310,7 +310,7 @@ export function AppSidebar() {
                     onClick={() => setSearchOpen(true)}
                     className="text-sidebar-foreground/60 ring-1 ring-sidebar-border"
                   >
-                    <MagnifyingGlass size={15} weight="bold" />
+                    <MagnifyingGlass size={15} weight="regular" />
                     <span>Search</span>
                     <kbd className="ml-auto hidden rounded-[3px] border border-sidebar-border px-1 py-px font-mono text-[10px] text-sidebar-foreground/40 group-data-[collapsible=icon]:hidden lg:inline">
                       {mounted ? (/Mac|iPhone/.test(navigator.userAgent) ? "⌘K" : "Ctrl+K") : null}
@@ -356,7 +356,7 @@ export function AppSidebar() {
                             : "text-sidebar-foreground/70"
                         }
                       >
-                        <item.icon size={15} weight={isActive ? "fill" : "bold"} />
+                        <item.icon size={15} weight={isActive ? "fill" : "regular"} />
                         <span>{item.label}</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -379,7 +379,7 @@ export function AppSidebar() {
                     : "text-sidebar-foreground/70"
                 }
               >
-                <Gear size={15} weight={pathname.startsWith("/app/settings") ? "fill" : "bold"} />
+                <Gear size={15} weight={pathname.startsWith("/app/settings") ? "fill" : "regular"} />
                 <span>Settings</span>
               </SidebarMenuButton>
             </SidebarMenuItem>

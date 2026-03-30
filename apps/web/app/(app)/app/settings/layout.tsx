@@ -48,7 +48,7 @@ export default function SettingsLayout({
               >
                 <item.icon
                   size={15}
-                  weight={isActive ? "fill" : "bold"}
+                  weight={isActive ? "fill" : "regular"}
                   className={
                     isActive ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
                   }
