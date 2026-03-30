@@ -8,80 +8,80 @@
 @source "../**/*.{ts,tsx}";
 
 :root {
-    --background: #f4f4f0;
-    --foreground: #0a0a0a;
-    --card: #eaeae6;
-    --card-foreground: #0a0a0a;
-    --popover: #eaeae6;
-    --popover-foreground: #0a0a0a;
-    --primary: #0a0a0a;
-    --primary-foreground: #f4f4f0;
-    --secondary: #ddddd8;
-    --secondary-foreground: #0a0a0a;
-    --muted: #ddddd8;
-    --muted-foreground: #5a5a5a;
-    --accent: #ddddd8;
-    --accent-foreground: #0a0a0a;
+    --background: #F7F7F4;
+    --foreground: #252728;
+    --card: #EDEDEA;
+    --card-foreground: #252728;
+    --popover: #EDEDEA;
+    --popover-foreground: #252728;
+    --primary: #252728;
+    --primary-foreground: #F7F7F4;
+    --secondary: #E0E0DC;
+    --secondary-foreground: #252728;
+    --muted: #E0E0DC;
+    --muted-foreground: #6B6D6E;
+    --accent: #E0E0DC;
+    --accent-foreground: #252728;
     --destructive: #cc3333;
-    --border: #999999;
-    --input: #999999;
-    --ring: #666666;
+    --border: #A0A1A2;
+    --input: #A0A1A2;
+    --ring: #6B6D6E;
     --chart-1: #0066cc;
     --chart-2: #cc6600;
     --chart-3: #009966;
     --chart-4: #9933cc;
     --chart-5: #cc0066;
     --radius: 0px;
-    --sidebar: #eaeae6;
-    --sidebar-foreground: #0a0a0a;
-    --sidebar-primary: #0a0a0a;
-    --sidebar-primary-foreground: #f4f4f0;
-    --sidebar-accent: #ddddd8;
-    --sidebar-accent-foreground: #0a0a0a;
-    --sidebar-border: #999999;
-    --sidebar-ring: #0a0a0a;
-    --navbar: #eaeae6;
-    --navbar-border: #999999;
-    --navbar-foreground: #0a0a0a;
-    --navbar-accent: #0a0a0a;
+    --sidebar: #EDEDEA;
+    --sidebar-foreground: #252728;
+    --sidebar-primary: #252728;
+    --sidebar-primary-foreground: #F7F7F4;
+    --sidebar-accent: #E0E0DC;
+    --sidebar-accent-foreground: #252728;
+    --sidebar-border: #A0A1A2;
+    --sidebar-ring: #252728;
+    --navbar: #EDEDEA;
+    --navbar-border: #A0A1A2;
+    --navbar-foreground: #252728;
+    --navbar-accent: #252728;
 }
 
 .dark {
-    --background: #0a0a0a;
-    --foreground: #d0d0d0;
-    --card: #141414;
-    --card-foreground: #d0d0d0;
-    --popover: #141414;
-    --popover-foreground: #d0d0d0;
-    --primary: #d0d0d0;
-    --primary-foreground: #0a0a0a;
-    --secondary: #1e1e1e;
-    --secondary-foreground: #d0d0d0;
-    --muted: #1e1e1e;
-    --muted-foreground: #707070;
-    --accent: #1e1e1e;
-    --accent-foreground: #d0d0d0;
+    --background: #252728;
+    --foreground: #F7F7F4;
+    --card: #2F3032;
+    --card-foreground: #F7F7F4;
+    --popover: #2F3032;
+    --popover-foreground: #F7F7F4;
+    --primary: #F7F7F4;
+    --primary-foreground: #252728;
+    --secondary: #3A3B3D;
+    --secondary-foreground: #F7F7F4;
+    --muted: #3A3B3D;
+    --muted-foreground: #9B9D9E;
+    --accent: #3A3B3D;
+    --accent-foreground: #F7F7F4;
     --destructive: #ff4444;
-    --border: #333333;
-    --input: #333333;
-    --ring: #555555;
+    --border: #4A4C4D;
+    --input: #4A4C4D;
+    --ring: #6B6D6E;
     --chart-1: #4499ff;
     --chart-2: #ff9944;
     --chart-3: #44cc88;
     --chart-4: #bb66ff;
     --chart-5: #ff4488;
-    --sidebar: #0e0e0e;
-    --sidebar-foreground: #d0d0d0;
-    --sidebar-primary: #d0d0d0;
-    --sidebar-primary-foreground: #0a0a0a;
-    --sidebar-accent: #1e1e1e;
-    --sidebar-accent-foreground: #d0d0d0;
-    --sidebar-border: #333333;
-    --sidebar-ring: #d0d0d0;
-    --navbar: #0e0e0e;
-    --navbar-border: #333333;
-    --navbar-foreground: #d0d0d0;
-    --navbar-accent: #d0d0d0;
+    --sidebar: #2A2B2D;
+    --sidebar-foreground: #F7F7F4;
+    --sidebar-primary: #F7F7F4;
+    --sidebar-primary-foreground: #252728;
+    --sidebar-accent: #3A3B3D;
+    --sidebar-accent-foreground: #F7F7F4;
+    --sidebar-border: #4A4C4D;
+    --sidebar-ring: #F7F7F4;
+    --navbar: #2A2B2D;
+    --navbar-border: #4A4C4D;
+    --navbar-foreground: #F7F7F4;
+    --navbar-accent: #F7F7F4;
 }
 
 @theme inline {
@@ -142,11 +142,11 @@
     }
   ::selection {
     background-color: #33ff99;
-    color: #0a0a0a;
+    color: #252728;
     }
   .dark ::selection {
     background-color: #33ff99;
-    color: #0a0a0a;
+    color: #252728;
     }
 }
 
