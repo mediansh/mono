@@ -64,7 +64,7 @@ export default function GeneralSettingsPage() {
   if (!currentWorkspace) return null
   if (!hasWorkspaceAdminPermission(currentWorkspace.role)) {
     return (
-      <div className="mx-auto w-full max-w-2xl px-10 py-10">
+      <div className="mx-auto w-full max-w-lg px-6 py-6">
         <SettingsAccessState />
       </div>
     )
@@ -135,20 +135,20 @@ export default function GeneralSettingsPage() {
   const hasChanges = name.trim() !== currentWorkspace.name || iconFile !== null
 
   return (
-    <Stagger className="mx-auto w-full max-w-2xl px-10 py-10">
+    <Stagger className="mx-auto w-full max-w-lg px-6 py-6">
       {/* Header */}
-      <motion.div variants={fadeUp} className="mb-8">
-        <h2 className="text-base font-semibold">General</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
+      <motion.div variants={fadeUp} className="mb-4">
+        <h2 className="text-[14px] font-semibold">General</h2>
+        <p className="mt-0.5 text-[12px] text-muted-foreground">
           Manage your workspace profile and settings.
         </p>
       </motion.div>
 
       {/* Workspace profile card */}
       <motion.form variants={fadeUp} onSubmit={handleSave}>
-        <div className="rounded-[4px] border border-border bg-card">
+        <div className="rounded-[4px] ring-1 ring-border bg-card">
           {/* Logo section */}
-          <div className="flex items-center gap-4 border-b border-border p-5">
+          <div className="flex items-center gap-3 border-b border-border p-3.5">
             <input
               ref={fileInputRef}
               type="file"
@@ -159,7 +159,7 @@ export default function GeneralSettingsPage() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="group relative flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-[4px] border border-border bg-muted/50 transition-all hover:border-foreground/20 hover:shadow-sm"
+              className="group relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-[4px] ring-1 ring-border bg-muted/50 transition-all hover:border-foreground/20 hover:shadow-sm"
             >
               {iconPreview ? (
                 <img
@@ -183,8 +183,8 @@ export default function GeneralSettingsPage() {
               </div>
             </button>
             <div className="flex flex-col gap-1">
-              <span className="text-sm font-medium">Workspace logo</span>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-[13px] font-medium">Workspace logo</span>
+              <span className="text-[11px] text-muted-foreground">
                 Upload an image or use the auto-generated avatar. Max 5MB.
               </span>
             </div>
@@ -194,7 +194,7 @@ export default function GeneralSettingsPage() {
           <div className="p-5">
             <label
               htmlFor="workspace-name"
-              className="mb-2 block text-sm font-medium"
+              className="mb-2 block text-[13px] font-medium"
             >
               Workspace name
             </label>
@@ -204,13 +204,13 @@ export default function GeneralSettingsPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="My Workspace"
-              className="h-10 w-full rounded-[4px] border border-border bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
+              className="h-8 w-full rounded-[4px] ring-1 ring-border bg-background px-3 text-[13px] outline-none transition-colors placeholder:text-muted-foreground focus:ring-foreground/30"
             />
           </div>
 
           {/* Save bar */}
-          <div className="flex items-center justify-between border-t border-border bg-muted/30 px-5 py-3">
-            <p className="text-xs text-muted-foreground">
+          <div className="flex items-center justify-between border-t border-border bg-muted/30 px-3.5 py-3">
+            <p className="text-[11px] text-muted-foreground">
               This is your workspace&apos;s visible name.
             </p>
             <div className="flex items-center gap-2">
@@ -222,7 +222,7 @@ export default function GeneralSettingsPage() {
               <button
                 type="submit"
                 disabled={saving || !hasChanges || !name.trim()}
-                className="flex h-8 items-center justify-center rounded-[4px] bg-primary px-3.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
+                className="flex h-8 items-center justify-center rounded-[4px] bg-primary px-3.5 text-[11px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
               >
                 {saving ? "Saving..." : "Save"}
               </button>
@@ -233,20 +233,20 @@ export default function GeneralSettingsPage() {
 
       {/* Danger zone */}
       {currentWorkspace.role === "owner" ? (
-        <motion.div variants={fadeUp} className="mt-8">
-          <h3 className="mb-3 text-sm font-medium text-destructive">Danger zone</h3>
-          <div className="rounded-[4px] border border-destructive/20 bg-card">
-            <div className="flex items-center justify-between p-5">
+        <motion.div variants={fadeUp} className="mt-4">
+          <h3 className="mb-3 text-[13px] font-medium text-destructive">Danger zone</h3>
+          <div className="rounded-[4px] ring-1 ring-destructive/20 bg-card">
+            <div className="flex items-center justify-between p-3.5">
               <div className="flex flex-col gap-0.5">
-                <span className="text-sm font-medium">Delete workspace</span>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-[13px] font-medium">Delete workspace</span>
+                <span className="text-[11px] text-muted-foreground">
                   Permanently delete this workspace and all of its data.
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => setDeleteModalOpen(true)}
-                className="flex h-8 shrink-0 items-center gap-1.5 rounded-[4px] border border-destructive/30 px-3 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
+                className="flex h-8 shrink-0 items-center gap-1.5 rounded-[4px] ring-1 ring-destructive/30 px-3 text-[11px] font-medium text-destructive transition-colors hover:bg-destructive/10"
               >
                 <Trash size={13} />
                 Delete
@@ -271,7 +271,7 @@ export default function GeneralSettingsPage() {
           </DialogHeader>
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm text-muted-foreground">
+              <label className="text-[12px] text-muted-foreground">
                 Type{" "}
                 <span className="font-medium text-foreground">
                   {currentWorkspace.name}
@@ -283,7 +283,7 @@ export default function GeneralSettingsPage() {
                 value={deleteConfirm}
                 onChange={(e) => setDeleteConfirm(e.target.value)}
                 placeholder={currentWorkspace.name}
-                className="h-10 rounded-[4px] border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
+                className="h-8 rounded-[4px] ring-1 ring-border bg-card px-3 text-[13px] outline-none transition-colors placeholder:text-muted-foreground focus:ring-foreground/30"
               />
             </div>
             <div className="flex gap-2">
@@ -293,7 +293,7 @@ export default function GeneralSettingsPage() {
                   setDeleteModalOpen(false)
                   setDeleteConfirm("")
                 }}
-                className="flex h-9 flex-1 items-center justify-center rounded-[4px] border border-border text-sm font-medium transition-colors hover:bg-muted"
+                className="flex h-8 flex-1 items-center justify-center rounded-[4px] ring-1 ring-border text-[13px] font-medium transition-colors hover:bg-muted"
               >
                 Cancel
               </button>
@@ -301,7 +301,7 @@ export default function GeneralSettingsPage() {
                 type="button"
                 disabled={deleteConfirm !== currentWorkspace.name || deleting}
                 onClick={handleDelete}
-                className="flex h-9 flex-1 items-center justify-center rounded-[4px] bg-destructive text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:opacity-50"
+                className="flex h-8 flex-1 items-center justify-center rounded-[4px] bg-destructive text-[13px] font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:opacity-50"
               >
                 {deleting ? "Deleting..." : "Delete workspace"}
               </button>

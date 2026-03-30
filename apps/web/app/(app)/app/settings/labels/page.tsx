@@ -38,7 +38,7 @@ export default function LabelsSettingsPage() {
   if (!currentWorkspace) return null
   if (!hasWorkspaceAdminPermission(currentWorkspace.role)) {
     return (
-      <div className="mx-auto w-full max-w-2xl px-10 py-10">
+      <div className="mx-auto w-full max-w-lg px-6 py-6">
         <SettingsAccessState />
       </div>
     )
@@ -83,18 +83,18 @@ export default function LabelsSettingsPage() {
       initial="hidden"
       animate="show"
       variants={{ show: { transition: { staggerChildren: 0.06 } } }}
-      className="mx-auto w-full max-w-2xl px-10 py-10"
+      className="mx-auto w-full max-w-lg px-6 py-6"
     >
       {/* Header */}
-      <motion.div variants={fadeUp} className="mb-8">
-        <h2 className="text-base font-semibold">Labels</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
+      <motion.div variants={fadeUp} className="mb-4">
+        <h2 className="text-[14px] font-semibold">Labels</h2>
+        <p className="mt-0.5 text-[12px] text-muted-foreground">
           Manage the labels available for tasks in this workspace.
         </p>
       </motion.div>
 
       {/* Labels card */}
-      <motion.div variants={fadeUp} className="rounded-[4px] border border-border bg-card">
+      <motion.div variants={fadeUp} className="rounded-[4px] ring-1 ring-border bg-card">
         <div className="p-5">
           <div className="flex flex-col gap-2">
             <AnimatePresence initial={false}>
@@ -128,7 +128,7 @@ export default function LabelsSettingsPage() {
                     }}
                     placeholder="Label name"
                     autoFocus={label.name === ""}
-                    className="h-8 w-full rounded-[4px] border border-border bg-background px-2.5 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
+                    className="h-8 w-full rounded-[4px] ring-1 ring-border bg-background px-2.5 text-[13px] outline-none transition-colors placeholder:text-muted-foreground focus:ring-foreground/30"
                   />
                   <button
                     type="button"
@@ -145,7 +145,7 @@ export default function LabelsSettingsPage() {
           <button
             type="button"
             onClick={addLabel}
-            className="mt-3 flex h-8 w-full items-center justify-center gap-1.5 rounded-[4px] border border-dashed border-border text-xs text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+            className="mt-3 flex h-8 w-full items-center justify-center gap-1.5 rounded-[4px] border border-dashed border-border text-[11px] text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
           >
             <Plus size={13} />
             Add label
@@ -153,8 +153,8 @@ export default function LabelsSettingsPage() {
         </div>
 
         {/* Save bar */}
-        <div className="flex items-center justify-between border-t border-border bg-muted/30 px-5 py-3">
-          <p className="text-xs text-muted-foreground">
+        <div className="flex items-center justify-between border-t border-border bg-muted/30 px-3.5 py-3">
+          <p className="text-[11px] text-muted-foreground">
             {labels.length} label{labels.length !== 1 ? "s" : ""} configured
           </p>
           <div className="flex items-center gap-2">
@@ -167,7 +167,7 @@ export default function LabelsSettingsPage() {
               type="button"
               disabled={saving || labels.some((l) => !l.name.trim())}
               onClick={handleSave}
-              className="flex h-8 items-center justify-center rounded-[4px] bg-primary px-3.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
+              className="flex h-8 items-center justify-center rounded-[4px] bg-primary px-3.5 text-[11px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
             >
               {saving ? "Saving..." : "Save"}
             </button>

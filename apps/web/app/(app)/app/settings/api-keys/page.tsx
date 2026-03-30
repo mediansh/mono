@@ -41,24 +41,24 @@ function formatDate(timestamp: number) {
 
 function ApiKeysSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-2xl px-10 py-10">
-      <div className="mb-8">
+    <div className="mx-auto w-full max-w-lg px-6 py-6">
+      <div className="mb-4">
         <div className="h-5 w-24 rounded bg-muted/60" />
         <div className="mt-2 h-4 w-72 rounded bg-muted/40" />
       </div>
-      <div className="rounded-[4px] border border-border bg-card">
-        <div className="space-y-3 p-5">
+      <div className="rounded-[4px] ring-1 ring-border bg-card">
+        <div className="space-y-3 p-3.5">
           <div className="h-4 w-12 rounded bg-muted/40" />
-          <div className="h-10 w-full rounded-[4px] bg-muted/30" />
+          <div className="h-8 w-full rounded-[4px] bg-muted/30" />
           <div className="h-8 w-40 rounded-[4px] bg-muted/40" />
         </div>
       </div>
-      <div className="mt-8">
+      <div className="mt-4">
         <div className="mb-3 h-4 w-28 rounded bg-muted/50" />
-        <div className="rounded-[4px] border border-border bg-card">
+        <div className="rounded-[4px] ring-1 ring-border bg-card">
           <div className="divide-y divide-border">
             {Array.from({ length: 2 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 px-5 py-3">
+              <div key={i} className="flex items-center gap-3 px-3.5 py-3">
                 <div className="flex-1">
                   <div className="h-4 w-32 rounded bg-muted/50" />
                   <div className="mt-1.5 h-3 w-44 rounded bg-muted/30" />
@@ -90,7 +90,7 @@ export default function ApiKeysSettingsPage() {
   if (!currentWorkspace) return null
   if (!hasWorkspaceAdminPermission(currentWorkspace.role)) {
     return (
-      <div className="mx-auto w-full max-w-2xl px-10 py-10">
+      <div className="mx-auto w-full max-w-lg px-6 py-6">
         <SettingsAccessState />
       </div>
     )
@@ -138,11 +138,11 @@ export default function ApiKeysSettingsPage() {
   }
 
   return (
-    <Stagger className="mx-auto w-full max-w-2xl px-10 py-10">
+    <Stagger className="mx-auto w-full max-w-lg px-6 py-6">
       {/* Header */}
-      <motion.div variants={fadeUp} className="mb-8">
-        <h2 className="text-base font-semibold">API Keys</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
+      <motion.div variants={fadeUp} className="mb-4">
+        <h2 className="text-[14px] font-semibold">API Keys</h2>
+        <p className="mt-0.5 text-[12px] text-muted-foreground">
           Create API keys for the Median CLI and AI agent integrations.
         </p>
       </motion.div>
@@ -151,19 +151,19 @@ export default function ApiKeysSettingsPage() {
       {newKey && (
         <motion.div
           variants={fadeUp}
-          className="mb-6 rounded-[4px] border border-amber-500/30 bg-amber-500/5 p-5"
+          className="mb-3 rounded-[4px] border border-amber-500/30 bg-amber-500/5 p-3.5"
         >
-          <p className="mb-2 text-sm font-medium text-amber-400">
+          <p className="mb-2 text-[13px] font-medium text-amber-400">
             Copy your API key now — it won't be shown again.
           </p>
           <div className="flex items-center gap-2">
-            <code className="flex-1 rounded-[4px] border border-border bg-background px-3 py-2 font-mono text-xs select-all">
+            <code className="flex-1 rounded-[4px] ring-1 ring-border bg-background px-3 py-2 font-mono text-[12px] select-all">
               {newKey}
             </code>
             <button
               type="button"
               onClick={handleCopyKey}
-              className="flex size-9 shrink-0 items-center justify-center rounded-[4px] border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className="flex size-9 shrink-0 items-center justify-center rounded-[4px] ring-1 ring-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
               <Copy size={14} />
             </button>
@@ -171,7 +171,7 @@ export default function ApiKeysSettingsPage() {
           <button
             type="button"
             onClick={() => setNewKey(null)}
-            className="mt-3 text-xs text-muted-foreground transition-colors hover:text-foreground"
+            className="mt-3 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
           >
             Dismiss
           </button>
@@ -179,18 +179,18 @@ export default function ApiKeysSettingsPage() {
       )}
 
       {/* Generate card */}
-      <motion.div variants={fadeUp} className="rounded-[4px] border border-border bg-card">
+      <motion.div variants={fadeUp} className="rounded-[4px] ring-1 ring-border bg-card">
         <div className="p-5">
           <div className="flex flex-col gap-3">
             <div>
-              <label className="mb-2 block text-sm font-medium">Label</label>
+              <label className="mb-2 block text-[13px] font-medium">Label</label>
               <input
                 type="text"
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
                 disabled={creating}
                 placeholder='e.g. "MacBook Pro" or "CI Pipeline"'
-                className="h-10 w-full rounded-[4px] border border-border bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-8 w-full rounded-[4px] ring-1 ring-border bg-background px-3 text-[13px] outline-none transition-colors placeholder:text-muted-foreground focus:ring-foreground/30 disabled:cursor-not-allowed disabled:opacity-60"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleGenerate()
                 }}
@@ -200,12 +200,12 @@ export default function ApiKeysSettingsPage() {
               type="button"
               disabled={creating || !label.trim()}
               onClick={handleGenerate}
-              className="flex h-8 w-fit items-center justify-center gap-1.5 rounded-[4px] bg-primary px-3.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex h-8 w-fit items-center justify-center gap-1.5 rounded-[4px] bg-primary px-3.5 text-[11px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Plus size={12} weight="bold" />
               {creating ? "Generating..." : "Generate API key"}
             </button>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[11px] text-muted-foreground">
               Use this key with <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px]">mdn setup</code> to connect the CLI to this workspace.
             </p>
           </div>
@@ -214,26 +214,26 @@ export default function ApiKeysSettingsPage() {
 
       {/* Existing keys */}
       {apiKeys.length > 0 && (
-        <motion.div variants={fadeUp} className="mt-8">
-          <h3 className="mb-3 text-sm font-medium">
+        <motion.div variants={fadeUp} className="mt-4">
+          <h3 className="mb-3 text-[13px] font-medium">
             Active keys
             <span className="ml-1.5 text-muted-foreground">({apiKeys.length})</span>
           </h3>
-          <div className="rounded-[4px] border border-border bg-card">
+          <div className="rounded-[4px] ring-1 ring-border bg-card">
             <div className="divide-y divide-border">
               {apiKeys.map((key) => (
                 <div
                   key={key._id}
-                  className="group flex items-center justify-between px-5 py-3"
+                  className="group flex items-center justify-between px-3.5 py-3"
                 >
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium">{key.label}</p>
+                      <p className="text-[13px] font-medium">{key.label}</p>
                       <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
                         {key.keyPrefix}
                       </code>
                     </div>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
                       Created {formatDate(key.createdAt)}
                       {key.lastUsedAt && ` · Last used ${formatDate(key.lastUsedAt)}`}
                     </p>

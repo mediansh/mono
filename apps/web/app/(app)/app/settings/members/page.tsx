@@ -58,32 +58,32 @@ function getInviteUrl(token: string) {
 
 function MembersSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-2xl px-10 py-10">
-      <div className="mb-8">
+    <div className="mx-auto w-full max-w-lg px-6 py-6">
+      <div className="mb-4">
         <div className="h-5 w-24 rounded bg-muted/60" />
         <div className="mt-2 h-4 w-72 rounded bg-muted/40" />
       </div>
 
       {/* Invite card skeleton */}
-      <div className="rounded-[4px] border border-border bg-card">
-        <div className="flex gap-1 border-b border-border px-5 pt-4 pb-3">
+      <div className="rounded-[4px] ring-1 ring-border bg-card">
+        <div className="flex gap-1 border-b border-border px-3.5 pt-4 pb-3">
           <div className="h-4 w-20 rounded bg-muted/50" />
           <div className="ml-4 h-4 w-24 rounded bg-muted/50" />
         </div>
-        <div className="space-y-3 p-5">
+        <div className="space-y-3 p-3.5">
           <div className="h-4 w-12 rounded bg-muted/40" />
-          <div className="h-10 w-full rounded-[4px] bg-muted/30" />
+          <div className="h-8 w-full rounded-[4px] bg-muted/30" />
           <div className="h-8 w-40 rounded-[4px] bg-muted/40" />
         </div>
       </div>
 
       {/* Members skeleton */}
-      <div className="mt-8">
+      <div className="mt-4">
         <div className="mb-3 h-4 w-28 rounded bg-muted/50" />
-        <div className="rounded-[4px] border border-border bg-card">
+        <div className="rounded-[4px] ring-1 ring-border bg-card">
           <div className="divide-y divide-border">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 px-5 py-3">
+              <div key={i} className="flex items-center gap-3 px-3.5 py-3">
                 <div className="size-8 rounded-[4px] bg-muted/50" />
                 <div className="flex-1">
                   <div className="h-4 w-32 rounded bg-muted/50" />
@@ -133,7 +133,7 @@ export default function MembersSettingsPage() {
   if (!currentWorkspace) return null
   if (!hasWorkspaceAdminPermission(currentWorkspace.role)) {
     return (
-      <div className="mx-auto w-full max-w-2xl px-10 py-10">
+      <div className="mx-auto w-full max-w-lg px-6 py-6">
         <SettingsAccessState />
       </div>
     )
@@ -240,23 +240,23 @@ export default function MembersSettingsPage() {
   }
 
   return (
-    <Stagger className="mx-auto w-full max-w-2xl px-10 py-10">
+    <Stagger className="mx-auto w-full max-w-lg px-6 py-6">
       {/* Header */}
-      <motion.div variants={fadeUp} className="mb-8">
-        <h2 className="text-base font-semibold">Members</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
+      <motion.div variants={fadeUp} className="mb-4">
+        <h2 className="text-[14px] font-semibold">Members</h2>
+        <p className="mt-0.5 text-[12px] text-muted-foreground">
           Invite teammates and manage who has access to this workspace.
         </p>
       </motion.div>
 
       {/* Invite card */}
-      <motion.div variants={fadeUp} className="rounded-[4px] border border-border bg-card">
+      <motion.div variants={fadeUp} className="rounded-[4px] ring-1 ring-border bg-card">
         {/* Invite mode tabs */}
-        <div className="flex items-center gap-1 border-b border-border px-5 pt-4 pb-0">
+        <div className="flex items-center gap-1 border-b border-border px-3.5 pt-4 pb-0">
           <button
             type="button"
             onClick={() => setInviteMode("link")}
-            className={`flex items-center gap-1.5 border-b-2 px-3 pb-3 text-sm font-medium transition-colors ${
+            className={`flex items-center gap-1.5 border-b-2 px-3 pb-3 text-[13px] font-medium transition-colors ${
               inviteMode === "link"
                 ? "border-foreground text-foreground"
                 : "border-transparent text-muted-foreground hover:text-foreground"
@@ -268,7 +268,7 @@ export default function MembersSettingsPage() {
           <button
             type="button"
             onClick={() => setInviteMode("email")}
-            className={`flex items-center gap-1.5 border-b-2 px-3 pb-3 text-sm font-medium transition-colors ${
+            className={`flex items-center gap-1.5 border-b-2 px-3 pb-3 text-[13px] font-medium transition-colors ${
               inviteMode === "email"
                 ? "border-foreground text-foreground"
                 : "border-transparent text-muted-foreground hover:text-foreground"
@@ -283,12 +283,12 @@ export default function MembersSettingsPage() {
           {inviteMode === "link" ? (
             <div className="flex flex-col gap-3">
               <div>
-                <label className="mb-2 block text-sm font-medium">Role</label>
+                <label className="mb-2 block text-[13px] font-medium">Role</label>
                 <select
                   value={linkRole}
                   onChange={(e) => setLinkRole(e.target.value as WorkspaceInviteRole)}
                   disabled={!canManageMembers || creatingLink}
-                  className="h-10 w-full rounded-[4px] border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="h-8 w-full rounded-[4px] ring-1 ring-border bg-background px-3 text-[13px] outline-none transition-colors focus:ring-foreground/30 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {inviteRoleOptions.map((role) => (
                     <option key={role} value={role}>
@@ -301,34 +301,34 @@ export default function MembersSettingsPage() {
                 type="button"
                 disabled={!canManageMembers || creatingLink}
                 onClick={handleCreateInviteLink}
-                className="flex h-8 items-center justify-center gap-1.5 rounded-[4px] bg-primary px-3.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-8 items-center justify-center gap-1.5 rounded-[4px] bg-primary px-3.5 text-[11px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {creatingLink ? "Creating..." : "Create and copy link"}
               </button>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[11px] text-muted-foreground">
                 Anyone with the link can join as the selected role. Links expire in 14 days.
               </p>
             </div>
           ) : (
             <div className="flex flex-col gap-3">
               <div>
-                <label className="mb-2 block text-sm font-medium">Email address</label>
+                <label className="mb-2 block text-[13px] font-medium">Email address</label>
                 <input
                   type="email"
                   value={emailValue}
                   onChange={(e) => setEmailValue(e.target.value)}
                   disabled={!canManageMembers || sendingInvite}
                   placeholder="teammate@company.com"
-                  className="h-10 w-full rounded-[4px] border border-border bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="h-8 w-full rounded-[4px] ring-1 ring-border bg-background px-3 text-[13px] outline-none transition-colors placeholder:text-muted-foreground focus:ring-foreground/30 disabled:cursor-not-allowed disabled:opacity-60"
                 />
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium">Role</label>
+                <label className="mb-2 block text-[13px] font-medium">Role</label>
                 <select
                   value={emailRole}
                   onChange={(e) => setEmailRole(e.target.value as WorkspaceInviteRole)}
                   disabled={!canManageMembers || sendingInvite}
-                  className="h-10 w-full rounded-[4px] border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="h-8 w-full rounded-[4px] ring-1 ring-border bg-background px-3 text-[13px] outline-none transition-colors focus:ring-foreground/30 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {inviteRoleOptions.map((role) => (
                     <option key={role} value={role}>
@@ -341,11 +341,11 @@ export default function MembersSettingsPage() {
                 type="button"
                 disabled={!canManageMembers || sendingInvite || !emailValue.trim()}
                 onClick={handleSendEmailInvite}
-                className="flex h-8 items-center justify-center gap-1.5 rounded-[4px] bg-primary px-3.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-8 items-center justify-center gap-1.5 rounded-[4px] bg-primary px-3.5 text-[11px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {sendingInvite ? "Sending..." : "Send invite"}
               </button>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[11px] text-muted-foreground">
                 Email invites expire in 7 days.
               </p>
             </div>
@@ -355,20 +355,20 @@ export default function MembersSettingsPage() {
 
       {/* Pending invites */}
       {invites.length > 0 && (
-        <motion.div variants={fadeUp} className="mt-8">
-          <h3 className="mb-3 text-sm font-medium">
+        <motion.div variants={fadeUp} className="mt-4">
+          <h3 className="mb-3 text-[13px] font-medium">
             Pending invites
             <span className="ml-1.5 text-muted-foreground">({invites.length})</span>
           </h3>
-          <div className="rounded-[4px] border border-border bg-card">
+          <div className="rounded-[4px] ring-1 ring-border bg-card">
             <div className="divide-y divide-border">
               {invites.map((invite) => (
                 <div
                   key={invite._id}
-                  className="flex items-center justify-between px-5 py-3"
+                  className="flex items-center justify-between px-3.5 py-3"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex size-8 items-center justify-center rounded-[4px] border border-border bg-muted/50">
+                    <div className="flex size-8 items-center justify-center rounded-[4px] ring-1 ring-border bg-muted/50">
                       {invite.inviteType === "email" ? (
                         <Envelope size={14} className="text-muted-foreground" />
                       ) : (
@@ -376,10 +376,10 @@ export default function MembersSettingsPage() {
                       )}
                     </div>
                     <div>
-                      <p className="text-sm font-medium">
+                      <p className="text-[13px] font-medium">
                         {invite.invitedEmail ?? "Link invite"}
                       </p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-[11px] text-muted-foreground">
                         Expires {formatExpiry(invite.expiresAt)}
                       </p>
                     </div>
@@ -405,20 +405,20 @@ export default function MembersSettingsPage() {
       )}
 
       {/* Members list */}
-      <motion.div variants={fadeUp} className="mt-8">
-        <h3 className="mb-3 text-sm font-medium">
+      <motion.div variants={fadeUp} className="mt-4">
+        <h3 className="mb-3 text-[13px] font-medium">
           Members
           <span className="ml-1.5 text-muted-foreground">({members.length})</span>
         </h3>
-        <div className="rounded-[4px] border border-border bg-card">
+        <div className="rounded-[4px] ring-1 ring-border bg-card">
           <div className="divide-y divide-border">
             {members.map((member) => (
               <div
                 key={member._id}
-                className="group flex items-center justify-between px-5 py-3"
+                className="group flex items-center justify-between px-3.5 py-3"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex size-8 items-center justify-center overflow-hidden rounded-[4px] border border-border bg-muted/50">
+                  <div className="flex size-8 items-center justify-center overflow-hidden rounded-[4px] ring-1 ring-border bg-muted/50">
                     {member.imageUrl ? (
                       <img
                         src={member.imageUrl}
@@ -426,20 +426,20 @@ export default function MembersSettingsPage() {
                         className="size-full object-cover"
                       />
                     ) : (
-                      <span className="text-xs font-medium text-muted-foreground">
+                      <span className="text-[11px] font-medium text-muted-foreground">
                         {(member.name ?? member.email ?? "?").charAt(0).toUpperCase()}
                       </span>
                     )}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium">
+                      <p className="text-[13px] font-medium">
                         {member.name ?? member.email ?? "Unnamed member"}
                       </p>
                       <RoleBadge role={member.role} />
                     </div>
                     {member.email && (
-                      <p className="text-xs text-muted-foreground">{member.email}</p>
+                      <p className="text-[11px] text-muted-foreground">{member.email}</p>
                     )}
                   </div>
                 </div>
@@ -452,7 +452,7 @@ export default function MembersSettingsPage() {
                       onChange={(e) =>
                         handleRoleChange(member._id, e.target.value as WorkspaceInviteRole)
                       }
-                      className="h-8 rounded-[4px] border border-border bg-background px-2.5 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="h-8 rounded-[4px] ring-1 ring-border bg-background px-2.5 text-[13px] outline-none transition-colors focus:ring-foreground/30 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {inviteRoleOptions.map((role) => (
                         <option key={role} value={role}>
