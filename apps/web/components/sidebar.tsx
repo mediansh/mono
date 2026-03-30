@@ -333,14 +333,7 @@ export function AppSidebar() {
                     </kbd>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-
-          {/* Main nav */}
-          <SidebarGroup className="gap-0.5 pt-0">
-            <SidebarGroupContent>
-              <SidebarMenu className="gap-0.5">
+                {/* Main nav */}
                 {mainNav.map((item) => {
                   const isActive = item.href === "/app"
                     ? pathname === "/app"
