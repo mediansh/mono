@@ -2034,7 +2034,7 @@ function ColumnBoardView({
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex h-full">
+        <div className="flex h-full overflow-x-auto scrollbar-hide">
           {/* Requests column — special treatment */}
           {showRequests && tasksByColumn.requests.length > 0 && (
             <div className="flex h-full w-[280px] shrink-0 flex-col border-r border-border">
