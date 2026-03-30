@@ -1073,6 +1073,51 @@ const SortableListRow = memo(function SortableListRow({
   )
 })
 
+function DragOverlayCard({ task, dragCount }: { task: Task; dragCount: number }) {
+  const { colors: labelColors } = useLabelConfig()
+  const activeAgent = getActiveAgent(task)
+  return (
+    <div className="relative">
+      {dragCount > 1 && (
+        <>
+          <div className="absolute inset-0 translate-x-1 translate-y-1 rounded-[4px] ring-1 ring-border bg-muted" />
+          {dragCount > 2 && (
+            <div className="absolute inset-0 translate-x-2 translate-y-2 rounded-[4px] ring-1 ring-border bg-muted/60" />
+          )}
+        </>
+      )}
+      <div className="relative w-[240px] rounded-[4px] ring-2 ring-primary/40 bg-background p-2.5 shadow-lg dark:bg-card">
+        <div className="mb-1.5 flex items-center justify-between">
+          <span className="font-mono text-[10px] tabular-nums text-muted-foreground/50">{task.taskCode}</span>
+          {dragCount > 1 && (
+            <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+              {dragCount}
+            </span>
+          )}
+        </div>
+        <p className="mb-2 line-clamp-2 text-[13px] font-medium leading-snug text-foreground/90">{task.title}</p>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <div className="shrink-0">{getPriorityIcon(task.priority, 12)}</div>
+          {activeAgent && <AgentBadge agentName={activeAgent} />}
+          {(task.labels ?? []).map((label) => (
+            <span
+              key={label}
+              className="rounded-[4px] px-1.5 py-0.5 text-[9px] font-medium capitalize"
+              style={{
+                backgroundColor: (labelColors[label] ?? "#888") + "18",
+                color: labelColors[label] ?? "#888",
+              }}
+            >
+              {label}
+            </span>
+          ))}
+          <span className="ml-auto text-[10px] text-muted-foreground/50">{task.createdAt}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function DragOverlayListRow({ task, dragCount }: { task: Task; dragCount: number }) {
   return (
     <div className="relative">
@@ -2183,7 +2228,7 @@ function ColumnBoardView({
           })}
         </div>
         <DragOverlay dropAnimation={null}>
-          {activeTask ? <DragOverlayListRow task={activeTask} dragCount={draggedTaskIds.size} /> : null}
+          {activeTask ? <DragOverlayCard task={activeTask} dragCount={draggedTaskIds.size} /> : null}
         </DragOverlay>
       </DndContext>
 
