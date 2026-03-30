@@ -310,7 +310,7 @@ export function AppSidebar() {
                     onClick={() => setSearchOpen(true)}
                     className="text-sidebar-foreground/60 ring-1 ring-sidebar-border"
                   >
-                    <MagnifyingGlass size={14} weight="regular" />
+                    <MagnifyingGlass size={15} weight="regular" />
                     <span>Search</span>
                     <kbd className="ml-auto hidden rounded-[3px] border border-sidebar-border px-1 py-px font-mono text-[10px] text-sidebar-foreground/40 group-data-[collapsible=icon]:hidden lg:inline">
                       {mounted ? (/Mac|iPhone/.test(navigator.userAgent) ? "⌘K" : "Ctrl+K") : null}
@@ -326,7 +326,7 @@ export function AppSidebar() {
                     disabled={!canManageTasks}
                     className="bg-primary text-primary-foreground ring-1 ring-primary-foreground/10 hover:bg-primary/85 hover:text-primary-foreground active:bg-primary/70 active:text-primary-foreground data-active:bg-primary data-active:text-primary-foreground"
                   >
-                    <PenNib size={14} weight="fill" />
+                    <PenNib size={15} weight="fill" />
                     <span>New</span>
                     <kbd className="ml-auto hidden rounded-[3px] border border-primary-foreground/15 px-1 py-px font-mono text-[10px] text-primary-foreground/50 group-data-[collapsible=icon]:hidden lg:inline">
                       C
@@ -356,7 +356,7 @@ export function AppSidebar() {
                             : "text-sidebar-foreground/70"
                         }
                       >
-                        <item.icon size={14} weight={isActive ? "fill" : "regular"} />
+                        <item.icon size={15} weight={isActive ? "fill" : "regular"} />
                         <span>{item.label}</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -379,7 +379,7 @@ export function AppSidebar() {
                     : "text-sidebar-foreground/70"
                 }
               >
-                <Gear size={14} weight={pathname.startsWith("/app/settings") ? "fill" : "regular"} />
+                <Gear size={15} weight={pathname.startsWith("/app/settings") ? "fill" : "regular"} />
                 <span>Settings</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -467,7 +467,7 @@ export function AppSidebar() {
                         <DropdownMenuItem
                           onClick={() => setCreateModalOpen(true)}
                         >
-                          <Plus size={14} weight="regular" />
+                          <Plus size={15} weight="regular" />
                           New workspace
                         </DropdownMenuItem>
                       </DropdownMenuGroup>
@@ -477,25 +477,25 @@ export function AppSidebar() {
 
                   <DropdownMenuGroup>
                     <DropdownMenuItem render={<Link href="/settings" />}>
-                      <Gear size={14} weight="regular" />
+                      <Gear size={15} weight="regular" />
                       Settings
                     </DropdownMenuItem>
                     <DropdownMenuSub>
                       <DropdownMenuSubTrigger>
-                        {theme === "dark" ? <Moon size={14} weight="regular" /> : <Sun size={14} weight="regular" />}
+                        {theme === "dark" ? <Moon size={15} weight="regular" /> : <Sun size={15} weight="regular" />}
                         Theme
                       </DropdownMenuSubTrigger>
                       <DropdownMenuSubContent className="ring-sidebar-border animate-in fade-in-0 zoom-in-95 slide-in-from-left-1 duration-150">
                         <DropdownMenuItem onClick={() => setTheme("light")}>
-                          <Sun size={14} weight="regular" />
+                          <Sun size={15} weight="regular" />
                           Light
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setTheme("dark")}>
-                          <Moon size={14} weight="regular" />
+                          <Moon size={15} weight="regular" />
                           Dark
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setTheme("system")}>
-                          <Desktop size={14} weight="regular" />
+                          <Desktop size={15} weight="regular" />
                           System
                         </DropdownMenuItem>
                       </DropdownMenuSubContent>
@@ -503,7 +503,7 @@ export function AppSidebar() {
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => signOut()} className="text-muted-foreground">
-                    <SignOut size={14} weight="regular" />
+                    <SignOut size={15} weight="regular" />
                     Sign out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
