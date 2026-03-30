@@ -53,6 +53,7 @@ import {
   closestCenter,
   pointerWithin,
   type DragStartEvent,
+  type DragMoveEvent,
   type DragOverEvent,
   type DragEndEvent,
 } from "@dnd-kit/core"
@@ -1977,7 +1978,62 @@ function ColumnBoardView({
     setOverColumn((current) => (current === targetCol ? current : targetCol))
   }
 
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const autoScrollRafRef = useRef<number | null>(null)
+
+  function stopAutoScroll() {
+    if (autoScrollRafRef.current !== null) {
+      cancelAnimationFrame(autoScrollRafRef.current)
+      autoScrollRafRef.current = null
+    }
+  }
+
+  function handleDragMove(event: DragMoveEvent) {
+    const container = scrollContainerRef.current
+    if (!container || !activeTask) return
+
+    const activatorEvent = event.activatorEvent as PointerEvent
+    if (!activatorEvent) return
+    const pointerX = activatorEvent.clientX + event.delta.x
+    const pointerY = activatorEvent.clientY + event.delta.y
+
+    const rect = container.getBoundingClientRect()
+    const edgeZone = 60
+    const maxSpeed = 18
+
+    let scrollX = 0
+    let scrollY = 0
+
+    const distFromLeft = pointerX - rect.left
+    const distFromRight = rect.right - pointerX
+    if (distFromLeft < edgeZone) {
+      scrollX = -maxSpeed * (1 - distFromLeft / edgeZone)
+    } else if (distFromRight < edgeZone) {
+      scrollX = maxSpeed * (1 - distFromRight / edgeZone)
+    }
+
+    const distFromTop = pointerY - rect.top
+    const distFromBottom = rect.bottom - pointerY
+    if (distFromTop < edgeZone) {
+      scrollY = -maxSpeed * (1 - distFromTop / edgeZone)
+    } else if (distFromBottom < edgeZone) {
+      scrollY = maxSpeed * (1 - distFromBottom / edgeZone)
+    }
+
+    stopAutoScroll()
+
+    if (scrollX !== 0 || scrollY !== 0) {
+      const scroll = () => {
+        if (!scrollContainerRef.current) return
+        scrollContainerRef.current.scrollBy({ left: scrollX, top: scrollY })
+        autoScrollRafRef.current = requestAnimationFrame(scroll)
+      }
+      autoScrollRafRef.current = requestAnimationFrame(scroll)
+    }
+  }
+
   function handleDragEnd(event: DragEndEvent) {
+    stopAutoScroll()
     if (!canManageTasks) return
     const { active, over } = event
     const currentDraggedIds = draggedTaskIds
@@ -2019,6 +2075,11 @@ function ColumnBoardView({
     }
   }
 
+  // Clean up on unmount
+  useEffect(() => {
+    return () => { stopAutoScroll() }
+  }, [])
+
   const activeTaskSource = activeTask ? activeTask.status : null
 
   return (
@@ -2031,10 +2092,11 @@ function ColumnBoardView({
           return closestCenter(args)
         }}
         onDragStart={handleDragStart}
+        onDragMove={handleDragMove}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex h-full overflow-x-auto scrollbar-hide">
+        <div ref={scrollContainerRef} className="flex h-full overflow-x-auto scrollbar-hide">
           {/* Requests column — special treatment */}
           {showRequests && tasksByColumn.requests.length > 0 && (
             <div className="flex h-full w-[280px] shrink-0 flex-col border-r border-border">
