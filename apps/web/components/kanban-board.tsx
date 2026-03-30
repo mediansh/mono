@@ -2,7 +2,7 @@
 
 import { createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react"
 import { createPortal } from "react-dom"
-import { motion } from "motion/react"
+import { AnimatePresence, motion } from "motion/react"
 import { useConvexAuth, useMutation, useQuery } from "convex/react"
 import { toast } from "sonner"
 import {
@@ -1595,6 +1595,8 @@ function BulkActionToolbar({
 
 const KanbanCard = memo(function KanbanCard({
   task,
+  cardIndex,
+  columnIndex,
   isSelected,
   hasSelection,
   isDraggedAway,
@@ -1605,6 +1607,8 @@ const KanbanCard = memo(function KanbanCard({
   onDelete,
 }: {
   task: Task
+  cardIndex: number
+  columnIndex: number
   isSelected: boolean
   hasSelection: boolean
   isDraggedAway: boolean
@@ -1655,16 +1659,24 @@ const KanbanCard = memo(function KanbanCard({
     onToggleSelect(task.id, e.shiftKey)
   }, [onToggleSelect, task.id])
 
+  // Stagger: column delay + per-card delay (cap at 8 cards to avoid long waits)
+  const staggerDelay = columnIndex * 0.06 + Math.min(cardIndex, 8) * 0.03
+
   return (
     <>
-      <div
+      <motion.div
         ref={setNodeRef}
         style={style}
+        initial={{ opacity: 0, y: 8, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.25, delay: staggerDelay, ease: [0.25, 0.1, 0.25, 1] }}
+        layout
+        layoutId={`kanban-card-${task.id}`}
         {...attributes}
         {...listeners}
         onClick={handleClick}
         onContextMenu={handleContextMenu}
-        className={`group cursor-pointer touch-none border border-border bg-background p-3 select-none transition-all duration-150 hover:border-border/80 hover:bg-accent/20 dark:bg-card ${isSelected ? "ring-2 ring-primary/40 bg-primary/[0.06]" : ""}`}
+        className={`group cursor-pointer touch-none border border-border bg-background p-3 select-none transition-colors duration-150 hover:border-border/80 hover:bg-accent/20 dark:bg-card ${isSelected ? "ring-2 ring-primary/40 bg-primary/[0.06]" : ""}`}
       >
         {/* Top: task code + checkbox */}
         <div className="mb-1.5 flex items-center justify-between">
@@ -1702,7 +1714,7 @@ const KanbanCard = memo(function KanbanCard({
           ))}
           <span className="ml-auto text-[10px] text-muted-foreground/50">{task.createdAt}</span>
         </div>
-      </div>
+      </motion.div>
       {contextMenu && (
         <TaskContextMenu
           task={task}
@@ -1721,6 +1733,7 @@ const KanbanCard = memo(function KanbanCard({
 
 function KanbanColumn({
   column,
+  columnIndex,
   tasks,
   isDropTarget,
   selectedTaskIds,
@@ -1732,6 +1745,7 @@ function KanbanColumn({
   onDeleteTask,
 }: {
   column: (typeof COLUMNS)[number]
+  columnIndex: number
   tasks: Task[]
   isDropTarget?: boolean
   selectedTaskIds: Set<string>
@@ -1753,25 +1767,38 @@ function KanbanColumn({
   })
 
   return (
-    <div
+    <motion.div
       ref={setNodeRef}
-      className={`flex h-full w-[280px] shrink-0 flex-col ${isDropTarget ? "ring-2 ring-primary" : ""}`}
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: columnIndex * 0.06, ease: [0.25, 0.1, 0.25, 1] }}
+      className={`flex h-full w-[280px] shrink-0 flex-col transition-shadow duration-200 ${isDropTarget ? "ring-2 ring-primary bg-primary/[0.03]" : ""}`}
     >
       {/* Column header */}
       <div className="flex items-center gap-2 px-3 py-2.5 bg-sidebar/60 dark:bg-accent/30 border-b border-border">
         {getColumnIcon(column.id)}
         <span className="text-[13px] font-semibold tracking-tight">{column.label}</span>
-        <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-none bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">{tasks.length}</span>
+        <motion.span
+          key={tasks.length}
+          initial={{ scale: 0.8 }}
+          animate={{ scale: 1 }}
+          transition={{ type: "spring", stiffness: 400, damping: 20 }}
+          className="flex h-4.5 min-w-4.5 items-center justify-center rounded-none bg-muted px-1.5 text-[10px] font-medium text-muted-foreground"
+        >
+          {tasks.length}
+        </motion.span>
       </div>
 
       {/* Cards */}
       <div className="flex-1 overflow-y-auto p-2 scrollbar-hide">
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
           <div className="flex flex-col gap-2">
-            {tasks.map((task) => (
+            {tasks.map((task, cardIndex) => (
               <KanbanCard
                 key={task.id}
                 task={task}
+                cardIndex={cardIndex}
+                columnIndex={columnIndex}
                 isSelected={selectedTaskIds.has(task.id)}
                 hasSelection={hasSelection}
                 isDraggedAway={draggedTaskIds.has(task.id)}
@@ -1785,7 +1812,7 @@ function KanbanColumn({
           </div>
         </SortableContext>
       </div>
-    </div>
+    </motion.div>
   )
 }
 
@@ -2099,7 +2126,12 @@ function ColumnBoardView({
         <div ref={scrollContainerRef} className="flex h-full overflow-x-auto scrollbar-hide">
           {/* Requests column — special treatment */}
           {showRequests && tasksByColumn.requests.length > 0 && (
-            <div className="flex h-full w-[280px] shrink-0 flex-col border-r border-border">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+              className="flex h-full w-[280px] shrink-0 flex-col border-r border-border"
+            >
               <div className="flex items-center gap-2 px-3 py-2.5 bg-sidebar/40 dark:bg-accent/20 border-b border-border">
                 {getColumnIcon("requests")}
                 <span className="text-[13px] font-semibold tracking-tight">Requests</span>
@@ -2121,16 +2153,19 @@ function ColumnBoardView({
                   ))}
                 </div>
               </div>
-            </div>
+            </motion.div>
           )}
 
           {/* Regular columns */}
-          {visibleColumns.map((column) => {
+          {visibleColumns.map((column, colIdx) => {
             const columnTasks = tasksByColumn[column.id]
+            // Offset columnIndex if requests column is showing
+            const columnIndex = showRequests && tasksByColumn.requests.length > 0 ? colIdx + 1 : colIdx
             return (
               <div key={column.id} className="border-r border-border last:border-r-0">
                 <KanbanColumn
                   column={column}
+                  columnIndex={columnIndex}
                   tasks={columnTasks}
                   isDropTarget={overColumn === column.id && activeTaskSource !== null && activeTaskSource !== column.id}
                   selectedTaskIds={selectedTaskIds}
