@@ -351,9 +351,9 @@ export function SearchPalette({
             className="fixed top-[min(20%,180px)] left-1/2 z-50 w-[calc(100%-2rem)] max-w-[540px] -translate-x-1/2 overflow-hidden rounded-[4px] bg-background shadow-2xl ring-1 ring-border"
           >
             {/* Search input */}
-            <div className="flex items-center gap-3 border-b border-border px-4">
+            <div className="flex items-center gap-2.5 border-b border-border px-3">
               <MagnifyingGlass
-                size={16}
+                size={14}
                 className="shrink-0 text-muted-foreground"
               />
               <input
@@ -362,7 +362,7 @@ export function SearchPalette({
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Search tasks, navigate..."
-                className="h-12 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/60"
+                className="h-9 flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground/60"
                 autoComplete="off"
                 spellCheck={false}
               />
@@ -379,12 +379,12 @@ export function SearchPalette({
             {/* Results */}
             <div
               ref={listRef}
-              className="max-h-[min(60vh,400px)] overflow-y-auto overscroll-contain p-1.5"
+              className="max-h-[min(50vh,320px)] overflow-y-auto overscroll-contain p-1"
             >
               {results.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <p className="text-sm text-muted-foreground">No results found</p>
-                  <p className="mt-1 text-xs text-muted-foreground/60">
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <p className="text-[13px] text-muted-foreground">No results found</p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground/60">
                     Try a different search term
                   </p>
                 </div>
@@ -428,7 +428,7 @@ export function SearchPalette({
             </div>
 
             {/* Footer */}
-            <div className="flex items-center gap-3 border-t border-border px-4 py-2">
+            <div className="flex items-center gap-3 border-t border-border px-3 py-1.5">
               <div className="flex items-center gap-1.5">
                 <kbd className="flex h-5 min-w-5 items-center justify-center rounded-[4px] border border-border bg-muted px-1 font-mono text-[10px] text-muted-foreground">
                   ↑
@@ -480,14 +480,14 @@ function NavResultRow({
       onClick={onSelect}
       onMouseMove={onHover}
       className={cn(
-        "flex w-full items-center gap-3 rounded-[4px] px-2.5 py-2 text-left transition-colors",
+        "flex w-full items-center gap-2 rounded-[4px] px-2 py-1.5 text-left transition-colors",
         isActive ? "bg-accent text-foreground" : "text-foreground/80 hover:bg-accent/50"
       )}
     >
-      <div className="flex size-7 shrink-0 items-center justify-center rounded-[4px] bg-muted/80">
-        <result.icon size={14} className="text-muted-foreground" />
+      <div className="flex size-6 shrink-0 items-center justify-center rounded-[4px] bg-muted/80">
+        <result.icon size={13} className="text-muted-foreground" />
       </div>
-      <span className="flex-1 truncate text-[13px] font-medium">{result.label}</span>
+      <span className="flex-1 truncate text-[12px] font-medium">{result.label}</span>
       <ArrowRight
         size={13}
         className={cn(
@@ -518,7 +518,7 @@ function TaskResultRow({
       onClick={onSelect}
       onMouseMove={onHover}
       className={cn(
-        "flex w-full items-center gap-2.5 rounded-[4px] px-2.5 py-2 text-left transition-colors",
+        "flex w-full items-center gap-2 rounded-[4px] px-2 py-1.5 text-left transition-colors",
         isActive ? "bg-accent text-foreground" : "text-foreground/80 hover:bg-accent/50"
       )}
     >
@@ -527,7 +527,7 @@ function TaskResultRow({
       <span className="shrink-0 font-mono text-[10px] text-muted-foreground/50">
         {result.taskCode}
       </span>
-      <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{result.title}</span>
+      <span className="min-w-0 flex-1 truncate text-[12px] font-medium">{result.title}</span>
       {result.labels.length > 0 && (
         <div className="hidden shrink-0 items-center gap-1 sm:flex">
           {result.labels.slice(0, 2).map((label) => (

@@ -549,7 +549,7 @@ export function NewTaskModal({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.15, ease: [0.23, 1, 0.32, 1] }}
-            className="fixed top-[min(20%,180px)] left-1/2 z-50 w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 overflow-hidden rounded-[4px] bg-background shadow-2xl ring-1 ring-border"
+            className="fixed top-[min(20%,180px)] left-1/2 z-50 w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 overflow-hidden rounded-[4px] bg-background shadow-2xl ring-1 ring-border"
             onKeyDown={(e) => {
               if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault()
@@ -562,17 +562,17 @@ export function NewTaskModal({
             }}
           >
         {/* Header with tabs */}
-        <div className="flex items-center justify-between border-b border-border px-4">
+        <div className="flex items-center justify-between border-b border-border px-3">
           <div className="flex items-center gap-0">
             <button
               onClick={() => setActiveTab("manual")}
-              className={`relative flex items-center gap-1.5 px-3 py-3 text-sm font-medium transition-colors ${
+              className={`relative flex items-center gap-1.5 px-2.5 py-2 text-[12px] font-medium transition-colors ${
                 activeTab === "manual"
                   ? "text-foreground"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <PencilSimple size={14} />
+              <PencilSimple size={13} />
               Manual
               {activeTab === "manual" && (
                 <div className="absolute inset-x-0 -bottom-px h-0.5 bg-foreground" />
@@ -583,13 +583,13 @@ export function NewTaskModal({
                 setActiveTab("ai")
                 trackAIPromptTabSelected()
               }}
-              className={`relative flex items-center gap-1.5 px-3 py-3 text-sm font-medium transition-colors ${
+              className={`relative flex items-center gap-1.5 px-2.5 py-2 text-[12px] font-medium transition-colors ${
                 activeTab === "ai"
                   ? "text-foreground"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Sparkle size={14} />
+              <Sparkle size={13} />
               AI Prompt
               {activeTab === "ai" && (
                 <div className="absolute inset-x-0 -bottom-px h-0.5 bg-foreground" />
@@ -599,18 +599,18 @@ export function NewTaskModal({
           <div className="flex items-center gap-1">
             <button
               onClick={() => onOpenChange(false)}
-              className="flex size-7 items-center justify-center rounded-[4px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className="flex size-6 items-center justify-center rounded-[4px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
-              <X size={14} />
+              <X size={13} />
             </button>
           </div>
         </div>
 
-        <div className="flex min-h-[320px] flex-col">
+        <div className="flex min-h-[240px] flex-col">
           {activeTab === "manual" ? (
             <>
               {/* Body */}
-              <div className="flex flex-1 flex-col px-5 pt-4 pb-2">
+              <div className="flex flex-1 flex-col px-3 pt-3 pb-1.5">
                 <input
                   ref={titleRef}
                   type="text"
@@ -619,25 +619,25 @@ export function NewTaskModal({
                   onKeyDown={handleTitleKeyDown}
                   placeholder="Task title"
                   autoFocus
-                  className="w-full bg-transparent text-lg font-medium outline-none placeholder:text-muted-foreground/50"
+                  className="w-full bg-transparent text-[14px] font-medium outline-none placeholder:text-muted-foreground/50"
                 />
                 <textarea
                   ref={descriptionRef}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Add description..."
-                  rows={4}
-                  className="mt-2 w-full resize-none bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
+                  rows={3}
+                  className="mt-1.5 w-full resize-none bg-transparent text-[13px] outline-none placeholder:text-muted-foreground/50"
                 />
               </div>
 
               {/* Footer */}
-              <div className="flex flex-col gap-3 border-t border-border px-4 py-3">
+              <div className="flex flex-col gap-2 border-t border-border px-3 py-2">
                 {/* Toolbar pills */}
                 <div className="flex flex-wrap items-center gap-2">
                   {/* Status */}
                   <DropdownMenu>
-                    <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent">
+                    <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2 py-1 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent">
                       {getStatusIcon(status)}
                       {statusLabel}
                     </DropdownMenuTrigger>
@@ -661,7 +661,7 @@ export function NewTaskModal({
 
                   {/* Priority */}
                   <DropdownMenu>
-                    <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent">
+                    <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2 py-1 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent">
                       {getPriorityIcon(priority)}
                       {priorityLabel}
                     </DropdownMenuTrigger>
@@ -685,7 +685,7 @@ export function NewTaskModal({
 
                   {/* Labels (multi-select) */}
                   <DropdownMenu>
-                    <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent">
+                    <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2 py-1 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent">
                       <Tag
                         size={14}
                         className="text-muted-foreground"
@@ -763,7 +763,7 @@ export function NewTaskModal({
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       disabled={uploading}
-                      className="flex items-center gap-1.5 rounded-[4px] border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+                      className="flex items-center gap-1.5 rounded-[4px] px-2 py-1 text-[11px] font-medium ring-1 ring-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
                     >
                       {uploading ? (
                         <SpinnerGap size={14} className="animate-spin" />
@@ -799,7 +799,7 @@ export function NewTaskModal({
                     <button
                       onClick={handleCreate}
                       disabled={!title.trim() || !currentWorkspace}
-                      className="flex items-center gap-2 rounded-[4px] bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+                      className="flex items-center gap-2 rounded-[4px] bg-primary px-3 py-1.5 text-[12px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                     >
                       Create task
                       <kbd className="hidden rounded bg-primary-foreground/20 px-1.5 py-0.5 text-[10px] font-normal text-primary-foreground/70 sm:inline-block">
@@ -813,24 +813,24 @@ export function NewTaskModal({
           ) : (
             /* AI Prompt Tab */
             <div className="flex flex-1 flex-col">
-              <div className="flex flex-1 flex-col px-5 pt-4 pb-4">
-                <p className="mb-3 text-sm text-muted-foreground">
-                  Describe the tasks you need and AI will generate them for you.
+              <div className="flex flex-1 flex-col px-3 pt-3 pb-3">
+                <p className="mb-2 text-[12px] text-muted-foreground">
+                  Describe the tasks you need and AI will generate them.
                 </p>
                 <textarea
                   value={aiPrompt}
                   onChange={(e) => setAiPrompt(e.target.value)}
-                  placeholder="e.g. Create tasks for building a user authentication flow with signup, login, password reset, and email verification..."
+                  placeholder="e.g. Create tasks for building a user authentication flow..."
                   autoFocus
-                  rows={6}
-                  className="w-full flex-1 resize-none rounded-[4px] border border-border bg-accent/30 p-3 text-sm transition-colors outline-none placeholder:text-muted-foreground/50 focus:border-ring focus:ring-1 focus:ring-ring/30"
+                  rows={4}
+                  className="w-full flex-1 resize-none rounded-[4px] bg-accent/30 p-2.5 text-[13px] ring-1 ring-border transition-colors outline-none placeholder:text-muted-foreground/50 focus:ring-foreground/30"
                 />
               </div>
-              <div className="flex items-center justify-end border-t border-border px-4 py-3">
+              <div className="flex items-center justify-end border-t border-border px-3 py-2">
                 <button
                   onClick={handleGenerateTasks}
                   disabled={!aiPrompt.trim() || isGenerating}
-                  className="flex items-center gap-2 rounded-[4px] bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-[4px] bg-primary px-3 py-1.5 text-[12px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                 >
                   {isGenerating ? "Generating..." : "Generate tasks"}
                   {isGenerating ? (

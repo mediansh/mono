@@ -156,9 +156,9 @@ function CreateWorkspaceModal({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium">Logo <span className="text-muted-foreground font-normal">(optional)</span></label>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-[13px] font-medium">Logo <span className="text-muted-foreground font-normal">(optional)</span></label>
             <input
               ref={fileInputRef}
               type="file"
@@ -169,7 +169,7 @@ function CreateWorkspaceModal({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="group flex size-14 items-center justify-center overflow-hidden rounded-[4px] border border-border bg-card transition-colors hover:bg-muted"
+              className="group flex size-11 items-center justify-center overflow-hidden rounded-[4px] bg-card ring-1 ring-border transition-colors hover:bg-muted"
             >
               {iconPreview ? (
                 <img
@@ -178,10 +178,10 @@ function CreateWorkspaceModal({
                   className="size-full object-cover"
                 />
               ) : name.trim() ? (
-                <Facehash name={name.trim()} size={56} />
+                <Facehash name={name.trim()} size={44} />
               ) : (
                 <Image
-                  size={20}
+                  size={16}
                   className="text-muted-foreground transition-colors group-hover:text-foreground"
                 />
               )}
@@ -194,15 +194,15 @@ function CreateWorkspaceModal({
                   setIconPreview(null)
                   if (fileInputRef.current) fileInputRef.current.value = ""
                 }}
-                className="w-fit text-xs text-muted-foreground transition-colors hover:text-foreground"
+                className="w-fit text-[11px] text-muted-foreground transition-colors hover:text-foreground"
               >
                 Remove
               </button>
             )}
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="modal-workspace-name" className="text-sm font-medium">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="modal-workspace-name" className="text-[13px] font-medium">
               Workspace name
             </label>
             <input
@@ -215,16 +215,16 @@ function CreateWorkspaceModal({
                 if (error) setError("")
               }}
               autoFocus
-              className="h-10 rounded-[4px] border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
+              className="h-8 rounded-[4px] bg-card px-2.5 text-[13px] ring-1 ring-border outline-none transition-all placeholder:text-muted-foreground focus:ring-foreground/30"
             />
           </div>
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && <p className="text-[12px] text-destructive">{error}</p>}
 
           <button
             type="submit"
             disabled={loading || !name.trim()}
-            className="flex h-10 items-center justify-center rounded-[4px] bg-primary text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+            className="flex h-8 items-center justify-center rounded-[4px] bg-primary text-[13px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
           >
             {loading ? (
               <svg className="size-4 animate-spin" viewBox="0 0 24 24" fill="none">
