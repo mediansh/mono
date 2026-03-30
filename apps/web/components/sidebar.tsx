@@ -169,7 +169,7 @@ function CreateWorkspaceModal({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="group flex size-14 items-center justify-center overflow-hidden rounded-none border border-border bg-card transition-colors hover:bg-muted"
+              className="group flex size-14 items-center justify-center overflow-hidden rounded-[4px] border border-border bg-card transition-colors hover:bg-muted"
             >
               {iconPreview ? (
                 <img
@@ -215,7 +215,7 @@ function CreateWorkspaceModal({
                 if (error) setError("")
               }}
               autoFocus
-              className="h-10 rounded-none border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
+              className="h-10 rounded-[4px] border border-border bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
             />
           </div>
 
@@ -224,7 +224,7 @@ function CreateWorkspaceModal({
           <button
             type="submit"
             disabled={loading || !name.trim()}
-            className="flex h-10 items-center justify-center rounded-none bg-primary text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+            className="flex h-10 items-center justify-center rounded-[4px] bg-primary text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
           >
             {loading ? (
               <svg className="size-4 animate-spin" viewBox="0 0 24 24" fill="none">

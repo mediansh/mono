@@ -65,31 +65,31 @@ function MembersSkeleton() {
       </div>
 
       {/* Invite card skeleton */}
-      <div className="rounded-none border border-border bg-card">
+      <div className="rounded-[4px] border border-border bg-card">
         <div className="flex gap-1 border-b border-border px-5 pt-4 pb-3">
           <div className="h-4 w-20 rounded bg-muted/50" />
           <div className="ml-4 h-4 w-24 rounded bg-muted/50" />
         </div>
         <div className="space-y-3 p-5">
           <div className="h-4 w-12 rounded bg-muted/40" />
-          <div className="h-10 w-full rounded-none bg-muted/30" />
-          <div className="h-8 w-40 rounded-none bg-muted/40" />
+          <div className="h-10 w-full rounded-[4px] bg-muted/30" />
+          <div className="h-8 w-40 rounded-[4px] bg-muted/40" />
         </div>
       </div>
 
       {/* Members skeleton */}
       <div className="mt-8">
         <div className="mb-3 h-4 w-28 rounded bg-muted/50" />
-        <div className="rounded-none border border-border bg-card">
+        <div className="rounded-[4px] border border-border bg-card">
           <div className="divide-y divide-border">
             {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="flex items-center gap-3 px-5 py-3">
-                <div className="size-8 rounded-none bg-muted/50" />
+                <div className="size-8 rounded-[4px] bg-muted/50" />
                 <div className="flex-1">
                   <div className="h-4 w-32 rounded bg-muted/50" />
                   <div className="mt-1.5 h-3 w-44 rounded bg-muted/30" />
                 </div>
-                <div className="h-6 w-16 rounded-none bg-muted/30" />
+                <div className="h-6 w-16 rounded-[4px] bg-muted/30" />
               </div>
             ))}
           </div>
@@ -250,7 +250,7 @@ export default function MembersSettingsPage() {
       </motion.div>
 
       {/* Invite card */}
-      <motion.div variants={fadeUp} className="rounded-none border border-border bg-card">
+      <motion.div variants={fadeUp} className="rounded-[4px] border border-border bg-card">
         {/* Invite mode tabs */}
         <div className="flex items-center gap-1 border-b border-border px-5 pt-4 pb-0">
           <button
@@ -288,7 +288,7 @@ export default function MembersSettingsPage() {
                   value={linkRole}
                   onChange={(e) => setLinkRole(e.target.value as WorkspaceInviteRole)}
                   disabled={!canManageMembers || creatingLink}
-                  className="h-10 w-full rounded-none border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="h-10 w-full rounded-[4px] border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {inviteRoleOptions.map((role) => (
                     <option key={role} value={role}>
@@ -301,7 +301,7 @@ export default function MembersSettingsPage() {
                 type="button"
                 disabled={!canManageMembers || creatingLink}
                 onClick={handleCreateInviteLink}
-                className="flex h-8 items-center justify-center gap-1.5 rounded-none bg-primary px-3.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-8 items-center justify-center gap-1.5 rounded-[4px] bg-primary px-3.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {creatingLink ? "Creating..." : "Create and copy link"}
               </button>
@@ -319,7 +319,7 @@ export default function MembersSettingsPage() {
                   onChange={(e) => setEmailValue(e.target.value)}
                   disabled={!canManageMembers || sendingInvite}
                   placeholder="teammate@company.com"
-                  className="h-10 w-full rounded-none border border-border bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="h-10 w-full rounded-[4px] border border-border bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-60"
                 />
               </div>
               <div>
@@ -328,7 +328,7 @@ export default function MembersSettingsPage() {
                   value={emailRole}
                   onChange={(e) => setEmailRole(e.target.value as WorkspaceInviteRole)}
                   disabled={!canManageMembers || sendingInvite}
-                  className="h-10 w-full rounded-none border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="h-10 w-full rounded-[4px] border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {inviteRoleOptions.map((role) => (
                     <option key={role} value={role}>
@@ -341,7 +341,7 @@ export default function MembersSettingsPage() {
                 type="button"
                 disabled={!canManageMembers || sendingInvite || !emailValue.trim()}
                 onClick={handleSendEmailInvite}
-                className="flex h-8 items-center justify-center gap-1.5 rounded-none bg-primary px-3.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-8 items-center justify-center gap-1.5 rounded-[4px] bg-primary px-3.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {sendingInvite ? "Sending..." : "Send invite"}
               </button>
@@ -360,7 +360,7 @@ export default function MembersSettingsPage() {
             Pending invites
             <span className="ml-1.5 text-muted-foreground">({invites.length})</span>
           </h3>
-          <div className="rounded-none border border-border bg-card">
+          <div className="rounded-[4px] border border-border bg-card">
             <div className="divide-y divide-border">
               {invites.map((invite) => (
                 <div
@@ -368,7 +368,7 @@ export default function MembersSettingsPage() {
                   className="flex items-center justify-between px-5 py-3"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex size-8 items-center justify-center rounded-none border border-border bg-muted/50">
+                    <div className="flex size-8 items-center justify-center rounded-[4px] border border-border bg-muted/50">
                       {invite.inviteType === "email" ? (
                         <Envelope size={14} className="text-muted-foreground" />
                       ) : (
@@ -391,7 +391,7 @@ export default function MembersSettingsPage() {
                         type="button"
                         disabled={busyInviteId === invite._id}
                         onClick={() => handleRevokeInvite(invite._id)}
-                        className="flex size-8 items-center justify-center rounded-none text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
+                        className="flex size-8 items-center justify-center rounded-[4px] text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <Trash size={14} />
                       </button>
@@ -410,7 +410,7 @@ export default function MembersSettingsPage() {
           Members
           <span className="ml-1.5 text-muted-foreground">({members.length})</span>
         </h3>
-        <div className="rounded-none border border-border bg-card">
+        <div className="rounded-[4px] border border-border bg-card">
           <div className="divide-y divide-border">
             {members.map((member) => (
               <div
@@ -418,7 +418,7 @@ export default function MembersSettingsPage() {
                 className="group flex items-center justify-between px-5 py-3"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex size-8 items-center justify-center overflow-hidden rounded-none border border-border bg-muted/50">
+                  <div className="flex size-8 items-center justify-center overflow-hidden rounded-[4px] border border-border bg-muted/50">
                     {member.imageUrl ? (
                       <img
                         src={member.imageUrl}
@@ -452,7 +452,7 @@ export default function MembersSettingsPage() {
                       onChange={(e) =>
                         handleRoleChange(member._id, e.target.value as WorkspaceInviteRole)
                       }
-                      className="h-8 rounded-none border border-border bg-background px-2.5 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="h-8 rounded-[4px] border border-border bg-background px-2.5 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {inviteRoleOptions.map((role) => (
                         <option key={role} value={role}>
@@ -464,7 +464,7 @@ export default function MembersSettingsPage() {
                       type="button"
                       disabled={!canManageMembers || busyMemberId === member._id}
                       onClick={() => handleRemoveMember(member._id)}
-                      className="flex size-8 items-center justify-center rounded-none text-muted-foreground opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex size-8 items-center justify-center rounded-[4px] text-muted-foreground opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <Trash size={14} />
                     </button>

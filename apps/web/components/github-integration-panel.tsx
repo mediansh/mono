@@ -295,9 +295,9 @@ export function GitHubIntegrationPanel() {
             </p>
           </motion.div>
 
-          <motion.div variants={fadeUp} className="rounded-none border border-border bg-card">
+          <motion.div variants={fadeUp} className="rounded-[4px] border border-border bg-card">
             <div className="flex items-center gap-4 p-5">
-              <div className="flex size-10 items-center justify-center rounded-none bg-foreground/5">
+              <div className="flex size-10 items-center justify-center rounded-[4px] bg-foreground/5">
                 <GitHubBrandIcon size={20} className="text-foreground" />
               </div>
               <div className="flex-1">
@@ -319,7 +319,7 @@ export function GitHubIntegrationPanel() {
             </div>
           </motion.div>
 
-          <motion.div variants={fadeUp} className="rounded-none border border-dashed border-border p-5">
+          <motion.div variants={fadeUp} className="rounded-[4px] border border-dashed border-border p-5">
             <div className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
               <HugeiconsIcon icon={InformationCircleIcon} size={14} strokeWidth={1.8} />
               How it works
@@ -341,7 +341,7 @@ export function GitHubIntegrationPanel() {
           </motion.div>
 
           {(callbackUrl || webhookUrl) && (
-            <motion.div variants={fadeUp} className="rounded-none border border-dashed border-border p-5">
+            <motion.div variants={fadeUp} className="rounded-[4px] border border-dashed border-border p-5">
               <div className="mb-3 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
                 GitHub App URLs
               </div>
@@ -378,9 +378,9 @@ export function GitHubIntegrationPanel() {
         </motion.div>
 
         {/* Connection status card */}
-        <motion.div variants={fadeUp} className="rounded-none border border-border bg-card">
+        <motion.div variants={fadeUp} className="rounded-[4px] border border-border bg-card">
           <div className="flex items-center gap-4 p-5">
-            <div className="flex size-10 items-center justify-center rounded-none bg-foreground/5">
+            <div className="flex size-10 items-center justify-center rounded-[4px] bg-foreground/5">
               <GitHubBrandIcon size={20} className="text-foreground" />
             </div>
             <div className="min-w-0 flex-1">
@@ -415,7 +415,7 @@ export function GitHubIntegrationPanel() {
         </motion.div>
 
         {/* Repositories */}
-        <motion.div variants={fadeUp} className="rounded-none border border-border bg-card">
+        <motion.div variants={fadeUp} className="rounded-[4px] border border-border bg-card">
           <div className="border-b border-border px-5 py-3.5">
             <h3 className="text-sm font-medium">Repositories</h3>
             <p className="mt-0.5 text-xs text-muted-foreground">
@@ -454,7 +454,7 @@ export function GitHubIntegrationPanel() {
                       type="button"
                       disabled={isSaving}
                       onClick={() => handleMakeDefault(repository.id)}
-                      className={`rounded-none px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                      className={`rounded-[4px] px-2 py-0.5 text-[11px] font-medium transition-colors ${
                         isDefault
                           ? "bg-foreground text-background"
                           : "text-muted-foreground hover:text-foreground"
@@ -483,7 +483,7 @@ export function GitHubIntegrationPanel() {
         </motion.div>
 
         {/* Automations */}
-        <motion.div variants={fadeUp} className="rounded-none border border-border bg-card">
+        <motion.div variants={fadeUp} className="rounded-[4px] border border-border bg-card">
           <div className="border-b border-border px-5 py-3.5">
             <h3 className="text-sm font-medium">Automations</h3>
             <p className="mt-0.5 text-xs text-muted-foreground">

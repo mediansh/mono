@@ -28,20 +28,20 @@ export default function AppError({ error, reset }: AppErrorProps) {
 
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-6">
-      <div className="w-full max-w-md rounded-none border-2 border-border bg-card p-6 shadow-none">
+      <div className="w-full max-w-md rounded-[4px] border-2 border-border bg-card p-6 shadow-none">
         <p className="text-sm font-medium text-foreground">Page error</p>
         <h1 className="mt-2 text-2xl font-semibold">Something went wrong</h1>
         <p className="mt-3 text-sm text-muted-foreground">
           The error has been recorded. Reload this section to try again.
         </p>
         {error.digest ? (
-          <p className="mt-4 rounded-none bg-accent px-3 py-2 font-mono text-xs text-muted-foreground">
+          <p className="mt-4 rounded-[4px] bg-accent px-3 py-2 font-mono text-xs text-muted-foreground">
             Digest: {error.digest}
           </p>
         ) : null}
         <button
           onClick={reset}
-          className="mt-5 inline-flex rounded-none bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          className="mt-5 inline-flex rounded-[4px] bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
         >
           Retry
         </button>

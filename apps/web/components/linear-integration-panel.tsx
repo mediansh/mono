@@ -128,7 +128,7 @@ function StatusMappingRow({
         value={selectValue}
         disabled={disabled}
         onChange={(event) => onChange(status, event.target.value)}
-        className="h-8 min-w-0 flex-1 rounded-none border border-border bg-background px-2.5 text-sm text-foreground transition-colors outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:opacity-60"
+        className="h-8 min-w-0 flex-1 rounded-[4px] border border-border bg-background px-2.5 text-sm text-foreground transition-colors outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:opacity-60"
       >
         <option value="">Automatic</option>
         {states.map((state) => (
@@ -406,9 +406,9 @@ export function LinearIntegrationPanel() {
             </p>
           </div>
 
-          <div className="rounded-none border border-border bg-card">
+          <div className="rounded-[4px] border border-border bg-card">
             <div className="flex items-center gap-4 p-5">
-              <div className="flex size-10 items-center justify-center rounded-none bg-[#5E6AD2]/10">
+              <div className="flex size-10 items-center justify-center rounded-[4px] bg-[#5E6AD2]/10">
                 <LinearBrandMark size={20} />
               </div>
               <div className="flex-1">
@@ -466,7 +466,7 @@ export function LinearIntegrationPanel() {
             </div>
           </div>
 
-          <div className="rounded-none border border-border bg-card">
+          <div className="rounded-[4px] border border-border bg-card">
             <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-3.5">
               <h3 className="text-sm font-medium">Status mapping</h3>
               {hasMappingChanges && (
@@ -546,7 +546,7 @@ export function LinearIntegrationPanel() {
               <button
                 type="button"
                 onClick={() => setDisconnectOpen(false)}
-                className="flex h-9 flex-1 items-center justify-center rounded-none border border-border text-sm font-medium transition-colors hover:bg-muted"
+                className="flex h-9 flex-1 items-center justify-center rounded-[4px] border border-border text-sm font-medium transition-colors hover:bg-muted"
               >
                 Cancel
               </button>
@@ -554,7 +554,7 @@ export function LinearIntegrationPanel() {
                 type="button"
                 disabled={isDisconnecting}
                 onClick={handleDisconnect}
-                className="text-destructive-foreground flex h-9 flex-1 items-center justify-center rounded-none bg-destructive text-sm font-medium transition-colors hover:bg-destructive/90 disabled:opacity-50"
+                className="text-destructive-foreground flex h-9 flex-1 items-center justify-center rounded-[4px] bg-destructive text-sm font-medium transition-colors hover:bg-destructive/90 disabled:opacity-50"
               >
                 {isDisconnecting ? "Disconnecting..." : "Disconnect"}
               </button>
@@ -581,9 +581,9 @@ export function LinearIntegrationPanel() {
           </p>
         </div>
 
-        <div className="rounded-none border border-border bg-card">
+        <div className="rounded-[4px] border border-border bg-card">
           <div className="flex items-center gap-4 p-5">
-            <div className="flex size-10 items-center justify-center rounded-none bg-[#5E6AD2]/10">
+            <div className="flex size-10 items-center justify-center rounded-[4px] bg-[#5E6AD2]/10">
               <LinearBrandMark size={20} />
             </div>
             <div className="flex-1">
@@ -639,7 +639,7 @@ export function LinearIntegrationPanel() {
                   id="linear-team"
                   value={selectedTeamId}
                   onChange={(event) => setSelectedTeamId(event.target.value)}
-                  className="h-9 w-full rounded-none border border-border bg-background px-3 text-sm transition-colors outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
+                  className="h-9 w-full rounded-[4px] border border-border bg-background px-3 text-sm transition-colors outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
                 >
                   {previewTeams.map((team) => (
                     <option key={team.id} value={team.id}>

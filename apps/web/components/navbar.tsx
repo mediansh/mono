@@ -49,7 +49,7 @@ export function Navbar() {
             <>
               <SignInButton mode="redirect">
                 <button
-                  className="text-navbar-accent hover:bg-navbar-accent/10 rounded-none px-3.5 py-1 text-sm font-medium transition-colors"
+                  className="text-navbar-accent hover:bg-navbar-accent/10 rounded-[4px] px-3.5 py-1 text-sm font-medium transition-colors"
                   type="button"
                 >
                   Sign in
@@ -57,7 +57,7 @@ export function Navbar() {
               </SignInButton>
               <SignUpButton mode="redirect">
                 <button
-                  className="bg-navbar-accent hover:bg-navbar-accent/85 rounded-none px-3.5 py-1 text-sm font-medium text-white transition-colors"
+                  className="bg-navbar-accent hover:bg-navbar-accent/85 rounded-[4px] px-3.5 py-1 text-sm font-medium text-white transition-colors"
                   type="button"
                 >
                   Get started
@@ -68,7 +68,7 @@ export function Navbar() {
             <>
               <Link
                 href="/app"
-                className="text-navbar-accent hover:bg-navbar-accent/10 rounded-none px-3.5 py-1 text-sm font-medium transition-colors"
+                className="text-navbar-accent hover:bg-navbar-accent/10 rounded-[4px] px-3.5 py-1 text-sm font-medium transition-colors"
               >
                 Dashboard
               </Link>

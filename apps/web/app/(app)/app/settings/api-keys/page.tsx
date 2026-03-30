@@ -46,16 +46,16 @@ function ApiKeysSkeleton() {
         <div className="h-5 w-24 rounded bg-muted/60" />
         <div className="mt-2 h-4 w-72 rounded bg-muted/40" />
       </div>
-      <div className="rounded-none border border-border bg-card">
+      <div className="rounded-[4px] border border-border bg-card">
         <div className="space-y-3 p-5">
           <div className="h-4 w-12 rounded bg-muted/40" />
-          <div className="h-10 w-full rounded-none bg-muted/30" />
-          <div className="h-8 w-40 rounded-none bg-muted/40" />
+          <div className="h-10 w-full rounded-[4px] bg-muted/30" />
+          <div className="h-8 w-40 rounded-[4px] bg-muted/40" />
         </div>
       </div>
       <div className="mt-8">
         <div className="mb-3 h-4 w-28 rounded bg-muted/50" />
-        <div className="rounded-none border border-border bg-card">
+        <div className="rounded-[4px] border border-border bg-card">
           <div className="divide-y divide-border">
             {Array.from({ length: 2 }).map((_, i) => (
               <div key={i} className="flex items-center gap-3 px-5 py-3">
@@ -63,7 +63,7 @@ function ApiKeysSkeleton() {
                   <div className="h-4 w-32 rounded bg-muted/50" />
                   <div className="mt-1.5 h-3 w-44 rounded bg-muted/30" />
                 </div>
-                <div className="h-6 w-16 rounded-none bg-muted/30" />
+                <div className="h-6 w-16 rounded-[4px] bg-muted/30" />
               </div>
             ))}
           </div>
@@ -151,19 +151,19 @@ export default function ApiKeysSettingsPage() {
       {newKey && (
         <motion.div
           variants={fadeUp}
-          className="mb-6 rounded-none border border-amber-500/30 bg-amber-500/5 p-5"
+          className="mb-6 rounded-[4px] border border-amber-500/30 bg-amber-500/5 p-5"
         >
           <p className="mb-2 text-sm font-medium text-amber-400">
             Copy your API key now — it won't be shown again.
           </p>
           <div className="flex items-center gap-2">
-            <code className="flex-1 rounded-none border border-border bg-background px-3 py-2 font-mono text-xs select-all">
+            <code className="flex-1 rounded-[4px] border border-border bg-background px-3 py-2 font-mono text-xs select-all">
               {newKey}
             </code>
             <button
               type="button"
               onClick={handleCopyKey}
-              className="flex size-9 shrink-0 items-center justify-center rounded-none border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className="flex size-9 shrink-0 items-center justify-center rounded-[4px] border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
               <Copy size={14} />
             </button>
@@ -179,7 +179,7 @@ export default function ApiKeysSettingsPage() {
       )}
 
       {/* Generate card */}
-      <motion.div variants={fadeUp} className="rounded-none border border-border bg-card">
+      <motion.div variants={fadeUp} className="rounded-[4px] border border-border bg-card">
         <div className="p-5">
           <div className="flex flex-col gap-3">
             <div>
@@ -190,7 +190,7 @@ export default function ApiKeysSettingsPage() {
                 onChange={(e) => setLabel(e.target.value)}
                 disabled={creating}
                 placeholder='e.g. "MacBook Pro" or "CI Pipeline"'
-                className="h-10 w-full rounded-none border border-border bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-10 w-full rounded-[4px] border border-border bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-60"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleGenerate()
                 }}
@@ -200,7 +200,7 @@ export default function ApiKeysSettingsPage() {
               type="button"
               disabled={creating || !label.trim()}
               onClick={handleGenerate}
-              className="flex h-8 w-fit items-center justify-center gap-1.5 rounded-none bg-primary px-3.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex h-8 w-fit items-center justify-center gap-1.5 rounded-[4px] bg-primary px-3.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Plus size={12} weight="bold" />
               {creating ? "Generating..." : "Generate API key"}
@@ -219,7 +219,7 @@ export default function ApiKeysSettingsPage() {
             Active keys
             <span className="ml-1.5 text-muted-foreground">({apiKeys.length})</span>
           </h3>
-          <div className="rounded-none border border-border bg-card">
+          <div className="rounded-[4px] border border-border bg-card">
             <div className="divide-y divide-border">
               {apiKeys.map((key) => (
                 <div
@@ -242,7 +242,7 @@ export default function ApiKeysSettingsPage() {
                     type="button"
                     disabled={revokingId === key._id}
                     onClick={() => handleRevoke(key._id)}
-                    className="flex size-8 items-center justify-center rounded-none text-muted-foreground opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex size-8 items-center justify-center rounded-[4px] text-muted-foreground opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <Trash size={14} />
                   </button>

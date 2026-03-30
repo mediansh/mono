@@ -198,9 +198,9 @@ export function XIntegrationPanel() {
             </p>
           </motion.div>
 
-          <motion.div variants={fadeUp} className="rounded-none border border-border bg-card">
+          <motion.div variants={fadeUp} className="rounded-[4px] border border-border bg-card">
             <div className="flex items-center gap-4 p-5">
-              <div className="flex size-10 items-center justify-center overflow-hidden rounded-none bg-foreground/5">
+              <div className="flex size-10 items-center justify-center overflow-hidden rounded-[4px] bg-foreground/5">
                 {integration.profileImageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -237,7 +237,7 @@ export function XIntegrationPanel() {
             </div>
           </motion.div>
 
-          <motion.div variants={fadeUp} className="rounded-none border border-border bg-card">
+          <motion.div variants={fadeUp} className="rounded-[4px] border border-border bg-card">
             <div className="flex items-center gap-3 border-b border-border px-5 py-3.5">
               <HugeiconsIcon icon={TextIcon} size={15} strokeWidth={1.8} className="text-muted-foreground" />
               <div className="flex-1">
@@ -296,9 +296,9 @@ export function XIntegrationPanel() {
           </p>
         </motion.div>
 
-        <motion.div variants={fadeUp} className="rounded-none border border-border bg-card">
+        <motion.div variants={fadeUp} className="rounded-[4px] border border-border bg-card">
           <div className="flex items-center gap-4 p-5">
-            <div className="flex size-10 items-center justify-center rounded-none bg-foreground/5">
+            <div className="flex size-10 items-center justify-center rounded-[4px] bg-foreground/5">
               <XBrandIcon size={20} className="text-foreground" />
             </div>
             <div className="flex-1">
@@ -320,7 +320,7 @@ export function XIntegrationPanel() {
           </div>
         </motion.div>
 
-        <motion.div variants={fadeUp} className="flex items-start gap-3 rounded-none border border-border bg-card px-5 py-4">
+        <motion.div variants={fadeUp} className="flex items-start gap-3 rounded-[4px] border border-border bg-card px-5 py-4">
           <HugeiconsIcon icon={InformationCircleIcon} size={16} strokeWidth={1.8} className="mt-0.5 shrink-0 text-muted-foreground" />
           <div>
             <p className="text-sm font-medium text-foreground">Use your brand account</p>
@@ -332,7 +332,7 @@ export function XIntegrationPanel() {
           </div>
         </motion.div>
 
-        <motion.div variants={fadeUp} className="rounded-none border border-dashed border-border p-5">
+        <motion.div variants={fadeUp} className="rounded-[4px] border border-dashed border-border p-5">
           <div className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             <HugeiconsIcon icon={InformationCircleIcon} size={14} strokeWidth={1.8} />
             How it works

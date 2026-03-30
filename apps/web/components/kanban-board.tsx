@@ -324,10 +324,10 @@ function BoardLoadingState() {
           {/* Group header skeleton — matches ListGroup header */}
           <div className="flex items-center gap-2.5 bg-sidebar/60 px-4 py-2 dark:bg-accent/30">
             <span className="text-[10px] text-muted-foreground/60">▼</span>
-            <div className="size-3.5 rounded-none bg-muted/70 animate-pulse" />
-            <div className="h-3 rounded-none bg-muted/70 animate-pulse" style={{ width: group.label.length * 8 }} />
-            <div className="flex h-4.5 min-w-4.5 items-center justify-center rounded-none bg-muted px-1.5">
-              <div className="h-2 w-2 rounded-none bg-muted-foreground/20" />
+            <div className="size-3.5 rounded-[4px] bg-muted/70 animate-pulse" />
+            <div className="h-3 rounded-[4px] bg-muted/70 animate-pulse" style={{ width: group.label.length * 8 }} />
+            <div className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-muted px-1.5">
+              <div className="h-2 w-2 rounded-[4px] bg-muted-foreground/20" />
             </div>
           </div>
 
@@ -338,20 +338,20 @@ function BoardLoadingState() {
               className="flex items-center gap-3 border-b border-l-2 border-border border-l-transparent px-4 py-2"
             >
               {/* Priority icon placeholder */}
-              <div className="size-3.5 shrink-0 rounded-none bg-muted/60 animate-pulse" />
+              <div className="size-3.5 shrink-0 rounded-[4px] bg-muted/60 animate-pulse" />
               {/* Status icon placeholder */}
-              <div className="size-3.5 shrink-0 rounded-none bg-muted/60 animate-pulse" />
+              <div className="size-3.5 shrink-0 rounded-[4px] bg-muted/60 animate-pulse" />
               {/* Title placeholder */}
               <div
-                className="h-3 flex-1 rounded-none bg-muted/60 animate-pulse"
+                className="h-3 flex-1 rounded-[4px] bg-muted/60 animate-pulse"
                 style={{ maxWidth: titleWidth }}
               />
               {/* Label pill placeholder */}
               {ri % 2 === 0 && (
-                <div className="h-4 w-14 shrink-0 rounded-none bg-muted/40 animate-pulse" />
+                <div className="h-4 w-14 shrink-0 rounded-[4px] bg-muted/40 animate-pulse" />
               )}
               {/* Date placeholder */}
-              <div className="h-2.5 w-12 shrink-0 rounded-none bg-muted/30 animate-pulse" />
+              <div className="h-2.5 w-12 shrink-0 rounded-[4px] bg-muted/30 animate-pulse" />
             </div>
           ))}
         </div>
@@ -373,7 +373,7 @@ function EmptyBoardState({ onCreateTask }: { onCreateTask: () => void }) {
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.3, delay: 0.1, ease: [0.25, 0.1, 0.25, 1] }}
-          className="mx-auto mb-4 flex size-12 items-center justify-center rounded-none bg-accent text-foreground"
+          className="mx-auto mb-4 flex size-12 items-center justify-center rounded-[4px] bg-accent text-foreground"
         >
           <SealCheck size={22} weight="fill" />
         </motion.div>
@@ -383,7 +383,7 @@ function EmptyBoardState({ onCreateTask }: { onCreateTask: () => void }) {
         </p>
         <button
           onClick={onCreateTask}
-          className="mt-6 inline-flex h-11 items-center justify-center rounded-none bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          className="mt-6 inline-flex h-11 items-center justify-center rounded-[4px] bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
         >
           Create first task
         </button>
@@ -422,7 +422,7 @@ function HiddenColumnsToolbar({
             <button
               key={status}
               onClick={() => setSelectedColumn(status)}
-              className="flex items-center gap-1.5 rounded-none border border-border bg-sidebar px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground dark:bg-card"
+              className="flex items-center gap-1.5 rounded-[4px] border border-border bg-sidebar px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground dark:bg-card"
             >
               {getStatusIcon(status, 12)}
               {col.label}
@@ -447,7 +447,7 @@ function HiddenColumnsToolbar({
                     setSelectedColumn(null)
                   }
                 }}
-                className="flex items-center gap-1.5 rounded-none border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                className="flex items-center gap-1.5 rounded-[4px] border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               >
                 <Eye size={13} />
                 Show column
@@ -572,7 +572,7 @@ const RequestRow = memo(function RequestRow({
   }
 
   return (
-    <div onClick={() => onSelect(task)} className="cursor-pointer rounded-none border border-border bg-background p-3 transition-colors hover:border-border/80 hover:bg-accent/20 dark:bg-card">
+    <div onClick={() => onSelect(task)} className="cursor-pointer rounded-[4px] border border-border bg-background p-3 transition-colors hover:border-border/80 hover:bg-accent/20 dark:bg-card">
       {/* Top row: source + date */}
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -582,7 +582,7 @@ const RequestRow = memo(function RequestRow({
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1.5 rounded-none py-0.5 pl-1.5 pr-2.5 text-[10px] font-medium transition-opacity hover:opacity-80"
+              className="flex items-center gap-1.5 rounded-[4px] py-0.5 pl-1.5 pr-2.5 text-[10px] font-medium transition-opacity hover:opacity-80"
               style={{ backgroundColor: config.bg, color: config.color }}
               title={`View on ${config.label}`}
             >
@@ -596,7 +596,7 @@ const RequestRow = memo(function RequestRow({
           {(task.labels ?? []).map((label) => (
             <span
               key={label}
-              className="rounded-none px-2 py-0.5 text-[10px] font-medium capitalize"
+              className="rounded-[4px] px-2 py-0.5 text-[10px] font-medium capitalize"
               style={{
                 backgroundColor: (labelColors[label] ?? "#6b7280") + "18",
                 color: labelColors[label] ?? "#6b7280",
@@ -621,7 +621,7 @@ const RequestRow = memo(function RequestRow({
         <button
           disabled={!canManageTasks}
           onClick={(e) => { e.stopPropagation(); onAccept(task) }}
-          className="flex items-center gap-1.5 rounded-none border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
+          className="flex items-center gap-1.5 rounded-[4px] border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
         >
           <CheckCircle size={12} weight="fill" />
           Accept
@@ -629,7 +629,7 @@ const RequestRow = memo(function RequestRow({
         <button
           disabled={!canManageTasks}
           onClick={(e) => { e.stopPropagation(); onDeny(task) }}
-          className="flex items-center gap-1.5 rounded-none border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-[11px] font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
+          className="flex items-center gap-1.5 rounded-[4px] border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-[11px] font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
         >
           <XCircle size={12} />
           Deny
@@ -711,7 +711,7 @@ function RequestsGroup({
         </span>
         {getColumnIcon("requests")}
         <span className="text-[13px] font-semibold tracking-tight">Requests</span>
-        <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-none bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">{tasks.length}</span>
+        <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">{tasks.length}</span>
         <span className="ml-1 text-[11px] text-muted-foreground/50">from users</span>
       </button>
 
@@ -735,10 +735,10 @@ function RequestsGroup({
               <div className="px-4 pb-3">
                 <button
                   onClick={() => setShowAll(true)}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-none border border-dashed border-border py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground"
+                  className="flex w-full items-center justify-center gap-1.5 rounded-[4px] border border-dashed border-border py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground"
                 >
                   View all requests
-                  <span className="rounded-none bg-muted px-1.5 py-0.5 text-[10px]">{hiddenCount} more</span>
+                  <span className="rounded-[4px] bg-muted px-1.5 py-0.5 text-[10px]">{hiddenCount} more</span>
                 </button>
               </div>
             )}
@@ -746,7 +746,7 @@ function RequestsGroup({
               <div className="px-4 pb-3">
                 <button
                   onClick={() => setShowAll(false)}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-none border border-dashed border-border py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground"
+                  className="flex w-full items-center justify-center gap-1.5 rounded-[4px] border border-dashed border-border py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground"
                 >
                   Show fewer
                 </button>
@@ -786,7 +786,7 @@ function ContextSubmenu({
       onMouseLeave={handleLeave}
     >
       <button
-        className="flex w-full items-center gap-2 rounded-none px-1.5 py-1 text-sm transition-colors hover:bg-accent"
+        className="flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-sm transition-colors hover:bg-accent"
       >
         {icon}
         <span>{label}</span>
@@ -795,7 +795,7 @@ function ContextSubmenu({
       {open && (
         <div
           ref={submenuRef}
-          className="absolute left-full top-0 z-[101] ml-1 min-w-[180px] rounded-none p-1 text-popover-foreground bg-popover shadow-none ring-1 ring-border"
+          className="absolute left-full top-0 z-[101] ml-1 min-w-[180px] rounded-[4px] p-1 text-popover-foreground bg-popover shadow-none ring-1 ring-border"
         >
           {children}
         </div>
@@ -849,7 +849,7 @@ function TaskContextMenu({
   return createPortal(
     <div
       ref={menuRef}
-      className="fixed z-[100] min-w-[200px] rounded-none p-1 text-popover-foreground bg-popover shadow-none ring-1 ring-border"
+      className="fixed z-[100] min-w-[200px] rounded-[4px] p-1 text-popover-foreground bg-popover shadow-none ring-1 ring-border"
       style={{ top: position.y, left: position.x }}
     >
       {!canManageTasks ? (
@@ -865,7 +865,7 @@ function TaskContextMenu({
             key={s}
             disabled={!canManageTasks}
             onClick={() => { onUpdate(task.id, { status: s }); onClose() }}
-            className={`flex w-full items-center gap-2 rounded-none px-1.5 py-1 text-sm transition-colors hover:bg-accent ${task.status === s ? "font-medium" : ""}`}
+            className={`flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-sm transition-colors hover:bg-accent ${task.status === s ? "font-medium" : ""}`}
           >
             {getStatusIcon(s, 14)}
             <span>{STATUS_LABELS[s]}</span>
@@ -881,7 +881,7 @@ function TaskContextMenu({
             key={p}
             disabled={!canManageTasks}
             onClick={() => { onUpdate(task.id, { priority: p }); onClose() }}
-            className={`flex w-full items-center gap-2 rounded-none px-1.5 py-1 text-sm transition-colors hover:bg-accent ${task.priority === p ? "font-medium" : ""}`}
+            className={`flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-sm transition-colors hover:bg-accent ${task.priority === p ? "font-medium" : ""}`}
           >
             {getPriorityIcon(p, 14)}
             <span>{PRIORITY_LABELS[p]}</span>
@@ -897,10 +897,10 @@ function TaskContextMenu({
             key={label}
             disabled={!canManageTasks}
             onClick={() => toggleLabel(label)}
-            className="flex w-full items-center gap-2 rounded-none px-1.5 py-1 text-sm capitalize transition-colors hover:bg-accent"
+            className="flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-sm capitalize transition-colors hover:bg-accent"
           >
             <div
-              className="size-2.5 rounded-none"
+              className="size-2.5 rounded-[4px]"
               style={{ backgroundColor: labelConfig.colors[label] ?? "#888" }}
             />
             <span>{label}</span>
@@ -915,7 +915,7 @@ function TaskContextMenu({
       <button
         disabled={!canManageTasks}
         onClick={() => { onDelete(task.id); onClose() }}
-        className="flex w-full items-center gap-2 rounded-none px-1.5 py-1 text-sm text-destructive transition-colors hover:bg-destructive/10"
+        className="flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-sm text-destructive transition-colors hover:bg-destructive/10"
       >
         <Trash size={14} />
         <span>Delete task</span>
@@ -929,7 +929,7 @@ function TaskContextMenu({
 
 const AgentBadge = memo(function AgentBadge({ agentName }: { agentName: string }) {
   return (
-    <span className="flex shrink-0 items-center gap-1 rounded-none border border-yellow-500/25 bg-yellow-500/10 px-1.5 py-0.5 text-[10px] font-medium text-yellow-500">
+    <span className="flex shrink-0 items-center gap-1 rounded-[4px] border border-yellow-500/25 bg-yellow-500/10 px-1.5 py-0.5 text-[10px] font-medium text-yellow-500">
       <SpinnerGap size={10} className="animate-spin" />
       <span>{getAgentIcon(agentName)}</span>
       <span className="max-w-[80px] truncate">{agentName}</span>
@@ -951,7 +951,7 @@ const ListRowContent = memo(function ListRowContent({ task }: { task: Task }) {
         {(task.labels ?? []).map((label) => (
           <span
             key={label}
-            className="rounded-none px-2 py-0.5 text-[10px] font-medium capitalize"
+            className="rounded-[4px] px-2 py-0.5 text-[10px] font-medium capitalize"
             style={{
               backgroundColor: (labelColors[label] ?? "#888") + "18",
               color: labelColors[label] ?? "#888",
@@ -1157,7 +1157,7 @@ function ListGroup({
         </span>
         {getColumnIcon(column.id)}
         <span className="text-[13px] font-semibold tracking-tight">{column.label}</span>
-        <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-none bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">{tasks.length}</span>
+        <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">{tasks.length}</span>
       </button>
 
       {/* Rows */}
@@ -1256,7 +1256,7 @@ function TaskDetailModal({
                         href={task.source!.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 rounded-none py-0.5 pl-1.5 pr-2.5 text-[10px] font-medium transition-opacity hover:opacity-80"
+                        className="flex items-center gap-1.5 rounded-[4px] py-0.5 pl-1.5 pr-2.5 text-[10px] font-medium transition-opacity hover:opacity-80"
                         style={{ backgroundColor: cfg.bg, color: cfg.color }}
                       >
                         <SourceIcon platform={task.source!.platform} size={11} />
@@ -1271,14 +1271,14 @@ function TaskDetailModal({
                 <button
                   disabled={!canManageTasks}
                   onClick={() => onDelete(task.id)}
-                  className="rounded-none p-1 text-muted-foreground/60 transition-colors hover:bg-destructive/10 hover:text-destructive"
+                  className="rounded-[4px] p-1 text-muted-foreground/60 transition-colors hover:bg-destructive/10 hover:text-destructive"
                   title="Delete task"
                 >
                   <Trash size={14} />
                 </button>
                 <button
                   onClick={onClose}
-                  className="rounded-none p-1 text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
+                  className="rounded-[4px] p-1 text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
                 >
                   <X size={14} />
                 </button>
@@ -1297,7 +1297,7 @@ function TaskDetailModal({
                     onChange={(e) => setTitleValue(e.target.value)}
                     onBlur={handleTitleSave}
                     onKeyDown={(e) => { if (e.key === "Enter") handleTitleSave(); if (e.key === "Escape") { setTitleValue(task.title); setEditingTitle(false) } }}
-                    className="w-full rounded-none border border-border bg-transparent px-1 py-0.5 text-base font-semibold leading-snug tracking-tight outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full rounded-[4px] border border-border bg-transparent px-1 py-0.5 text-base font-semibold leading-snug tracking-tight outline-none focus:ring-1 focus:ring-primary"
                   />
                 ) : (
                   <h2
@@ -1306,7 +1306,7 @@ function TaskDetailModal({
                       setTitleValue(task.title)
                       setEditingTitle(true)
                     }}
-                    className={`-mx-1 rounded-none px-1 py-0.5 text-base font-semibold leading-snug tracking-tight transition-colors ${canManageTasks ? "cursor-text hover:bg-accent/50" : ""}`}
+                    className={`-mx-1 rounded-[4px] px-1 py-0.5 text-base font-semibold leading-snug tracking-tight transition-colors ${canManageTasks ? "cursor-text hover:bg-accent/50" : ""}`}
                   >
                     {task.title}
                   </h2>
@@ -1319,7 +1319,7 @@ function TaskDetailModal({
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     disabled={!canManageTasks}
-                    className="flex items-center gap-1.5 rounded-none border border-border bg-background px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex items-center gap-1.5 rounded-[4px] border border-border bg-background px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {getStatusIcon(task.status, 13)}
                     <span>{STATUS_LABELS[task.status]}</span>
@@ -1344,7 +1344,7 @@ function TaskDetailModal({
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     disabled={!canManageTasks}
-                    className="flex items-center gap-1.5 rounded-none border border-border bg-background px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex items-center gap-1.5 rounded-[4px] border border-border bg-background px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {getPriorityIcon(task.priority, 13)}
                     <span>{PRIORITY_LABELS[task.priority]}</span>
@@ -1369,7 +1369,7 @@ function TaskDetailModal({
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     disabled={!canManageTasks}
-                    className="flex items-center gap-1.5 rounded-none border border-border bg-background px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex items-center gap-1.5 rounded-[4px] border border-border bg-background px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {(task.labels ?? []).length > 0 ? (
                       <div className="flex items-center gap-1.5">
@@ -1377,7 +1377,7 @@ function TaskDetailModal({
                           {(task.labels ?? []).map((label) => (
                             <div
                               key={label}
-                              className="size-2.5 rounded-none ring-1 ring-background"
+                              className="size-2.5 rounded-[4px] ring-1 ring-background"
                               style={{ backgroundColor: labelConfig.colors[label] ?? "#888" }}
                             />
                           ))}
@@ -1396,7 +1396,7 @@ function TaskDetailModal({
                       >
                         <div className="flex w-full items-center gap-2 capitalize">
                           <div
-                            className="size-2.5 rounded-none"
+                            className="size-2.5 rounded-[4px]"
                             style={{ backgroundColor: labelConfig.colors[label] ?? "#888" }}
                           />
                           <span>{label}</span>
@@ -1424,7 +1424,7 @@ function TaskDetailModal({
                     onBlur={handleDescSave}
                     onKeyDown={(e) => { if (e.key === "Escape") { setDescValue(task.description ?? ""); setEditingDesc(false) } }}
                     placeholder="Write something..."
-                    className="min-h-[100px] w-full resize-none rounded-none border border-border bg-transparent px-2 py-1.5 text-sm leading-relaxed outline-none focus:ring-1 focus:ring-primary"
+                    className="min-h-[100px] w-full resize-none rounded-[4px] border border-border bg-transparent px-2 py-1.5 text-sm leading-relaxed outline-none focus:ring-1 focus:ring-primary"
                   />
                 ) : (
                   <div
@@ -1433,7 +1433,7 @@ function TaskDetailModal({
                       setDescValue(task.description ?? "")
                       setEditingDesc(true)
                     }}
-                    className={`-mx-2 rounded-none px-2 py-1.5 text-sm leading-relaxed transition-colors ${canManageTasks ? "cursor-text hover:bg-accent/40" : ""}`}
+                    className={`-mx-2 rounded-[4px] px-2 py-1.5 text-sm leading-relaxed transition-colors ${canManageTasks ? "cursor-text hover:bg-accent/40" : ""}`}
                   >
                     {task.description ? (
                       <span className="text-foreground/80">{task.description}</span>
@@ -1452,7 +1452,7 @@ function TaskDetailModal({
                     <button
                       disabled={!canManageTasks}
                       onClick={() => { onAccept(task); onClose() }}
-                      className="flex items-center gap-1.5 rounded-none border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
+                      className="flex items-center gap-1.5 rounded-[4px] border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
                     >
                       <CheckCircle size={14} weight="fill" />
                       Accept request
@@ -1460,7 +1460,7 @@ function TaskDetailModal({
                     <button
                       disabled={!canManageTasks}
                       onClick={() => { onDeny(task); onClose() }}
-                      className="flex items-center gap-1.5 rounded-none border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
+                      className="flex items-center gap-1.5 rounded-[4px] border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
                     >
                       <XCircle size={14} />
                       Deny request
@@ -1497,14 +1497,14 @@ function BulkActionToolbar({
 
   return createPortal(
     <div
-      className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1.5 rounded-none border-2 border-border bg-popover px-3 py-2 shadow-none"
+      className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1.5 rounded-[4px] border-2 border-border bg-popover px-3 py-2 shadow-none"
     >
       {/* Selection count & clear */}
       <div className="flex items-center gap-2 pr-2 border-r border-border mr-1">
         <span className="text-xs font-semibold tabular-nums text-foreground">{selectedCount} selected</span>
         <button
           onClick={onClearSelection}
-          className="rounded-none p-0.5 text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
+          className="rounded-[4px] p-0.5 text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
           title="Clear selection"
         >
           <X size={13} />
@@ -1513,7 +1513,7 @@ function BulkActionToolbar({
 
       {/* Status */}
       <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-none px-2.5 py-1.5 text-xs font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
+        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-xs font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
           {getStatusIcon("todo", 13)}
           <span>Status</span>
         </DropdownMenuTrigger>
@@ -1531,7 +1531,7 @@ function BulkActionToolbar({
 
       {/* Priority */}
       <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-none px-2.5 py-1.5 text-xs font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
+        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-xs font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
           {getPriorityIcon("medium", 13)}
           <span>Priority</span>
         </DropdownMenuTrigger>
@@ -1549,7 +1549,7 @@ function BulkActionToolbar({
 
       {/* Labels */}
       <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-none px-2.5 py-1.5 text-xs font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
+        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-xs font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
           <Tag size={13} />
           <span>Label</span>
         </DropdownMenuTrigger>
@@ -1558,7 +1558,7 @@ function BulkActionToolbar({
             <DropdownMenuItem key={label} onClick={() => onChangeLabels([label])}>
               <div className="flex items-center gap-2 capitalize">
                 <div
-                  className="size-2.5 rounded-none"
+                  className="size-2.5 rounded-[4px]"
                   style={{ backgroundColor: labelConfig.colors[label] ?? "#888" }}
                 />
                 <span>{label}</span>
@@ -1581,7 +1581,7 @@ function BulkActionToolbar({
       {/* Delete */}
       <button
         onClick={onDelete}
-        className="flex items-center gap-1.5 rounded-none px-2.5 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
+        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
       >
         <Trash size={13} />
         <span>Delete</span>
@@ -1703,7 +1703,7 @@ const KanbanCard = memo(function KanbanCard({
           {(task.labels ?? []).map((label) => (
             <span
               key={label}
-              className="rounded-none px-1.5 py-0.5 text-[9px] font-medium capitalize"
+              className="rounded-[4px] px-1.5 py-0.5 text-[9px] font-medium capitalize"
               style={{
                 backgroundColor: (labelColors[label] ?? "#888") + "18",
                 color: labelColors[label] ?? "#888",
@@ -1783,7 +1783,7 @@ function KanbanColumn({
           initial={{ scale: 0.8 }}
           animate={{ scale: 1 }}
           transition={{ type: "spring", stiffness: 400, damping: 20 }}
-          className="flex h-4.5 min-w-4.5 items-center justify-center rounded-none bg-muted px-1.5 text-[10px] font-medium text-muted-foreground"
+          className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-muted px-1.5 text-[10px] font-medium text-muted-foreground"
         >
           {tasks.length}
         </motion.span>
@@ -2135,7 +2135,7 @@ function ColumnBoardView({
               <div className="flex items-center gap-2 px-3 py-2.5 bg-sidebar/40 dark:bg-accent/20 border-b border-border">
                 {getColumnIcon("requests")}
                 <span className="text-[13px] font-semibold tracking-tight">Requests</span>
-                <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-none bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">{tasksByColumn.requests.length}</span>
+                <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">{tasksByColumn.requests.length}</span>
                 <span className="ml-1 text-[11px] text-muted-foreground/50">from users</span>
               </div>
               <div className="flex-1 overflow-y-auto p-2 scrollbar-hide">
@@ -2219,7 +2219,7 @@ function ViewToggle({
   onViewChange: (view: BoardView) => void
 }) {
   return (
-    <div className="flex items-center rounded-none border border-border bg-sidebar dark:bg-card">
+    <div className="flex items-center rounded-[4px] border border-border bg-sidebar dark:bg-card">
       <button
         onClick={() => onViewChange("list")}
         className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-colors ${
@@ -3003,7 +3003,7 @@ export function KanbanBoard() {
     <div className="flex h-full flex-col">
       {!canManageTasks ? (
         <div
-          className="mx-4 mt-4 rounded-none border border-border bg-card px-4 py-3 text-sm text-muted-foreground"
+          className="mx-4 mt-4 rounded-[4px] border border-border bg-card px-4 py-3 text-sm text-muted-foreground"
         >
           You’re in guest mode. Tasks are read-only in this workspace.
         </div>

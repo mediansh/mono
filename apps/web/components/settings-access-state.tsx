@@ -5,10 +5,10 @@ import { Gear } from "@phosphor-icons/react"
 export function SettingsAccessState() {
   return (
     <div
-      className="rounded-none border-2 border-border bg-card p-8 shadow-none"
+      className="rounded-[4px] border-2 border-border bg-card p-8 shadow-none"
     >
       <div className="flex max-w-md flex-col items-start gap-4">
-        <div className="flex size-12 items-center justify-center rounded-none border border-border bg-muted">
+        <div className="flex size-12 items-center justify-center rounded-[4px] border border-border bg-muted">
           <Gear
             size={22}
             className="text-muted-foreground"

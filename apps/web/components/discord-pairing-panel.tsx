@@ -250,9 +250,9 @@ export function DiscordPairingPanel() {
           </motion.div>
 
           {/* Connection status card */}
-          <motion.div variants={fadeUp} className="rounded-none border border-border bg-card">
+          <motion.div variants={fadeUp} className="rounded-[4px] border border-border bg-card">
             <div className="flex items-center gap-4 p-5">
-              <div className="flex size-10 items-center justify-center rounded-none bg-[#5865F2]/10">
+              <div className="flex size-10 items-center justify-center rounded-[4px] bg-[#5865F2]/10">
                 <DiscordBrandIcon size={20} className="text-[#5865F2]" />
               </div>
               <div className="flex-1">
@@ -291,7 +291,7 @@ export function DiscordPairingPanel() {
           {/* Additional context */}
           <motion.div
             variants={fadeUp}
-            className="rounded-none border border-border bg-card"
+            className="rounded-[4px] border border-border bg-card"
           >
             <div className="flex items-center gap-3 border-b border-border px-5 py-3.5">
               <HugeiconsIcon icon={TextIcon} size={15} strokeWidth={1.8} className="text-muted-foreground" />
@@ -319,7 +319,7 @@ export function DiscordPairingPanel() {
           {/* Respond for me */}
           <motion.div
             variants={fadeUp}
-            className="rounded-none border border-border bg-card"
+            className="rounded-[4px] border border-border bg-card"
           >
             <div className="flex items-center gap-3 border-b border-border px-5 py-3.5">
               <HugeiconsIcon icon={SentIcon} size={15} strokeWidth={1.8} className="text-muted-foreground" />
@@ -337,7 +337,7 @@ export function DiscordPairingPanel() {
                   key={mode}
                   type="button"
                   onClick={() => handleRespondModeChange(mode)}
-                  className="flex items-center gap-3 rounded-none px-2 py-2 text-left text-sm transition-colors hover:bg-muted/50"
+                  className="flex items-center gap-3 rounded-[4px] px-2 py-2 text-left text-sm transition-colors hover:bg-muted/50"
                 >
                   <span
                     className={`flex size-4 shrink-0 items-center justify-center rounded-full border ${
@@ -492,7 +492,7 @@ export function DiscordPairingPanel() {
               <button
                 type="button"
                 onClick={() => setDisconnectOpen(false)}
-                className="flex h-9 flex-1 items-center justify-center rounded-none border border-border text-sm font-medium transition-colors hover:bg-muted"
+                className="flex h-9 flex-1 items-center justify-center rounded-[4px] border border-border text-sm font-medium transition-colors hover:bg-muted"
               >
                 Cancel
               </button>
@@ -500,7 +500,7 @@ export function DiscordPairingPanel() {
                 type="button"
                 disabled={isDisconnecting}
                 onClick={handleDisconnect}
-                className="flex h-9 flex-1 items-center justify-center rounded-none bg-destructive text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:opacity-50"
+                className="flex h-9 flex-1 items-center justify-center rounded-[4px] bg-destructive text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:opacity-50"
               >
                 {isDisconnecting ? "Disconnecting..." : "Disconnect"}
               </button>
@@ -525,9 +525,9 @@ export function DiscordPairingPanel() {
         </motion.div>
 
         {/* Connection card with pairing form */}
-        <motion.div variants={fadeUp} className="rounded-none border border-border bg-card">
+        <motion.div variants={fadeUp} className="rounded-[4px] border border-border bg-card">
           <div className="flex items-center gap-4 p-5">
-            <div className="flex size-10 items-center justify-center rounded-none bg-[#5865F2]/10">
+            <div className="flex size-10 items-center justify-center rounded-[4px] bg-[#5865F2]/10">
               <DiscordBrandIcon size={20} className="text-[#5865F2]" />
             </div>
             <div className="flex-1">
@@ -571,7 +571,7 @@ export function DiscordPairingPanel() {
         {/* How it works — only when not connected */}
         <motion.div
           variants={fadeUp}
-          className="rounded-none border border-dashed border-border p-5"
+          className="rounded-[4px] border border-dashed border-border p-5"
         >
           <div className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             <HugeiconsIcon icon={InformationCircleIcon} size={14} strokeWidth={1.8} />

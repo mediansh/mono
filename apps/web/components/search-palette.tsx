@@ -348,7 +348,7 @@ export function SearchPalette({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.15, ease: [0.23, 1, 0.32, 1] }}
-            className="fixed top-[min(20%,180px)] left-1/2 z-50 w-[calc(100%-2rem)] max-w-[540px] -translate-x-1/2 overflow-hidden rounded-none border border-border/50 bg-background shadow-2xl ring-1 ring-white/[0.05]"
+            className="fixed top-[min(20%,180px)] left-1/2 z-50 w-[calc(100%-2rem)] max-w-[540px] -translate-x-1/2 overflow-hidden rounded-[4px] bg-background shadow-2xl ring-1 ring-border"
           >
             {/* Search input */}
             <div className="flex items-center gap-3 border-b border-border px-4">
@@ -369,7 +369,7 @@ export function SearchPalette({
               {query && (
                 <button
                   onClick={() => setQuery("")}
-                  className="shrink-0 rounded-none px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground"
+                  className="shrink-0 rounded-[4px] px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground"
                 >
                   Clear
                 </button>
@@ -430,22 +430,22 @@ export function SearchPalette({
             {/* Footer */}
             <div className="flex items-center gap-3 border-t border-border px-4 py-2">
               <div className="flex items-center gap-1.5">
-                <kbd className="flex h-5 min-w-5 items-center justify-center rounded-none border border-border bg-muted px-1 font-mono text-[10px] text-muted-foreground">
+                <kbd className="flex h-5 min-w-5 items-center justify-center rounded-[4px] border border-border bg-muted px-1 font-mono text-[10px] text-muted-foreground">
                   ↑
                 </kbd>
-                <kbd className="flex h-5 min-w-5 items-center justify-center rounded-none border border-border bg-muted px-1 font-mono text-[10px] text-muted-foreground">
+                <kbd className="flex h-5 min-w-5 items-center justify-center rounded-[4px] border border-border bg-muted px-1 font-mono text-[10px] text-muted-foreground">
                   ↓
                 </kbd>
                 <span className="text-[11px] text-muted-foreground/60">navigate</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <kbd className="flex h-5 min-w-5 items-center justify-center rounded-none border border-border bg-muted px-1 font-mono text-[10px] text-muted-foreground">
+                <kbd className="flex h-5 min-w-5 items-center justify-center rounded-[4px] border border-border bg-muted px-1 font-mono text-[10px] text-muted-foreground">
                   ↵
                 </kbd>
                 <span className="text-[11px] text-muted-foreground/60">open</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <kbd className="flex h-5 min-w-5 items-center justify-center rounded-none border border-border bg-muted px-1 font-mono text-[10px] text-muted-foreground">
+                <kbd className="flex h-5 min-w-5 items-center justify-center rounded-[4px] border border-border bg-muted px-1 font-mono text-[10px] text-muted-foreground">
                   esc
                 </kbd>
                 <span className="text-[11px] text-muted-foreground/60">close</span>
@@ -480,11 +480,11 @@ function NavResultRow({
       onClick={onSelect}
       onMouseMove={onHover}
       className={cn(
-        "flex w-full items-center gap-3 rounded-none px-2.5 py-2 text-left transition-colors",
+        "flex w-full items-center gap-3 rounded-[4px] px-2.5 py-2 text-left transition-colors",
         isActive ? "bg-accent text-foreground" : "text-foreground/80 hover:bg-accent/50"
       )}
     >
-      <div className="flex size-7 shrink-0 items-center justify-center rounded-none bg-muted/80">
+      <div className="flex size-7 shrink-0 items-center justify-center rounded-[4px] bg-muted/80">
         <result.icon size={14} className="text-muted-foreground" />
       </div>
       <span className="flex-1 truncate text-[13px] font-medium">{result.label}</span>
@@ -518,7 +518,7 @@ function TaskResultRow({
       onClick={onSelect}
       onMouseMove={onHover}
       className={cn(
-        "flex w-full items-center gap-2.5 rounded-none px-2.5 py-2 text-left transition-colors",
+        "flex w-full items-center gap-2.5 rounded-[4px] px-2.5 py-2 text-left transition-colors",
         isActive ? "bg-accent text-foreground" : "text-foreground/80 hover:bg-accent/50"
       )}
     >
@@ -533,7 +533,7 @@ function TaskResultRow({
           {result.labels.slice(0, 2).map((label) => (
             <span
               key={label}
-              className="rounded-none bg-muted px-1.5 py-0.5 text-[9px] font-medium capitalize text-muted-foreground"
+              className="rounded-[4px] bg-muted px-1.5 py-0.5 text-[9px] font-medium capitalize text-muted-foreground"
             >
               {label}
             </span>
