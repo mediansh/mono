@@ -1774,10 +1774,10 @@ function KanbanColumn({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: columnIndex * 0.06, ease: [0.25, 0.1, 0.25, 1] }}
-      className={`flex h-full w-[280px] shrink-0 flex-col transition-shadow duration-200 ${isDropTarget ? "ring-2 ring-primary bg-primary/[0.03]" : ""}`}
+      className={`flex h-full w-[260px] shrink-0 flex-col overflow-hidden rounded-[4px] ring-1 ring-border transition-shadow duration-200 ${isDropTarget ? "ring-2 ring-primary bg-primary/[0.03]" : ""}`}
     >
       {/* Column header */}
-      <div className="flex items-center gap-2 px-3 py-2.5 bg-sidebar/60 dark:bg-accent/30 border-b border-border">
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-card dark:bg-card border-b border-border">
         {getColumnIcon(column.id)}
         <span className="text-[13px] font-semibold tracking-tight">{column.label}</span>
         <motion.span
@@ -2125,16 +2125,16 @@ function ColumnBoardView({
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div ref={scrollContainerRef} className="flex h-full overflow-x-auto scrollbar-hide">
+        <div ref={scrollContainerRef} className="flex h-full gap-2 overflow-x-auto p-2 scrollbar-hide">
           {/* Requests column — special treatment */}
           {showRequests && tasksByColumn.requests.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-              className="flex h-full w-[280px] shrink-0 flex-col border-r border-border"
+              className="flex h-full w-[260px] shrink-0 flex-col overflow-hidden rounded-[4px] ring-1 ring-border"
             >
-              <div className="flex items-center gap-2 px-3 py-2.5 bg-sidebar/40 dark:bg-accent/20 border-b border-border">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-card dark:bg-card border-b border-border">
                 {getColumnIcon("requests")}
                 <span className="text-[13px] font-semibold tracking-tight">Requests</span>
                 <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">{tasksByColumn.requests.length}</span>
