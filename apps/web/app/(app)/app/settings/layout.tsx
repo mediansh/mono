@@ -26,42 +26,35 @@ export default function SettingsLayout({
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Settings sub-sidebar */}
-      <div className="flex w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
+      <div className="flex w-52 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
         {/* Title */}
-        <div className="px-4 pb-2 pt-4">
-          <h1
-            className="text-sm font-semibold"
-          >
-            Settings
-          </h1>
+        <div className="px-3 pb-1 pt-3">
+          <h1 className="text-[13px] font-semibold">Settings</h1>
         </div>
 
         {/* Navigation */}
-        <nav className="flex flex-col gap-0.5 px-2 pt-2">
+        <nav className="flex flex-col gap-0.5 p-1.5">
           {settingsNav.map((item) => {
             const isActive = pathname === item.href
             return (
-              <div
+              <Link
                 key={item.href}
+                href={item.href}
+                className={`group relative flex items-center gap-2 rounded-[4px] px-2 py-1 text-[13px] font-medium transition-colors ${
+                  isActive
+                    ? "bg-sidebar-accent text-foreground ring-1 ring-sidebar-border"
+                    : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                }`}
               >
-                <Link
-                  href={item.href}
-                  className={`group relative flex items-center gap-2.5 rounded-none px-2.5 py-1.5 text-sm font-medium transition-colors ${
-                    isActive
-                      ? "bg-accent text-foreground"
-                      : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-                  }`}
-                >
-                  <item.icon
-                    size={15}
-                    weight={isActive ? "fill" : "regular"}
-                    className={
-                      isActive ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
-                    }
-                  />
-                  <span>{item.label}</span>
-                </Link>
-              </div>
+                <item.icon
+                  size={15}
+                  weight={isActive ? "fill" : "bold"}
+                  className={
+                    isActive ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
+                  }
+                />
+                <span>{item.label}</span>
+              </Link>
             )
           })}
         </nav>
