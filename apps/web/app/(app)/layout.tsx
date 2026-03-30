@@ -29,7 +29,7 @@ export default function AppLayout({
         ) : (
           <SidebarProvider>
             <AppSidebar />
-            <SidebarInset>
+            <SidebarInset className="my-0">
               <PageTransition>{children}</PageTransition>
             </SidebarInset>
           </SidebarProvider>

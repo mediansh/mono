@@ -294,81 +294,75 @@ export function AppSidebar() {
 
   return (
     <>
-      <Sidebar collapsible="icon">
-        <SidebarHeader className="p-3">
-          <Link href="/app">
-            <Logo symbolOnly className="size-8" />
+      <Sidebar collapsible="icon" variant="inset">
+        <SidebarHeader className="p-2 pb-0">
+          <Link href="/app" className="flex items-center">
+            <Logo symbolOnly className="size-7" />
           </Link>
         </SidebarHeader>
 
         <SidebarContent>
           {/* Search + New */}
-          <SidebarGroup>
+          <SidebarGroup className="gap-1">
             <SidebarGroupContent>
-              <SidebarMenu className="gap-2">
-                <div>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      onClick={() => setSearchOpen(true)}
-                      className="text-muted-foreground ring-1 ring-sidebar-border"
-                    >
-                      <MagnifyingGlass size={16} weight="fill" />
-                      <span>Search</span>
-                      <kbd className="ml-auto hidden rounded-none border border-sidebar-border bg-sidebar px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground group-data-[collapsible=icon]:hidden lg:inline">
-                        {mounted ? (/Mac|iPhone/.test(navigator.userAgent) ? "⌘K" : "Ctrl+K") : null}
-                      </kbd>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </div>
-                <div>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      onClick={() => {
-                        if (!canManageTasks) return
-                        setNewTaskOpen(true)
-                      }}
-                      disabled={!canManageTasks}
-                      className="bg-primary text-primary-foreground hover:bg-primary/85 hover:text-primary-foreground active:bg-primary/70 active:text-primary-foreground data-active:bg-primary data-active:text-primary-foreground"
-                    >
-                      <PenNib size={16} weight="fill" />
-                      <span>New</span>
-                      <kbd className="ml-auto hidden rounded-none border border-primary-foreground/25 bg-primary-foreground/10 px-1.5 py-0.5 font-mono text-[10px] text-primary-foreground/70 group-data-[collapsible=icon]:hidden lg:inline">
-                        C
-                      </kbd>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </div>
+              <SidebarMenu className="gap-1">
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={() => setSearchOpen(true)}
+                    className="text-sidebar-foreground/60 ring-1 ring-sidebar-border"
+                  >
+                    <MagnifyingGlass size={15} weight="bold" />
+                    <span>Search</span>
+                    <kbd className="ml-auto hidden rounded-[3px] border border-sidebar-border px-1 py-px font-mono text-[10px] text-sidebar-foreground/40 group-data-[collapsible=icon]:hidden lg:inline">
+                      {mounted ? (/Mac|iPhone/.test(navigator.userAgent) ? "⌘K" : "Ctrl+K") : null}
+                    </kbd>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={() => {
+                      if (!canManageTasks) return
+                      setNewTaskOpen(true)
+                    }}
+                    disabled={!canManageTasks}
+                    className="bg-primary text-primary-foreground ring-1 ring-primary-foreground/10 hover:bg-primary/85 hover:text-primary-foreground active:bg-primary/70 active:text-primary-foreground data-active:bg-primary data-active:text-primary-foreground"
+                  >
+                    <PenNib size={15} weight="fill" />
+                    <span>New</span>
+                    <kbd className="ml-auto hidden rounded-[3px] border border-primary-foreground/15 px-1 py-px font-mono text-[10px] text-primary-foreground/50 group-data-[collapsible=icon]:hidden lg:inline">
+                      C
+                    </kbd>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
 
-          <SidebarSeparator className="mx-0" />
+          <SidebarSeparator className="mx-1.5" />
 
           {/* Main nav */}
-          <SidebarGroup>
+          <SidebarGroup className="gap-0.5">
             <SidebarGroupContent>
-              <SidebarMenu>
+              <SidebarMenu className="gap-0.5">
                 {mainNav.map((item) => {
                   const isActive = item.href === "/app"
                     ? pathname === "/app"
                     : pathname.startsWith(item.href)
                   return (
-                    <div key={item.href}>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton
-                          render={<Link href={item.href} />}
-                          isActive={isActive}
-                          className={
-                            isActive
-                              ? "data-active:bg-accent data-active:text-foreground"
-                              : undefined
-                          }
-                        >
-                          <item.icon size={16} weight="fill" />
-                          <span>{item.label}</span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    </div>
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton
+                        render={<Link href={item.href} />}
+                        isActive={isActive}
+                        className={
+                          isActive
+                            ? "data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground data-active:ring-1 data-active:ring-sidebar-border"
+                            : "text-sidebar-foreground/70"
+                        }
+                      >
+                        <item.icon size={15} weight={isActive ? "fill" : "bold"} />
+                        <span>{item.label}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
                   )
                 })}
               </SidebarMenu>
@@ -376,54 +370,53 @@ export function AppSidebar() {
           </SidebarGroup>
         </SidebarContent>
 
-        <SidebarFooter>
-          <div>
-          <SidebarMenu>
+        <SidebarFooter className="p-1.5">
+          <SidebarMenu className="gap-0.5">
             <SidebarMenuItem>
               <SidebarMenuButton
                 render={<Link href="/app/settings" />}
                 isActive={pathname.startsWith("/app/settings")}
                 className={
                   pathname.startsWith("/app/settings")
-                    ? "data-active:bg-accent data-active:text-foreground"
-                    : undefined
+                    ? "data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground data-active:ring-1 data-active:ring-sidebar-border"
+                    : "text-sidebar-foreground/70"
                 }
               >
-                <Gear size={16} weight="fill" />
+                <Gear size={15} weight={pathname.startsWith("/app/settings") ? "fill" : "bold"} />
                 <span>Settings</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
               {mounted ? (
               <DropdownMenu>
-                <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-none p-1.5 outline-none transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring">
+                <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-[4px] px-2 py-1 outline-none transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring">
                   {user?.imageUrl ? (
                     <img
                       src={user.imageUrl}
                       alt={user.fullName ?? "Profile"}
-                      className="h-7 w-7 shrink-0 rounded-none object-cover"
+                      className="h-5 w-5 shrink-0 rounded-[4px] object-cover ring-1 ring-sidebar-border"
                     />
                   ) : (
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-none bg-sidebar-accent text-xs font-medium text-sidebar-accent-foreground">
+                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] bg-sidebar-accent text-[10px] font-medium text-sidebar-accent-foreground ring-1 ring-sidebar-border">
                       {user?.firstName?.charAt(0) ?? "?"}
                     </div>
                   )}
                   <div className="flex min-w-0 flex-1 flex-col justify-center group-data-[collapsible=icon]:hidden">
-                    <span className="truncate text-left text-sm font-medium">
+                    <span className="truncate text-left text-[13px] font-medium leading-tight">
                       {user?.fullName}
                     </span>
                     {currentWorkspace && (
-                      <span className="truncate text-left text-xs text-muted-foreground">
+                      <span className="truncate text-left text-[11px] leading-tight text-sidebar-foreground/50">
                         {currentWorkspace.name}
                       </span>
                     )}
                   </div>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent side="top" align="start" className="w-56 duration-150">
+                <DropdownMenuContent side="top" align="start" className="w-52 duration-150">
                   <DropdownMenuGroup>
                     <DropdownMenuLabel className="font-normal">
-                      <div className="text-sm font-medium">{user?.fullName}</div>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-[13px] font-medium">{user?.fullName}</div>
+                      <div className="text-[11px] text-muted-foreground">
                         {user?.primaryEmailAddress?.emailAddress}
                       </div>
                     </DropdownMenuLabel>
@@ -434,7 +427,7 @@ export function AppSidebar() {
                   {workspaces.length > 0 && (
                     <>
                       <DropdownMenuGroup>
-                        <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
+                        <DropdownMenuLabel className="text-[11px]">Workspaces</DropdownMenuLabel>
                         {workspaces.map((ws) => (
                           <DropdownMenuItem
                             key={ws._id}
@@ -445,10 +438,10 @@ export function AppSidebar() {
                               <img
                                 src={ws.iconUrl}
                                 alt={ws.name}
-                                className="!h-4 !w-4 shrink-0 rounded-none object-cover"
+                                className="!h-4 !w-4 shrink-0 rounded-[3px] object-cover"
                               />
                             ) : (
-                              <div className="flex h-4 w-4 shrink-0 items-center justify-center overflow-hidden rounded-none">
+                              <div className="flex h-4 w-4 shrink-0 items-center justify-center overflow-hidden rounded-[3px]">
                                 <Facehash name={ws.name} size={16} />
                               </div>
                             )}
@@ -509,13 +502,12 @@ export function AppSidebar() {
                 </DropdownMenuContent>
               </DropdownMenu>
               ) : (
-                <div className="flex w-full items-center gap-2 rounded-none p-1.5">
-                  <div className="h-7 w-7 shrink-0 rounded-none bg-sidebar-accent" />
+                <div className="flex w-full items-center gap-2 rounded-[4px] px-2 py-1">
+                  <div className="h-5 w-5 shrink-0 rounded-[4px] bg-sidebar-accent" />
                 </div>
               )}
             </SidebarMenuItem>
           </SidebarMenu>
-          </div>
         </SidebarFooter>
       </Sidebar>
 
