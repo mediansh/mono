@@ -56,7 +56,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarSeparator,
 } from "@workspace/ui/components/sidebar"
 
 const mainNav = [
@@ -295,15 +294,15 @@ export function AppSidebar() {
   return (
     <>
       <Sidebar collapsible="icon" variant="inset">
-        <SidebarHeader className="p-2 pb-0">
-          <Link href="/app" className="flex items-center">
-            <Logo symbolOnly className="size-7" />
+        <SidebarHeader className="p-1.5">
+          <Link href="/app" className="flex items-center px-1 py-0.5">
+            <Logo symbolOnly className="size-6" />
           </Link>
         </SidebarHeader>
 
         <SidebarContent>
           {/* Search + New */}
-          <SidebarGroup className="gap-1">
+          <SidebarGroup className="gap-1 pt-0">
             <SidebarGroupContent>
               <SidebarMenu className="gap-1">
                 <SidebarMenuItem>
@@ -338,10 +337,8 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
 
-          <SidebarSeparator className="mx-1.5" />
-
           {/* Main nav */}
-          <SidebarGroup className="gap-0.5">
+          <SidebarGroup className="gap-0.5 pt-0">
             <SidebarGroupContent>
               <SidebarMenu className="gap-0.5">
                 {mainNav.map((item) => {
