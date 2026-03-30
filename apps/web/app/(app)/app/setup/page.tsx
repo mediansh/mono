@@ -98,8 +98,8 @@ export default function WorkspaceSetupPage() {
     return null
   }
 
-  const inputClass = "h-9 rounded-[4px] bg-card px-3 text-[13px] ring-1 ring-border outline-none transition-all placeholder:text-muted-foreground focus:ring-foreground/30"
-  const buttonClass = "mt-1 flex h-9 items-center justify-center rounded-[4px] bg-primary text-[13px] font-medium text-primary-foreground ring-1 ring-primary-foreground/10 transition-colors hover:bg-primary/90 disabled:opacity-50"
+  const inputClass = "h-8 rounded-[4px] bg-card px-2.5 text-[12px] ring-1 ring-border outline-none transition-all placeholder:text-muted-foreground focus:ring-foreground/30"
+  const buttonClass = "mt-1 flex h-8 items-center justify-center rounded-[4px] bg-primary text-[12px] font-medium text-primary-foreground ring-1 ring-primary-foreground/10 transition-colors hover:bg-primary/90 disabled:opacity-50"
 
   return (
     <div className="flex h-svh bg-card p-1.5">
@@ -112,18 +112,18 @@ export default function WorkspaceSetupPage() {
       >
         <div className="mx-auto w-full max-w-sm">
           {/* Logo */}
-          <div className="mb-10">
-            <Logo className="text-2xl" />
+          <div className="mb-8">
+            <Logo className="text-xl" />
           </div>
 
           <h1 className="text-xl font-semibold tracking-tight">Create your workspace</h1>
-          <p className="mt-1 text-[13px] text-muted-foreground">
+          <p className="mt-1 text-[12px] text-muted-foreground">
             Name your workspace to get started. You can optionally upload a logo.
           </p>
 
           <form onSubmit={handleSubmit} className="mt-7 flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
-              <label className="text-[13px] font-medium">
+              <label className="text-[12px] font-medium">
                 Logo <span className="text-muted-foreground font-normal">(optional)</span>
               </label>
               <input
@@ -169,7 +169,7 @@ export default function WorkspaceSetupPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="workspace-name" className="text-[13px] font-medium">
+              <label htmlFor="workspace-name" className="text-[12px] font-medium">
                 Workspace name
               </label>
               <input
@@ -187,7 +187,7 @@ export default function WorkspaceSetupPage() {
             </div>
 
             {error && (
-              <p className="text-[13px] text-destructive">{error}</p>
+              <p className="text-[12px] text-destructive">{error}</p>
             )}
 
             <button

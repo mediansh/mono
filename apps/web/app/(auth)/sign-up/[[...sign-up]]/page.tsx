@@ -92,9 +92,9 @@ export default function SignUpPage() {
     }
   }
 
-  const inputClass = "h-9 rounded-[4px] bg-card px-3 text-[13px] ring-1 ring-border outline-none transition-all placeholder:text-muted-foreground focus:ring-foreground/30"
-  const buttonClass = "mt-1 flex h-9 items-center justify-center rounded-[4px] bg-primary text-[13px] font-medium text-primary-foreground ring-1 ring-primary-foreground/10 transition-colors hover:bg-primary/90 disabled:opacity-50"
-  const oauthClass = "flex h-9 w-full items-center justify-center gap-2.5 rounded-[4px] bg-card text-[13px] font-medium ring-1 ring-border transition-colors hover:bg-muted disabled:opacity-50"
+  const inputClass = "h-8 rounded-[4px] bg-card px-2.5 text-[12px] ring-1 ring-border outline-none transition-all placeholder:text-muted-foreground focus:ring-foreground/30"
+  const buttonClass = "mt-1 flex h-8 items-center justify-center rounded-[4px] bg-primary text-[12px] font-medium text-primary-foreground ring-1 ring-primary-foreground/10 transition-colors hover:bg-primary/90 disabled:opacity-50"
+  const oauthClass = "flex h-8 w-full items-center justify-center gap-2 rounded-[4px] bg-card text-[12px] font-medium ring-1 ring-border transition-colors hover:bg-muted disabled:opacity-50"
 
   return (
     <div className="flex h-svh bg-card p-1.5">
@@ -102,14 +102,14 @@ export default function SignUpPage() {
       <div className="flex w-full flex-col justify-center rounded-[4px] bg-background px-8 py-12 ring-1 ring-border sm:px-12 lg:w-1/2 lg:px-20">
         <div className="mx-auto w-full max-w-sm">
           {/* Logo */}
-          <Link href="/" className="mb-10 inline-block">
-            <Logo className="text-2xl" />
+          <Link href="/" className="mb-8 inline-flex">
+            <Logo className="text-xl" />
           </Link>
 
           {stage === "initial" && (
             <>
               <h1 className="text-xl font-semibold tracking-tight">Create your account</h1>
-              <p className="mt-1 text-[13px] text-muted-foreground">
+              <p className="mt-1 text-[12px] text-muted-foreground">
                 Get started with Median today
               </p>
 
@@ -165,7 +165,7 @@ export default function SignUpPage() {
               <form onSubmit={handleEmailSignUp} className="flex flex-col gap-3">
                 <div className="grid grid-cols-2 gap-2">
                   <div className="flex flex-col gap-1.5">
-                    <label htmlFor="first-name" className="text-[13px] font-medium">
+                    <label htmlFor="first-name" className="text-[12px] font-medium">
                       First name
                     </label>
                     <input
@@ -178,7 +178,7 @@ export default function SignUpPage() {
                     />
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <label htmlFor="last-name" className="text-[13px] font-medium">
+                    <label htmlFor="last-name" className="text-[12px] font-medium">
                       Last name
                     </label>
                     <input
@@ -193,7 +193,7 @@ export default function SignUpPage() {
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label htmlFor="email" className="text-[13px] font-medium">
+                  <label htmlFor="email" className="text-[12px] font-medium">
                     Email
                   </label>
                   <input
@@ -208,7 +208,7 @@ export default function SignUpPage() {
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label htmlFor="password" className="text-[13px] font-medium">
+                  <label htmlFor="password" className="text-[12px] font-medium">
                     Password
                   </label>
                   <input
@@ -225,7 +225,7 @@ export default function SignUpPage() {
                 <div id="clerk-captcha" />
 
                 {error && (
-                  <p className="text-[13px] text-destructive">{error}</p>
+                  <p className="text-[12px] text-destructive">{error}</p>
                 )}
 
                 <button type="submit" disabled={loading} className={buttonClass}>
@@ -233,7 +233,7 @@ export default function SignUpPage() {
                 </button>
               </form>
 
-              <p className="mt-5 text-center text-[13px] text-muted-foreground">
+              <p className="mt-5 text-center text-[12px] text-muted-foreground">
                 Already have an account?{" "}
                 <Link href="/sign-in" className="font-medium text-foreground underline-offset-4 hover:underline">
                   Sign in
@@ -245,14 +245,14 @@ export default function SignUpPage() {
           {stage === "verify" && (
             <>
               <h1 className="text-xl font-semibold tracking-tight">Verify your email</h1>
-              <p className="mt-1 text-[13px] text-muted-foreground">
+              <p className="mt-1 text-[12px] text-muted-foreground">
                 We sent a verification code to{" "}
                 <span className="font-medium text-foreground">{email}</span>
               </p>
 
               <form onSubmit={handleVerify} className="mt-7 flex flex-col gap-3">
                 <div className="flex flex-col gap-1.5">
-                  <label htmlFor="code" className="text-[13px] font-medium">
+                  <label htmlFor="code" className="text-[12px] font-medium">
                     Verification code
                   </label>
                   <input
@@ -269,7 +269,7 @@ export default function SignUpPage() {
                 </div>
 
                 {error && (
-                  <p className="text-[13px] text-destructive">{error}</p>
+                  <p className="text-[12px] text-destructive">{error}</p>
                 )}
 
                 <button type="submit" disabled={loading} className={buttonClass}>
@@ -280,7 +280,7 @@ export default function SignUpPage() {
               <button
                 type="button"
                 onClick={() => { setStage("initial"); setError("") }}
-                className="mt-3 text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+                className="mt-3 text-[12px] text-muted-foreground transition-colors hover:text-foreground"
               >
                 Back to sign up
               </button>
