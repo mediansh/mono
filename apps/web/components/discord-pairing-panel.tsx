@@ -367,7 +367,7 @@ export function DiscordPairingPanel() {
                 className="border-t border-border"
               >
                 {guildChannels.length === 0 ? (
-                  <div className="px-5 py-4">
+                  <div className="px-3.5 py-3">
                     <div className="flex items-center gap-2 text-[11px] text-muted-foreground/60">
                       <svg className="size-3.5 animate-spin" viewBox="0 0 16 16" fill="none">
                         <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="2" opacity="0.25" />
@@ -380,7 +380,7 @@ export function DiscordPairingPanel() {
                   <div className="flex flex-col">
                     {/* Filter input */}
                     {guildChannels.length > 8 ? (
-                      <div className="px-4 pt-3 pb-1">
+                      <div className="px-3.5 pt-2.5 pb-1">
                         <Input
                           value={channelSearch}
                           onChange={(event) => setChannelSearch(event.target.value)}
@@ -412,7 +412,7 @@ export function DiscordPairingPanel() {
                                     key={ch.id}
                                     type="button"
                                     onClick={() => handleToggleChannel(ch.id)}
-                                    className="flex w-full items-center gap-2.5 rounded-sm px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-muted/50"
+                                    className="flex w-full items-center gap-2.5 rounded-sm px-2.5 py-1.5 text-left text-[12px] transition-colors hover:bg-muted/50"
                                   >
                                     <span
                                       className={`flex size-3.5 shrink-0 items-center justify-center rounded-[3px] border transition-colors ${
@@ -460,13 +460,13 @@ export function DiscordPairingPanel() {
 
                     {/* Selected count footer */}
                     {respondChannelIds.length > 0 ? (
-                      <div className="border-t border-border px-4 py-2">
+                      <div className="border-t border-border px-3.5 py-1.5">
                         <p className="text-[11px] text-muted-foreground/60">
                           {respondChannelIds.length} channel{respondChannelIds.length !== 1 ? "s" : ""} selected
                         </p>
                       </div>
                     ) : (
-                      <div className="border-t border-border px-4 py-2">
+                      <div className="border-t border-border px-3.5 py-1.5">
                         <p className="text-[11px] text-muted-foreground/60">
                           Select the channels where Median should auto-reply.
                         </p>
@@ -495,7 +495,7 @@ export function DiscordPairingPanel() {
               <button
                 type="button"
                 onClick={() => setDisconnectOpen(false)}
-                className="flex h-9 flex-1 items-center justify-center rounded-[4px] border border-border text-[13px] font-medium transition-colors hover:bg-muted"
+                className="flex h-8 flex-1 items-center justify-center rounded-[4px] border border-border text-[13px] font-medium transition-colors hover:bg-muted"
               >
                 Cancel
               </button>
@@ -503,7 +503,7 @@ export function DiscordPairingPanel() {
                 type="button"
                 disabled={isDisconnecting}
                 onClick={handleDisconnect}
-                className="flex h-9 flex-1 items-center justify-center rounded-[4px] bg-destructive text-[13px] font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:opacity-50"
+                className="flex h-8 flex-1 items-center justify-center rounded-[4px] bg-destructive text-[13px] font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:opacity-50"
               >
                 {isDisconnecting ? "Disconnecting..." : "Disconnect"}
               </button>

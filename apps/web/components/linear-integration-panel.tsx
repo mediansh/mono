@@ -135,8 +135,8 @@ function StatusMappingRow({
   const selectValue = value && states.some((s) => s.id === value) ? value : ""
 
   return (
-    <div className="flex items-center gap-3 px-4 py-2.5">
-      <span className="w-24 shrink-0 text-sm text-foreground">
+    <div className="flex items-center gap-3 px-3.5 py-2">
+      <span className="w-24 shrink-0 text-[13px] text-foreground">
         {TASK_STATUS_LABELS[status]}
       </span>
       <HugeiconsIcon
@@ -149,7 +149,7 @@ function StatusMappingRow({
         value={selectValue}
         disabled={disabled}
         onChange={(event) => onChange(status, event.target.value)}
-        className="h-8 min-w-0 flex-1 rounded-[4px] border border-border bg-background px-2.5 text-sm text-foreground transition-colors outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:opacity-60"
+        className="h-8 min-w-0 flex-1 rounded-[4px] border border-border bg-background px-2.5 text-[13px] text-foreground transition-colors outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:opacity-60"
       >
         <option value="">Automatic</option>
         {states.map((state) => (
@@ -502,7 +502,7 @@ export function LinearIntegrationPanel() {
             </div>
 
             {isLoadingWorkflowStates ? (
-              <div className="px-5 py-6 text-[12px] text-muted-foreground">
+              <div className="px-3.5 py-6 text-[12px] text-muted-foreground">
                 Loading workflow states...
               </div>
             ) : workflowStates.length > 0 ? (
@@ -533,7 +533,7 @@ export function LinearIntegrationPanel() {
                 )}
               </>
             ) : (
-              <div className="px-5 py-6 text-[12px] text-muted-foreground">
+              <div className="px-3.5 py-6 text-[12px] text-muted-foreground">
                 No workflow states found for this team.
               </div>
             )}
@@ -560,7 +560,7 @@ export function LinearIntegrationPanel() {
               <button
                 type="button"
                 onClick={() => setDisconnectOpen(false)}
-                className="flex h-9 flex-1 items-center justify-center rounded-[4px] border border-border text-[13px] font-medium transition-colors hover:bg-muted"
+                className="flex h-8 flex-1 items-center justify-center rounded-[4px] border border-border text-[13px] font-medium transition-colors hover:bg-muted"
               >
                 Cancel
               </button>
@@ -568,7 +568,7 @@ export function LinearIntegrationPanel() {
                 type="button"
                 disabled={isDisconnecting}
                 onClick={handleDisconnect}
-                className="text-destructive-foreground flex h-9 flex-1 items-center justify-center rounded-[4px] bg-destructive text-[13px] font-medium transition-colors hover:bg-destructive/90 disabled:opacity-50"
+                className="text-destructive-foreground flex h-8 flex-1 items-center justify-center rounded-[4px] bg-destructive text-[13px] font-medium transition-colors hover:bg-destructive/90 disabled:opacity-50"
               >
                 {isDisconnecting ? "Disconnecting..." : "Disconnect"}
               </button>
@@ -659,14 +659,14 @@ export function LinearIntegrationPanel() {
             ) : null}
 
             {previewUser ? (
-              <div className="flex items-center gap-3 border border-border bg-muted/30 px-4 py-3">
+              <div className="flex items-center gap-3 border border-border bg-muted/30 px-3.5 py-2.5">
                 <HugeiconsIcon
                   icon={User03Icon}
                   size={14}
                   strokeWidth={1.8}
                   className="text-muted-foreground"
                 />
-                <div className="text-sm">
+                <div className="text-[13px]">
                   <span className="text-foreground">
                     {previewUser.name ??
                       previewUser.email ??

@@ -352,13 +352,13 @@ export function GitHubIntegrationPanel() {
                 {callbackUrl && (
                   <div>
                     <p className="text-[11px] text-muted-foreground">Setup URL (post-installation redirect)</p>
-                    <p className="mt-0.5 break-all font-mono text-xs text-foreground">{callbackUrl}</p>
+                    <p className="mt-0.5 break-all font-mono text-[12px] text-foreground">{callbackUrl}</p>
                   </div>
                 )}
                 {webhookUrl && (
                   <div>
                     <p className="text-[11px] text-muted-foreground">Webhook URL</p>
-                    <p className="mt-0.5 break-all font-mono text-xs text-foreground">{webhookUrl}</p>
+                    <p className="mt-0.5 break-all font-mono text-[12px] text-foreground">{webhookUrl}</p>
                   </div>
                 )}
               </div>
@@ -448,7 +448,7 @@ export function GitHubIntegrationPanel() {
                     ) : null}
                   </button>
                   <div className="min-w-0 flex-1">
-                    <p className={`truncate text-sm ${isSelected ? "text-foreground" : "text-muted-foreground"}`}>
+                    <p className={`truncate text-[13px] ${isSelected ? "text-foreground" : "text-muted-foreground"}`}>
                       {repository.fullName}
                     </p>
                   </div>
@@ -494,9 +494,9 @@ export function GitHubIntegrationPanel() {
             </p>
           </div>
           <div className="divide-y divide-border/50">
-            <div className="flex items-center gap-4 px-3.5 py-4">
+            <div className="flex items-center gap-3 px-3.5 py-3">
               <div className="min-w-0 flex-1">
-                <p className="text-sm text-foreground">Issue sync</p>
+                <p className="text-[13px] text-foreground">Issue sync</p>
                 <p className="mt-0.5 text-[11px] text-muted-foreground">Keep linked tasks and GitHub issues in sync.</p>
               </div>
               <Switch
@@ -504,9 +504,9 @@ export function GitHubIntegrationPanel() {
                 onCheckedChange={(checked) => handleToggleFeature("issueSyncEnabled", checked)}
               />
             </div>
-            <div className="flex items-center gap-4 px-3.5 py-4">
+            <div className="flex items-center gap-3 px-3.5 py-3">
               <div className="min-w-0 flex-1">
-                <p className="text-sm text-foreground">PR automation</p>
+                <p className="text-[13px] text-foreground">PR automation</p>
                 <p className="mt-0.5 text-[11px] text-muted-foreground">
                   Open PRs mentioning <span className="font-mono text-foreground/70">MDN-123</span> set Ready. Merged PRs set Shipped.
                 </p>
@@ -516,9 +516,9 @@ export function GitHubIntegrationPanel() {
                 onCheckedChange={(checked) => handleToggleFeature("prAutomationEnabled", checked)}
               />
             </div>
-            <div className="flex items-center gap-4 px-3.5 py-4">
+            <div className="flex items-center gap-3 px-3.5 py-3">
               <div className="min-w-0 flex-1">
-                <p className="text-sm text-foreground">Commit automation</p>
+                <p className="text-[13px] text-foreground">Commit automation</p>
                 <p className="mt-0.5 text-[11px] text-muted-foreground">Default-branch commits set Shipped. Other branches set In Progress.</p>
               </div>
               <Switch

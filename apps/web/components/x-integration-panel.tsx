@@ -323,7 +323,7 @@ export function XIntegrationPanel() {
           </div>
         </motion.div>
 
-        <motion.div variants={fadeUp} className="flex items-start gap-3 rounded-[4px] ring-1 ring-border bg-card px-3.5 py-4">
+        <motion.div variants={fadeUp} className="flex items-start gap-3 rounded-[4px] ring-1 ring-border bg-card px-3.5 py-3">
           <HugeiconsIcon icon={InformationCircleIcon} size={16} strokeWidth={1.8} className="mt-0.5 shrink-0 text-muted-foreground" />
           <div>
             <p className="text-[13px] font-medium text-foreground">Use your brand account</p>
