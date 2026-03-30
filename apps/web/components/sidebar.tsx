@@ -409,7 +409,7 @@ export function AppSidebar() {
                     )}
                   </div>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent side="top" align="start" className="w-52 duration-150">
+                <DropdownMenuContent side="top" align="start" className="w-52 ring-sidebar-border duration-150">
                   {/* Profile header */}
                   <div className="flex items-center gap-2 px-1.5 py-1.5">
                     {user?.imageUrl ? (
@@ -485,7 +485,7 @@ export function AppSidebar() {
                         {theme === "dark" ? <Moon size={14} weight="regular" /> : <Sun size={14} weight="regular" />}
                         Theme
                       </DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent>
+                      <DropdownMenuSubContent className="ring-sidebar-border animate-in fade-in-0 zoom-in-95 slide-in-from-left-1 duration-150">
                         <DropdownMenuItem onClick={() => setTheme("light")}>
                           <Sun size={14} weight="regular" />
                           Light
