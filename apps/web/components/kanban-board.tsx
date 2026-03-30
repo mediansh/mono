@@ -322,7 +322,7 @@ function BoardLoadingState() {
       {SKELETON_GROUPS.map((group, gi) => (
         <div key={gi}>
           {/* Group header skeleton — matches ListGroup header */}
-          <div className="flex items-center gap-2.5 bg-sidebar/60 px-4 py-2 dark:bg-accent/30">
+          <div className="flex items-center gap-2.5 bg-sidebar/60 px-3 py-2 dark:bg-accent/30">
             <span className="text-[10px] text-muted-foreground/60">▼</span>
             <div className="size-3.5 rounded-[4px] bg-muted/70 animate-pulse" />
             <div className="h-3 rounded-[4px] bg-muted/70 animate-pulse" style={{ width: group.label.length * 8 }} />
@@ -335,7 +335,7 @@ function BoardLoadingState() {
           {group.rows.map((titleWidth, ri) => (
             <div
               key={ri}
-              className="flex items-center gap-3 border-b border-l-2 border-border border-l-transparent px-4 py-2"
+              className="flex items-center gap-3 border-b border-l-2 border-border border-l-transparent px-3 py-2"
             >
               {/* Priority icon placeholder */}
               <div className="size-3.5 shrink-0 rounded-[4px] bg-muted/60 animate-pulse" />
@@ -367,7 +367,7 @@ function EmptyBoardState({ onCreateTask }: { onCreateTask: () => void }) {
         initial={{ opacity: 0, y: 12, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
-        className="w-full max-w-md border-2 border-border bg-card p-8 text-center"
+        className="w-full max-w-sm rounded-[4px] ring-1 ring-border bg-card p-5 text-center"
       >
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
@@ -377,13 +377,13 @@ function EmptyBoardState({ onCreateTask }: { onCreateTask: () => void }) {
         >
           <SealCheck size={22} weight="fill" />
         </motion.div>
-        <h2 className="text-pretty text-xl font-semibold tracking-tight">No tasks yet</h2>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+        <h2 className="text-pretty text-[14px] font-semibold tracking-tight">No tasks yet</h2>
+        <p className="mt-2 text-[13px] leading-6 text-muted-foreground">
           This workspace starts empty now. Create your first task and the board will fill in immediately.
         </p>
         <button
           onClick={onCreateTask}
-          className="mt-6 inline-flex h-11 items-center justify-center rounded-[4px] bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          className="mt-6 inline-flex h-8 items-center justify-center rounded-[4px] bg-primary px-3.5 text-[13px] font-medium text-primary-foreground transition-colors hover:bg-primary/90"
         >
           Create first task
         </button>
@@ -422,7 +422,7 @@ function HiddenColumnsToolbar({
             <button
               key={status}
               onClick={() => setSelectedColumn(status)}
-              className="flex items-center gap-1.5 rounded-[4px] border border-border bg-sidebar px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground dark:bg-card"
+              className="flex items-center gap-1.5 rounded-[4px] ring-1 ring-border bg-sidebar px-2 py-1 text-[12px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground dark:bg-card"
             >
               {getStatusIcon(status, 12)}
               {col.label}
@@ -438,7 +438,7 @@ function HiddenColumnsToolbar({
               <div className="flex items-center gap-2">
                 {selectedColumn && getStatusIcon(selectedColumn, 16)}
                 <DialogTitle>{selectedCol?.label ?? ""}</DialogTitle>
-                <span className="text-xs text-muted-foreground">{selectedTasks.length} tasks</span>
+                <span className="text-[12px] text-muted-foreground">{selectedTasks.length} tasks</span>
               </div>
               <button
                 onClick={() => {
@@ -447,7 +447,7 @@ function HiddenColumnsToolbar({
                     setSelectedColumn(null)
                   }
                 }}
-                className="flex items-center gap-1.5 rounded-[4px] border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                className="flex items-center gap-1.5 rounded-[4px] ring-1 ring-border px-2.5 py-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               >
                 <Eye size={13} />
                 Show column
@@ -456,7 +456,7 @@ function HiddenColumnsToolbar({
           </DialogHeader>
           <div className="min-h-0 flex-1 overflow-y-auto">
             {selectedTasks.length === 0 ? (
-              <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+              <div className="flex items-center justify-center py-12 text-[13px] text-muted-foreground">
                 No tasks in this column
               </div>
             ) : (
@@ -572,7 +572,7 @@ const RequestRow = memo(function RequestRow({
   }
 
   return (
-    <div onClick={() => onSelect(task)} className="cursor-pointer rounded-[4px] border border-border bg-background p-3 transition-colors hover:border-border/80 hover:bg-accent/20 dark:bg-card">
+    <div onClick={() => onSelect(task)} className="cursor-pointer rounded-[4px] ring-1 ring-border bg-background p-3 transition-colors hover:border-border/80 hover:bg-accent/20 dark:bg-card">
       {/* Top row: source + date */}
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -701,7 +701,7 @@ function RequestsGroup({
       {/* Group header — distinct style */}
       <button
         onClick={onToggleCollapsed}
-        className="flex w-full items-center gap-2.5 border-b border-dashed border-border bg-sidebar/40 px-4 py-2 text-left transition-colors hover:bg-sidebar/70 dark:bg-accent/20 dark:hover:bg-accent/40"
+        className="flex w-full items-center gap-2.5 border-b border-dashed border-border bg-sidebar/40 px-3 py-2 text-left transition-colors hover:bg-sidebar/70 dark:bg-accent/20 dark:hover:bg-accent/40"
       >
         <span
           className="text-[10px] text-muted-foreground/60"
@@ -718,7 +718,7 @@ function RequestsGroup({
       {/* Cards — no drag, no sortable context */}
       {!collapsed && (
           <div>
-            <div className="grid grid-cols-1 gap-2 px-4 py-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-2 px-3 py-3 sm:grid-cols-2 lg:grid-cols-3">
               {visibleTasks.map((task) => (
                 <RequestRow
                   key={task.id}
@@ -732,10 +732,10 @@ function RequestsGroup({
               ))}
             </div>
             {hasMore && !showAll && (
-              <div className="px-4 pb-3">
+              <div className="px-3 pb-3">
                 <button
                   onClick={() => setShowAll(true)}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-[4px] border border-dashed border-border py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground"
+                  className="flex w-full items-center justify-center gap-1.5 rounded-[4px] ring-1 ring-border ring-dashed py-2 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground"
                 >
                   View all requests
                   <span className="rounded-[4px] bg-muted px-1.5 py-0.5 text-[10px]">{hiddenCount} more</span>
@@ -743,10 +743,10 @@ function RequestsGroup({
               </div>
             )}
             {hasMore && showAll && (
-              <div className="px-4 pb-3">
+              <div className="px-3 pb-3">
                 <button
                   onClick={() => setShowAll(false)}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-[4px] border border-dashed border-border py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground"
+                  className="flex w-full items-center justify-center gap-1.5 rounded-[4px] ring-1 ring-border ring-dashed py-2 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground"
                 >
                   Show fewer
                 </button>
@@ -786,7 +786,7 @@ function ContextSubmenu({
       onMouseLeave={handleLeave}
     >
       <button
-        className="flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-sm transition-colors hover:bg-accent"
+        className="flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-accent"
       >
         {icon}
         <span>{label}</span>
@@ -853,7 +853,7 @@ function TaskContextMenu({
       style={{ top: position.y, left: position.x }}
     >
       {!canManageTasks ? (
-        <div className="px-2 py-1.5 text-xs text-muted-foreground">
+        <div className="px-2 py-1.5 text-[12px] text-muted-foreground">
           Guests can only view tasks.
         </div>
       ) : null}
@@ -865,11 +865,11 @@ function TaskContextMenu({
             key={s}
             disabled={!canManageTasks}
             onClick={() => { onUpdate(task.id, { status: s }); onClose() }}
-            className={`flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-sm transition-colors hover:bg-accent ${task.status === s ? "font-medium" : ""}`}
+            className={`flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-accent ${task.status === s ? "font-medium" : ""}`}
           >
             {getStatusIcon(s, 14)}
             <span>{STATUS_LABELS[s]}</span>
-            {task.status === s && <span className="ml-auto text-xs text-primary">✓</span>}
+            {task.status === s && <span className="ml-auto text-[12px] text-primary">✓</span>}
           </button>
         ))}
       </ContextSubmenu>
@@ -881,11 +881,11 @@ function TaskContextMenu({
             key={p}
             disabled={!canManageTasks}
             onClick={() => { onUpdate(task.id, { priority: p }); onClose() }}
-            className={`flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-sm transition-colors hover:bg-accent ${task.priority === p ? "font-medium" : ""}`}
+            className={`flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-accent ${task.priority === p ? "font-medium" : ""}`}
           >
             {getPriorityIcon(p, 14)}
             <span>{PRIORITY_LABELS[p]}</span>
-            {task.priority === p && <span className="ml-auto text-xs text-primary">✓</span>}
+            {task.priority === p && <span className="ml-auto text-[12px] text-primary">✓</span>}
           </button>
         ))}
       </ContextSubmenu>
@@ -897,14 +897,14 @@ function TaskContextMenu({
             key={label}
             disabled={!canManageTasks}
             onClick={() => toggleLabel(label)}
-            className="flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-sm capitalize transition-colors hover:bg-accent"
+            className="flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] capitalize transition-colors hover:bg-accent"
           >
             <div
               className="size-2.5 rounded-[4px]"
               style={{ backgroundColor: labelConfig.colors[label] ?? "#888" }}
             />
             <span>{label}</span>
-            {(task.labels ?? []).includes(label) && <span className="ml-auto text-xs text-primary">✓</span>}
+            {(task.labels ?? []).includes(label) && <span className="ml-auto text-[12px] text-primary">✓</span>}
           </button>
         ))}
       </ContextSubmenu>
@@ -915,7 +915,7 @@ function TaskContextMenu({
       <button
         disabled={!canManageTasks}
         onClick={() => { onDelete(task.id); onClose() }}
-        className="flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-sm text-destructive transition-colors hover:bg-destructive/10"
+        className="flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] text-destructive transition-colors hover:bg-destructive/10"
       >
         <Trash size={14} />
         <span>Delete task</span>
@@ -1043,7 +1043,7 @@ const SortableListRow = memo(function SortableListRow({
         onClick={handleClick}
         onContextMenu={handleContextMenu}
         onAnimationEnd={() => setHasAnimated(true)}
-        className={`group flex cursor-pointer touch-none items-center gap-3 border-b border-l-2 border-border px-4 py-2 select-none transition-all duration-150 hover:bg-accent/40 ${PRIORITY_ACCENT[task.priority]} ${isSelected ? "bg-primary/[0.06] hover:bg-primary/[0.10]" : "bg-background"}`}
+        className={`group flex cursor-pointer touch-none items-center gap-3 border-b border-l-2 border-border px-3 py-2 select-none transition-all duration-150 hover:bg-accent/40 ${PRIORITY_ACCENT[task.priority]} ${isSelected ? "bg-primary/[0.06] hover:bg-primary/[0.10]" : "bg-background"}`}
       >
         {/* Checkbox */}
         <div
@@ -1142,12 +1142,12 @@ function ListGroup({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.25, delay: groupIndex * 0.04, ease: "easeOut" }}
-      style={isDropTarget ? { outline: "2px solid var(--primary)", outlineOffset: "-2px", borderRadius: "0px" } : undefined}
+      style={isDropTarget ? { outline: "2px solid var(--primary)", outlineOffset: "-2px", borderRadius: "4px" } : undefined}
     >
       {/* Group header */}
       <button
         onClick={onToggleCollapsed}
-        className="flex w-full items-center gap-2.5 bg-sidebar/60 px-4 py-2 text-left transition-colors hover:bg-sidebar dark:bg-accent/30 dark:hover:bg-accent/50"
+        className="flex w-full items-center gap-2.5 bg-sidebar/60 px-3 py-2 text-left transition-colors hover:bg-sidebar dark:bg-accent/30 dark:hover:bg-accent/50"
       >
         <span
           className="text-[10px] text-muted-foreground/60"
@@ -1242,11 +1242,11 @@ function TaskDetailModal({
         {task && (
           <div className="flex flex-col">
             {/* Top bar */}
-            <div className="flex items-center justify-between border-b border-border px-5 py-3">
+            <div className="flex items-center justify-between border-b border-border px-3.5 py-3">
               <div className="flex items-center gap-2.5">
-                <span className="font-mono text-xs font-medium text-muted-foreground">{task.taskCode}</span>
+                <span className="font-mono text-[12px] font-medium text-muted-foreground">{task.taskCode}</span>
                 <span className="text-muted-foreground/30">·</span>
-                <span className="text-xs text-muted-foreground/60">{task.createdAt}</span>
+                <span className="text-[12px] text-muted-foreground/60">{task.createdAt}</span>
                 {task.source && (() => {
                   const cfg = SOURCE_CONFIG[task.source!.platform]
                   return (
@@ -1286,7 +1286,7 @@ function TaskDetailModal({
             </div>
 
             {/* Content */}
-            <div className="flex flex-col gap-5 px-5 pt-5 pb-6">
+            <div className="flex flex-col gap-5 px-3.5 pt-5 pb-6">
               {/* Title */}
               <DialogHeader>
                 <DialogTitle className="sr-only">{task.title}</DialogTitle>
@@ -1297,7 +1297,7 @@ function TaskDetailModal({
                     onChange={(e) => setTitleValue(e.target.value)}
                     onBlur={handleTitleSave}
                     onKeyDown={(e) => { if (e.key === "Enter") handleTitleSave(); if (e.key === "Escape") { setTitleValue(task.title); setEditingTitle(false) } }}
-                    className="w-full rounded-[4px] border border-border bg-transparent px-1 py-0.5 text-base font-semibold leading-snug tracking-tight outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full rounded-[4px] ring-1 ring-border bg-transparent px-1 py-0.5 text-[14px] font-semibold leading-snug tracking-tight outline-none focus:ring-1 focus:ring-primary"
                   />
                 ) : (
                   <h2
@@ -1306,7 +1306,7 @@ function TaskDetailModal({
                       setTitleValue(task.title)
                       setEditingTitle(true)
                     }}
-                    className={`-mx-1 rounded-[4px] px-1 py-0.5 text-base font-semibold leading-snug tracking-tight transition-colors ${canManageTasks ? "cursor-text hover:bg-accent/50" : ""}`}
+                    className={`-mx-1 rounded-[4px] px-1 py-0.5 text-[14px] font-semibold leading-snug tracking-tight transition-colors ${canManageTasks ? "cursor-text hover:bg-accent/50" : ""}`}
                   >
                     {task.title}
                   </h2>
@@ -1319,7 +1319,7 @@ function TaskDetailModal({
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     disabled={!canManageTasks}
-                    className="flex items-center gap-1.5 rounded-[4px] border border-border bg-background px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex items-center gap-1.5 rounded-[4px] ring-1 ring-border bg-background px-2.5 py-1.5 text-[12px] font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {getStatusIcon(task.status, 13)}
                     <span>{STATUS_LABELS[task.status]}</span>
@@ -1344,7 +1344,7 @@ function TaskDetailModal({
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     disabled={!canManageTasks}
-                    className="flex items-center gap-1.5 rounded-[4px] border border-border bg-background px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex items-center gap-1.5 rounded-[4px] ring-1 ring-border bg-background px-2.5 py-1.5 text-[12px] font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {getPriorityIcon(task.priority, 13)}
                     <span>{PRIORITY_LABELS[task.priority]}</span>
@@ -1369,7 +1369,7 @@ function TaskDetailModal({
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     disabled={!canManageTasks}
-                    className="flex items-center gap-1.5 rounded-[4px] border border-border bg-background px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex items-center gap-1.5 rounded-[4px] ring-1 ring-border bg-background px-2.5 py-1.5 text-[12px] font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {(task.labels ?? []).length > 0 ? (
                       <div className="flex items-center gap-1.5">
@@ -1401,7 +1401,7 @@ function TaskDetailModal({
                           />
                           <span>{label}</span>
                           {(task.labels ?? []).includes(label) && (
-                            <span className="ml-auto text-xs text-primary">✓</span>
+                            <span className="ml-auto text-[12px] text-primary">✓</span>
                           )}
                         </div>
                       </DropdownMenuItem>
@@ -1424,7 +1424,7 @@ function TaskDetailModal({
                     onBlur={handleDescSave}
                     onKeyDown={(e) => { if (e.key === "Escape") { setDescValue(task.description ?? ""); setEditingDesc(false) } }}
                     placeholder="Write something..."
-                    className="min-h-[100px] w-full resize-none rounded-[4px] border border-border bg-transparent px-2 py-1.5 text-sm leading-relaxed outline-none focus:ring-1 focus:ring-primary"
+                    className="min-h-[100px] w-full resize-none rounded-[4px] ring-1 ring-border bg-transparent px-2 py-1.5 text-[13px] leading-relaxed outline-none focus:ring-1 focus:ring-primary"
                   />
                 ) : (
                   <div
@@ -1433,7 +1433,7 @@ function TaskDetailModal({
                       setDescValue(task.description ?? "")
                       setEditingDesc(true)
                     }}
-                    className={`-mx-2 rounded-[4px] px-2 py-1.5 text-sm leading-relaxed transition-colors ${canManageTasks ? "cursor-text hover:bg-accent/40" : ""}`}
+                    className={`-mx-2 rounded-[4px] px-2 py-1.5 text-[13px] leading-relaxed transition-colors ${canManageTasks ? "cursor-text hover:bg-accent/40" : ""}`}
                   >
                     {task.description ? (
                       <span className="text-foreground/80">{task.description}</span>
@@ -1452,7 +1452,7 @@ function TaskDetailModal({
                     <button
                       disabled={!canManageTasks}
                       onClick={() => { onAccept(task); onClose() }}
-                      className="flex items-center gap-1.5 rounded-[4px] border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
+                      className="flex items-center gap-1.5 rounded-[4px] border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[12px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
                     >
                       <CheckCircle size={14} weight="fill" />
                       Accept request
@@ -1460,7 +1460,7 @@ function TaskDetailModal({
                     <button
                       disabled={!canManageTasks}
                       onClick={() => { onDeny(task); onClose() }}
-                      className="flex items-center gap-1.5 rounded-[4px] border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
+                      className="flex items-center gap-1.5 rounded-[4px] border border-red-500/30 bg-red-500/10 px-3 py-2 text-[12px] font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
                     >
                       <XCircle size={14} />
                       Deny request
@@ -1501,7 +1501,7 @@ function BulkActionToolbar({
     >
       {/* Selection count & clear */}
       <div className="flex items-center gap-2 pr-2 border-r border-border mr-1">
-        <span className="text-xs font-semibold tabular-nums text-foreground">{selectedCount} selected</span>
+        <span className="text-[12px] font-semibold tabular-nums text-foreground">{selectedCount} selected</span>
         <button
           onClick={onClearSelection}
           className="rounded-[4px] p-0.5 text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
@@ -1513,7 +1513,7 @@ function BulkActionToolbar({
 
       {/* Status */}
       <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-xs font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
+        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[12px] font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
           {getStatusIcon("todo", 13)}
           <span>Status</span>
         </DropdownMenuTrigger>
@@ -1531,7 +1531,7 @@ function BulkActionToolbar({
 
       {/* Priority */}
       <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-xs font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
+        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[12px] font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
           {getPriorityIcon("medium", 13)}
           <span>Priority</span>
         </DropdownMenuTrigger>
@@ -1549,7 +1549,7 @@ function BulkActionToolbar({
 
       {/* Labels */}
       <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-xs font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
+        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[12px] font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
           <Tag size={13} />
           <span>Label</span>
         </DropdownMenuTrigger>
@@ -1581,7 +1581,7 @@ function BulkActionToolbar({
       {/* Delete */}
       <button
         onClick={onDelete}
-        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
+        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[12px] font-medium text-destructive transition-colors hover:bg-destructive/10"
       >
         <Trash size={13} />
         <span>Delete</span>
@@ -1676,7 +1676,7 @@ const KanbanCard = memo(function KanbanCard({
         {...listeners}
         onClick={handleClick}
         onContextMenu={handleContextMenu}
-        className={`group cursor-pointer touch-none border border-border bg-background p-3 select-none transition-colors duration-150 hover:border-border/80 hover:bg-accent/20 dark:bg-card ${isSelected ? "ring-2 ring-primary/40 bg-primary/[0.06]" : ""}`}
+        className={`group cursor-pointer touch-none rounded-[4px] ring-1 ring-border bg-background p-2.5 select-none transition-colors duration-150 hover:bg-accent/20 dark:bg-card ${isSelected ? "ring-2 ring-primary/40 bg-primary/[0.06]" : ""}`}
       >
         {/* Top: task code + checkbox */}
         <div className="mb-1.5 flex items-center justify-between">
@@ -2219,10 +2219,10 @@ function ViewToggle({
   onViewChange: (view: BoardView) => void
 }) {
   return (
-    <div className="flex items-center rounded-[4px] border border-border bg-sidebar dark:bg-card">
+    <div className="flex items-center rounded-[4px] ring-1 ring-border bg-sidebar dark:bg-card">
       <button
         onClick={() => onViewChange("list")}
-        className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-colors ${
+        className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[12px] font-medium transition-colors ${
           view === "list"
             ? "bg-accent text-foreground"
             : "text-muted-foreground hover:text-foreground"
@@ -2235,7 +2235,7 @@ function ViewToggle({
       <div className="h-4 w-px bg-border" />
       <button
         onClick={() => onViewChange("board")}
-        className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-colors ${
+        className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[12px] font-medium transition-colors ${
           view === "board"
             ? "bg-accent text-foreground"
             : "text-muted-foreground hover:text-foreground"
@@ -3003,14 +3003,14 @@ export function KanbanBoard() {
     <div className="flex h-full flex-col">
       {!canManageTasks ? (
         <div
-          className="mx-4 mt-4 rounded-[4px] border border-border bg-card px-4 py-3 text-sm text-muted-foreground"
+          className="mx-4 mt-4 rounded-[4px] ring-1 ring-border bg-card px-3 py-3 text-[13px] text-muted-foreground"
         >
           You’re in guest mode. Tasks are read-only in this workspace.
         </div>
       ) : null}
 
       {/* Toolbar */}
-      <div className="flex items-center gap-1 overflow-hidden border-b border-border bg-sidebar/60 px-4 py-2 dark:bg-accent/30">
+      <div className="flex items-center gap-1 overflow-hidden border-b border-border bg-sidebar/60 px-3 py-2 dark:bg-accent/30">
         <ViewToggle view={boardView} onViewChange={handleViewChange} />
         {hiddenColumns.length > 0 && (
           <HiddenColumnsToolbar
