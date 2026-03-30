@@ -545,9 +545,9 @@ export function NewTaskModal({
           {/* Panel */}
           <motion.div
             ref={panelRef}
-            initial={{ opacity: 0, scale: 0.95 }}
+            initial={{ opacity: 0, scale: 0.97 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
+            exit={{ opacity: 0, scale: 0.97 }}
             transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
             className="fixed top-[min(20%,180px)] left-1/2 z-50 w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 overflow-hidden rounded-[4px] bg-background shadow-2xl ring-1 ring-border"
             onKeyDown={(e) => {
