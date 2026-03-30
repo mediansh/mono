@@ -318,11 +318,11 @@ const SKELETON_GROUPS: { label: string; rows: number[] }[] = [
 
 function BoardLoadingState() {
   return (
-    <div className="h-full overflow-hidden">
+    <div className="h-full overflow-hidden px-3 py-2">
       {SKELETON_GROUPS.map((group, gi) => (
-        <div key={gi}>
+        <div key={gi} className="mb-1.5 overflow-hidden rounded-[4px] ring-1 ring-border">
           {/* Group header skeleton — matches ListGroup header */}
-          <div className="flex items-center gap-2.5 bg-sidebar/60 px-3 py-2 dark:bg-accent/30">
+          <div className="flex items-center gap-2.5 bg-card px-3 py-1.5">
             <span className="text-[10px] text-muted-foreground/60">▼</span>
             <div className="size-3.5 rounded-[4px] bg-muted/70 animate-pulse" />
             <div className="h-3 rounded-[4px] bg-muted/70 animate-pulse" style={{ width: group.label.length * 8 }} />
@@ -697,11 +697,12 @@ function RequestsGroup({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
+      className="mb-1.5 overflow-hidden rounded-[4px] ring-1 ring-border"
     >
       {/* Group header — distinct style */}
       <button
         onClick={onToggleCollapsed}
-        className="flex w-full items-center gap-2.5 border-b border-dashed border-border bg-sidebar/40 px-3 py-2 text-left transition-colors hover:bg-sidebar/70 dark:bg-accent/20 dark:hover:bg-accent/40"
+        className="flex w-full items-center gap-2.5 bg-card px-3 py-1.5 text-left transition-colors hover:bg-accent dark:bg-card dark:hover:bg-accent/40"
       >
         <span
           className="text-[10px] text-muted-foreground/60"
@@ -1142,12 +1143,13 @@ function ListGroup({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.25, delay: groupIndex * 0.04, ease: "easeOut" }}
-      style={isDropTarget ? { outline: "2px solid var(--primary)", outlineOffset: "-2px", borderRadius: "4px" } : undefined}
+      className="mb-1.5 overflow-hidden rounded-[4px] ring-1 ring-border"
+      style={isDropTarget ? { outline: "2px solid var(--primary)", outlineOffset: "-2px" } : undefined}
     >
       {/* Group header */}
       <button
         onClick={onToggleCollapsed}
-        className="flex w-full items-center gap-2.5 bg-sidebar/60 px-3 py-2 text-left transition-colors hover:bg-sidebar dark:bg-accent/30 dark:hover:bg-accent/50"
+        className="flex w-full items-center gap-2.5 bg-card px-3 py-1.5 text-left transition-colors hover:bg-accent dark:bg-card dark:hover:bg-accent/50"
       >
         <span
           className="text-[10px] text-muted-foreground/60"
@@ -2538,7 +2540,7 @@ function ListView({
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="h-full overflow-y-auto scrollbar-hide">
+      <div className="h-full overflow-y-auto scrollbar-hide px-3 py-2">
         {/* Requests group — rendered separately, outside DnD sortable */}
         {showRequests && tasksByColumn.requests.length > 0 && (
           <RequestsGroup
