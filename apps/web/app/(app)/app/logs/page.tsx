@@ -168,6 +168,52 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
 
 // ── Main component ───────────────────────────────────────
 
+function LogsSkeleton() {
+  return (
+    <div className="mx-auto w-full max-w-4xl px-6 py-6">
+      {/* Header */}
+      <div className="mb-6">
+        <div className="h-4 w-16 rounded-[4px] bg-muted/40" />
+        <div className="mt-2 h-3 w-56 rounded-[4px] bg-muted/30" />
+      </div>
+
+      {/* Charts row */}
+      <div className="mb-6 grid grid-cols-3 gap-3">
+        <div className="col-span-2 rounded-[4px] ring-1 ring-border p-4">
+          <div className="mb-3 h-3.5 w-28 rounded-[4px] bg-muted/40" />
+          <div className="h-[180px] rounded-[4px] bg-muted/20" />
+        </div>
+        <div className="rounded-[4px] ring-1 ring-border p-4">
+          <div className="mb-3 h-3.5 w-24 rounded-[4px] bg-muted/40" />
+          <div className="h-[180px] rounded-[4px] bg-muted/20" />
+        </div>
+      </div>
+
+      {/* Webhook chart */}
+      <div className="mb-6 rounded-[4px] ring-1 ring-border p-4">
+        <div className="mb-3 h-3.5 w-32 rounded-[4px] bg-muted/40" />
+        <div className="h-[160px] rounded-[4px] bg-muted/20" />
+      </div>
+
+      {/* Event feed */}
+      <div className="mb-3 flex items-center justify-between">
+        <div className="h-3.5 w-24 rounded-[4px] bg-muted/40" />
+        <div className="h-6 w-60 rounded-[4px] bg-muted/30" />
+      </div>
+      <div className="rounded-[4px] ring-1 ring-border">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-2.5 border-b border-border px-3 py-1.5 last:border-0">
+            <div className="size-5 rounded-[3px] bg-muted/40" />
+            <div className="h-3 w-16 rounded-[3px] bg-muted/30" />
+            <div className="h-3 flex-1 rounded-[3px] bg-muted/20" />
+            <div className="h-3 w-10 rounded-[3px] bg-muted/30" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 const PAGE_SIZE = 20
 
 export default function LogsPage() {
@@ -220,6 +266,10 @@ export default function LogsPage() {
       setPage(Math.max(0, totalPages - 1))
     }
   }, [page, totalPages])
+
+  if (dashboard === undefined || (status === "LoadingFirstPage")) {
+    return <LogsSkeleton />
+  }
 
   const paginatedEvents = results.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE) as LogEvent[]
   const activityData =
