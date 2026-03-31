@@ -289,7 +289,7 @@ export default function LogsPage() {
             <h3 className="mb-3 text-[13px] font-medium">Activity this week</h3>
             <div className="h-[180px]">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={activityData} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
+                <AreaChart data={activityData} margin={{ top: 4, right: 4, left: 4, bottom: 16 }}>
                   <defs>
                     <linearGradient id="gradTasks" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.2} />
@@ -300,7 +300,7 @@ export default function LogsPage() {
                       <stop offset="100%" stopColor="var(--chart-3)" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <XAxis dataKey="day" hide />
+                  <XAxis dataKey="day" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
                   <YAxis hide />
                   <RechartsTooltip content={<ChartTooltip />} />
                   <Area type="monotone" dataKey="tasks" name="Tasks" stroke="var(--chart-1)" fill="url(#gradTasks)" strokeWidth={1.5} dot={false} />
@@ -333,6 +333,14 @@ export default function LogsPage() {
                 </PieChart>
               </ResponsiveContainer>
             </div>
+            <div className="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1">
+              {sourceDistribution.map((s: { name: string; value: number; color: string }) => (
+                <div key={s.name} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <div className="size-1.5 rounded-full" style={{ backgroundColor: s.color }} />
+                  {s.name}
+                </div>
+              ))}
+            </div>
           </div>
         </motion.div>
 
@@ -341,8 +349,8 @@ export default function LogsPage() {
           <h3 className="mb-3 text-[13px] font-medium">Webhook deliveries</h3>
           <div className="h-[160px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={webhooksByPlatform} margin={{ top: 4, right: 4, left: 4, bottom: 0 }} barGap={2}>
-                <XAxis dataKey="platform" hide />
+              <BarChart data={webhooksByPlatform} margin={{ top: 4, right: 4, left: 4, bottom: 16 }} barGap={2}>
+                <XAxis dataKey="platform" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
                 <YAxis hide />
                 <RechartsTooltip content={<ChartTooltip />} />
                 <Bar dataKey="processed" name="Processed" fill="var(--chart-3)" radius={[2, 2, 0, 0]} barSize={18} />
