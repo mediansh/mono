@@ -254,7 +254,7 @@ export default function LogsPage() {
         {/* Charts row */}
         <motion.div variants={fadeUp} className="mb-6 grid grid-cols-3 gap-3">
           {/* Activity over time */}
-          <div className="col-span-2 rounded-[4px] ring-1 ring-border bg-card p-4">
+          <div className="col-span-2 rounded-[4px] ring-1 ring-border p-4">
             <h3 className="mb-3 text-[13px] font-medium">Activity this week</h3>
             <div className="h-[180px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -291,7 +291,7 @@ export default function LogsPage() {
           </div>
 
           {/* Source distribution */}
-          <div className="rounded-[4px] ring-1 ring-border bg-card p-4">
+          <div className="rounded-[4px] ring-1 ring-border p-4">
             <h3 className="mb-3 text-[13px] font-medium">Events by source</h3>
             <div className="h-[140px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -326,7 +326,7 @@ export default function LogsPage() {
         </motion.div>
 
         {/* Webhook health */}
-        <motion.div variants={fadeUp} className="mb-6 rounded-[4px] ring-1 ring-border bg-card p-4">
+        <motion.div variants={fadeUp} className="mb-6 rounded-[4px] ring-1 ring-border p-4">
           <h3 className="mb-3 text-[13px] font-medium">Webhook deliveries</h3>
           <div className="h-[160px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -356,7 +356,7 @@ export default function LogsPage() {
         <motion.div variants={fadeUp}>
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-[13px] font-medium">Recent activity</h3>
-            <div className="flex items-center gap-1 rounded-[4px] ring-1 ring-border bg-card p-0.5">
+            <div className="flex items-center gap-1 rounded-[4px] ring-1 ring-border p-0.5">
               {FILTER_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
@@ -373,7 +373,7 @@ export default function LogsPage() {
             </div>
           </div>
 
-          <div className="rounded-[4px] ring-1 ring-border bg-card">
+          <div className="rounded-[4px] ring-1 ring-border">
             {filteredEvents.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12">
                 <ClockCounterClockwise size={24} className="text-muted-foreground/40" />
@@ -434,7 +434,7 @@ export default function LogsPage() {
 
 function StatCard({ label, value, change }: { label: string; value: string; change: number }) {
   return (
-    <div className="rounded-[4px] ring-1 ring-border bg-card p-3.5">
+    <div className="rounded-[4px] ring-1 ring-border p-3.5">
       <p className="text-[11px] text-muted-foreground">{label}</p>
       <div className="mt-1 flex items-end justify-between">
         <span className="text-[20px] font-semibold leading-none tracking-tight">{value}</span>
