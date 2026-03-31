@@ -79,6 +79,10 @@ type CreateTaskInput = {
   }[]
 }
 
+function normalizeTitleFingerprint(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLowerCase()
+}
+
 function sortTasks<
   T extends { status: keyof typeof STATUS_ORDER; order: number },
 >(tasks: T[]) {
@@ -173,6 +177,96 @@ async function createTasksForWorkspace(
 ) {
   await requireTaskWriteAccess(ctx, workspaceId)
   return await insertTasksForWorkspace(ctx, workspaceId, taskInputs)
+}
+
+async function recordDeletedTaskSource(
+  ctx: MutationCtx,
+  task: Doc<"tasks">
+) {
+  const source = task.source
+  if (!source?.url) {
+    return
+  }
+
+  const titleFingerprint = normalizeTitleFingerprint(task.title)
+  const existing = await ctx.db
+    .query("deletedTaskSources")
+    .withIndex("by_workspace_source_title", (q) =>
+      q
+        .eq("workspaceId", task.workspaceId)
+        .eq("platform", source.platform)
+        .eq("sourceUrl", source.url)
+        .eq("titleFingerprint", titleFingerprint)
+    )
+    .unique()
+
+  if (existing) {
+    await ctx.db.patch(existing._id, {
+      deletedAt: Date.now(),
+    })
+    return
+  }
+
+  await ctx.db.insert("deletedTaskSources", {
+    workspaceId: task.workspaceId,
+    platform: source.platform,
+    sourceUrl: source.url,
+    titleFingerprint,
+    deletedAt: Date.now(),
+  })
+}
+
+async function isTaskSourceSuppressed(
+  ctx: MutationCtx,
+  workspaceId: Id<"workspaces">,
+  taskInput: CreateTaskInput,
+  matchMode: "url" | "exact"
+) {
+  if (!taskInput.source?.url) {
+    return false
+  }
+
+  const suppressions = await ctx.db
+    .query("deletedTaskSources")
+    .withIndex("by_workspace_source", (q) =>
+      q
+        .eq("workspaceId", workspaceId)
+        .eq("platform", taskInput.source!.platform)
+        .eq("sourceUrl", taskInput.source!.url)
+    )
+    .collect()
+
+  if (suppressions.length === 0) {
+    return false
+  }
+
+  if (matchMode === "url") {
+    return true
+  }
+
+  const titleFingerprint = normalizeTitleFingerprint(taskInput.title)
+  return suppressions.some(
+    (suppression) => suppression.titleFingerprint === titleFingerprint
+  )
+}
+
+async function filterSuppressedTaskInputs(
+  ctx: MutationCtx,
+  workspaceId: Id<"workspaces">,
+  taskInputs: CreateTaskInput[],
+  matchMode: "url" | "exact"
+) {
+  const filtered: CreateTaskInput[] = []
+
+  for (const taskInput of taskInputs) {
+    if (
+      !(await isTaskSourceSuppressed(ctx, workspaceId, taskInput, matchMode))
+    ) {
+      filtered.push(taskInput)
+    }
+  }
+
+  return filtered
 }
 
 async function queueLinearSync(ctx: MutationCtx, taskId: Id<"tasks">) {
@@ -299,10 +393,16 @@ export const createTasksFromDiscordFeedback = mutation({
       throw new Error("Invalid Discord bot secret")
     }
 
+    const filteredTasks = await filterSuppressedTaskInputs(
+      ctx,
+      args.workspaceId,
+      args.tasks,
+      "exact"
+    )
     const createdTasks = await insertTasksForWorkspace(
       ctx,
       args.workspaceId,
-      args.tasks
+      filteredTasks
     )
     for (const task of createdTasks) {
       await queueLinearSync(ctx, task._id)
@@ -318,10 +418,16 @@ export const createTasksFromDiscordFeedbackInternal = internalMutation({
     tasks: v.array(taskInputValidator),
   },
   handler: async (ctx, args) => {
+    const filteredTasks = await filterSuppressedTaskInputs(
+      ctx,
+      args.workspaceId,
+      args.tasks,
+      "exact"
+    )
     const createdTasks = await insertTasksForWorkspace(
       ctx,
       args.workspaceId,
-      args.tasks
+      filteredTasks
     )
     for (const task of createdTasks) {
       await queueLinearSync(ctx, task._id)
@@ -337,10 +443,16 @@ export const createTasksFromFeedbackInternal = internalMutation({
     tasks: v.array(taskInputValidator),
   },
   handler: async (ctx, args) => {
+    const filteredTasks = await filterSuppressedTaskInputs(
+      ctx,
+      args.workspaceId,
+      args.tasks,
+      "exact"
+    )
     const createdTasks = await insertTasksForWorkspace(
       ctx,
       args.workspaceId,
-      args.tasks
+      filteredTasks
     )
     for (const task of createdTasks) {
       await queueLinearSync(ctx, task._id)
@@ -709,6 +821,7 @@ export const deleteTask = mutation({
     if (!task) throw new Error("Task not found")
 
     await requireTaskWriteAccess(ctx, task.workspaceId)
+    await recordDeletedTaskSource(ctx, task)
     await queueGitHubIssueClosure(ctx, task.workspaceId, args.taskId)
     await queueLinearIssueDeletion(ctx, task.workspaceId, args.taskId)
     await clearLinearTaskLink(ctx, args.taskId)
@@ -780,6 +893,7 @@ export const bulkDeleteTasks = mutation({
       if (!task || task.workspaceId !== args.workspaceId) {
         throw new Error("Task not found")
       }
+      await recordDeletedTaskSource(ctx, task)
       await queueGitHubIssueClosure(ctx, args.workspaceId, taskId)
       await queueLinearIssueDeletion(ctx, args.workspaceId, taskId)
       await clearLinearTaskLink(ctx, taskId)

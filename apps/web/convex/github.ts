@@ -254,6 +254,24 @@ function normalizeOptionalText(value: string | null | undefined) {
   return trimmed ? trimmed : undefined
 }
 
+async function isDeletedGitHubTaskSource(
+  ctx: { db: any },
+  workspaceId: Id<"workspaces">,
+  sourceUrl: string
+) {
+  const suppression = await ctx.db
+    .query("deletedTaskSources")
+    .withIndex("by_workspace_source", (q: any) =>
+      q
+        .eq("workspaceId", workspaceId)
+        .eq("platform", "github")
+        .eq("sourceUrl", sourceUrl)
+    )
+    .first()
+
+  return Boolean(suppression)
+}
+
 function normalizeTitle(value: string) {
   return value.trim().replace(/\s+/g, " ").toLowerCase()
 }
@@ -1486,6 +1504,17 @@ export const upsertTaskFromGitHubIssue = internalMutation({
         })
         return linkedTask._id
       }
+    }
+
+    if (
+      nextSource.url &&
+      (await isDeletedGitHubTaskSource(
+        ctx,
+        integration.workspaceId,
+        nextSource.url
+      ))
+    ) {
+      return null
     }
 
     const workspaceTasks = await ctx.db

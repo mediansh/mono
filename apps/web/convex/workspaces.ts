@@ -275,6 +275,7 @@ export const deleteWorkspace = mutation({
       xPosts,
       xOAuthStates,
       xWebhookDeliveries,
+      deletedTaskSources,
     ] = await Promise.all([
       ctx.db
         .query("workspaceMembers")
@@ -322,6 +323,10 @@ export const deleteWorkspace = mutation({
           q.eq("workspaceId", args.workspaceId)
         )
         .collect(),
+      ctx.db
+        .query("deletedTaskSources")
+        .withIndex("by_workspace_source", (q) => q.eq("workspaceId", args.workspaceId))
+        .collect(),
     ])
 
     for (const task of tasks) {
@@ -358,6 +363,10 @@ export const deleteWorkspace = mutation({
 
     for (const delivery of xWebhookDeliveries) {
       await ctx.db.delete(delivery._id)
+    }
+
+    for (const deletedTaskSource of deletedTaskSources) {
+      await ctx.db.delete(deletedTaskSource._id)
     }
 
     for (const integration of xIntegrations) {

@@ -459,4 +459,26 @@ export default defineSchema({
       )
     ),
   }).index("by_workspace", ["workspaceId"]),
+
+  deletedTaskSources: defineTable({
+    workspaceId: v.id("workspaces"),
+    platform: v.union(
+      v.literal("discord"),
+      v.literal("slack"),
+      v.literal("x"),
+      v.literal("linear"),
+      v.literal("github"),
+      v.literal("cli")
+    ),
+    sourceUrl: v.string(),
+    titleFingerprint: v.string(),
+    deletedAt: v.number(),
+  })
+    .index("by_workspace_source", ["workspaceId", "platform", "sourceUrl"])
+    .index("by_workspace_source_title", [
+      "workspaceId",
+      "platform",
+      "sourceUrl",
+      "titleFingerprint",
+    ]),
 })

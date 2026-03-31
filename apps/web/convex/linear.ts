@@ -119,6 +119,24 @@ function normalizeOptionalText(value: string | null | undefined) {
   return trimmed ? trimmed : undefined
 }
 
+async function isDeletedLinearTaskSource(
+  ctx: { db: any },
+  workspaceId: Id<"workspaces">,
+  sourceUrl: string
+) {
+  const suppression = await ctx.db
+    .query("deletedTaskSources")
+    .withIndex("by_workspace_source", (q: any) =>
+      q
+        .eq("workspaceId", workspaceId)
+        .eq("platform", "linear")
+        .eq("sourceUrl", sourceUrl)
+    )
+    .first()
+
+  return Boolean(suppression)
+}
+
 function normalizeStatusMappings(
   statusMappings: LinearStatusMappings | null | undefined
 ): LinearStatusMappings {
@@ -1306,6 +1324,13 @@ export const upsertTaskFromLinearIssue = internalMutation({
         })
         return linkedTask._id
       }
+    }
+
+    if (
+      nextSource?.url &&
+      (await isDeletedLinearTaskSource(ctx, args.workspaceId, nextSource.url))
+    ) {
+      return null
     }
 
     const workspaceTasks = await ctx.db
