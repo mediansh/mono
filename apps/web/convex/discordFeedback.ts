@@ -24,6 +24,14 @@ const DEFAULT_WORKPOOL_PARALLELISM = 8
 
 type FeedbackMessage = {
   _id: Id<"discordMessages">
+  channelId: string
+  channelName: string | null
+  parentChannelId: string | null
+  parentChannelName: string | null
+  threadId: string | null
+  threadTitle: string | null
+  forumChannelId: string | null
+  forumTitle: string | null
   messageId: string
   authorUsername: string
   content: string
@@ -252,7 +260,22 @@ function formatTranscript(
       const marker = pendingMessageIds.has(message.messageId)
         ? "NEW"
         : "CONTEXT"
-      return `[${marker}] [id:${message.messageId}] ${timestamp} ${message.authorUsername}: ${message.content}`
+      const locationParts = [
+        message.forumTitle ? `forum:${message.forumTitle}` : null,
+        message.threadTitle ? `thread:${message.threadTitle}` : null,
+        message.parentChannelName
+          ? `parent_channel:${message.parentChannelName}`
+          : null,
+        message.channelName ? `channel:${message.channelName}` : null,
+      ].filter(Boolean)
+      const locationPrefix =
+        locationParts.length > 0 ? ` [${locationParts.join(" | ")}]` : ""
+      const content =
+        message.content ||
+        (message.threadTitle
+          ? "(no body text; use the thread title as the post title)"
+          : "(no body text)")
+      return `[${marker}] [id:${message.messageId}] ${timestamp}${locationPrefix} ${message.authorUsername}: ${content}`
     })
     .join("\n")
 }
@@ -314,6 +337,14 @@ async function loadPendingFeedbackWindow(
     },
     messages: messages.reverse().map((message) => ({
       _id: message._id,
+      channelId: message.channelId,
+      channelName: message.channelName ?? null,
+      parentChannelId: message.parentChannelId ?? null,
+      parentChannelName: message.parentChannelName ?? null,
+      threadId: message.threadId ?? null,
+      threadTitle: message.threadTitle ?? null,
+      forumChannelId: message.forumChannelId ?? null,
+      forumTitle: message.forumTitle ?? null,
       messageId: message.messageId,
       authorUsername: message.authorUsername,
       content: message.content,
@@ -583,6 +614,7 @@ export const processFeedbackWindow = internalAction({
         "Return isProductFeedback=true only when the newest messages contain concrete product feedback, a bug report, a feature request, workflow friction, or an actionable complaint about the actual product.",
         "Reject off-topic chat, memes, introductions, hiring talk, agency requests, feedback about unrelated tools, and generic conversation that is not about the product itself.",
         "Use the recent context only to interpret what the new messages refer to.",
+        "Forum and thread metadata may appear inline as forum/thread/channel labels; use that metadata, especially when a forum post body is empty.",
         "Only include relevantMessageIds from NEW messages.",
         "Each message has an [id:XXXXXXX] tag. Use the numeric ID from that tag as the relevantMessageId, NOT the timestamp.",
         "Return valid JSON only. No markdown. No code fences. No commentary.",
@@ -717,7 +749,23 @@ export const processFeedbackWindow = internalAction({
           relevantMessages
             .map(
               (message) =>
-                `- ${new Date(message.messageCreatedAt).toISOString()} ${message.authorUsername}: ${message.content}`
+                [
+                  `- ${new Date(message.messageCreatedAt).toISOString()}`,
+                  message.forumTitle ? `forum=${message.forumTitle}` : null,
+                  message.threadTitle ? `thread=${message.threadTitle}` : null,
+                  message.parentChannelName
+                    ? `parent_channel=${message.parentChannelName}`
+                    : null,
+                  message.channelName ? `channel=${message.channelName}` : null,
+                  `${message.authorUsername}: ${
+                    message.content ||
+                    (message.threadTitle
+                      ? "(no body text; rely on the thread title)"
+                      : "(no body text)")
+                  }`,
+                ]
+                  .filter(Boolean)
+                  .join(" | ")
             )
             .join("\n"),
         ].join("\n\n"),

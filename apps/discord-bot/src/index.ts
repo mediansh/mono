@@ -41,6 +41,13 @@ const recordInboundMessageMutation = makeFunctionReference<
     botSecret: string
     guildId: string
     channelId: string
+    channelName?: string
+    parentChannelId?: string
+    parentChannelName?: string
+    threadId?: string
+    threadTitle?: string
+    forumChannelId?: string
+    forumTitle?: string
     messageId: string
     authorId: string
     authorUsername: string
@@ -181,6 +188,44 @@ function summarizeText(text: string, limit = 120) {
   }
 
   return `${text.slice(0, limit - 1)}...`
+}
+
+function getMessageChannelContext(message: Message) {
+  const channelName =
+    "name" in message.channel && typeof message.channel.name === "string"
+      ? message.channel.name
+      : undefined
+
+  if (!message.channel.isThread()) {
+    return {
+      channelName,
+      parentChannelId: undefined,
+      parentChannelName: undefined,
+      threadId: undefined,
+      threadTitle: undefined,
+      forumChannelId: undefined,
+      forumTitle: undefined,
+    }
+  }
+
+  const parentChannel = message.channel.parent
+  const parentChannelName =
+    parentChannel &&
+    "name" in parentChannel &&
+    typeof parentChannel.name === "string"
+      ? parentChannel.name
+      : undefined
+  const isForumPost = parentChannel?.type === ChannelType.GuildForum
+
+  return {
+    channelName,
+    parentChannelId: parentChannel?.id,
+    parentChannelName,
+    threadId: message.channel.id,
+    threadTitle: message.channel.name,
+    forumChannelId: isForumPost ? parentChannel.id : undefined,
+    forumTitle: isForumPost ? parentChannel.name : undefined,
+  }
 }
 
 
@@ -427,7 +472,12 @@ client.on(Events.MessageCreate, async (message: Message) => {
   }
 
   const content = normalizeMessageContent(message.content)
-  if (!content) {
+  const channelContext = getMessageChannelContext(message)
+  const hasChannelContext = Boolean(
+    channelContext.threadTitle || channelContext.forumTitle
+  )
+
+  if (!content && !hasChannelContext) {
     logger.info("Ignoring empty message", {
       scope: "message",
       guildId: message.guildId,
@@ -443,8 +493,14 @@ client.on(Events.MessageCreate, async (message: Message) => {
     guildId: message.guildId,
     channelId: message.channelId,
     messageId: message.id,
+    threadId: channelContext.threadId ?? null,
+    threadTitle: channelContext.threadTitle ?? null,
+    forumChannelId: channelContext.forumChannelId ?? null,
+    forumTitle: channelContext.forumTitle ?? null,
     author: message.author.username,
-    preview: summarizeText(content),
+    preview: summarizeText(
+      content || channelContext.threadTitle || channelContext.forumTitle || ""
+    ),
   })
 
   try {
@@ -452,6 +508,13 @@ client.on(Events.MessageCreate, async (message: Message) => {
       botSecret: pairingSecret,
       guildId: message.guildId,
       channelId: message.channelId,
+      channelName: channelContext.channelName,
+      parentChannelId: channelContext.parentChannelId,
+      parentChannelName: channelContext.parentChannelName,
+      threadId: channelContext.threadId,
+      threadTitle: channelContext.threadTitle,
+      forumChannelId: channelContext.forumChannelId,
+      forumTitle: channelContext.forumTitle,
       messageId: message.id,
       authorId: message.author.id,
       authorUsername: message.author.username,
@@ -484,6 +547,8 @@ client.on(Events.MessageCreate, async (message: Message) => {
       integrationId: result.integration.integrationId,
       workspaceId: result.integration.workspaceId,
       guildName: result.integration.guildName,
+      threadTitle: channelContext.threadTitle ?? null,
+      forumTitle: channelContext.forumTitle ?? null,
     })
   } catch (error) {
     logger.error("Failed to record Discord message", {

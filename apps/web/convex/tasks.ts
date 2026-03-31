@@ -437,13 +437,15 @@ function shouldRespondInChannel(
     respondForMeMode?: "off" | "all" | "specific"
     respondForMeChannelIds?: string[]
   },
-  channelId: string
+  channelIds: string[]
 ): boolean {
   const mode = integration.respondForMeMode
   if (mode === "off") return false
   if (mode === "all") return true
   if (mode === "specific")
-    return (integration.respondForMeChannelIds ?? []).includes(channelId)
+    return channelIds.some((channelId) =>
+      (integration.respondForMeChannelIds ?? []).includes(channelId)
+    )
   // Legacy fallback
   return integration.respondForMe ?? false
 }
@@ -454,6 +456,108 @@ function parseDiscordPermalink(
   const match = url.match(/discord\.com\/channels\/(\d+)\/(\d+)\/(\d+)/)
   if (!match?.[1] || !match[2] || !match[3]) return null
   return { guildId: match[1], channelId: match[2], messageId: match[3] }
+}
+
+async function getDiscordNotificationContext(
+  ctx: MutationCtx,
+  sourceUrl: string
+) {
+  const parsed = parseDiscordPermalink(sourceUrl)
+  if (!parsed) {
+    return null
+  }
+
+  const integration = await ctx.db
+    .query("discordWorkspaceIntegrations")
+    .withIndex("by_guild", (q) => q.eq("guildId", parsed.guildId))
+    .first()
+
+  if (!integration) {
+    return null
+  }
+
+  const sourceMessage = await ctx.db
+    .query("discordMessages")
+    .withIndex("by_discord_message", (q) =>
+      q
+        .eq("guildId", parsed.guildId)
+        .eq("channelId", parsed.channelId)
+        .eq("messageId", parsed.messageId)
+    )
+    .unique()
+
+  return {
+    integration,
+    parsed,
+    respondChannelIds: Array.from(
+      new Set(
+        [
+          parsed.channelId,
+          sourceMessage?.parentChannelId ?? "",
+          sourceMessage?.forumChannelId ?? "",
+        ].filter(Boolean)
+      )
+    ),
+  }
+}
+
+async function queueDiscordNotificationForStatusChange(
+  ctx: MutationCtx,
+  task: Doc<"tasks">,
+  taskId: Id<"tasks">,
+  nextStatus: Doc<"tasks">["status"]
+) {
+  if (task.source?.platform !== "discord" || !task.source.url) {
+    return
+  }
+
+  const notificationContext = await getDiscordNotificationContext(
+    ctx,
+    task.source.url
+  )
+  if (!notificationContext) {
+    return
+  }
+
+  const { integration, parsed, respondChannelIds } = notificationContext
+  if (!shouldRespondInChannel(integration, respondChannelIds)) {
+    return
+  }
+
+  if (nextStatus === "shipped" && task.status !== "shipped") {
+    await ctx.db.insert("discordPendingNotifications", {
+      workspaceId: task.workspaceId,
+      integrationId: integration._id,
+      taskId,
+      type: "request_shipped",
+      channelId: parsed.channelId,
+      replyToMessageId: parsed.messageId,
+      taskTitle: task.title,
+      taskCode: task.taskCode,
+      status: "pending",
+      createdAt: Date.now(),
+    })
+  }
+
+  if (
+    task.status === "requests" &&
+    (nextStatus === "todo" ||
+      nextStatus === "in_progress" ||
+      nextStatus === "ready")
+  ) {
+    await ctx.db.insert("discordPendingNotifications", {
+      workspaceId: task.workspaceId,
+      integrationId: integration._id,
+      taskId,
+      type: "request_received",
+      channelId: parsed.channelId,
+      replyToMessageId: parsed.messageId,
+      taskTitle: task.title,
+      taskCode: task.taskCode,
+      status: "pending",
+      createdAt: Date.now(),
+    })
+  }
 }
 
 export const updateTask = mutation({
@@ -519,59 +623,14 @@ export const updateTask = mutation({
     // Queue Discord notifications for status transitions on tasks with a Discord source
     if (
       args.status !== undefined &&
-      args.status !== task.status &&
-      task.source?.platform === "discord" &&
-      task.source.url
+      args.status !== task.status
     ) {
-      const parsed = parseDiscordPermalink(task.source.url)
-      if (parsed) {
-        const integration = await ctx.db
-          .query("discordWorkspaceIntegrations")
-          .withIndex("by_guild", (q) => q.eq("guildId", parsed.guildId))
-          .first()
-
-        if (
-          integration &&
-          shouldRespondInChannel(integration, parsed.channelId)
-        ) {
-          // Shipped notification
-          if (args.status === "shipped" && task.status !== "shipped") {
-            await ctx.db.insert("discordPendingNotifications", {
-              workspaceId: task.workspaceId,
-              integrationId: integration._id,
-              taskId: args.taskId,
-              type: "request_shipped",
-              channelId: parsed.channelId,
-              replyToMessageId: parsed.messageId,
-              taskTitle: task.title,
-              taskCode: task.taskCode,
-              status: "pending",
-              createdAt: Date.now(),
-            })
-          }
-
-          // Accepted notification — task moved out of "requests" to an active status
-          if (
-            task.status === "requests" &&
-            (args.status === "todo" ||
-              args.status === "in_progress" ||
-              args.status === "ready")
-          ) {
-            await ctx.db.insert("discordPendingNotifications", {
-              workspaceId: task.workspaceId,
-              integrationId: integration._id,
-              taskId: args.taskId,
-              type: "request_received",
-              channelId: parsed.channelId,
-              replyToMessageId: parsed.messageId,
-              taskTitle: task.title,
-              taskCode: task.taskCode,
-              status: "pending",
-              createdAt: Date.now(),
-            })
-          }
-        }
-      }
+      await queueDiscordNotificationForStatusChange(
+        ctx,
+        task,
+        args.taskId,
+        args.status
+      )
     }
   },
 })
@@ -626,64 +685,17 @@ export const reorderTasks = mutation({
       const task = tasksBeforeUpdate.get(change.taskId)
       if (
         !task ||
-        change.status === task.status ||
-        task.source?.platform !== "discord" ||
-        !task.source.url
+        change.status === task.status
       ) {
         continue
       }
 
-      const parsed = parseDiscordPermalink(task.source.url)
-      if (!parsed) continue
-
-      const integration = await ctx.db
-        .query("discordWorkspaceIntegrations")
-        .withIndex("by_guild", (q) => q.eq("guildId", parsed.guildId))
-        .first()
-
-      if (
-        !integration ||
-        !shouldRespondInChannel(integration, parsed.channelId)
-      ) {
-        continue
-      }
-
-      // Shipped notification
-      if (change.status === "shipped" && task.status !== "shipped") {
-        await ctx.db.insert("discordPendingNotifications", {
-          workspaceId: task.workspaceId,
-          integrationId: integration._id,
-          taskId: change.taskId,
-          type: "request_shipped",
-          channelId: parsed.channelId,
-          replyToMessageId: parsed.messageId,
-          taskTitle: task.title,
-          taskCode: task.taskCode,
-          status: "pending",
-          createdAt: Date.now(),
-        })
-      }
-
-      // Accepted notification — task moved out of "requests" to an active status
-      if (
-        task.status === "requests" &&
-        (change.status === "todo" ||
-          change.status === "in_progress" ||
-          change.status === "ready")
-      ) {
-        await ctx.db.insert("discordPendingNotifications", {
-          workspaceId: task.workspaceId,
-          integrationId: integration._id,
-          taskId: change.taskId,
-          type: "request_received",
-          channelId: parsed.channelId,
-          replyToMessageId: parsed.messageId,
-          taskTitle: task.title,
-          taskCode: task.taskCode,
-          status: "pending",
-          createdAt: Date.now(),
-        })
-      }
+      await queueDiscordNotificationForStatusChange(
+        ctx,
+        task,
+        change.taskId,
+        change.status
+      )
     }
   },
 })
@@ -742,59 +754,14 @@ export const bulkUpdateTasks = mutation({
       // Queue Discord notifications for status transitions
       if (
         args.status !== undefined &&
-        args.status !== task.status &&
-        task.source?.platform === "discord" &&
-        task.source.url
+        args.status !== task.status
       ) {
-        const parsed = parseDiscordPermalink(task.source.url)
-        if (parsed) {
-          const integration = await ctx.db
-            .query("discordWorkspaceIntegrations")
-            .withIndex("by_guild", (q) => q.eq("guildId", parsed.guildId))
-            .first()
-
-          if (
-            integration &&
-            shouldRespondInChannel(integration, parsed.channelId)
-          ) {
-            // Shipped notification
-            if (args.status === "shipped" && task.status !== "shipped") {
-              await ctx.db.insert("discordPendingNotifications", {
-                workspaceId: task.workspaceId,
-                integrationId: integration._id,
-                taskId,
-                type: "request_shipped",
-                channelId: parsed.channelId,
-                replyToMessageId: parsed.messageId,
-                taskTitle: task.title,
-                taskCode: task.taskCode,
-                status: "pending",
-                createdAt: Date.now(),
-              })
-            }
-
-            // Accepted notification — moved out of "requests" to active status
-            if (
-              task.status === "requests" &&
-              (args.status === "todo" ||
-                args.status === "in_progress" ||
-                args.status === "ready")
-            ) {
-              await ctx.db.insert("discordPendingNotifications", {
-                workspaceId: task.workspaceId,
-                integrationId: integration._id,
-                taskId,
-                type: "request_received",
-                channelId: parsed.channelId,
-                replyToMessageId: parsed.messageId,
-                taskTitle: task.title,
-                taskCode: task.taskCode,
-                status: "pending",
-                createdAt: Date.now(),
-              })
-            }
-          }
-        }
+        await queueDiscordNotificationForStatusChange(
+          ctx,
+          task,
+          taskId,
+          args.status
+        )
       }
     }
   },

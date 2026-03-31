@@ -25,8 +25,11 @@ function requireDiscordBotSecret(botSecret: string) {
 async function getActiveIntegrationForGuildChannel(
   ctx: Pick<MutationCtx, "db">,
   guildId: string,
-  channelId: string
+  channelIds: string[]
 ) {
+  const normalizedChannelIds = Array.from(
+    new Set(channelIds.map((channelId) => channelId.trim()).filter(Boolean))
+  )
   const integrations = await ctx.db
     .query("discordWorkspaceIntegrations")
     .withIndex("by_guild", (q) => q.eq("guildId", guildId))
@@ -35,7 +38,8 @@ async function getActiveIntegrationForGuildChannel(
   return (
     integrations.find(
       (integration) =>
-        !integration.channelId || integration.channelId === channelId
+        !integration.channelId ||
+        normalizedChannelIds.includes(integration.channelId)
     ) ?? null
   )
 }
@@ -149,6 +153,13 @@ export const recordInboundMessage = mutation({
     botSecret: v.string(),
     guildId: v.string(),
     channelId: v.string(),
+    channelName: v.optional(v.string()),
+    parentChannelId: v.optional(v.string()),
+    parentChannelName: v.optional(v.string()),
+    threadId: v.optional(v.string()),
+    threadTitle: v.optional(v.string()),
+    forumChannelId: v.optional(v.string()),
+    forumTitle: v.optional(v.string()),
     messageId: v.string(),
     authorId: v.string(),
     authorUsername: v.string(),
@@ -161,7 +172,11 @@ export const recordInboundMessage = mutation({
     const integration = await getActiveIntegrationForGuildChannel(
       ctx,
       args.guildId,
-      args.channelId
+      [
+        args.channelId,
+        args.parentChannelId ?? "",
+        args.forumChannelId ?? "",
+      ]
     )
     if (!integration) {
       return {
@@ -199,6 +214,13 @@ export const recordInboundMessage = mutation({
       integrationId: integration._id,
       guildId: args.guildId,
       channelId: args.channelId,
+      channelName: args.channelName,
+      parentChannelId: args.parentChannelId,
+      parentChannelName: args.parentChannelName,
+      threadId: args.threadId,
+      threadTitle: args.threadTitle,
+      forumChannelId: args.forumChannelId,
+      forumTitle: args.forumTitle,
       messageId: args.messageId,
       permalink: `https://discord.com/channels/${args.guildId}/${args.channelId}/${args.messageId}`,
       authorId: args.authorId,
@@ -278,6 +300,14 @@ export const getPendingFeedbackWindow = query({
       messages: messages.reverse().map((message) => ({
         _id: message._id,
         messageId: message.messageId,
+        channelId: message.channelId,
+        channelName: message.channelName ?? null,
+        parentChannelId: message.parentChannelId ?? null,
+        parentChannelName: message.parentChannelName ?? null,
+        threadId: message.threadId ?? null,
+        threadTitle: message.threadTitle ?? null,
+        forumChannelId: message.forumChannelId ?? null,
+        forumTitle: message.forumTitle ?? null,
         authorUsername: message.authorUsername,
         content: message.content,
         permalink: message.permalink,
