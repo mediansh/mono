@@ -63,8 +63,8 @@ import {
 
 const mainNav = [
   { label: "Home", href: "/app", icon: House },
-  { label: "Logs", href: "/app/logs", icon: ClockCounterClockwise },
   { label: "Integrations", href: "/app/integrations", icon: Plugs },
+  { label: "Logs", href: "/app/logs", icon: ClockCounterClockwise },
   { label: "Billing", href: "/app/billing", icon: CreditCard },
 ]
 
