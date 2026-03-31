@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   },
   description: "Median",
   icons: {
-    icon: "/median.svg",
+    icon: "/favicon.svg",
   },
 }
 
