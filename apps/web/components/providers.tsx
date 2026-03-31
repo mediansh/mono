@@ -28,7 +28,13 @@ export function Providers({
                 <ErrorTracker />
                 {children}
               </TooltipProvider>
-              <Toaster richColors position="bottom-right" />
+              <Toaster
+                position="bottom-center"
+                toastOptions={{
+                  className:
+                    "!bg-background !text-foreground !border-border !shadow-lg !rounded-[6px] !text-[13px] !font-medium",
+                }}
+              />
             </ThemeProvider>
           </PostHogProvider>
         </ConvexProviderWithClerk>
@@ -39,7 +45,13 @@ export function Providers({
               <ErrorTracker />
               {children}
             </TooltipProvider>
-            <Toaster richColors position="bottom-right" />
+            <Toaster
+              position="bottom-center"
+              toastOptions={{
+                className:
+                  "!bg-background !text-foreground !border-border !shadow-lg !rounded-[6px] !text-[13px] !font-medium",
+              }}
+            />
           </ThemeProvider>
         </PostHogProvider>
       )}
