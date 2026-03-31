@@ -6,6 +6,8 @@ import {
   ClockCounterClockwise,
   ArrowUp,
   ArrowDown,
+  ArrowLeft,
+  ArrowRight,
   Rocket,
   GitPullRequest,
   ChatCircleDots,
@@ -216,17 +218,28 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
 
 // ── Main component ───────────────────────────────────────
 
+const PAGE_SIZE = 20
+
 export default function LogsPage() {
   const [filter, setFilter] = useState<FilterType>("all")
+  const [page, setPage] = useState(0)
 
   useEffect(() => {
     document.title = "Logs — Median"
   }, [])
 
+  // Reset to first page when filter changes
+  useEffect(() => {
+    setPage(0)
+  }, [filter])
+
   const filteredEvents =
     filter === "all"
       ? mockEvents
       : mockEvents.filter((e) => FILTER_MAP[filter].includes(e.type))
+
+  const totalPages = Math.max(1, Math.ceil(filteredEvents.length / PAGE_SIZE))
+  const paginatedEvents = filteredEvents.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
   return (
     <Stagger className="h-full overflow-y-auto">
@@ -372,7 +385,7 @@ export default function LogsPage() {
               </div>
             ) : (
               <div className="divide-y divide-border">
-                {filteredEvents.map((event) => {
+                {paginatedEvents.map((event) => {
                   const config = EVENT_CONFIG[event.type]
                   const Icon = config.icon
                   const SourceIcon = event.source ? SOURCE_ICONS[event.source] : null
@@ -415,6 +428,34 @@ export default function LogsPage() {
               </div>
             )}
           </div>
+
+          {/* Pagination */}
+          {filteredEvents.length > PAGE_SIZE && (
+            <div className="mt-3 flex items-center justify-between">
+              <p className="text-[11px] text-muted-foreground">
+                {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filteredEvents.length)} of {filteredEvents.length}
+              </p>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                  className="flex size-7 items-center justify-center rounded-[4px] ring-1 ring-border text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent"
+                >
+                  <ArrowLeft size={12} />
+                </button>
+                <span className="px-2 text-[11px] text-muted-foreground">
+                  {page + 1} / {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                  disabled={page >= totalPages - 1}
+                  className="flex size-7 items-center justify-center rounded-[4px] ring-1 ring-border text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent"
+                >
+                  <ArrowRight size={12} />
+                </button>
+              </div>
+            </div>
+          )}
         </motion.div>
       </div>
     </Stagger>
