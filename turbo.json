@@ -1,7 +1,7 @@
 {
-  "cacheMaxAge": "3h",
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
+  "cacheMaxSize": "5GB",
   "globalEnv": [
     "CLERK_JWT_ISSUER_DOMAIN",
     "CLERK_SECRET_KEY",
