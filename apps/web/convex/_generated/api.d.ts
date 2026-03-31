@@ -9,6 +9,7 @@
  */
 
 import type * as billing from "../billing.js";
+import type * as billingTracking from "../billingTracking.js";
 import type * as cli from "../cli.js";
 import type * as discord from "../discord.js";
 import type * as discordFeedback from "../discordFeedback.js";
@@ -31,6 +32,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   billing: typeof billing;
+  billingTracking: typeof billingTracking;
   cli: typeof cli;
   discord: typeof discord;
   discordFeedback: typeof discordFeedback;

@@ -19,27 +19,31 @@ function getPostHogConfig() {
   }
 }
 
-function captureEvent(payload: PostHogEventPayload) {
+async function captureEvent(payload: PostHogEventPayload) {
   const config = getPostHogConfig()
   if (!config) {
     return
   }
 
-  void fetch(`${config.host}/capture/`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      api_key: config.key,
-      event: payload.event,
-      distinct_id: payload.distinctId,
-      properties: payload.properties,
-    }),
-  }).catch(() => {})
+  try {
+    await fetch(`${config.host}/capture/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        api_key: config.key,
+        event: payload.event,
+        distinct_id: payload.distinctId,
+        properties: payload.properties,
+      }),
+    })
+  } catch {
+    // PostHog capture is best-effort — don't block callers on failure
+  }
 }
 
-export function trackLLMGeneration(props: {
+export async function trackLLMGeneration(props: {
   distinctId: string
   model: string
   feature: string
@@ -50,7 +54,7 @@ export function trackLLMGeneration(props: {
   error?: string
   metadata?: Record<string, unknown>
 }) {
-  captureEvent({
+  await captureEvent({
     distinctId: props.distinctId,
     event: "llm_generation",
     properties: {
@@ -67,7 +71,7 @@ export function trackLLMGeneration(props: {
   })
 }
 
-export function trackFeedbackProcessing(props: {
+export async function trackFeedbackProcessing(props: {
   distinctId: string
   platform: "discord" | "x"
   integrationId: string
@@ -80,7 +84,7 @@ export function trackFeedbackProcessing(props: {
   extractorDurationMs?: number
   totalDurationMs: number
 }) {
-  captureEvent({
+  await captureEvent({
     distinctId: props.distinctId,
     event: "feedback_processed",
     properties: {

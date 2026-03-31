@@ -667,7 +667,7 @@ export const processFeedbackWindow = internalAction({
       })
       const classifierDurationMs = Date.now() - classifierStart
 
-      trackLLMGeneration({
+      await trackLLMGeneration({
         distinctId: feedbackWindow.integration.workspaceId,
         model: "google/gemma-3-27b-it",
         feature: "discord_feedback_classifier",
@@ -807,7 +807,7 @@ export const processFeedbackWindow = internalAction({
       const extractorDurationMs = Date.now() - extractorStart
       const extracted = extractorResult.output
 
-      trackLLMGeneration({
+      await trackLLMGeneration({
         distinctId: feedbackWindow.integration.workspaceId,
         model: "anthropic/claude-haiku-4.5",
         feature: "discord_feedback_extractor",
@@ -891,7 +891,7 @@ export const processFeedbackWindow = internalAction({
         createdTaskCount: extracted.tasks.length,
       })
 
-      trackFeedbackProcessing({
+      await trackFeedbackProcessing({
         distinctId: feedbackWindow.integration.workspaceId,
         platform: "discord",
         integrationId: args.integrationId,

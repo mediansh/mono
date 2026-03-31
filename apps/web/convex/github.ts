@@ -16,7 +16,6 @@ import {
   requireWorkspaceAdminAccess,
 } from "./permissions"
 import { STATUS_ORDER, type TaskStatus } from "../lib/task-board"
-import { safeTrackIntegrationEvent } from "../lib/billing/autumn"
 
 const GITHUB_API_URL = "https://api.github.com"
 const GITHUB_INSTALL_STATE_TTL_MS = 1000 * 60 * 15
@@ -1274,15 +1273,19 @@ export const recordGitHubWebhookDelivery = internalMutation({
       source: "github",
     })
 
-    await safeTrackIntegrationEvent({
-      workspaceId: args.workspaceId,
-      source: "github",
-      properties: {
-        event_type: args.eventType,
-        action: args.action ?? undefined,
-        delivery_id: args.deliveryId,
-      },
-    })
+    await ctx.scheduler.runAfter(
+      0,
+      internal.billingTracking.trackIntegrationEvent,
+      {
+        workspaceId: args.workspaceId,
+        source: "github" as const,
+        properties: {
+          event_type: args.eventType,
+          action: args.action ?? undefined,
+          delivery_id: args.deliveryId,
+        },
+      }
+    )
 
     return true
   },

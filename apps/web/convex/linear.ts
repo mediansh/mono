@@ -15,7 +15,6 @@ import {
   requireWorkspaceAdminAccess,
 } from "./permissions"
 import { type TaskPriority, type TaskStatus } from "../lib/task-board"
-import { safeTrackIntegrationEvent } from "../lib/billing/autumn"
 
 const LINEAR_GRAPHQL_URL = "https://api.linear.app/graphql"
 const LINEAR_MAPPABLE_STATUSES: TaskStatus[] = [
@@ -1082,14 +1081,18 @@ export const recordLinearWebhookDelivery = internalMutation({
         source: "linear",
       })
 
-      await safeTrackIntegrationEvent({
-        workspaceId: integration.workspaceId,
-        source: "linear",
-        properties: {
-          event_type: args.eventType,
-          delivery_id: args.deliveryId,
-        },
-      })
+      await ctx.scheduler.runAfter(
+        0,
+        internal.billingTracking.trackIntegrationEvent,
+        {
+          workspaceId: integration.workspaceId,
+          source: "linear" as const,
+          properties: {
+            event_type: args.eventType,
+            delivery_id: args.deliveryId,
+          },
+        }
+      )
     }
     return true
   },
