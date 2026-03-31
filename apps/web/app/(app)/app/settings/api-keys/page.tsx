@@ -12,6 +12,13 @@ import {
   hasWorkspaceAdminPermission,
 } from "@/lib/workspace-permissions"
 import { SettingsAccessState } from "@/components/settings-access-state"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@workspace/ui/components/dialog"
 
 function Stagger({ children, className }: { children: ReactNode; className?: string }) {
   return (
@@ -125,17 +132,17 @@ export default function ApiKeysSettingsPage() {
         </p>
       </motion.div>
 
-      {/* New key reveal */}
-      {newKey && (
-        <motion.div
-          variants={fadeUp}
-          className="mb-3 rounded-[4px] border border-amber-500/30 bg-amber-500/5 p-3.5"
-        >
-          <p className="mb-2 text-[13px] font-medium text-amber-400">
-            Copy your API key now — it won't be shown again.
-          </p>
+      {/* New key modal */}
+      <Dialog open={!!newKey} onOpenChange={(open) => { if (!open) setNewKey(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>API key created</DialogTitle>
+            <DialogDescription>
+              Copy your API key now — it won't be shown again.
+            </DialogDescription>
+          </DialogHeader>
           <div className="flex items-center gap-2">
-            <code className="flex-1 rounded-[4px] ring-1 ring-border bg-background px-3 py-2 font-mono text-[12px] select-all">
+            <code className="min-w-0 flex-1 truncate rounded-[4px] ring-1 ring-border bg-background px-3 py-2 font-mono text-[12px] select-all">
               {newKey}
             </code>
             <button
@@ -146,15 +153,11 @@ export default function ApiKeysSettingsPage() {
               <Copy size={14} />
             </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setNewKey(null)}
-            className="mt-3 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Dismiss
-          </button>
-        </motion.div>
-      )}
+          <p className="text-[11px] text-muted-foreground">
+            Use this key with <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px]">mdn setup</code> to connect the CLI to this workspace.
+          </p>
+        </DialogContent>
+      </Dialog>
 
       {/* Generate card */}
       <motion.div variants={fadeUp} className="rounded-[4px] ring-1 ring-border bg-card">
@@ -204,10 +207,10 @@ export default function ApiKeysSettingsPage() {
                   key={key._id}
                   className="group flex items-center justify-between px-3.5 py-2.5"
                 >
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <p className="text-[13px] font-medium">{key.label}</p>
-                      <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
+                      <p className="truncate text-[13px] font-medium">{key.label}</p>
+                      <code className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
                         {key.keyPrefix}
                       </code>
                     </div>
