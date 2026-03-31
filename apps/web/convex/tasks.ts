@@ -216,6 +216,72 @@ async function recordDeletedTaskSource(
   })
 }
 
+async function recordLinkedPlatformDeletions(
+  ctx: MutationCtx,
+  task: Doc<"tasks">
+) {
+  const titleFingerprint = normalizeTitleFingerprint(task.title)
+  const now = Date.now()
+
+  const linearLink = await ctx.db
+    .query("linearTaskLinks")
+    .withIndex("by_task", (q) => q.eq("taskId", task._id))
+    .unique()
+
+  if (linearLink?.linearIssueUrl) {
+    const existing = await ctx.db
+      .query("deletedTaskSources")
+      .withIndex("by_workspace_source", (q) =>
+        q
+          .eq("workspaceId", task.workspaceId)
+          .eq("platform", "linear")
+          .eq("sourceUrl", linearLink.linearIssueUrl!)
+      )
+      .first()
+
+    if (existing) {
+      await ctx.db.patch(existing._id, { deletedAt: now })
+    } else {
+      await ctx.db.insert("deletedTaskSources", {
+        workspaceId: task.workspaceId,
+        platform: "linear",
+        sourceUrl: linearLink.linearIssueUrl!,
+        titleFingerprint,
+        deletedAt: now,
+      })
+    }
+  }
+
+  const githubLink = await ctx.db
+    .query("githubTaskLinks")
+    .withIndex("by_task", (q) => q.eq("taskId", task._id))
+    .unique()
+
+  if (githubLink?.githubIssueUrl) {
+    const existing = await ctx.db
+      .query("deletedTaskSources")
+      .withIndex("by_workspace_source", (q) =>
+        q
+          .eq("workspaceId", task.workspaceId)
+          .eq("platform", "github")
+          .eq("sourceUrl", githubLink.githubIssueUrl)
+      )
+      .first()
+
+    if (existing) {
+      await ctx.db.patch(existing._id, { deletedAt: now })
+    } else {
+      await ctx.db.insert("deletedTaskSources", {
+        workspaceId: task.workspaceId,
+        platform: "github",
+        sourceUrl: githubLink.githubIssueUrl,
+        titleFingerprint,
+        deletedAt: now,
+      })
+    }
+  }
+}
+
 async function isTaskSourceSuppressed(
   ctx: MutationCtx,
   workspaceId: Id<"workspaces">,
@@ -822,6 +888,7 @@ export const deleteTask = mutation({
 
     await requireTaskWriteAccess(ctx, task.workspaceId)
     await recordDeletedTaskSource(ctx, task)
+    await recordLinkedPlatformDeletions(ctx, task)
     await queueGitHubIssueClosure(ctx, task.workspaceId, args.taskId)
     await queueLinearIssueDeletion(ctx, task.workspaceId, args.taskId)
     await clearLinearTaskLink(ctx, args.taskId)
@@ -894,6 +961,7 @@ export const bulkDeleteTasks = mutation({
         throw new Error("Task not found")
       }
       await recordDeletedTaskSource(ctx, task)
+      await recordLinkedPlatformDeletions(ctx, task)
       await queueGitHubIssueClosure(ctx, args.workspaceId, taskId)
       await queueLinearIssueDeletion(ctx, args.workspaceId, taskId)
       await clearLinearTaskLink(ctx, taskId)
