@@ -14,6 +14,7 @@ import {
   requireWorkspaceAccess,
   requireWorkspaceAdminAccess,
 } from "./permissions"
+import { safeTrackIntegrationEvent } from "../lib/billing/autumn"
 
 const X_OAUTH_REQUEST_TOKEN_URL = "https://api.x.com/oauth/request_token"
 const X_OAUTH_ACCESS_TOKEN_URL = "https://api.x.com/oauth/access_token"
@@ -1598,6 +1599,16 @@ export const recordInboundPostInternal = internalMutation({
       lastIngestedPostId: args.postId,
       lastIngestedPostCreatedAt: args.postCreatedAt,
       lastIngestedAt: Date.now(),
+    })
+
+    await safeTrackIntegrationEvent({
+      workspaceId: integration.workspaceId,
+      source: "x",
+      properties: {
+        event_type: "post",
+        post_id: args.postId,
+        author_username: args.authorUsername,
+      },
     })
 
     await ctx.scheduler.runAfter(0, internal.xFeedback.scheduleFeedbackDetection, {

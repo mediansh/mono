@@ -6,6 +6,7 @@ import {
   requireWorkspaceAccess,
   requireWorkspaceAdminAccess,
 } from "./permissions"
+import { safeTrackIntegrationEvent } from "../lib/billing/autumn"
 
 const PAIRING_CODE_TTL_MS = 1000 * 60 * 10
 
@@ -239,6 +240,16 @@ export const recordInboundMessage = mutation({
       type: "webhook_received",
       message: `Discord message received in ${args.channelName ?? "channel"}`,
       source: "discord",
+    })
+
+    await safeTrackIntegrationEvent({
+      workspaceId: integration.workspaceId,
+      source: "discord",
+      properties: {
+        event_type: "message",
+        channel_id: args.channelId,
+        channel_name: args.channelName ?? undefined,
+      },
     })
 
     await ctx.scheduler.runAfter(

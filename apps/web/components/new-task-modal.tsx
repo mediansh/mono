@@ -373,6 +373,7 @@ export function NewTaskModal({
         signal: controller.signal,
         body: JSON.stringify({
           prompt: aiPrompt.trim(),
+          workspaceId: currentWorkspace._id,
           workspaceName: currentWorkspace.name,
           availableLabels: labelOptions.map((label) => label.id),
         }),

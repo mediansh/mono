@@ -16,6 +16,7 @@ import {
   requireWorkspaceAdminAccess,
 } from "./permissions"
 import { STATUS_ORDER, type TaskStatus } from "../lib/task-board"
+import { safeTrackIntegrationEvent } from "../lib/billing/autumn"
 
 const GITHUB_API_URL = "https://api.github.com"
 const GITHUB_INSTALL_STATE_TTL_MS = 1000 * 60 * 15
@@ -1272,6 +1273,17 @@ export const recordGitHubWebhookDelivery = internalMutation({
         : `GitHub webhook: ${args.eventType}`,
       source: "github",
     })
+
+    await safeTrackIntegrationEvent({
+      workspaceId: args.workspaceId,
+      source: "github",
+      properties: {
+        event_type: args.eventType,
+        action: args.action ?? undefined,
+        delivery_id: args.deliveryId,
+      },
+    })
+
     return true
   },
 })
@@ -1851,11 +1863,14 @@ export const performWorkspaceGitHubSync = internalAction({
     const forcedPushTaskIds = new Set(
       taskSyncStatesBeforeImport
         .filter(
-          (item) =>
+          (item: {
+            link: { lastSyncedAt: number } | null
+            task: Doc<"tasks">
+          }) =>
             item.link === null ||
             getTaskUpdatedAt(item.task) > item.link.lastSyncedAt
         )
-        .map((item) => String(item.task._id))
+        .map((item: { task: Doc<"tasks"> }) => String(item.task._id))
     )
     const importedIssueStates = new Map<string, "open" | "closed">()
 

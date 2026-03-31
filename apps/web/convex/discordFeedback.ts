@@ -1,6 +1,7 @@
 import { generateText, Output } from "ai"
 import { google } from "@ai-sdk/google"
 import { trackLLMGeneration, trackFeedbackProcessing } from "./posthog"
+import { safeTrackAiUsage } from "../lib/billing/autumn"
 import { Workpool, vOnCompleteArgs } from "@convex-dev/workpool"
 import { makeFunctionReference } from "convex/server"
 import { v } from "convex/values"
@@ -680,6 +681,18 @@ export const processFeedbackWindow = internalAction({
         },
       })
 
+      await safeTrackAiUsage({
+        workspaceId: feedbackWindow.integration.workspaceId,
+        workspaceName: feedbackWindow.integration.workspaceName,
+        model: "google/gemma-3-27b-it",
+        inputTokens: classifierResult.usage?.inputTokens,
+        outputTokens: classifierResult.usage?.outputTokens,
+        properties: {
+          feature: "discord_feedback_classifier",
+          integration_id: args.integrationId,
+        },
+      })
+
       const classification = feedbackClassificationSchema.parse(
         JSON.parse(extractJsonObject(classifierResult.text))
       )
@@ -806,6 +819,18 @@ export const processFeedbackWindow = internalAction({
           integration_id: args.integrationId,
           relevant_message_count: relevantMessages.length,
           existing_task_count: existingTasks.length,
+        },
+      })
+
+      await safeTrackAiUsage({
+        workspaceId: feedbackWindow.integration.workspaceId,
+        workspaceName: feedbackWindow.integration.workspaceName,
+        model: "anthropic/claude-haiku-4.5",
+        inputTokens: extractorResult.usage?.inputTokens,
+        outputTokens: extractorResult.usage?.outputTokens,
+        properties: {
+          feature: "discord_feedback_extractor",
+          integration_id: args.integrationId,
         },
       })
 

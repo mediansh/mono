@@ -4,11 +4,13 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { withAxiom, logger } from "@/lib/logger"
 import { getPostHogServerClient } from "@/lib/posthog-server"
+import { safeTrackAiUsage } from "@/lib/billing/autumn"
 
 import { TASK_PRIORITIES, TASK_STATUSES } from "@/lib/task-board"
 
 const requestSchema = z.object({
   prompt: z.string().min(1),
+  workspaceId: z.string().min(1),
   workspaceName: z.string().min(1),
   availableLabels: z.array(z.string()).max(20).default([]),
 })
@@ -65,7 +67,7 @@ export const POST = withAxiom(async (request: Request) => {
       return NextResponse.json({ error: "Invalid request." }, { status: 400 })
     }
 
-    const { prompt, workspaceName, availableLabels } = parsed.data
+    const { prompt, workspaceId, workspaceName, availableLabels } = parsed.data
 
     logger.info("Generating tasks with AI", {
       userId,
@@ -141,6 +143,18 @@ export const POST = withAxiom(async (request: Request) => {
         },
       })
     }
+
+    await safeTrackAiUsage({
+      workspaceId,
+      workspaceName,
+      model,
+      inputTokens: result.usage?.inputTokens,
+      outputTokens: result.usage?.outputTokens,
+      properties: {
+        feature: "task_generation",
+        user_id: userId,
+      },
+    })
 
     return NextResponse.json({ tasks: normalizedTasks })
   } catch (error) {
