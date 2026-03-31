@@ -320,7 +320,7 @@ export const getPendingFeedbackWindow = query({
         forumChannelId: message.forumChannelId ?? null,
         forumTitle: message.forumTitle ?? null,
         authorUsername: message.authorUsername,
-        authorHasAdminPrivileges: message.authorHasAdminPrivileges,
+        authorHasAdminPrivileges: message.authorHasAdminPrivileges ?? false,
         content: message.content,
         permalink: message.permalink,
         messageCreatedAt: message.messageCreatedAt,

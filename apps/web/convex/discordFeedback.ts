@@ -348,7 +348,7 @@ async function loadPendingFeedbackWindow(
       forumTitle: message.forumTitle ?? null,
       messageId: message.messageId,
       authorUsername: message.authorUsername,
-      authorHasAdminPrivileges: message.authorHasAdminPrivileges,
+      authorHasAdminPrivileges: message.authorHasAdminPrivileges ?? false,
       content: message.content,
       permalink: message.permalink,
       messageCreatedAt: message.messageCreatedAt,
