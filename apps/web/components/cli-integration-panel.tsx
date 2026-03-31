@@ -64,7 +64,7 @@ export function CliIntegrationPanel() {
             <h3 className="text-[13px] font-medium">Quick start</h3>
           </div>
           <div className="flex flex-col gap-2.5 px-3.5 py-3">
-            <CodeBlock>npm install -g @anthropic/median</CodeBlock>
+            <CodeBlock>npm install -g @mediansh/cli</CodeBlock>
             <CodeBlock>mdn login</CodeBlock>
           </div>
         </motion.div>
