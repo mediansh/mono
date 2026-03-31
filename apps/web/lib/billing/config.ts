@@ -62,7 +62,12 @@ export const BILLING_RANGE = "last_cycle" as const
 export const BILLING_BIN_SIZE = "day" as const
 
 export function getAutumnCustomerId(workspaceId: string) {
-  return `workspace:${workspaceId}`
+  const normalizedWorkspaceId = workspaceId
+    .trim()
+    .replace(/[^A-Za-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+
+  return `workspace-${normalizedWorkspaceId}`
 }
 
 export function isTrackedAiModel(model: string): model is TrackedAiModel {
