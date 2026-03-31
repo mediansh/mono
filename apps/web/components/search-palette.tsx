@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { AnimatePresence, motion } from "motion/react"
 import {
   MagnifyingGlass,
@@ -31,6 +31,7 @@ import {
   type TaskPriority,
 } from "@/lib/task-board"
 import { cn } from "@workspace/ui/lib/utils"
+import { useInstantNavigation } from "@/hooks/use-instant-navigation"
 
 // ── Event bridge for opening tasks from search ──
 
@@ -129,7 +130,7 @@ export function SearchPalette({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const router = useRouter()
+  const { navigate, prefetch } = useInstantNavigation()
   const pathname = usePathname()
   const { currentWorkspace } = useWorkspace()
   const { tasksByWorkspace } = useLocalFirstStore()
@@ -276,13 +277,13 @@ export function SearchPalette({
     (result: SearchResult) => {
       onOpenChange(false)
       if (result.type === "nav") {
-        router.push(result.href)
+        navigate(result.href)
       } else if (pathname === "/app") {
         // Already on the board — just open the task modal
         dispatchOpenTask(result.id)
       } else {
         // Navigate to the board first, then open the task once it mounts
-        router.push("/app")
+        navigate("/app")
         const taskId = result.id
         const onRouteReady = () => {
           dispatchOpenTask(taskId)
@@ -291,8 +292,16 @@ export function SearchPalette({
         window.addEventListener("search-palette:board-ready", onRouteReady)
       }
     },
-    [onOpenChange, router, pathname]
+    [navigate, onOpenChange, pathname]
   )
+
+  useEffect(() => {
+    for (const item of NAV_ITEMS) {
+      if (item.href !== pathname) {
+        prefetch(item.href)
+      }
+    }
+  }, [pathname, prefetch])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {

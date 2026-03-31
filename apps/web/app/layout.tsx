@@ -6,6 +6,7 @@ import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 
 import "@workspace/ui/globals.css"
+import { NavigationAccelerator } from "@/components/navigation-accelerator"
 import { Providers } from "@/components/providers"
 import { RoutePrefetch } from "@/components/route-prefetch"
 import { cn } from "@workspace/ui/lib/utils"
@@ -51,6 +52,7 @@ export default function RootLayout({
       <body>
         <Suspense fallback={null}>
           <Providers>
+            <NavigationAccelerator />
             <RoutePrefetch routes={globalRoutes} />
             {children}
           </Providers>

@@ -25,6 +25,7 @@ import {
 import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
 import { SettingsAccessState } from "@/components/settings-access-state"
+import { updateOptimisticQuery } from "@/lib/convex-optimistic"
 import { hasWorkspaceAdminPermission } from "@/lib/workspace-permissions"
 import {
   trackIntegrationConnected,
@@ -92,8 +93,53 @@ export function DiscordPairingPanel() {
     currentWorkspace ? { workspaceId: currentWorkspace._id } : "skip"
   )
   const redeemPairingCode = useMutation(api.discord.redeemPairingCode)
-  const disconnectIntegration = useMutation(api.discord.disconnectWorkspaceDiscordIntegration)
-  const updateSettings = useMutation(api.discord.updateDiscordIntegrationSettings)
+  const disconnectIntegration = useMutation(
+    api.discord.disconnectWorkspaceDiscordIntegration
+  ).withOptimisticUpdate((localStore, args) => {
+    updateOptimisticQuery(
+      localStore,
+      api.discord.getWorkspaceDiscordIntegration,
+      { workspaceId: args.workspaceId },
+      (current) => ({
+        ...current,
+        integration: null,
+      })
+    )
+  })
+  const updateSettings = useMutation(
+    api.discord.updateDiscordIntegrationSettings
+  ).withOptimisticUpdate((localStore, args) => {
+    updateOptimisticQuery(
+      localStore,
+      api.discord.getWorkspaceDiscordIntegration,
+      { workspaceId: args.workspaceId },
+      (current) => {
+        if (!current.integration) {
+          return current
+        }
+
+        return {
+          ...current,
+          integration: {
+            ...current.integration,
+            additionalContext:
+              args.additionalContext !== undefined
+                ? args.additionalContext.trim()
+                : current.integration.additionalContext,
+            respondForMeMode:
+              args.respondForMeMode ??
+              (args.respondForMe !== undefined
+                ? args.respondForMe
+                  ? "all"
+                  : "off"
+                : current.integration.respondForMeMode),
+            respondForMeChannelIds:
+              args.respondForMeChannelIds ?? current.integration.respondForMeChannelIds,
+          },
+        }
+      }
+    )
+  })
 
   // Settings state — synced from server, debounced writes
   const [additionalContext, setAdditionalContext] = useState("")

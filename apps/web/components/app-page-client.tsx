@@ -2,11 +2,11 @@
 
 import { useEffect } from "react"
 import { useAuth } from "@clerk/nextjs"
-import { useRouter } from "next/navigation"
 import { KanbanBoard } from "@/components/kanban-board"
+import { useInstantNavigation } from "@/hooks/use-instant-navigation"
 
 export function AppPageClient() {
-  const router = useRouter()
+  const { replace } = useInstantNavigation()
   const { isLoaded, userId } = useAuth()
 
   useEffect(() => {
@@ -14,8 +14,8 @@ export function AppPageClient() {
       return
     }
 
-    router.replace("/sign-in")
-  }, [isLoaded, router, userId])
+    replace("/sign-in")
+  }, [isLoaded, replace, userId])
 
   return (
     <main className="h-screen overflow-hidden">

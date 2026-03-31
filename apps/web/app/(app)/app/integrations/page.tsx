@@ -1,15 +1,15 @@
 "use client"
 
-import { useRouter } from "next/navigation"
 import { useEffect } from "react"
+import { useInstantNavigation } from "@/hooks/use-instant-navigation"
 
 export default function IntegrationsPage() {
-  const router = useRouter()
+  const { replace } = useInstantNavigation()
 
   // Redirect to the first integration subpage
   useEffect(() => {
-    router.replace("/app/integrations/discord")
-  }, [router])
+    replace("/app/integrations/discord")
+  }, [replace])
 
   return null
 }

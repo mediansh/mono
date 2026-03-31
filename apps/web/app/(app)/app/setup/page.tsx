@@ -1,13 +1,14 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { useRouter } from "next/navigation"
 import { useMutation } from "convex/react"
 import { Image as ImageIcon } from "@phosphor-icons/react"
 import { motion } from "motion/react"
 import { Facehash } from "facehash"
 import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
+import { useInstantNavigation } from "@/hooks/use-instant-navigation"
+import { useWorkspaceOptimisticMutations } from "@/hooks/use-workspace-optimistic-mutations"
 import { Logo } from "@/components/logo"
 import { trackWorkspaceCreated } from "@/lib/analytics"
 
@@ -21,9 +22,9 @@ function Spinner() {
 }
 
 export default function WorkspaceSetupPage() {
-  const router = useRouter()
-  const createWorkspace = useMutation(api.workspaces.createWorkspace)
+  const { navigate } = useInstantNavigation()
   const generateUploadUrl = useMutation(api.workspaces.generateUploadUrl)
+  const { createWorkspaceOptimistic } = useWorkspaceOptimisticMutations()
   const { workspaces, isLoading } = useWorkspace()
 
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -56,9 +57,13 @@ export default function WorkspaceSetupPage() {
         const data = await result.json()
         iconId = data.storageId
       }
-      await createWorkspace({ name: name.trim(), iconId: iconId as any })
+      await createWorkspaceOptimistic({
+        name: name.trim(),
+        iconId: iconId as any,
+        iconUrl: iconPreview,
+      })
       trackWorkspaceCreated({ hasLogo: !!iconId })
-      router.push("/app")
+      navigate("/app")
     } catch {
       setError("Failed to create workspace. Please try again.")
       setLoading(false)

@@ -26,6 +26,7 @@ import { SearchPalette } from "@/components/search-palette"
 import { api } from "@/convex/_generated/api"
 import { Logo } from "@/components/logo"
 import { useWorkspace } from "@/components/workspace-provider"
+import { useWorkspaceOptimisticMutations } from "@/hooks/use-workspace-optimistic-mutations"
 import { hasTaskWritePermission } from "@/lib/workspace-permissions"
 import {
   Dialog,
@@ -70,8 +71,8 @@ function CreateWorkspaceModal({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const createWorkspace = useMutation(api.workspaces.createWorkspace)
   const generateUploadUrl = useMutation(api.workspaces.generateUploadUrl)
+  const { createWorkspaceOptimistic } = useWorkspaceOptimisticMutations()
   const { switchWorkspace } = useWorkspace()
 
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -130,7 +131,11 @@ function CreateWorkspaceModal({
         iconId = data.storageId
       }
 
-      const id = await createWorkspace({ name: name.trim(), iconId: iconId as any })
+      const id = await createWorkspaceOptimistic({
+        name: name.trim(),
+        iconId: iconId as any,
+        iconUrl: iconPreview,
+      })
       switchWorkspace(id)
       reset()
       onOpenChange(false)

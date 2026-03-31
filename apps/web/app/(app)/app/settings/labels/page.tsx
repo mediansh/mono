@@ -1,12 +1,11 @@
 "use client"
 
 import { useState, useEffect, useId } from "react"
-import { useMutation } from "convex/react"
 import { Plus, Trash } from "@phosphor-icons/react"
 import { motion, AnimatePresence } from "motion/react"
 import { DEFAULT_WORKSPACE_LABELS } from "@/lib/task-board"
-import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
+import { useWorkspaceOptimisticMutations } from "@/hooks/use-workspace-optimistic-mutations"
 import { hasWorkspaceAdminPermission } from "@/lib/workspace-permissions"
 import { SettingsAccessState } from "@/components/settings-access-state"
 import { trackLabelsSaved } from "@/lib/analytics"
@@ -18,7 +17,7 @@ const fadeUp = {
 
 export default function LabelsSettingsPage() {
   const { currentWorkspace } = useWorkspace()
-  const updateWorkspaceLabels = useMutation(api.workspaces.updateWorkspaceLabels)
+  const { updateWorkspaceLabelsOptimistic } = useWorkspaceOptimisticMutations()
   const baseId = useId()
 
   const [labels, setLabels] = useState<
@@ -64,9 +63,10 @@ export default function LabelsSettingsPage() {
       const cleaned = labels
         .filter((l) => l.name.trim())
         .map((l) => ({ name: l.name.trim(), color: l.color }))
-      await updateWorkspaceLabels({
+      await updateWorkspaceLabelsOptimistic({
         workspaceId: currentWorkspace._id,
         labels: cleaned,
+        previousWorkspace: currentWorkspace,
       })
       trackLabelsSaved({ labelCount: cleaned.length })
       setSaved(true)

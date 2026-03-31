@@ -2,10 +2,10 @@
 
 import { useSignUp } from "@clerk/nextjs/legacy"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { motion } from "motion/react"
 import { Logo } from "@/components/logo"
+import { useInstantNavigation } from "@/hooks/use-instant-navigation"
 
 function Spinner() {
   return (
@@ -20,7 +20,7 @@ type Stage = "initial" | "verify"
 
 export default function SignUpPage() {
   const { signUp, setActive, isLoaded } = useSignUp()
-  const router = useRouter()
+  const { navigate } = useInstantNavigation()
 
   const [stage, setStage] = useState<Stage>("initial")
   const [firstName, setFirstName] = useState("")
@@ -66,7 +66,7 @@ export default function SignUpPage() {
       const result = await signUp.attemptEmailAddressVerification({ code })
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId })
-        router.push("/app")
+        navigate("/app")
       } else {
         setError("Verification incomplete. Please try again.")
       }

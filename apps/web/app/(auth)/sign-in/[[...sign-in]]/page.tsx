@@ -2,10 +2,10 @@
 
 import { useSignIn } from "@clerk/nextjs/legacy"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { motion } from "motion/react"
 import { Logo } from "@/components/logo"
+import { useInstantNavigation } from "@/hooks/use-instant-navigation"
 
 function Spinner() {
   return (
@@ -20,7 +20,7 @@ type Stage = "initial" | "mfa" | "forgot" | "reset-code"
 
 export default function SignInPage() {
   const { signIn, setActive, isLoaded } = useSignIn()
-  const router = useRouter()
+  const { navigate } = useInstantNavigation()
 
   const [stage, setStage] = useState<Stage>("initial")
   const [email, setEmail] = useState("")
@@ -52,7 +52,7 @@ export default function SignInPage() {
       const result = await signIn.create({ identifier: email, password })
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId })
-        router.push("/app")
+        navigate("/app")
       } else if (result.status === "needs_second_factor") {
         setStage("mfa")
       } else if (result.status === "needs_first_factor") {
@@ -73,7 +73,7 @@ export default function SignInPage() {
       const result = await signIn.attemptSecondFactor({ strategy: "totp", code: mfaCode })
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId })
-        router.push("/app")
+        navigate("/app")
       }
     } catch (err: any) {
       setError(err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || "Invalid code")
@@ -109,7 +109,7 @@ export default function SignInPage() {
       })
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId })
-        router.push("/app")
+        navigate("/app")
       } else if (result.status === "needs_second_factor") {
         setStage("mfa")
       }

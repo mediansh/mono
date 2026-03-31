@@ -10,7 +10,7 @@ import {
   RotateRight06Icon,
   Unlink01Icon,
 } from "@hugeicons/core-free-icons"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { Button } from "@workspace/ui/components/button"
 import { Switch } from "@workspace/ui/components/switch"
@@ -24,6 +24,8 @@ import {
 import { api } from "@/convex/_generated/api"
 import { SettingsAccessState } from "@/components/settings-access-state"
 import { useWorkspace } from "@/components/workspace-provider"
+import { useInstantNavigation } from "@/hooks/use-instant-navigation"
+import { updateOptimisticQuery } from "@/lib/convex-optimistic"
 import { hasWorkspaceAdminPermission } from "@/lib/workspace-permissions"
 
 function formatTimestamp(timestamp: number | null) {
@@ -77,7 +79,7 @@ function GitHubIntegrationSkeleton() {
 
 export function GitHubIntegrationPanel() {
   const { currentWorkspace } = useWorkspace()
-  const router = useRouter()
+  const { replace } = useInstantNavigation()
   const searchParams = useSearchParams()
   const [selectedRepoIds, setSelectedRepoIds] = useState<string[]>([])
   const [defaultRepoId, setDefaultRepoId] = useState<string>("")
@@ -96,7 +98,34 @@ export function GitHubIntegrationPanel() {
   const saveRepositories = useAction(api.github.updateWorkspaceGitHubRepositories)
   const syncIntegration = useAction(api.github.syncWorkspaceGitHubIntegration)
   const disconnectIntegration = useAction(api.github.disconnectWorkspaceGitHubIntegration)
-  const updateFeatureToggles = useMutation(api.github.updateWorkspaceGitHubFeatureToggles)
+  const updateFeatureToggles = useMutation(
+    api.github.updateWorkspaceGitHubFeatureToggles
+  ).withOptimisticUpdate((localStore, args) => {
+    updateOptimisticQuery(
+      localStore,
+      api.github.getWorkspaceGitHubIntegration,
+      { workspaceId: args.workspaceId },
+      (current) => {
+        if (!current.integration) {
+          return current
+        }
+
+        return {
+          ...current,
+          integration: {
+            ...current.integration,
+            issueSyncEnabled:
+              args.issueSyncEnabled ?? current.integration.issueSyncEnabled,
+            prAutomationEnabled:
+              args.prAutomationEnabled ?? current.integration.prAutomationEnabled,
+            commitAutomationEnabled:
+              args.commitAutomationEnabled ??
+              current.integration.commitAutomationEnabled,
+          },
+        }
+      }
+    )
+  })
 
   const integration = integrationState?.integration ?? null
   const callbackUrl = integrationState?.callbackUrl ?? null
@@ -113,8 +142,8 @@ export function GitHubIntegrationPanel() {
       toast.error(message ?? "Failed to connect GitHub.")
     }
 
-    router.replace("/app/integrations/github")
-  }, [router, searchParams])
+    replace("/app/integrations/github")
+  }, [replace, searchParams])
 
   useEffect(() => {
     if (integration && !selectionInitialized) {

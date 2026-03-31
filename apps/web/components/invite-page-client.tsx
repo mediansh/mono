@@ -4,16 +4,16 @@ import Link from "next/link"
 import { useState } from "react"
 import { useMutation, useQuery } from "convex/react"
 import { useAuth } from "@clerk/nextjs"
-import { useRouter } from "next/navigation"
 import { SealCheck, Link as LinkIcon, Users } from "@phosphor-icons/react"
 import { motion } from "motion/react"
 import { toast } from "sonner"
 import { api } from "@/convex/_generated/api"
 import { RoleBadge } from "@/components/role-badge"
 import { getRoleLabel } from "@/lib/workspace-permissions"
+import { useInstantNavigation } from "@/hooks/use-instant-navigation"
 
 export function InvitePageClient({ token }: { token: string }) {
-  const router = useRouter()
+  const { navigate } = useInstantNavigation()
   const { isLoaded, userId } = useAuth()
   const [accepting, setAccepting] = useState(false)
 
@@ -29,7 +29,7 @@ export function InvitePageClient({ token }: { token: string }) {
     try {
       await acceptInvite({ token })
       toast.success("Workspace joined.")
-      router.push("/app")
+      navigate("/app")
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to accept invite.")
       setAccepting(false)

@@ -7,6 +7,7 @@ import { PageTransition } from "@/components/page-transition"
 import { RoutePrefetch } from "@/components/route-prefetch"
 import { WorkspaceProvider } from "@/components/workspace-provider"
 import { WorkspaceGuard } from "@/components/workspace-guard"
+import { WorkspaceQueryPreloader } from "@/components/workspace-query-preloader"
 import { DevErrorTrigger } from "@/components/dev-error-trigger"
 
 const appRoutes = ["/app", "/app/setup", "/app/settings", "/app/settings/labels", "/app/settings/members", "/app/integrations", "/app/integrations/discord", "/app/integrations/linear", "/app/integrations/x", "/app/integrations/github"]
@@ -22,6 +23,7 @@ export default function AppLayout({
   return (
     <WorkspaceProvider>
       <RoutePrefetch routes={appRoutes} />
+      <WorkspaceQueryPreloader />
       {process.env.NODE_ENV === "development" && <DevErrorTrigger target="app" />}
       <WorkspaceGuard>
         {isSetup ? (

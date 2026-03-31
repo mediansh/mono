@@ -6,7 +6,8 @@ import { Image, Trash } from "@phosphor-icons/react"
 import { Facehash } from "facehash"
 import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
-import { useRouter } from "next/navigation"
+import { useInstantNavigation } from "@/hooks/use-instant-navigation"
+import { useWorkspaceOptimisticMutations } from "@/hooks/use-workspace-optimistic-mutations"
 import { hasWorkspaceAdminPermission } from "@/lib/workspace-permissions"
 import { trackWorkspaceUpdated, trackWorkspaceDeleted } from "@/lib/analytics"
 import { SettingsAccessState } from "@/components/settings-access-state"
@@ -38,11 +39,11 @@ const fadeUp = {
 }
 
 export default function GeneralSettingsPage() {
-  const router = useRouter()
+  const { navigate } = useInstantNavigation()
   const { currentWorkspace, workspaces, switchWorkspace } = useWorkspace()
-  const updateWorkspace = useMutation(api.workspaces.updateWorkspace)
-  const deleteWorkspace = useMutation(api.workspaces.deleteWorkspace)
   const generateUploadUrl = useMutation(api.workspaces.generateUploadUrl)
+  const { deleteWorkspaceOptimistic, updateWorkspaceOptimistic } =
+    useWorkspaceOptimisticMutations()
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [name, setName] = useState("")
@@ -95,10 +96,16 @@ export default function GeneralSettingsPage() {
         const { storageId } = await result.json()
         newIconId = storageId
       }
-      await updateWorkspace({
+      await updateWorkspaceOptimistic({
         workspaceId: currentWorkspace._id,
+        previousWorkspace: currentWorkspace,
         name: name.trim(),
-        ...(newIconId ? { iconId: newIconId as any } : {}),
+        ...(newIconId
+          ? {
+              iconId: newIconId as any,
+              iconUrl: iconPreview,
+            }
+          : {}),
       })
       const changedFields: string[] = []
       if (name.trim() !== currentWorkspace.name) changedFields.push("name")
@@ -116,16 +123,20 @@ export default function GeneralSettingsPage() {
 
   async function handleDelete() {
     if (!currentWorkspace) return
+    const remaining = workspaces.filter((w) => w._id !== currentWorkspace._id)
     setDeleting(true)
     try {
-      await deleteWorkspace({ workspaceId: currentWorkspace._id })
+      await deleteWorkspaceOptimistic({
+        workspace: currentWorkspace,
+        fallbackWorkspaceId: remaining[0]?._id ?? null,
+        index: workspaces.findIndex((workspace) => workspace._id === currentWorkspace._id),
+      })
       trackWorkspaceDeleted()
-      const remaining = workspaces.filter((w) => w._id !== currentWorkspace._id)
       if (remaining[0]) {
         switchWorkspace(remaining[0]._id)
-        router.push("/app")
+        navigate("/app")
       } else {
-        router.push("/app/setup")
+        navigate("/app/setup")
       }
     } catch {
       setDeleting(false)

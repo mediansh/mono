@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState, type ReactNode } from "react"
+import type { OptimisticLocalStore } from "convex/browser"
 import { useMutation, useQuery } from "convex/react"
 import { Trash, Link as LinkIcon, Envelope } from "@phosphor-icons/react"
 import { motion } from "motion/react"
@@ -8,6 +9,7 @@ import { toast } from "sonner"
 import type { Id } from "@/convex/_generated/dataModel"
 import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
+import { updateOptimisticQuery } from "@/lib/convex-optimistic"
 import { RoleBadge } from "@/components/role-badge"
 import {
   getRoleLabel,
@@ -24,6 +26,28 @@ import {
 } from "@/lib/analytics"
 
 const inviteRoleOptions: WorkspaceInviteRole[] = ["guest", "member", "admin"]
+
+type WorkspaceMembersData = {
+  currentUserRole: WorkspaceInviteRole | "owner"
+  canManageMembers: boolean
+  workspaceName: string
+  members: Array<{
+    _id: Id<"workspaceMembers">
+    userId: string
+    role: WorkspaceInviteRole | "owner"
+    name: string | null
+    email: string | null
+    imageUrl: string | null
+  }>
+  invites: Array<{
+    _id: Id<"workspaceInvites">
+    inviteType: "link" | "email"
+    role: WorkspaceInviteRole
+    invitedEmail: string | null
+    expiresAt: number
+    createdAt: number
+  }>
+}
 
 function Stagger({ children, className }: { children: ReactNode; className?: string }) {
   return (
@@ -69,6 +93,23 @@ function MembersSkeleton() {
   )
 }
 
+function updateWorkspaceMembersQueries(
+  localStore: OptimisticLocalStore,
+  updater: (current: WorkspaceMembersData) => WorkspaceMembersData
+) {
+  for (const query of localStore.getAllQueries(api.workspaces.getWorkspaceMembers)) {
+    if (query.value === undefined) {
+      continue
+    }
+
+    localStore.setQuery(
+      api.workspaces.getWorkspaceMembers,
+      query.args,
+      updater(query.value)
+    )
+  }
+}
+
 export default function MembersSettingsPage() {
   const { currentWorkspace } = useWorkspace()
   const workspaceData = useQuery(
@@ -76,11 +117,87 @@ export default function MembersSettingsPage() {
     currentWorkspace ? { workspaceId: currentWorkspace._id } : "skip"
   )
   const syncMyProfile = useMutation(api.workspaces.syncMyProfile)
-  const createInviteLink = useMutation(api.workspaces.createInviteLink)
-  const createEmailInvite = useMutation(api.workspaces.createEmailInvite)
-  const revokeInvite = useMutation(api.workspaces.revokeInvite)
-  const updateMemberRole = useMutation(api.workspaces.updateMemberRole)
-  const removeMember = useMutation(api.workspaces.removeMember)
+  const createInviteLink = useMutation(
+    api.workspaces.createInviteLink
+  ).withOptimisticUpdate((localStore, args) => {
+    updateOptimisticQuery(
+      localStore,
+      api.workspaces.getWorkspaceMembers,
+      { workspaceId: args.workspaceId },
+      (current) => ({
+        ...current,
+        invites: [
+          {
+            _id: `optimistic-link-invite-${crypto.randomUUID()}` as Id<"workspaceInvites">,
+            inviteType: "link" as const,
+            role: args.role,
+            invitedEmail: null,
+            expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 14,
+            createdAt: Date.now(),
+          },
+          ...current.invites,
+        ],
+      })
+    )
+  })
+  const createEmailInvite = useMutation(
+    api.workspaces.createEmailInvite
+  ).withOptimisticUpdate((localStore, args) => {
+    updateOptimisticQuery(
+      localStore,
+      api.workspaces.getWorkspaceMembers,
+      { workspaceId: args.workspaceId },
+      (current) => ({
+        ...current,
+        invites: [
+          {
+            _id: `optimistic-email-invite-${crypto.randomUUID()}` as Id<"workspaceInvites">,
+            inviteType: "email" as const,
+            role: args.role,
+            invitedEmail: args.email.trim().toLowerCase(),
+            expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 7,
+            createdAt: Date.now(),
+          },
+          ...current.invites,
+        ],
+      })
+    )
+  })
+  const revokeInvite = useMutation(api.workspaces.revokeInvite).withOptimisticUpdate(
+    (localStore, args) => {
+      updateWorkspaceMembersQueries(
+        localStore,
+        (current) => ({
+          ...current,
+          invites: current.invites.filter((invite) => invite._id !== args.inviteId),
+        })
+      )
+    }
+  )
+  const updateMemberRole = useMutation(
+    api.workspaces.updateMemberRole
+  ).withOptimisticUpdate((localStore, args) => {
+    updateWorkspaceMembersQueries(
+      localStore,
+      (current) => ({
+        ...current,
+        members: current.members.map((member) =>
+          member._id === args.memberId ? { ...member, role: args.role } : member
+        ),
+      })
+    )
+  })
+  const removeMember = useMutation(api.workspaces.removeMember).withOptimisticUpdate(
+    (localStore, args) => {
+      updateWorkspaceMembersQueries(
+        localStore,
+        (current) => ({
+          ...current,
+          members: current.members.filter((member) => member._id !== args.memberId),
+        })
+      )
+    }
+  )
 
   const [inviteMode, setInviteMode] = useState<"link" | "email">("link")
   const [linkRole, setLinkRole] = useState<WorkspaceInviteRole>("member")

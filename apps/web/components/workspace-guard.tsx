@@ -1,12 +1,13 @@
 "use client"
 
 import { useEffect } from "react"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { useWorkspace } from "@/components/workspace-provider"
+import { useInstantNavigation } from "@/hooks/use-instant-navigation"
 
 export function WorkspaceGuard({ children }: { children: React.ReactNode }) {
   const { workspaces, isLoading } = useWorkspace()
-  const router = useRouter()
+  const { replace } = useInstantNavigation()
   const pathname = usePathname()
   const isSetupPage = pathname === "/app/setup"
   const hasWorkspaces = workspaces.length > 0
@@ -15,14 +16,14 @@ export function WorkspaceGuard({ children }: { children: React.ReactNode }) {
     if (isLoading) return
 
     if (!hasWorkspaces && !isSetupPage) {
-      router.replace("/app/setup")
+      replace("/app/setup")
       return
     }
 
     if (hasWorkspaces && isSetupPage) {
-      router.replace("/app")
+      replace("/app")
     }
-  }, [hasWorkspaces, isLoading, isSetupPage, router])
+  }, [hasWorkspaces, isLoading, isSetupPage, replace])
 
   // While loading, render children immediately — the sidebar is static
   // and the board already handles its own loading skeleton

@@ -15,7 +15,7 @@ import {
   TextIcon,
   Unlink01Icon,
 } from "@hugeicons/core-free-icons"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { Button } from "@workspace/ui/components/button"
 import { Textarea } from "@workspace/ui/components/textarea"
@@ -29,6 +29,8 @@ import {
 import { api } from "@/convex/_generated/api"
 import { SettingsAccessState } from "@/components/settings-access-state"
 import { useWorkspace } from "@/components/workspace-provider"
+import { useInstantNavigation } from "@/hooks/use-instant-navigation"
+import { updateOptimisticQuery } from "@/lib/convex-optimistic"
 import { hasWorkspaceAdminPermission } from "@/lib/workspace-permissions"
 
 function formatTimestamp(timestamp: number | null) {
@@ -82,7 +84,7 @@ function XIntegrationSkeleton() {
 
 export function XIntegrationPanel() {
   const { currentWorkspace } = useWorkspace()
-  const router = useRouter()
+  const { replace } = useInstantNavigation()
   const searchParams = useSearchParams()
   const [isConnecting, setIsConnecting] = useState(false)
   const [isDisconnecting, setIsDisconnecting] = useState(false)
@@ -97,7 +99,31 @@ export function XIntegrationPanel() {
   )
   const beginConnect = useAction(api.x.beginWorkspaceXConnect)
   const disconnectIntegration = useAction(api.x.disconnectWorkspaceXIntegration)
-  const updateSettings = useMutation(api.x.updateXIntegrationSettings)
+  const updateSettings = useMutation(api.x.updateXIntegrationSettings).withOptimisticUpdate(
+    (localStore, args) => {
+      updateOptimisticQuery(
+        localStore,
+        api.x.getWorkspaceXIntegration,
+        { workspaceId: args.workspaceId },
+        (current) => {
+          if (!current.integration) {
+            return current
+          }
+
+          return {
+            ...current,
+            integration: {
+              ...current.integration,
+              additionalContext:
+                args.additionalContext !== undefined
+                  ? args.additionalContext.trim()
+                  : current.integration.additionalContext,
+            },
+          }
+        }
+      )
+    }
+  )
 
   const integration = integrationState?.integration ?? null
   const workspaceId = currentWorkspace?._id ?? null
@@ -124,8 +150,8 @@ export function XIntegrationPanel() {
       toast.error(message ?? "Failed to connect X.")
     }
 
-    router.replace("/app/integrations/x")
-  }, [router, searchParams])
+    replace("/app/integrations/x")
+  }, [replace, searchParams])
 
   if (!currentWorkspace) return null
   if (!hasWorkspaceAdminPermission(currentWorkspace.role)) {
