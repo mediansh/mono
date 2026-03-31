@@ -6,7 +6,6 @@ import {
   ClockCounterClockwise,
   ArrowUp,
   ArrowDown,
-  Minus,
   Rocket,
   GitPullRequest,
   ChatCircleDots,
@@ -243,14 +242,6 @@ export default function LogsPage() {
           </p>
         </motion.div>
 
-        {/* Stat cards */}
-        <motion.div variants={fadeUp} className="mb-6 grid grid-cols-4 gap-3">
-          <StatCard label="Events today" value="47" change={12} />
-          <StatCard label="Webhooks" value="120" change={-3} />
-          <StatCard label="Tasks created" value="18" change={5} />
-          <StatCard label="AI generations" value="6" change={0} />
-        </motion.div>
-
         {/* Charts row */}
         <motion.div variants={fadeUp} className="mb-6 grid grid-cols-3 gap-3">
           {/* Activity over time */}
@@ -430,30 +421,3 @@ export default function LogsPage() {
   )
 }
 
-// ── Stat card ────────────────────────────────────────────
-
-function StatCard({ label, value, change }: { label: string; value: string; change: number }) {
-  return (
-    <div className="rounded-[4px] ring-1 ring-border p-3.5">
-      <p className="text-[11px] text-muted-foreground">{label}</p>
-      <div className="mt-1 flex items-end justify-between">
-        <span className="text-[20px] font-semibold leading-none tracking-tight">{value}</span>
-        {change !== 0 ? (
-          <span
-            className={`flex items-center gap-0.5 text-[11px] font-medium ${
-              change > 0 ? "text-emerald-500" : "text-destructive"
-            }`}
-          >
-            {change > 0 ? <ArrowUp size={10} weight="bold" /> : <ArrowDown size={10} weight="bold" />}
-            {Math.abs(change)}%
-          </span>
-        ) : (
-          <span className="flex items-center gap-0.5 text-[11px] text-muted-foreground">
-            <Minus size={10} />
-            0%
-          </span>
-        )}
-      </div>
-    </div>
-  )
-}
