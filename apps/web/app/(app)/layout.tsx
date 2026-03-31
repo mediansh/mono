@@ -10,7 +10,7 @@ import { WorkspaceGuard } from "@/components/workspace-guard"
 import { WorkspaceQueryPreloader } from "@/components/workspace-query-preloader"
 import { DevErrorTrigger } from "@/components/dev-error-trigger"
 
-const appRoutes = ["/app", "/app/setup", "/app/settings", "/app/settings/labels", "/app/settings/members", "/app/integrations", "/app/integrations/discord", "/app/integrations/linear", "/app/integrations/x", "/app/integrations/github"]
+const appRoutes = ["/app", "/app/setup", "/app/settings", "/app/settings/labels", "/app/settings/members", "/app/logs", "/app/integrations", "/app/integrations/discord", "/app/integrations/linear", "/app/integrations/x", "/app/integrations/github"]
 
 export default function AppLayout({
   children,
