@@ -34,6 +34,7 @@ type FeedbackMessage = {
   forumTitle: string | null
   messageId: string
   authorUsername: string
+  authorHasAdminPrivileges: boolean
   content: string
   permalink: string
   messageCreatedAt: number
@@ -347,6 +348,7 @@ async function loadPendingFeedbackWindow(
       forumTitle: message.forumTitle ?? null,
       messageId: message.messageId,
       authorUsername: message.authorUsername,
+      authorHasAdminPrivileges: message.authorHasAdminPrivileges,
       content: message.content,
       permalink: message.permalink,
       messageCreatedAt: message.messageCreatedAt,
@@ -588,23 +590,47 @@ export const processFeedbackWindow = internalAction({
             feedbackWindow.integration.lastProcessedMessageCreatedAt,
         })
       )
+      const pendingNonAdminMessages = pendingMessages.filter(
+        (message) => !message.authorHasAdminPrivileges
+      )
 
       logInfo("Loaded Discord feedback window", {
         integrationId: args.integrationId,
         workspaceId: feedbackWindow.integration.workspaceId,
         totalMessages: feedbackWindow.messages.length,
         pendingMessages: pendingMessages.length,
+        pendingAdminMessages:
+          pendingMessages.length - pendingNonAdminMessages.length,
       })
 
       if (pendingMessages.length === 0) {
         return { skipped: true, reason: "no_pending_messages" }
       }
 
-      const contextMessages = feedbackWindow.messages.slice(
-        -FEEDBACK_CONTEXT_LIMIT
-      )
+      const latestPendingMessage = pendingMessages.at(-1)
+      if (!latestPendingMessage) {
+        return { skipped: true, reason: "missing_latest_pending_message" }
+      }
+
+      if (pendingNonAdminMessages.length === 0) {
+        await ctx.runMutation(markFeedbackWindowProcessedInternalMutation, {
+          integrationId: args.integrationId,
+          lastProcessedMessageId: latestPendingMessage.messageId,
+          lastProcessedMessageCreatedAt: latestPendingMessage.messageCreatedAt,
+        })
+
+        return {
+          skipped: false,
+          createdTaskCount: 0,
+          reason: "admin_only_messages",
+        }
+      }
+
+      const contextMessages = feedbackWindow.messages
+        .filter((message) => !message.authorHasAdminPrivileges)
+        .slice(-FEEDBACK_CONTEXT_LIMIT)
       const pendingMessageIds = new Set<string>(
-        pendingMessages.map((message) => message.messageId)
+        pendingNonAdminMessages.map((message) => message.messageId)
       )
       const transcript = formatTranscript(contextMessages, pendingMessageIds)
 
@@ -650,18 +676,13 @@ export const processFeedbackWindow = internalAction({
         success: true,
         metadata: {
           integration_id: args.integrationId,
-          pending_message_count: pendingMessages.length,
+          pending_message_count: pendingNonAdminMessages.length,
         },
       })
 
       const classification = feedbackClassificationSchema.parse(
         JSON.parse(extractJsonObject(classifierResult.text))
       )
-
-      const latestPendingMessage = pendingMessages.at(-1)
-      if (!latestPendingMessage) {
-        return { skipped: true, reason: "missing_latest_pending_message" }
-      }
 
       logInfo("Discord feedback classified", {
         integrationId: args.integrationId,
@@ -693,14 +714,14 @@ export const processFeedbackWindow = internalAction({
           .filter(Boolean)
       )
 
-      const matchedRelevantMessages = pendingMessages.filter((message) =>
+      const matchedRelevantMessages = pendingNonAdminMessages.filter((message) =>
         normalizedRelevantIds.has(normalizeDiscordId(message.messageId))
       )
 
       const relevantMessages =
         matchedRelevantMessages.length > 0
           ? matchedRelevantMessages
-          : pendingMessages
+          : pendingNonAdminMessages
 
       const existingTasks = await ctx.runQuery(
         getTaskSnapshotForDiscordInternalQuery,
@@ -850,7 +871,7 @@ export const processFeedbackWindow = internalAction({
         platform: "discord",
         integrationId: args.integrationId,
         workspaceId: feedbackWindow.integration.workspaceId,
-        messageCount: pendingMessages.length,
+        messageCount: pendingNonAdminMessages.length,
         isProductFeedback: classification.isProductFeedback,
         confidence: classification.confidence,
         createdTaskCount: extracted.tasks.length,

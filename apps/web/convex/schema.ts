@@ -356,6 +356,7 @@ export default defineSchema({
     permalink: v.string(),
     authorId: v.string(),
     authorUsername: v.string(),
+    authorHasAdminPrivileges: v.boolean(),
     content: v.string(),
     messageCreatedAt: v.number(),
     receivedAt: v.number(),

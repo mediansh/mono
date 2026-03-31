@@ -11,6 +11,7 @@ import {
   InteractionContextType,
   Message,
   MessageFlags,
+  PermissionFlagsBits,
   REST,
   Routes,
   SlashCommandBuilder,
@@ -51,6 +52,7 @@ const recordInboundMessageMutation = makeFunctionReference<
     messageId: string
     authorId: string
     authorUsername: string
+    authorHasAdminPrivileges: boolean
     content: string
     messageCreatedAt: number
   },
@@ -226,6 +228,13 @@ function getMessageChannelContext(message: Message) {
     forumChannelId: isForumPost ? parentChannel.id : undefined,
     forumTitle: isForumPost ? parentChannel.name : undefined,
   }
+}
+
+function hasAdminPrivileges(message: Message) {
+  return (
+    message.member?.permissions?.has(PermissionFlagsBits.Administrator) ??
+    false
+  )
 }
 
 
@@ -473,6 +482,7 @@ client.on(Events.MessageCreate, async (message: Message) => {
 
   const content = normalizeMessageContent(message.content)
   const channelContext = getMessageChannelContext(message)
+  const authorHasAdminPrivileges = hasAdminPrivileges(message)
   const hasChannelContext = Boolean(
     channelContext.threadTitle || channelContext.forumTitle
   )
@@ -498,6 +508,7 @@ client.on(Events.MessageCreate, async (message: Message) => {
     forumChannelId: channelContext.forumChannelId ?? null,
     forumTitle: channelContext.forumTitle ?? null,
     author: message.author.username,
+    authorHasAdminPrivileges,
     preview: summarizeText(
       content || channelContext.threadTitle || channelContext.forumTitle || ""
     ),
@@ -518,6 +529,7 @@ client.on(Events.MessageCreate, async (message: Message) => {
       messageId: message.id,
       authorId: message.author.id,
       authorUsername: message.author.username,
+      authorHasAdminPrivileges,
       content,
       messageCreatedAt: message.createdTimestamp,
     })
@@ -547,6 +559,7 @@ client.on(Events.MessageCreate, async (message: Message) => {
       integrationId: result.integration.integrationId,
       workspaceId: result.integration.workspaceId,
       guildName: result.integration.guildName,
+      authorHasAdminPrivileges,
       threadTitle: channelContext.threadTitle ?? null,
       forumTitle: channelContext.forumTitle ?? null,
     })
