@@ -393,33 +393,17 @@ export default function LogsPage() {
                   return (
                     <div
                       key={event.id}
-                      className="group flex items-start gap-3 px-3.5 py-2.5 transition-colors hover:bg-muted/30"
+                      className="group flex items-center gap-2.5 px-3 py-1.5 transition-colors hover:bg-muted/30"
                     >
-                      <div className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-[4px] bg-muted/50 ${config.color}`}>
-                        <Icon size={13} weight="bold" />
+                      <div className={`flex size-5 shrink-0 items-center justify-center rounded-[3px] bg-muted/50 ${config.color}`}>
+                        <Icon size={11} weight="bold" />
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[11px] font-medium text-muted-foreground">{config.label}</span>
-                          {SourceIcon && (
-                            <SourceIcon size={11} className="text-muted-foreground/60" />
-                          )}
-                        </div>
-                        <p className="mt-0.5 text-[13px] text-foreground">{event.message}</p>
-                        {event.metadata && (
-                          <div className="mt-1 flex flex-wrap gap-1.5">
-                            {Object.entries(event.metadata).map(([key, val]) => (
-                              <span
-                                key={key}
-                                className="rounded bg-muted/50 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground"
-                              >
-                                {key}: {val}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <span className="shrink-0 pt-0.5 text-[11px] text-muted-foreground">
+                      <span className="shrink-0 text-[11px] font-medium text-muted-foreground">{config.label}</span>
+                      {SourceIcon && (
+                        <SourceIcon size={11} className="shrink-0 text-muted-foreground/60" />
+                      )}
+                      <p className="min-w-0 flex-1 truncate text-[12px] text-foreground">{event.message}</p>
+                      <span className="shrink-0 text-[11px] text-muted-foreground">
                         {formatRelativeTime(event.timestamp)}
                       </span>
                     </div>
