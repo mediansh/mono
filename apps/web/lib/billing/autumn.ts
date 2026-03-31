@@ -23,6 +23,15 @@ export function getAutumnClient() {
   if (!cachedClient) {
     cachedClient = new Autumn({
       secretKey: getAutumnSecretKey(),
+      retryConfig: {
+        strategy: "backoff",
+        backoff: {
+          initialInterval: 500,
+          maxInterval: 5000,
+          exponent: 1.5,
+          maxElapsedTime: 15000,
+        },
+      },
     })
   }
 
