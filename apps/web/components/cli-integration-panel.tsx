@@ -3,7 +3,8 @@
 import { type ReactNode } from "react"
 import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Copy01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons"
+import { Copy01Icon, ArrowRight01Icon, Key01Icon } from "@hugeicons/core-free-icons"
+import Link from "next/link"
 import { toast } from "sonner"
 import { Button } from "@workspace/ui/components/button"
 
@@ -68,8 +69,17 @@ export function CliIntegrationPanel() {
           </div>
         </motion.div>
 
-        {/* Docs link */}
-        <motion.div variants={fadeUp}>
+        {/* Links */}
+        <motion.div variants={fadeUp} className="flex flex-col gap-2">
+          <Link href="/app/settings/api-keys">
+            <Button variant="outline" className="w-full justify-between">
+              <span className="flex items-center gap-2">
+                <HugeiconsIcon icon={Key01Icon} size={14} strokeWidth={1.8} />
+                Create an API key
+              </span>
+              <HugeiconsIcon icon={ArrowRight01Icon} size={14} strokeWidth={1.8} />
+            </Button>
+          </Link>
           <a
             href="https://median.mintlify.app"
             target="_blank"
