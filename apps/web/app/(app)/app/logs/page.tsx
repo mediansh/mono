@@ -32,7 +32,6 @@ import {
   Bar,
   XAxis,
   YAxis,
-  CartesianGrid,
   Tooltip as RechartsTooltip,
   ResponsiveContainer,
   PieChart,
@@ -290,7 +289,7 @@ export default function LogsPage() {
             <h3 className="mb-3 text-[13px] font-medium">Activity this week</h3>
             <div className="h-[180px]">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={activityData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                <AreaChart data={activityData} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
                   <defs>
                     <linearGradient id="gradTasks" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.2} />
@@ -301,31 +300,20 @@ export default function LogsPage() {
                       <stop offset="100%" stopColor="var(--chart-3)" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                  <XAxis dataKey="day" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
+                  <XAxis dataKey="day" hide />
+                  <YAxis hide />
                   <RechartsTooltip content={<ChartTooltip />} />
                   <Area type="monotone" dataKey="tasks" name="Tasks" stroke="var(--chart-1)" fill="url(#gradTasks)" strokeWidth={1.5} dot={false} />
                   <Area type="monotone" dataKey="webhooks" name="Webhooks" stroke="var(--chart-3)" fill="url(#gradWebhooks)" strokeWidth={1.5} dot={false} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-2 flex items-center gap-4">
-              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                <div className="size-1.5 rounded-full" style={{ backgroundColor: "var(--chart-1)" }} />
-                Tasks
-              </div>
-              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                <div className="size-1.5 rounded-full" style={{ backgroundColor: "var(--chart-3)" }} />
-                Webhooks
-              </div>
-            </div>
           </div>
 
           {/* Source distribution */}
           <div className="rounded-[4px] ring-1 ring-border p-4">
             <h3 className="mb-3 text-[13px] font-medium">Events by source</h3>
-            <div className="h-[140px]">
+            <div className="h-[180px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -345,15 +333,6 @@ export default function LogsPage() {
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
-              {sourceDistribution.map((s: { name: string; value: number; color: string }) => (
-                <div key={s.name} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                  <div className="size-1.5 rounded-full" style={{ backgroundColor: s.color }} />
-                  {s.name}
-                  <span className="font-medium text-foreground">{s.value}</span>
-                </div>
-              ))}
-            </div>
           </div>
         </motion.div>
 
@@ -362,25 +341,14 @@ export default function LogsPage() {
           <h3 className="mb-3 text-[13px] font-medium">Webhook deliveries</h3>
           <div className="h-[160px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={webhooksByPlatform} margin={{ top: 4, right: 4, left: -20, bottom: 0 }} barGap={2}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                <XAxis dataKey="platform" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
+              <BarChart data={webhooksByPlatform} margin={{ top: 4, right: 4, left: 4, bottom: 0 }} barGap={2}>
+                <XAxis dataKey="platform" hide />
+                <YAxis hide />
                 <RechartsTooltip content={<ChartTooltip />} />
                 <Bar dataKey="processed" name="Processed" fill="var(--chart-3)" radius={[2, 2, 0, 0]} barSize={18} />
                 <Bar dataKey="errors" name="Errors" fill="var(--chart-5)" radius={[2, 2, 0, 0]} barSize={18} />
               </BarChart>
             </ResponsiveContainer>
-          </div>
-          <div className="mt-2 flex items-center gap-4">
-            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-              <div className="size-1.5 rounded-full" style={{ backgroundColor: "var(--chart-3)" }} />
-              Processed
-            </div>
-            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-              <div className="size-1.5 rounded-full" style={{ backgroundColor: "var(--chart-5)" }} />
-              Errors
-            </div>
           </div>
         </motion.div>
 
