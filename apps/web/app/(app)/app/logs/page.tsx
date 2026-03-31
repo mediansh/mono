@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, type ReactNode } from "react"
+import { usePaginatedQuery, useQuery } from "convex/react"
 import { motion } from "motion/react"
 import {
   ClockCounterClockwise,
@@ -38,6 +39,8 @@ import {
   Pie,
   Cell,
 } from "recharts"
+import { api } from "@/convex/_generated/api"
+import { useWorkspace } from "@/components/workspace-provider"
 
 // ── Animation helpers ────────────────────────────────────
 
@@ -59,33 +62,6 @@ const fadeUp = {
   show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] as const } },
 }
 
-// ── Mock data ────────────────────────────────────────────
-
-const activityData = [
-  { day: "Mon", tasks: 8, webhooks: 12, events: 5 },
-  { day: "Tue", tasks: 12, webhooks: 8, events: 7 },
-  { day: "Wed", tasks: 6, webhooks: 15, events: 3 },
-  { day: "Thu", tasks: 14, webhooks: 10, events: 9 },
-  { day: "Fri", tasks: 9, webhooks: 18, events: 6 },
-  { day: "Sat", tasks: 3, webhooks: 5, events: 2 },
-  { day: "Sun", tasks: 5, webhooks: 7, events: 4 },
-]
-
-const sourceDistribution = [
-  { name: "Discord", value: 34, color: "var(--chart-1)" },
-  { name: "GitHub", value: 28, color: "var(--chart-2)" },
-  { name: "Linear", value: 18, color: "var(--chart-3)" },
-  { name: "X", value: 12, color: "var(--chart-4)" },
-  { name: "CLI", value: 8, color: "var(--chart-5)" },
-]
-
-const webhooksByPlatform = [
-  { platform: "Discord", received: 45, processed: 42, errors: 3 },
-  { platform: "GitHub", received: 38, processed: 37, errors: 1 },
-  { platform: "Linear", received: 22, processed: 22, errors: 0 },
-  { platform: "X", received: 15, processed: 12, errors: 3 },
-]
-
 type EventType =
   | "task_created"
   | "task_moved"
@@ -104,12 +80,11 @@ type EventType =
   | "feedback_processed"
 
 interface LogEvent {
-  id: string
+  _id: string
   type: EventType
   message: string
   timestamp: number
   source?: "discord" | "github" | "linear" | "x" | "cli" | "manual" | "ai"
-  metadata?: Record<string, string | number>
 }
 
 const EVENT_CONFIG: Record<
@@ -139,32 +114,8 @@ const SOURCE_ICONS: Record<string, typeof DiscordLogo> = {
   x: XLogo,
 }
 
-const now = Date.now()
 const HOUR = 3600000
 const MIN = 60000
-
-const mockEvents: LogEvent[] = [
-  { id: "1", type: "task_created", message: 'Task MDN-47 "Fix auth token refresh" created', timestamp: now - 12 * MIN, source: "manual" },
-  { id: "2", type: "webhook_received", message: "GitHub webhook: push event on median/app", timestamp: now - 25 * MIN, source: "github", metadata: { eventType: "push", action: "completed" } },
-  { id: "3", type: "feedback_processed", message: "Processed 3 Discord messages, created 1 task", timestamp: now - 38 * MIN, source: "discord", metadata: { messageCount: "3", createdTasks: "1" } },
-  { id: "4", type: "task_moved", message: 'MDN-42 moved from "In Progress" to "Ready"', timestamp: now - 1.2 * HOUR, source: "manual", metadata: { from: "in_progress", to: "ready" } },
-  { id: "5", type: "tasks_generated_ai", message: "AI generated 5 tasks from prompt", timestamp: now - 1.5 * HOUR, source: "ai", metadata: { taskCount: "5", durationMs: "3200" } },
-  { id: "6", type: "integration_connected", message: "Linear integration connected to team ENG", timestamp: now - 2 * HOUR, source: "linear" },
-  { id: "7", type: "webhook_received", message: "Linear webhook: issue.updated", timestamp: now - 2.5 * HOUR, source: "linear", metadata: { eventType: "issue.updated" } },
-  { id: "8", type: "request_accepted", message: 'Request MDN-39 "Add dark mode support" accepted', timestamp: now - 3 * HOUR, source: "discord" },
-  { id: "9", type: "task_updated", message: "MDN-38 priority changed to urgent", timestamp: now - 3.5 * HOUR, source: "manual" },
-  { id: "10", type: "webhook_error", message: "X webhook delivery failed: timeout", timestamp: now - 4 * HOUR, source: "x", metadata: { status: "error" } },
-  { id: "11", type: "member_joined", message: "sarah@example.com joined as member", timestamp: now - 5 * HOUR },
-  { id: "12", type: "request_denied", message: 'Request MDN-36 "Add emoji picker" denied', timestamp: now - 6 * HOUR, source: "x" },
-  { id: "13", type: "labels_saved", message: "Labels updated: 4 labels saved", timestamp: now - 7 * HOUR },
-  { id: "14", type: "webhook_received", message: "Discord webhook: message_create in #feedback", timestamp: now - 8 * HOUR, source: "discord" },
-  { id: "15", type: "task_deleted", message: "MDN-31 deleted", timestamp: now - 9 * HOUR, source: "manual" },
-  { id: "16", type: "task_created", message: 'Task MDN-46 "Improve onboarding flow" created', timestamp: now - 10 * HOUR, source: "github" },
-  { id: "17", type: "integration_disconnected", message: "X integration disconnected", timestamp: now - 12 * HOUR, source: "x" },
-  { id: "18", type: "webhook_received", message: "GitHub webhook: issues.opened on median/app", timestamp: now - 14 * HOUR, source: "github" },
-  { id: "19", type: "feedback_processed", message: "Processed 7 X posts, created 2 tasks", timestamp: now - 16 * HOUR, source: "x", metadata: { messageCount: "7", createdTasks: "2" } },
-  { id: "20", type: "task_moved", message: 'MDN-44 moved from "Todo" to "In Progress"', timestamp: now - 18 * HOUR, source: "manual" },
-]
 
 // ── Helpers ──────────────────────────────────────────────
 
@@ -190,12 +141,12 @@ const FILTER_OPTIONS: { value: FilterType; label: string }[] = [
   { value: "members", label: "Members" },
 ]
 
-const FILTER_MAP: Record<FilterType, EventType[]> = {
-  all: [],
-  tasks: ["task_created", "task_moved", "task_updated", "task_deleted", "tasks_generated_ai", "request_accepted", "request_denied", "feedback_processed"],
-  webhooks: ["webhook_received", "webhook_error"],
-  integrations: ["integration_connected", "integration_disconnected"],
-  members: ["member_joined", "member_removed", "labels_saved"],
+const SOURCE_COLORS: Record<string, string> = {
+  Discord: "var(--chart-1)",
+  GitHub: "var(--chart-2)",
+  Linear: "var(--chart-3)",
+  X: "var(--chart-4)",
+  CLI: "var(--chart-5)",
 }
 
 // ── Custom tooltip ───────────────────────────────────────
@@ -221,25 +172,102 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
 const PAGE_SIZE = 20
 
 export default function LogsPage() {
+  const { currentWorkspace } = useWorkspace()
   const [filter, setFilter] = useState<FilterType>("all")
   const [page, setPage] = useState(0)
+  const [pendingPage, setPendingPage] = useState<number | null>(null)
 
   useEffect(() => {
     document.title = "Logs — Median"
   }, [])
 
-  // Reset to first page when filter changes
   useEffect(() => {
     setPage(0)
-  }, [filter])
+    setPendingPage(null)
+  }, [filter, currentWorkspace?._id])
 
-  const filteredEvents =
-    filter === "all"
-      ? mockEvents
-      : mockEvents.filter((e) => FILTER_MAP[filter].includes(e.type))
+  const dashboard = useQuery(
+    api.logs.getWorkspaceLogDashboard,
+    currentWorkspace ? { workspaceId: currentWorkspace._id } : "skip"
+  )
+  const { results, status, loadMore } = usePaginatedQuery(
+    api.logs.listWorkspaceLogs,
+    currentWorkspace
+      ? {
+          workspaceId: currentWorkspace._id,
+          filter,
+        }
+      : "skip",
+    { initialNumItems: PAGE_SIZE }
+  )
 
-  const totalPages = Math.max(1, Math.ceil(filteredEvents.length / PAGE_SIZE))
-  const paginatedEvents = filteredEvents.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+  useEffect(() => {
+    if (pendingPage === null) {
+      return
+    }
+
+    const requiredItems = (pendingPage + 1) * PAGE_SIZE
+    if (results.length >= requiredItems || status === "Exhausted") {
+      setPage(pendingPage)
+      setPendingPage(null)
+    }
+  }, [pendingPage, results.length, status])
+
+  const totalCount = dashboard?.counts[filter] ?? 0
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
+
+  useEffect(() => {
+    if (page > totalPages - 1) {
+      setPage(Math.max(0, totalPages - 1))
+    }
+  }, [page, totalPages])
+
+  const paginatedEvents = results.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE) as LogEvent[]
+  const activityData =
+    dashboard?.activityData ?? [
+      { day: "Mon", tasks: 0, webhooks: 0, events: 0 },
+      { day: "Tue", tasks: 0, webhooks: 0, events: 0 },
+      { day: "Wed", tasks: 0, webhooks: 0, events: 0 },
+      { day: "Thu", tasks: 0, webhooks: 0, events: 0 },
+      { day: "Fri", tasks: 0, webhooks: 0, events: 0 },
+      { day: "Sat", tasks: 0, webhooks: 0, events: 0 },
+      { day: "Sun", tasks: 0, webhooks: 0, events: 0 },
+    ]
+  const sourceDistribution =
+    dashboard?.sourceDistribution.map((entry: { name: string; value: number }) => ({
+      ...entry,
+      color: SOURCE_COLORS[entry.name] ?? "var(--chart-1)",
+    })) ??
+    Object.entries(SOURCE_COLORS).map(([name, color]) => ({
+      name,
+      value: 0,
+      color,
+    }))
+  const webhooksByPlatform =
+    dashboard?.webhooksByPlatform ?? [
+      { platform: "Discord", received: 0, processed: 0, errors: 0 },
+      { platform: "GitHub", received: 0, processed: 0, errors: 0 },
+      { platform: "Linear", received: 0, processed: 0, errors: 0 },
+      { platform: "X", received: 0, processed: 0, errors: 0 },
+    ]
+
+  const handleNextPage = () => {
+    const nextPage = page + 1
+    if (nextPage >= totalPages) {
+      return
+    }
+
+    const requiredItems = (nextPage + 1) * PAGE_SIZE
+    if (results.length >= requiredItems || status === "Exhausted") {
+      setPage(nextPage)
+      return
+    }
+
+    if (status === "CanLoadMore") {
+      setPendingPage(nextPage)
+      loadMore(PAGE_SIZE)
+    }
+  }
 
   return (
     <Stagger className="h-full overflow-y-auto">
@@ -309,7 +337,7 @@ export default function LogsPage() {
                     dataKey="value"
                     strokeWidth={0}
                   >
-                    {sourceDistribution.map((entry) => (
+                    {sourceDistribution.map((entry: { name: string; value: number; color: string }) => (
                       <Cell key={entry.name} fill={entry.color} />
                     ))}
                   </Pie>
@@ -318,7 +346,7 @@ export default function LogsPage() {
               </ResponsiveContainer>
             </div>
             <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
-              {sourceDistribution.map((s) => (
+              {sourceDistribution.map((s: { name: string; value: number; color: string }) => (
                 <div key={s.name} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                   <div className="size-1.5 rounded-full" style={{ backgroundColor: s.color }} />
                   {s.name}
@@ -378,7 +406,7 @@ export default function LogsPage() {
           </div>
 
           <div className="rounded-[4px] ring-1 ring-border">
-            {filteredEvents.length === 0 ? (
+            {totalCount === 0 ? (
               <div className="flex flex-col items-center justify-center py-12">
                 <ClockCounterClockwise size={24} className="text-muted-foreground/40" />
                 <p className="mt-2 text-[13px] text-muted-foreground">No events match this filter</p>
@@ -392,7 +420,7 @@ export default function LogsPage() {
 
                   return (
                     <div
-                      key={event.id}
+                      key={event._id}
                       className="group flex items-center gap-2.5 px-3 py-1.5 transition-colors hover:bg-muted/30"
                     >
                       <div className={`flex size-5 shrink-0 items-center justify-center rounded-[3px] bg-muted/50 ${config.color}`}>
@@ -414,10 +442,10 @@ export default function LogsPage() {
           </div>
 
           {/* Pagination */}
-          {filteredEvents.length > PAGE_SIZE && (
+          {totalCount > PAGE_SIZE && (
             <div className="mt-3 flex items-center justify-between">
               <p className="text-[11px] text-muted-foreground">
-                {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filteredEvents.length)} of {filteredEvents.length}
+                {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, totalCount)} of {totalCount}
               </p>
               <div className="flex items-center gap-1">
                 <button
@@ -431,7 +459,7 @@ export default function LogsPage() {
                   {page + 1} / {totalPages}
                 </span>
                 <button
-                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                  onClick={handleNextPage}
                   disabled={page >= totalPages - 1}
                   className="flex size-7 items-center justify-center rounded-[4px] ring-1 ring-border text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent"
                 >
@@ -445,4 +473,3 @@ export default function LogsPage() {
     </Stagger>
   )
 }
-

@@ -9,6 +9,7 @@ import {
 } from "./_generated/server"
 import type { Doc, Id } from "./_generated/dataModel"
 import { internal } from "./_generated/api"
+import { insertWorkspaceLog } from "./logs"
 import {
   requireWorkspaceAccess,
   requireWorkspaceAdminAccess,
@@ -1070,6 +1071,16 @@ export const recordLinearWebhookDelivery = internalMutation({
       eventType: args.eventType,
       receivedAt: Date.now(),
     })
+    const integration = await ctx.db.get(args.integrationId)
+    if (integration) {
+      await insertWorkspaceLog(ctx, {
+        workspaceId: integration.workspaceId,
+        category: "webhooks",
+        type: "webhook_received",
+        message: `Linear webhook: ${args.eventType}`,
+        source: "linear",
+      })
+    }
     return true
   },
 })
@@ -1371,6 +1382,16 @@ export const upsertTaskFromLinearIssue = internalMutation({
       }
 
       await ctx.db.patch(matchedTask._id, updates)
+      await insertWorkspaceLog(ctx, {
+        workspaceId: args.workspaceId,
+        category: "tasks",
+        type: matchedTask.status !== taskStatus ? "task_moved" : "task_updated",
+        message:
+          matchedTask.status !== taskStatus
+            ? `${matchedTask.taskCode} moved from "${matchedTask.status}" to "${taskStatus}"`
+            : `${matchedTask.taskCode} updated`,
+        source: "linear",
+      })
       await ctx.db.insert("linearTaskLinks", {
         workspaceId: args.workspaceId,
         taskId: matchedTask._id,
@@ -1423,6 +1444,14 @@ export const upsertTaskFromLinearIssue = internalMutation({
       linearIssueUrl: issue.url ?? undefined,
       lastLinearUpdatedAt: issue.updatedAt,
       lastSyncedAt: Date.now(),
+    })
+
+    await insertWorkspaceLog(ctx, {
+      workspaceId: args.workspaceId,
+      category: "tasks",
+      type: "task_created",
+      message: `Task ${workspace.prefix || "MED"}-${nextTaskNumber} "${issue.title.trim()}" created`,
+      source: "linear",
     })
 
     return createdTaskId
@@ -1577,6 +1606,14 @@ export const connectWorkspaceLinearIntegration = action({
       }
     )
 
+    await ctx.runMutation(internal.logs.recordWorkspaceLog, {
+      workspaceId: args.workspaceId,
+      category: "integrations",
+      type: "integration_connected",
+      message: `Linear integration connected to team ${selectedTeam.name}`,
+      source: "linear",
+    })
+
     return {
       integrationId,
       teamName: selectedTeam.name,
@@ -1668,6 +1705,14 @@ export const disconnectWorkspaceLinearIntegration = action({
 
     await ctx.runMutation(internal.linear.clearWorkspaceLinearIntegration, {
       workspaceId: args.workspaceId,
+    })
+
+    await ctx.runMutation(internal.logs.recordWorkspaceLog, {
+      workspaceId: args.workspaceId,
+      category: "integrations",
+      type: "integration_disconnected",
+      message: "Linear integration disconnected",
+      source: "linear",
     })
 
     return { success: true }

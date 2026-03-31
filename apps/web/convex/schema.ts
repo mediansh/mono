@@ -402,6 +402,61 @@ export default defineSchema({
     .index("by_workspace", ["workspaceId"])
     .index("by_key_hash", ["keyHash"]),
 
+  workspaceLogs: defineTable({
+    workspaceId: v.id("workspaces"),
+    category: v.union(
+      v.literal("tasks"),
+      v.literal("webhooks"),
+      v.literal("integrations"),
+      v.literal("members")
+    ),
+    type: v.union(
+      v.literal("task_created"),
+      v.literal("task_moved"),
+      v.literal("task_updated"),
+      v.literal("task_deleted"),
+      v.literal("tasks_generated_ai"),
+      v.literal("request_accepted"),
+      v.literal("request_denied"),
+      v.literal("integration_connected"),
+      v.literal("integration_disconnected"),
+      v.literal("webhook_received"),
+      v.literal("webhook_error"),
+      v.literal("member_joined"),
+      v.literal("member_removed"),
+      v.literal("labels_saved"),
+      v.literal("feedback_processed")
+    ),
+    message: v.string(),
+    source: v.optional(
+      v.union(
+        v.literal("discord"),
+        v.literal("github"),
+        v.literal("linear"),
+        v.literal("x"),
+        v.literal("cli"),
+        v.literal("manual"),
+        v.literal("ai")
+      )
+    ),
+    timestamp: v.number(),
+  })
+    .index("by_workspace_timestamp", ["workspaceId", "timestamp"])
+    .index("by_workspace_category_timestamp", [
+      "workspaceId",
+      "category",
+      "timestamp",
+    ]),
+
+  workspaceLogMetrics: defineTable({
+    workspaceId: v.id("workspaces"),
+    totalCount: v.number(),
+    taskCount: v.number(),
+    webhookCount: v.number(),
+    integrationCount: v.number(),
+    memberCount: v.number(),
+  }).index("by_workspace", ["workspaceId"]),
+
   tasks: defineTable({
     workspaceId: v.id("workspaces"),
     taskCode: v.string(),

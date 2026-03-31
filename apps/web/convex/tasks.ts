@@ -9,6 +9,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server"
 import type { Doc, Id } from "./_generated/dataModel"
 import { internal } from "./_generated/api"
 import { STATUS_ORDER, isDemoTaskSet } from "../lib/task-board"
+import { insertWorkspaceLog, insertWorkspaceLogs } from "./logs"
 import { requireTaskWriteAccess, requireWorkspaceAccess } from "./permissions"
 
 const taskStatusValidator = v.union(
@@ -79,6 +80,39 @@ type CreateTaskInput = {
   }[]
 }
 
+type WorkspaceTaskLog = {
+  workspaceId: Id<"workspaces">
+  category: "tasks"
+  type: "task_moved" | "task_updated" | "task_deleted"
+  message: string
+  source?: "discord" | "github" | "linear" | "x" | "cli" | "manual"
+}
+
+const TASK_STATUS_LABELS = {
+  requests: "Requests",
+  todo: "Todo",
+  in_progress: "In Progress",
+  ready: "Ready",
+  shipped: "Shipped",
+  archive: "Archive",
+} as const
+
+function getWorkspaceLogSource(
+  platform?: "discord" | "slack" | "x" | "linear" | "github" | "cli"
+) {
+  if (
+    platform === "discord" ||
+    platform === "github" ||
+    platform === "linear" ||
+    platform === "x" ||
+    platform === "cli"
+  ) {
+    return platform
+  }
+
+  return "manual"
+}
+
 function normalizeTitleFingerprint(value: string) {
   return value.trim().replace(/\s+/g, " ").toLowerCase()
 }
@@ -103,6 +137,71 @@ async function getWorkspaceTasks(
     .collect()) as Doc<"tasks">[]
 
   return sortTasks(tasks)
+}
+
+async function logTaskCreated(ctx: MutationCtx, task: Doc<"tasks">) {
+  await insertWorkspaceLog(ctx, {
+    workspaceId: task.workspaceId,
+    category: "tasks",
+    type: "task_created",
+    message: `Task ${task.taskCode} "${task.title}" created`,
+    source: getWorkspaceLogSource(task.source?.platform),
+  })
+}
+
+async function logTaskMoved(
+  ctx: MutationCtx,
+  task: Doc<"tasks">,
+  nextStatus: Doc<"tasks">["status"]
+) {
+  await insertWorkspaceLog(ctx, {
+    workspaceId: task.workspaceId,
+    category: "tasks",
+    type: "task_moved",
+    message: `${task.taskCode} moved from "${TASK_STATUS_LABELS[task.status]}" to "${TASK_STATUS_LABELS[nextStatus]}"`,
+    source: getWorkspaceLogSource(task.source?.platform),
+  })
+}
+
+async function logTaskUpdated(ctx: MutationCtx, task: Doc<"tasks">) {
+  await insertWorkspaceLog(ctx, {
+    workspaceId: task.workspaceId,
+    category: "tasks",
+    type: "task_updated",
+    message: `${task.taskCode} updated`,
+    source: getWorkspaceLogSource(task.source?.platform),
+  })
+}
+
+async function logTaskDeleted(ctx: MutationCtx, task: Doc<"tasks">) {
+  await insertWorkspaceLog(ctx, {
+    workspaceId: task.workspaceId,
+    category: "tasks",
+    type: "task_deleted",
+    message: `${task.taskCode} deleted`,
+    source: getWorkspaceLogSource(task.source?.platform),
+  })
+}
+
+async function logFeedbackProcessed(
+  ctx: MutationCtx,
+  workspaceId: Id<"workspaces">,
+  createdTasks: Doc<"tasks">[]
+) {
+  if (createdTasks.length === 0) {
+    return
+  }
+
+  await insertWorkspaceLog(ctx, {
+    workspaceId,
+    category: "tasks",
+    type: "feedback_processed",
+    message:
+      createdTasks.length === 1
+        ? "Processed feedback and created 1 task"
+        : `Processed feedback and created ${createdTasks.length} tasks`,
+    source: getWorkspaceLogSource(createdTasks[0]?.source?.platform),
+  })
 }
 
 async function insertTasksForWorkspace(
@@ -421,6 +520,7 @@ export const createTask = mutation({
       args,
     ])
     if (createdTasks[0]) {
+      await logTaskCreated(ctx, createdTasks[0])
       await queueLinearSync(ctx, createdTasks[0]._id)
       await queueGitHubSync(ctx, createdTasks[0]._id)
     }
@@ -439,6 +539,18 @@ export const createTasks = mutation({
       args.workspaceId,
       args.tasks
     )
+    if (createdTasks.length > 0) {
+      await insertWorkspaceLog(ctx, {
+        workspaceId: args.workspaceId,
+        category: "tasks",
+        type: "tasks_generated_ai",
+        message:
+          createdTasks.length === 1
+            ? "AI generated 1 task from prompt"
+            : `AI generated ${createdTasks.length} tasks from prompt`,
+        source: "ai",
+      })
+    }
     for (const task of createdTasks) {
       await queueLinearSync(ctx, task._id)
       await queueGitHubSync(ctx, task._id)
@@ -470,6 +582,7 @@ export const createTasksFromDiscordFeedback = mutation({
       args.workspaceId,
       filteredTasks
     )
+    await logFeedbackProcessed(ctx, args.workspaceId, createdTasks)
     for (const task of createdTasks) {
       await queueLinearSync(ctx, task._id)
       await queueGitHubSync(ctx, task._id)
@@ -495,6 +608,7 @@ export const createTasksFromDiscordFeedbackInternal = internalMutation({
       args.workspaceId,
       filteredTasks
     )
+    await logFeedbackProcessed(ctx, args.workspaceId, createdTasks)
     for (const task of createdTasks) {
       await queueLinearSync(ctx, task._id)
       await queueGitHubSync(ctx, task._id)
@@ -520,6 +634,7 @@ export const createTasksFromFeedbackInternal = internalMutation({
       args.workspaceId,
       filteredTasks
     )
+    await logFeedbackProcessed(ctx, args.workspaceId, createdTasks)
     for (const task of createdTasks) {
       await queueLinearSync(ctx, task._id)
       await queueGitHubSync(ctx, task._id)
@@ -803,12 +918,20 @@ export const updateTask = mutation({
       args.status !== undefined &&
       args.status !== task.status
     ) {
+      await logTaskMoved(ctx, task, args.status)
       await queueDiscordNotificationForStatusChange(
         ctx,
         task,
         args.taskId,
         args.status
       )
+    } else if (
+      args.title !== undefined ||
+      args.description !== undefined ||
+      args.priority !== undefined ||
+      args.labels !== undefined
+    ) {
+      await logTaskUpdated(ctx, task)
     }
   },
 })
@@ -836,6 +959,7 @@ export const reorderTasks = mutation({
 
     // Read all tasks first for validation and to detect status transitions
     const tasksBeforeUpdate = new Map<string, Doc<"tasks">>()
+    const taskMoveLogs: WorkspaceTaskLog[] = []
     for (const change of args.changes) {
       const task = await ctx.db.get(change.taskId)
       if (!task || task.workspaceId !== args.workspaceId) {
@@ -853,10 +977,19 @@ export const reorderTasks = mutation({
 
       const taskBeforeUpdate = tasksBeforeUpdate.get(change.taskId)
       if (taskBeforeUpdate && change.status !== taskBeforeUpdate.status) {
+        taskMoveLogs.push({
+          workspaceId: taskBeforeUpdate.workspaceId,
+          category: "tasks",
+          type: "task_moved",
+          message: `${taskBeforeUpdate.taskCode} moved from "${TASK_STATUS_LABELS[taskBeforeUpdate.status]}" to "${TASK_STATUS_LABELS[change.status]}"`,
+          source: getWorkspaceLogSource(taskBeforeUpdate.source?.platform),
+        })
         await queueLinearSync(ctx, change.taskId)
         await queueGitHubSync(ctx, change.taskId)
       }
     }
+
+    await insertWorkspaceLogs(ctx, taskMoveLogs)
 
     // Queue Discord notifications for status transitions
     for (const change of args.changes) {
@@ -894,6 +1027,7 @@ export const deleteTask = mutation({
     await clearLinearTaskLink(ctx, args.taskId)
     await clearGitHubTaskLink(ctx, args.taskId)
     await ctx.db.delete(args.taskId)
+    await logTaskDeleted(ctx, task)
   },
 })
 
@@ -909,6 +1043,7 @@ export const bulkUpdateTasks = mutation({
     await requireTaskWriteAccess(ctx, args.workspaceId)
 
     const updates: Partial<Doc<"tasks">> = {}
+    const taskLogs: WorkspaceTaskLog[] = []
     if (args.status !== undefined) updates.status = args.status
     if (args.priority !== undefined) updates.priority = args.priority
     if (args.labels !== undefined) updates.labels = args.labels
@@ -931,6 +1066,27 @@ export const bulkUpdateTasks = mutation({
         await queueGitHubSync(ctx, taskId)
       }
 
+      if (args.status !== undefined && args.status !== task.status) {
+        taskLogs.push({
+          workspaceId: task.workspaceId,
+          category: "tasks",
+          type: "task_moved",
+          message: `${task.taskCode} moved from "${TASK_STATUS_LABELS[task.status]}" to "${TASK_STATUS_LABELS[args.status]}"`,
+          source: getWorkspaceLogSource(task.source?.platform),
+        })
+      } else if (
+        args.priority !== undefined ||
+        args.labels !== undefined
+      ) {
+        taskLogs.push({
+          workspaceId: task.workspaceId,
+          category: "tasks",
+          type: "task_updated",
+          message: `${task.taskCode} updated`,
+          source: getWorkspaceLogSource(task.source?.platform),
+        })
+      }
+
       // Queue Discord notifications for status transitions
       if (
         args.status !== undefined &&
@@ -944,6 +1100,8 @@ export const bulkUpdateTasks = mutation({
         )
       }
     }
+
+    await insertWorkspaceLogs(ctx, taskLogs)
   },
 })
 
@@ -955,6 +1113,7 @@ export const bulkDeleteTasks = mutation({
   handler: async (ctx, args) => {
     await requireTaskWriteAccess(ctx, args.workspaceId)
 
+    const deletedTaskLogs: WorkspaceTaskLog[] = []
     for (const taskId of args.taskIds) {
       const task = await ctx.db.get(taskId)
       if (!task || task.workspaceId !== args.workspaceId) {
@@ -967,7 +1126,16 @@ export const bulkDeleteTasks = mutation({
       await clearLinearTaskLink(ctx, taskId)
       await clearGitHubTaskLink(ctx, taskId)
       await ctx.db.delete(taskId)
+      deletedTaskLogs.push({
+        workspaceId: task.workspaceId,
+        category: "tasks",
+        type: "task_deleted",
+        message: `${task.taskCode} deleted`,
+        source: getWorkspaceLogSource(task.source?.platform),
+      })
     }
+
+    await insertWorkspaceLogs(ctx, deletedTaskLogs)
   },
 })
 

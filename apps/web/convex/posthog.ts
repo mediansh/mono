@@ -1,20 +1,42 @@
-import { PostHog } from "posthog-node"
+type PostHogEventPayload = {
+  distinctId: string
+  event: string
+  properties: Record<string, unknown>
+}
 
-let client: PostHog | null = null
-
-export function getPostHogClient(): PostHog | null {
-  const key = process.env.NEXT_PUBLIC_POSTHOG_KEY ?? process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN
-  if (!key) return null
-
-  if (!client) {
-    client = new PostHog(key, {
-      host: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com",
-      flushAt: 1,
-      flushInterval: 0,
-    })
+function getPostHogConfig() {
+  const key =
+    process.env.NEXT_PUBLIC_POSTHOG_KEY ??
+    process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN
+  if (!key) {
+    return null
   }
 
-  return client
+  return {
+    key,
+    host: (process.env.NEXT_PUBLIC_POSTHOG_HOST ??
+      "https://us.i.posthog.com").replace(/\/$/, ""),
+  }
+}
+
+function captureEvent(payload: PostHogEventPayload) {
+  const config = getPostHogConfig()
+  if (!config) {
+    return
+  }
+
+  void fetch(`${config.host}/capture/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      api_key: config.key,
+      event: payload.event,
+      distinct_id: payload.distinctId,
+      properties: payload.properties,
+    }),
+  }).catch(() => {})
 }
 
 export function trackLLMGeneration(props: {
@@ -28,10 +50,7 @@ export function trackLLMGeneration(props: {
   error?: string
   metadata?: Record<string, unknown>
 }) {
-  const posthog = getPostHogClient()
-  if (!posthog) return
-
-  posthog.capture({
+  captureEvent({
     distinctId: props.distinctId,
     event: "llm_generation",
     properties: {
@@ -61,10 +80,7 @@ export function trackFeedbackProcessing(props: {
   extractorDurationMs?: number
   totalDurationMs: number
 }) {
-  const posthog = getPostHogClient()
-  if (!posthog) return
-
-  posthog.capture({
+  captureEvent({
     distinctId: props.distinctId,
     event: "feedback_processed",
     properties: {

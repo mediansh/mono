@@ -1,6 +1,7 @@
 import { v } from "convex/values"
 import { mutation, query, type MutationCtx } from "./_generated/server"
 import { internal } from "./_generated/api"
+import { insertWorkspaceLog } from "./logs"
 import {
   requireWorkspaceAccess,
   requireWorkspaceAdminAccess,
@@ -232,6 +233,14 @@ export const recordInboundMessage = mutation({
       receivedAt: Date.now(),
     })
 
+    await insertWorkspaceLog(ctx, {
+      workspaceId: integration.workspaceId,
+      category: "webhooks",
+      type: "webhook_received",
+      message: `Discord message received in ${args.channelName ?? "channel"}`,
+      source: "discord",
+    })
+
     await ctx.scheduler.runAfter(
       0,
       internal.discordFeedback.scheduleFeedbackDetection,
@@ -415,6 +424,14 @@ export const redeemPairingCode = mutation({
       pairedAt,
     })
 
+    await insertWorkspaceLog(ctx, {
+      workspaceId: args.workspaceId,
+      category: "integrations",
+      type: "integration_connected",
+      message: `Discord integration connected to ${pairingCode.guildName}`,
+      source: "discord",
+    })
+
     return {
       integrationId,
       guildName: pairingCode.guildName,
@@ -439,6 +456,16 @@ export const disconnectWorkspaceDiscordIntegration = mutation({
     await Promise.all(
       integrations.map((integration) => ctx.db.delete(integration._id))
     )
+
+    if (integrations.length > 0) {
+      await insertWorkspaceLog(ctx, {
+        workspaceId: args.workspaceId,
+        category: "integrations",
+        type: "integration_disconnected",
+        message: "Discord integration disconnected",
+        source: "discord",
+      })
+    }
   },
 })
 

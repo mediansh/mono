@@ -4,6 +4,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server"
 import type { Doc, Id } from "./_generated/dataModel"
 import { internal } from "./_generated/api"
 import { STATUS_ORDER } from "../lib/task-board"
+import { insertWorkspaceLog } from "./logs"
 import {
   requireIdentity,
   requireWorkspaceAdminAccess,
@@ -233,6 +234,16 @@ export const createTask = mutation({
     })
 
     const task = await ctx.db.get(taskId)
+    if (task) {
+      await insertWorkspaceLog(ctx, {
+        workspaceId,
+        category: "tasks",
+        type: "task_created",
+        message: `Task ${task.taskCode} "${task.title}" created`,
+        source: "cli",
+      })
+    }
+
     return task
       ? {
           _id: task._id,
@@ -285,6 +296,15 @@ export const updateTaskStatus = mutation({
     }
 
     await ctx.db.patch(task._id, updates)
+    if (args.status !== task.status) {
+      await insertWorkspaceLog(ctx, {
+        workspaceId,
+        category: "tasks",
+        type: "task_moved",
+        message: `${task.taskCode} moved from "${task.status}" to "${args.status}"`,
+        source: "cli",
+      })
+    }
 
     // Queue integration syncs
     await ctx.scheduler.runAfter(0, internal.linear.syncTaskToLinearIssue, {

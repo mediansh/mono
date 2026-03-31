@@ -7,6 +7,7 @@ import {
   requireWorkspaceAccess,
   requireWorkspaceAdminAccess,
 } from "./permissions"
+import { insertWorkspaceLog } from "./logs"
 import {
   WORKSPACE_ROLE_RANK,
   type WorkspaceInviteRole,
@@ -53,6 +54,14 @@ function maskEmailAddress(email?: string) {
   const [local, domain] = email.split("@")
   if (!local || !domain) return email
   return `${local.slice(0, 2)}${"*".repeat(Math.max(local.length - 2, 1))}@${domain}`
+}
+
+function getMemberDisplayName(member: {
+  name?: string | null
+  email?: string | null
+  userId: string
+}) {
+  return member.name ?? member.email ?? member.userId
 }
 
 function sortMembers(members: Doc<"workspaceMembers">[]) {
@@ -222,6 +231,16 @@ export const updateWorkspaceLabels = mutation({
     if (!workspace) throw new Error("Workspace not found")
 
     await ctx.db.patch(args.workspaceId, { labels: args.labels })
+    await insertWorkspaceLog(ctx, {
+      workspaceId: args.workspaceId,
+      category: "members",
+      type: "labels_saved",
+      message:
+        args.labels.length === 1
+          ? "Labels updated: 1 label saved"
+          : `Labels updated: ${args.labels.length} labels saved`,
+      source: "manual",
+    })
   },
 })
 
@@ -276,6 +295,8 @@ export const deleteWorkspace = mutation({
       xOAuthStates,
       xWebhookDeliveries,
       deletedTaskSources,
+      workspaceLogs,
+      workspaceLogMetrics,
     ] = await Promise.all([
       ctx.db
         .query("workspaceMembers")
@@ -327,6 +348,14 @@ export const deleteWorkspace = mutation({
         .query("deletedTaskSources")
         .withIndex("by_workspace_source", (q) => q.eq("workspaceId", args.workspaceId))
         .collect(),
+      ctx.db
+        .query("workspaceLogs")
+        .withIndex("by_workspace_timestamp", (q) => q.eq("workspaceId", args.workspaceId))
+        .collect(),
+      ctx.db
+        .query("workspaceLogMetrics")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+        .collect(),
     ])
 
     for (const task of tasks) {
@@ -367,6 +396,14 @@ export const deleteWorkspace = mutation({
 
     for (const deletedTaskSource of deletedTaskSources) {
       await ctx.db.delete(deletedTaskSource._id)
+    }
+
+    for (const log of workspaceLogs) {
+      await ctx.db.delete(log._id)
+    }
+
+    for (const metrics of workspaceLogMetrics) {
+      await ctx.db.delete(metrics._id)
     }
 
     for (const integration of xIntegrations) {
@@ -583,6 +620,13 @@ export const removeMember = mutation({
     }
 
     await ctx.db.delete(args.memberId)
+    await insertWorkspaceLog(ctx, {
+      workspaceId: member.workspaceId,
+      category: "members",
+      type: "member_removed",
+      message: `${getMemberDisplayName(member)} removed from workspace`,
+      source: "manual",
+    })
   },
 })
 
@@ -645,6 +689,14 @@ export const acceptInvite = mutation({
       status: "accepted",
       acceptedAt: Date.now(),
       acceptedByUserId: identity.subject,
+    })
+
+    await insertWorkspaceLog(ctx, {
+      workspaceId: invite.workspaceId,
+      category: "members",
+      type: "member_joined",
+      message: `${profile.name ?? profile.email ?? identity.subject} joined as ${invite.role}`,
+      source: "manual",
     })
 
     return {

@@ -9,6 +9,7 @@ import {
 } from "./_generated/server"
 import { internal } from "./_generated/api"
 import type { Doc, Id } from "./_generated/dataModel"
+import { insertWorkspaceLog } from "./logs"
 import {
   requireWorkspaceAccess,
   requireWorkspaceAdminAccess,
@@ -1223,7 +1224,7 @@ export const saveWorkspaceIntegrationInternal = internalMutation({
       await ctx.db.delete(existing._id)
     }
 
-    return await ctx.db.insert("xWorkspaceIntegrations", {
+    const integrationId = await ctx.db.insert("xWorkspaceIntegrations", {
       workspaceId: args.workspaceId,
       xUserId: args.xUserId,
       username: args.username,
@@ -1236,6 +1237,16 @@ export const saveWorkspaceIntegrationInternal = internalMutation({
       connectedByUserId: args.connectedByUserId,
       feedbackProcessingState: "idle",
     })
+
+    await insertWorkspaceLog(ctx, {
+      workspaceId: args.workspaceId,
+      category: "integrations",
+      type: "integration_connected",
+      message: `X integration connected to @${args.username}`,
+      source: "x",
+    })
+
+    return integrationId
   },
 })
 
@@ -1266,6 +1277,13 @@ export const logWebhookDeliveryInternal = internalMutation({
     await ctx.db.insert("xWebhookDeliveries", {
       ...args,
       receivedAt: Date.now(),
+    })
+    await insertWorkspaceLog(ctx, {
+      workspaceId: args.workspaceId,
+      category: "webhooks",
+      type: args.status === "error" ? "webhook_error" : "webhook_received",
+      message: args.summary,
+      source: "x",
     })
   },
 })
@@ -1377,6 +1395,14 @@ export const disconnectWorkspaceXIntegration = action({
 
     await ctx.runMutation(internal.x.clearWorkspaceXIntegrationInternal, {
       workspaceId: args.workspaceId,
+    })
+
+    await ctx.runMutation(internal.logs.recordWorkspaceLog, {
+      workspaceId: args.workspaceId,
+      category: "integrations",
+      type: "integration_disconnected",
+      message: "X integration disconnected",
+      source: "x",
     })
 
     return { success: true }

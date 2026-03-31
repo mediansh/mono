@@ -10,6 +10,7 @@ import {
 } from "./_generated/server"
 import type { Doc, Id } from "./_generated/dataModel"
 import { internal } from "./_generated/api"
+import { insertWorkspaceLog } from "./logs"
 import {
   requireWorkspaceAccess,
   requireWorkspaceAdminAccess,
@@ -1262,6 +1263,15 @@ export const recordGitHubWebhookDelivery = internalMutation({
       ...args,
       receivedAt: Date.now(),
     })
+    await insertWorkspaceLog(ctx, {
+      workspaceId: args.workspaceId,
+      category: "webhooks",
+      type: "webhook_received",
+      message: args.action
+        ? `GitHub webhook: ${args.eventType}.${args.action}`
+        : `GitHub webhook: ${args.eventType}`,
+      source: "github",
+    })
     return true
   },
 })
@@ -1567,6 +1577,16 @@ export const upsertTaskFromGitHubIssue = internalMutation({
       }
 
       await ctx.db.patch(matchedTask._id, updates)
+      await insertWorkspaceLog(ctx, {
+        workspaceId: integration.workspaceId,
+        category: "tasks",
+        type: matchedTask.status !== nextStatus ? "task_moved" : "task_updated",
+        message:
+          matchedTask.status !== nextStatus
+            ? `${matchedTask.taskCode} moved from "${matchedTask.status}" to "${nextStatus}"`
+            : `${matchedTask.taskCode} updated`,
+        source: "github",
+      })
       await ctx.runMutation(internal.github.saveGitHubTaskLink, {
         workspaceId: integration.workspaceId,
         taskId: matchedTask._id,
@@ -1628,6 +1648,14 @@ export const upsertTaskFromGitHubIssue = internalMutation({
       githubIssueNumber: issue.number,
       githubIssueUrl: issue.htmlUrl,
       lastGithubUpdatedAt: issue.updatedAt,
+    })
+
+    await insertWorkspaceLog(ctx, {
+      workspaceId: integration.workspaceId,
+      category: "tasks",
+      type: "task_created",
+      message: `Task ${workspace.prefix || "MED"}-${nextTaskNumber} "${nextTitle}" created`,
+      source: "github",
     })
 
     return createdTaskId
@@ -2035,6 +2063,14 @@ export const disconnectWorkspaceGitHubIntegration = action({
       workspaceId: args.workspaceId,
     })
 
+    await ctx.runMutation(internal.logs.recordWorkspaceLog, {
+      workspaceId: args.workspaceId,
+      category: "integrations",
+      type: "integration_disconnected",
+      message: "GitHub integration disconnected",
+      source: "github",
+    })
+
     return { success: true }
   },
 })
@@ -2286,6 +2322,14 @@ export const githubInstallCallback = httpAction(async (ctx, request) => {
       syncResult,
     })
 
+    await ctx.runMutation(internal.logs.recordWorkspaceLog, {
+      workspaceId: state.workspaceId,
+      category: "integrations",
+      type: "integration_connected",
+      message: `GitHub integration connected to ${installation.accountLogin}`,
+      source: "github",
+    })
+
     const message =
       syncResult === null
         ? `Connected ${installation.accountLogin}. Issue sync is off by default, so Median won't import GitHub issues until you enable it or run a manual sync.`
@@ -2496,6 +2540,13 @@ export const githubWebhook = httpAction(async (ctx, request) => {
       eventType,
       installationId,
       workspaceId: integration.workspaceId,
+    })
+    await ctx.runMutation(internal.logs.recordWorkspaceLog, {
+      workspaceId: integration.workspaceId,
+      category: "webhooks",
+      type: "webhook_error",
+      message: `GitHub webhook failed: ${eventType}`,
+      source: "github",
     })
     return new Response("Webhook error", { status: 500 })
   }
