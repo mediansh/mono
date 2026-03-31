@@ -2326,31 +2326,36 @@ function ViewToggle({
   onViewChange: (view: BoardView) => void
 }) {
   return (
-    <div className="flex items-center rounded-[4px] ring-1 ring-border bg-sidebar dark:bg-card">
+    <div className="relative flex items-center gap-0.5 rounded-[5px] bg-muted/60 p-0.5">
+      {/* Sliding indicator */}
+      <motion.div
+        layout
+        layoutId="view-toggle-indicator"
+        className="absolute inset-y-0.5 w-[calc(50%-2px)] rounded-[4px] bg-background shadow-sm ring-1 ring-border/50"
+        style={{ left: view === "list" ? 2 : "calc(50% + 0px)" }}
+        transition={{ type: "spring", stiffness: 500, damping: 35 }}
+      />
       <button
         onClick={() => onViewChange("list")}
-        className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[12px] font-medium transition-colors ${
+        className={`relative z-10 flex items-center justify-center rounded-[4px] p-1.5 transition-colors ${
           view === "list"
-            ? "bg-accent text-foreground"
+            ? "text-foreground"
             : "text-muted-foreground hover:text-foreground"
         }`}
         title="List view"
       >
         <HugeiconsIcon icon={LeftToRightListBulletIcon} size={14} />
-        <span>List</span>
       </button>
-      <div className="h-4 w-px bg-border" />
       <button
         onClick={() => onViewChange("board")}
-        className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[12px] font-medium transition-colors ${
+        className={`relative z-10 flex items-center justify-center rounded-[4px] p-1.5 transition-colors ${
           view === "board"
-            ? "bg-accent text-foreground"
+            ? "text-foreground"
             : "text-muted-foreground hover:text-foreground"
         }`}
         title="Board view"
       >
         <HugeiconsIcon icon={DashboardSquare01Icon} size={14} />
-        <span>Board</span>
       </button>
     </div>
   )
