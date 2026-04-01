@@ -1,15 +1,5 @@
-export const AUTUMN_AI_CREDITS_FEATURE_ID = "ai_credits"
-export const AUTUMN_INTEGRATION_EVENTS_FEATURE_ID = "integration_events"
-
-export const AUTUMN_AI_INPUT_FEATURE_BY_MODEL = {
-  "google/gemma-3-27b-it": "ai_gemma_3_27b_input_tokens",
-  "anthropic/claude-haiku-4.5": "ai_claude_haiku_4_5_input_tokens",
-} as const
-
-export const AUTUMN_AI_OUTPUT_FEATURE_BY_MODEL = {
-  "google/gemma-3-27b-it": "ai_gemma_3_27b_output_tokens",
-  "anthropic/claude-haiku-4.5": "ai_claude_haiku_4_5_output_tokens",
-} as const
+export const AUTUMN_AI_USAGE_FEATURE_ID = "ai_usage"
+export const AUTUMN_EVENTS_FEATURE_ID = "events"
 
 export const AUTUMN_TRACKED_AI_MODELS = [
   "google/gemma-3-27b-it",
@@ -52,11 +42,11 @@ export const AUTUMN_BILLING_PLANS = [
     name: "Scale",
     price: 40,
     aiBudget: 45,
-    eventLimit: 20000,
+    eventLimit: 10000,
   },
 ] as const
 
-export const AUTUMN_EVENT_OVERAGE_PRICE = 0.001
+export const AUTUMN_EVENT_OVERAGE_PRICE = 0.007
 export const BILLING_RECORD_PAGE_SIZE = 100
 export const BILLING_RANGE = "last_cycle" as const
 export const BILLING_BIN_SIZE = "day" as const
@@ -74,13 +64,6 @@ export function isTrackedAiModel(model: string): model is TrackedAiModel {
   return AUTUMN_TRACKED_AI_MODELS.includes(model as TrackedAiModel)
 }
 
-export function getAiUsageFeatureIds(model: TrackedAiModel) {
-  return {
-    input: AUTUMN_AI_INPUT_FEATURE_BY_MODEL[model],
-    output: AUTUMN_AI_OUTPUT_FEATURE_BY_MODEL[model],
-  }
-}
-
 export function getAiCostForTokens(args: {
   model: TrackedAiModel
   inputTokens?: number
@@ -94,25 +77,6 @@ export function getAiCostForTokens(args: {
     (inputTokens / 1_000_000) * pricing.input +
     (outputTokens / 1_000_000) * pricing.output
   )
-}
-
-export function getTokenDirection(featureId: string) {
-  if (featureId.includes("_input_")) return "input"
-  if (featureId.includes("_output_")) return "output"
-  return null
-}
-
-export function getModelFromFeatureId(featureId: string): TrackedAiModel | null {
-  switch (featureId) {
-    case AUTUMN_AI_INPUT_FEATURE_BY_MODEL["google/gemma-3-27b-it"]:
-    case AUTUMN_AI_OUTPUT_FEATURE_BY_MODEL["google/gemma-3-27b-it"]:
-      return "google/gemma-3-27b-it"
-    case AUTUMN_AI_INPUT_FEATURE_BY_MODEL["anthropic/claude-haiku-4.5"]:
-    case AUTUMN_AI_OUTPUT_FEATURE_BY_MODEL["anthropic/claude-haiku-4.5"]:
-      return "anthropic/claude-haiku-4.5"
-    default:
-      return null
-  }
 }
 
 export function formatTrackedModelName(model: TrackedAiModel) {

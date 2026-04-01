@@ -1,11 +1,12 @@
 import { Autumn } from "autumn-js"
 import {
-  AUTUMN_INTEGRATION_EVENTS_FEATURE_ID,
+  AUTUMN_AI_USAGE_FEATURE_ID,
+  AUTUMN_EVENTS_FEATURE_ID,
   BILLING_BIN_SIZE,
   BILLING_RANGE,
   BILLING_RECORD_PAGE_SIZE,
   TrackedAiModel,
-  getAiUsageFeatureIds,
+  getAiCostForTokens,
   getAutumnCustomerId,
 } from "./config"
 
@@ -83,47 +84,15 @@ export async function trackAiUsage(args: {
     email: args.email,
   })
 
-  const customerId = getAutumnCustomerId(args.workspaceId)
-  const features = getAiUsageFeatureIds(args.model)
-  const tasks: Promise<unknown>[] = []
+  const cost = getAiCostForTokens({
+    model: args.model,
+    inputTokens: args.inputTokens,
+    outputTokens: args.outputTokens,
+  })
 
-  if ((args.inputTokens ?? 0) > 0) {
-    tasks.push(
-      getAutumnClient().track({
-        customerId,
-        featureId: features.input,
-        value: args.inputTokens,
-        properties: {
-          workspace_id: args.workspaceId,
-          workspace_name: args.workspaceName ?? undefined,
-          model: args.model,
-          direction: "input",
-          ...args.properties,
-        },
-      })
-    )
-  }
-
-  if ((args.outputTokens ?? 0) > 0) {
-    tasks.push(
-      getAutumnClient().track({
-        customerId,
-        featureId: features.output,
-        value: args.outputTokens,
-        properties: {
-          workspace_id: args.workspaceId,
-          workspace_name: args.workspaceName ?? undefined,
-          model: args.model,
-          direction: "output",
-          ...args.properties,
-        },
-      })
-    )
-  }
-
-  if (tasks.length === 0) {
+  if (cost <= 0) {
     console.warn(
-      "[billing] trackAiUsage called with zero tokens — nothing to track",
+      "[billing] trackAiUsage: computed cost is $0 — nothing to track",
       {
         workspaceId: args.workspaceId,
         model: args.model,
@@ -134,7 +103,22 @@ export async function trackAiUsage(args: {
     return
   }
 
-  await Promise.all(tasks)
+  const customerId = getAutumnCustomerId(args.workspaceId)
+
+  await getAutumnClient().track({
+    customerId,
+    featureId: AUTUMN_AI_USAGE_FEATURE_ID,
+    value: cost,
+    properties: {
+      workspace_id: args.workspaceId,
+      workspace_name: args.workspaceName ?? undefined,
+      model: args.model,
+      input_tokens: args.inputTokens ?? 0,
+      output_tokens: args.outputTokens ?? 0,
+      cost,
+      ...args.properties,
+    },
+  })
 }
 
 export async function trackIntegrationEvent(args: {
@@ -150,7 +134,7 @@ export async function trackIntegrationEvent(args: {
 
   await getAutumnClient().track({
     customerId: getAutumnCustomerId(args.workspaceId),
-    featureId: AUTUMN_INTEGRATION_EVENTS_FEATURE_ID,
+    featureId: AUTUMN_EVENTS_FEATURE_ID,
     value: 1,
     properties: {
       workspace_id: args.workspaceId,
@@ -227,24 +211,27 @@ export async function loadWorkspaceBillingSnapshot(args: {
   const client = getAutumnClient()
   const customerId = getAutumnCustomerId(args.workspaceId)
 
-  const trackedAiFeatureIds: string[] = [
-    getAiUsageFeatureIds("google/gemma-3-27b-it").input,
-    getAiUsageFeatureIds("google/gemma-3-27b-it").output,
-    getAiUsageFeatureIds("anthropic/claude-haiku-4.5").input,
-    getAiUsageFeatureIds("anthropic/claude-haiku-4.5").output,
-  ]
+  console.info("[billing] Loading billing snapshot", {
+    customerId,
+    workspaceId: args.workspaceId,
+    subscriptions: customer.subscriptions?.map((s: { planId: string; status: string }) => ({
+      planId: s.planId,
+      status: s.status,
+    })),
+    balanceKeys: Object.keys(customer.balances ?? {}),
+  })
 
-  const [plans, aiUsage, integrationUsage, recentEvents] = await Promise.all([
+  const [plans, aiUsage, eventUsage, recentEvents] = await Promise.all([
     client.plans.list({ customerId }),
     client.events.aggregate({
       customerId,
-      featureId: trackedAiFeatureIds,
+      featureId: AUTUMN_AI_USAGE_FEATURE_ID,
       range: BILLING_RANGE,
       binSize: BILLING_BIN_SIZE,
     }),
     client.events.aggregate({
       customerId,
-      featureId: AUTUMN_INTEGRATION_EVENTS_FEATURE_ID,
+      featureId: AUTUMN_EVENTS_FEATURE_ID,
       range: BILLING_RANGE,
       binSize: BILLING_BIN_SIZE,
     }),
@@ -266,7 +253,7 @@ export async function loadWorkspaceBillingSnapshot(args: {
     customer,
     plans: plans.list,
     aiUsage,
-    integrationUsage,
+    eventUsage,
     recentEvents: recentEvents.list,
   }
 }

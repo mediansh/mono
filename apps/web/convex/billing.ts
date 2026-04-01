@@ -6,17 +6,15 @@ import {
 } from "./_generated/server"
 import { internal } from "./_generated/api"
 import {
-  AUTUMN_AI_CREDITS_FEATURE_ID,
+  AUTUMN_AI_USAGE_FEATURE_ID,
   AUTUMN_BILLING_PLANS,
   AUTUMN_EVENT_OVERAGE_PRICE,
-  AUTUMN_INTEGRATION_EVENTS_FEATURE_ID,
+  AUTUMN_EVENTS_FEATURE_ID,
   BILLING_RECORD_PAGE_SIZE,
   formatTrackedModelName,
   getAiCostForTokens,
   getCurrentMonthLabel,
-  getModelFromFeatureId,
   getPlanCopy,
-  getTokenDirection,
 } from "../lib/billing/config"
 import {
   attachWorkspacePlan,
@@ -27,6 +25,7 @@ import {
   requireWorkspaceAccess,
   requireWorkspaceAdminAccess,
 } from "./permissions"
+import type { TrackedAiModel } from "../lib/billing/config"
 
 type AggregateRow = {
   period: number
@@ -168,7 +167,7 @@ function buildUsageRecords(events: ListEvent[]) {
   const records: DashboardUsageRecord[] = []
 
   for (const event of events) {
-    if (event.featureId === AUTUMN_INTEGRATION_EVENTS_FEATURE_ID) {
+    if (event.featureId === AUTUMN_EVENTS_FEATURE_ID) {
       const source =
         typeof event.properties.source === "string"
           ? event.properties.source
@@ -189,33 +188,37 @@ function buildUsageRecords(events: ListEvent[]) {
       continue
     }
 
-    const model = getModelFromFeatureId(event.featureId)
-    if (!model) continue
+    if (event.featureId === AUTUMN_AI_USAGE_FEATURE_ID) {
+      const model = typeof event.properties.model === "string"
+        ? event.properties.model as TrackedAiModel
+        : null
+      const feature =
+        typeof event.properties.feature === "string"
+          ? event.properties.feature
+          : "AI usage"
+      const inputTokens = typeof event.properties.input_tokens === "number"
+        ? event.properties.input_tokens
+        : 0
+      const outputTokens = typeof event.properties.output_tokens === "number"
+        ? event.properties.output_tokens
+        : 0
+      const totalTokens = inputTokens + outputTokens
+      const cost = typeof event.properties.cost === "number"
+        ? event.properties.cost
+        : event.value
 
-    const direction = getTokenDirection(event.featureId)
-    const feature =
-      typeof event.properties.feature === "string"
-        ? event.properties.feature
-        : "AI usage"
-    const cost =
-      direction === "input"
-        ? getAiCostForTokens({
-            model,
-            inputTokens: event.value,
-          })
-        : getAiCostForTokens({
-            model,
-            outputTokens: event.value,
-          })
+      const modelLabel = model ? formatTrackedModelName(model) : "AI"
 
-    records.push({
-      id: event.id,
-      type: feature === "task_generation" ? "ai_generation" : "ai_tool_call",
-      description: `${formatTrackedModelName(model)} ${direction ?? "usage"} tokens for ${feature.replaceAll("_", " ")}`,
-      tokens: event.value,
-      cost,
-      timestamp: event.timestamp,
-    })
+      records.push({
+        id: event.id,
+        type: feature === "task_generation" ? "ai_generation" : "ai_tool_call",
+        description: `${modelLabel} — ${feature.replaceAll("_", " ")}`,
+        tokens: totalTokens > 0 ? totalTokens : undefined,
+        cost,
+        timestamp: event.timestamp,
+      })
+      continue
+    }
   }
 
   return records
@@ -286,30 +289,24 @@ export const getWorkspaceBillingDashboard = action({
     const activeSubscription = getActiveSubscription(snapshot.customer)
     const aiBalance = getBalance(
       snapshot.customer.balances,
-      AUTUMN_AI_CREDITS_FEATURE_ID
+      AUTUMN_AI_USAGE_FEATURE_ID
     )
-    const integrationBalance = getBalance(
+    const eventBalance = getBalance(
       snapshot.customer.balances,
-      AUTUMN_INTEGRATION_EVENTS_FEATURE_ID
+      AUTUMN_EVENTS_FEATURE_ID
     )
 
+    // Build token usage chart from AI usage aggregate
+    // Each row has values keyed by feature ID, value is dollar cost
     const aiUsageRows = snapshot.aiUsage.list as Array<AggregateRow>
     let cumulativeInput = 0
     let cumulativeOutput = 0
     const tokenSeries = aiUsageRows.map((row) => {
-      const input = Object.entries(row.values).reduce((sum, [featureId, value]) => {
-        const direction = getTokenDirection(featureId)
-        return direction === "input" ? sum + value : sum
-      }, 0)
-      const output = Object.entries(row.values).reduce(
-        (sum, [featureId, value]) =>
-          getTokenDirection(featureId) === "output" ? sum + value : sum,
-        0
-      )
-
-      cumulativeInput += input
-      cumulativeOutput += output
-
+      // For the aggregate data, we track cost against ai_usage.
+      // To reconstruct token breakdown, use the events list below.
+      // For the chart, show cumulative cost as a proxy.
+      const aiCost = row.values[AUTUMN_AI_USAGE_FEATURE_ID] ?? 0
+      cumulativeInput += aiCost
       return {
         timestamp: row.period,
         day: new Date(row.period).getDate().toString(),
@@ -318,9 +315,25 @@ export const getWorkspaceBillingDashboard = action({
       }
     })
 
+    // Reconstruct token totals from recent events
+    let totalInput = 0
+    let totalOutput = 0
+    for (const event of snapshot.recentEvents as Array<ListEvent>) {
+      if (event.featureId === AUTUMN_AI_USAGE_FEATURE_ID) {
+        const inputTok = typeof event.properties.input_tokens === "number"
+          ? event.properties.input_tokens
+          : 0
+        const outputTok = typeof event.properties.output_tokens === "number"
+          ? event.properties.output_tokens
+          : 0
+        totalInput += inputTok
+        totalOutput += outputTok
+      }
+    }
+
     let cumulativeEvents = 0
-    const eventSeries = (snapshot.integrationUsage.list as Array<AggregateRow>).map((row) => {
-      const events = row.values[AUTUMN_INTEGRATION_EVENTS_FEATURE_ID] ?? 0
+    const eventSeries = (snapshot.eventUsage.list as Array<AggregateRow>).map((row) => {
+      const events = row.values[AUTUMN_EVENTS_FEATURE_ID] ?? 0
       cumulativeEvents += events
 
       return {
@@ -330,28 +343,9 @@ export const getWorkspaceBillingDashboard = action({
       }
     })
 
-    const totalInput = cumulativeInput
-    const totalOutput = cumulativeOutput
-    const totalAiSpend =
-      aiBalance.usage > 0
-        ? aiBalance.usage
-        : (Object.entries(snapshot.aiUsage.total) as Array<[string, { sum: number }]>).reduce(
-            (sum, [featureId, total]) => {
-              const model = getModelFromFeatureId(featureId)
-              const direction = getTokenDirection(featureId)
-              if (!model || !direction) return sum
-
-              return (
-                sum +
-                getAiCostForTokens({
-                  model,
-                  inputTokens: direction === "input" ? total.sum : 0,
-                  outputTokens: direction === "output" ? total.sum : 0,
-                })
-              )
-            },
-            0
-          )
+    const totalAiSpend = aiBalance.usage > 0
+      ? aiBalance.usage
+      : 0
 
     const usageRecords = buildUsageRecords(
       (snapshot.recentEvents as Array<ListEvent>).slice(0, BILLING_RECORD_PAGE_SIZE)
@@ -398,13 +392,13 @@ export const getWorkspaceBillingDashboard = action({
         aiSpend: totalAiSpend,
         aiRemaining: aiBalance.remaining,
         aiOverage: Math.max(0, totalAiSpend - aiBalance.granted),
-        eventLimit: integrationBalance.granted,
-        eventUsage: integrationBalance.usage,
-        eventRemaining: integrationBalance.remaining,
-        eventOverage: Math.max(0, integrationBalance.usage - integrationBalance.granted),
+        eventLimit: eventBalance.granted,
+        eventUsage: eventBalance.usage,
+        eventRemaining: eventBalance.remaining,
+        eventOverage: Math.max(0, eventBalance.usage - eventBalance.granted),
         overageTotal:
           Math.max(0, totalAiSpend - aiBalance.granted) +
-          Math.max(0, integrationBalance.usage - integrationBalance.granted) *
+          Math.max(0, eventBalance.usage - eventBalance.granted) *
             AUTUMN_EVENT_OVERAGE_PRICE,
       },
       tokens: {
@@ -413,7 +407,7 @@ export const getWorkspaceBillingDashboard = action({
         days: tokenSeries,
       },
       events: {
-        total: integrationBalance.usage,
+        total: eventBalance.usage,
         days: eventSeries,
       },
       plans,
