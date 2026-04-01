@@ -7,8 +7,6 @@ import {
   ClockCounterClockwise,
   ArrowUp,
   ArrowDown,
-  ArrowLeft,
-  ArrowRight,
   Rocket,
   GitPullRequest,
   ChatCircleDots,
@@ -131,11 +129,12 @@ function formatRelativeTime(timestamp: number) {
   return `${days}d ago`
 }
 
-type FilterType = "all" | "tasks" | "webhooks" | "integrations" | "members"
+type FilterType = "all" | "tasks" | "ai" | "webhooks" | "integrations" | "members"
 
 const FILTER_OPTIONS: { value: FilterType; label: string }[] = [
   { value: "all", label: "All" },
   { value: "tasks", label: "Tasks" },
+  { value: "ai", label: "AI" },
   { value: "webhooks", label: "Webhooks" },
   { value: "integrations", label: "Integrations" },
   { value: "members", label: "Members" },
@@ -224,17 +223,10 @@ const PAGE_SIZE = 20
 export default function LogsPage() {
   const { currentWorkspace } = useWorkspace()
   const [filter, setFilter] = useState<FilterType>("all")
-  const [page, setPage] = useState(0)
-  const [pendingPage, setPendingPage] = useState<number | null>(null)
 
   useEffect(() => {
     document.title = "Logs — Median"
   }, [])
-
-  useEffect(() => {
-    setPage(0)
-    setPendingPage(null)
-  }, [filter, currentWorkspace?._id])
 
   const dashboard = useQuery(
     api.logs.getWorkspaceLogDashboard,
@@ -251,32 +243,11 @@ export default function LogsPage() {
     { initialNumItems: PAGE_SIZE }
   )
 
-  useEffect(() => {
-    if (pendingPage === null) {
-      return
-    }
-
-    const requiredItems = (pendingPage + 1) * PAGE_SIZE
-    if (results.length >= requiredItems || status === "Exhausted") {
-      setPage(pendingPage)
-      setPendingPage(null)
-    }
-  }, [pendingPage, results.length, status])
-
-  const totalCount = dashboard?.counts[filter] ?? 0
-  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
-
-  useEffect(() => {
-    if (page > totalPages - 1) {
-      setPage(Math.max(0, totalPages - 1))
-    }
-  }, [page, totalPages])
-
-  if (dashboard === undefined || (status === "LoadingFirstPage")) {
+  if (dashboard === undefined || status === "LoadingFirstPage") {
     return <LogsSkeleton />
   }
 
-  const paginatedEvents = results.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE) as LogEvent[]
+  const events = results as LogEvent[]
   const activityData =
     dashboard?.activityData ?? [
       { day: "Mon", tasks: 0, webhooks: 0, events: 0 },
@@ -304,24 +275,6 @@ export default function LogsPage() {
       { platform: "Linear", received: 0, processed: 0, errors: 0 },
       { platform: "X", received: 0, processed: 0, errors: 0 },
     ]
-
-  const handleNextPage = () => {
-    const nextPage = page + 1
-    if (nextPage >= totalPages) {
-      return
-    }
-
-    const requiredItems = (nextPage + 1) * PAGE_SIZE
-    if (results.length >= requiredItems || status === "Exhausted") {
-      setPage(nextPage)
-      return
-    }
-
-    if (status === "CanLoadMore") {
-      setPendingPage(nextPage)
-      loadMore(PAGE_SIZE)
-    }
-  }
 
   return (
     <Stagger className="h-full overflow-y-auto">
@@ -437,14 +390,14 @@ export default function LogsPage() {
           </div>
 
           <div className="rounded-[4px] ring-1 ring-border">
-            {totalCount === 0 ? (
+            {events.length === 0 && status === "Exhausted" ? (
               <div className="flex flex-col items-center justify-center py-12">
                 <ClockCounterClockwise size={24} className="text-muted-foreground/40" />
                 <p className="mt-2 text-[13px] text-muted-foreground">No events match this filter</p>
               </div>
             ) : (
               <div className="divide-y divide-border">
-                {paginatedEvents.map((event) => {
+                {events.map((event) => {
                   const config = EVENT_CONFIG[event.type]
                   const Icon = config.icon
                   const SourceIcon = event.source ? SOURCE_ICONS[event.source] : null
@@ -477,31 +430,20 @@ export default function LogsPage() {
             )}
           </div>
 
-          {/* Pagination */}
-          {totalCount > PAGE_SIZE && (
-            <div className="mt-3 flex items-center justify-between">
-              <p className="text-[11px] text-muted-foreground">
-                {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, totalCount)} of {totalCount}
-              </p>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setPage((p) => Math.max(0, p - 1))}
-                  disabled={page === 0}
-                  className="flex size-7 items-center justify-center rounded-[4px] ring-1 ring-border text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent"
-                >
-                  <ArrowLeft size={12} />
-                </button>
-                <span className="px-2 text-[11px] text-muted-foreground">
-                  {page + 1} / {totalPages}
-                </span>
-                <button
-                  onClick={handleNextPage}
-                  disabled={page >= totalPages - 1}
-                  className="flex size-7 items-center justify-center rounded-[4px] ring-1 ring-border text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent"
-                >
-                  <ArrowRight size={12} />
-                </button>
-              </div>
+          {status === "CanLoadMore" && (
+            <div className="mt-3 flex justify-center">
+              <button
+                onClick={() => loadMore(PAGE_SIZE)}
+                className="flex h-7 items-center rounded-[4px] px-3 text-[12px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-muted hover:text-foreground"
+              >
+                Load more
+              </button>
+            </div>
+          )}
+
+          {status === "LoadingMore" && (
+            <div className="mt-3 flex justify-center">
+              <span className="text-[12px] text-muted-foreground">Loading...</span>
             </div>
           )}
         </motion.div>

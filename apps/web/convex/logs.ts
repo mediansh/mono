@@ -42,6 +42,7 @@ export const workspaceLogSourceValidator = v.union(
 const workspaceLogFilterValidator = v.union(
   v.literal("all"),
   v.literal("tasks"),
+  v.literal("ai"),
   v.literal("webhooks"),
   v.literal("integrations"),
   v.literal("members")
@@ -205,6 +206,8 @@ export const recordWorkspaceLogs = internalMutation({
   },
 })
 
+const AI_LOG_TYPES = new Set(["tasks_generated_ai", "feedback_processed"])
+
 export const listWorkspaceLogs = query({
   args: {
     workspaceId: v.id("workspaces"),
@@ -219,6 +222,22 @@ export const listWorkspaceLogs = query({
         .query("workspaceLogs")
         .withIndex("by_workspace_timestamp", (q) =>
           q.eq("workspaceId", args.workspaceId)
+        )
+        .order("desc")
+        .paginate(args.paginationOpts)
+    }
+
+    if (args.filter === "ai") {
+      return await ctx.db
+        .query("workspaceLogs")
+        .withIndex("by_workspace_category_timestamp", (q) =>
+          q.eq("workspaceId", args.workspaceId).eq("category", "tasks")
+        )
+        .filter((q) =>
+          q.or(
+            q.eq(q.field("type"), "tasks_generated_ai"),
+            q.eq(q.field("type"), "feedback_processed")
+          )
         )
         .order("desc")
         .paginate(args.paginationOpts)
@@ -281,6 +300,8 @@ export const getWorkspaceLogDashboard = query({
       x: { processed: 0, errors: 0 },
     }
 
+    let aiCount = 0
+
     for (const log of recentLogs) {
       const bucketStart = startOfDay(log.timestamp)
       const bucket = activityBuckets.get(bucketStart)
@@ -292,6 +313,10 @@ export const getWorkspaceLogDashboard = query({
         if (log.category === "webhooks") {
           bucket.webhooks += 1
         }
+      }
+
+      if (AI_LOG_TYPES.has(log.type)) {
+        aiCount += 1
       }
 
       if (log.source && log.source in sourceCounts) {
@@ -315,6 +340,7 @@ export const getWorkspaceLogDashboard = query({
       counts: {
         all: metrics?.totalCount ?? 0,
         tasks: metrics?.taskCount ?? 0,
+        ai: aiCount,
         webhooks: metrics?.webhookCount ?? 0,
         integrations: metrics?.integrationCount ?? 0,
         members: metrics?.memberCount ?? 0,
