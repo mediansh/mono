@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, type ReactNode } from "react"
-import { useAction, usePaginatedQuery, useQuery } from "convex/react"
+import { usePaginatedQuery, useQuery } from "convex/react"
 import { motion } from "motion/react"
 import {
   ClockCounterClockwise,
@@ -24,7 +24,6 @@ import {
   GithubLogo,
   DiscordLogo,
   XLogo,
-  Info,
 } from "@phosphor-icons/react"
 import {
   AreaChart,
@@ -39,7 +38,6 @@ import {
   Pie,
   Cell,
 } from "recharts"
-import Link from "next/link"
 import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
 
@@ -86,6 +84,7 @@ interface LogEvent {
   message: string
   timestamp: number
   source?: "discord" | "github" | "linear" | "x" | "cli" | "manual" | "ai"
+  cost?: number
 }
 
 const EVENT_CONFIG: Record<
@@ -154,26 +153,6 @@ function formatCurrency(amount: number) {
   return `$${amount.toFixed(amount < 0.01 ? 4 : 2)}`
 }
 
-function formatTokens(tokens: number) {
-  if (tokens >= 1000000) return `${(tokens / 1000000).toFixed(1)}M`
-  if (tokens >= 1000) return `${(tokens / 1000).toFixed(1)}K`
-  return tokens.toString()
-}
-
-type AiUsageData = {
-  monthLabel: string
-  aiSpend: number
-  aiBudget: number
-  totalInput: number
-  totalOutput: number
-  days: Array<{
-    timestamp: number
-    day: string
-    input: number
-    output: number
-  }>
-} | null
-
 // ── Custom tooltip ───────────────────────────────────────
 
 function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) {
@@ -185,9 +164,7 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
         <div key={entry.name} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <div className="size-1.5 rounded-full" style={{ backgroundColor: entry.color }} />
           <span>{entry.name}:</span>
-          <span className="font-medium text-foreground">
-            {entry.name === "Spend" ? formatCurrency(entry.value) : entry.value}
-          </span>
+          <span className="font-medium text-foreground">{entry.value}</span>
         </div>
       ))}
     </div>
@@ -246,59 +223,13 @@ const PAGE_SIZE = 20
 
 export default function LogsPage() {
   const { currentWorkspace } = useWorkspace()
-  const loadBillingDashboard = useAction(api.billing.getWorkspaceBillingDashboard)
   const [filter, setFilter] = useState<FilterType>("all")
   const [page, setPage] = useState(0)
   const [pendingPage, setPendingPage] = useState<number | null>(null)
-  const [aiUsage, setAiUsage] = useState<AiUsageData>(null)
 
   useEffect(() => {
     document.title = "Logs — Median"
   }, [])
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function fetchAiUsage() {
-      if (!currentWorkspace) {
-        if (!cancelled) setAiUsage(null)
-        return
-      }
-
-      try {
-        const billing = await loadBillingDashboard({
-          workspaceId: currentWorkspace._id,
-        }) as {
-          monthLabel: string
-          summary: { aiSpend: number; aiBudget: number }
-          tokens: {
-            totalInput: number
-            totalOutput: number
-            days: Array<{ timestamp: number; day: string; input: number; output: number }>
-          }
-        }
-
-        if (!cancelled) {
-          setAiUsage({
-            monthLabel: billing.monthLabel,
-            aiSpend: billing.summary.aiSpend,
-            aiBudget: billing.summary.aiBudget,
-            totalInput: billing.tokens.totalInput,
-            totalOutput: billing.tokens.totalOutput,
-            days: billing.tokens.days,
-          })
-        }
-      } catch {
-        // Billing data is optional here — silently ignore
-      }
-    }
-
-    void fetchAiUsage()
-
-    return () => {
-      cancelled = true
-    }
-  }, [currentWorkspace?._id, loadBillingDashboard])
 
   useEffect(() => {
     setPage(0)
@@ -484,70 +415,6 @@ export default function LogsPage() {
           </div>
         </motion.div>
 
-        {/* AI usage */}
-        {aiUsage && (
-          <motion.div variants={fadeUp} className="mb-6">
-            <div className="rounded-[4px] p-4 ring-1 ring-border">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-[13px] font-medium">AI usage</h3>
-                <span className="text-[11px] text-muted-foreground">
-                  {aiUsage.monthLabel}
-                </span>
-              </div>
-              <div className="h-[180px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={aiUsage.days} margin={{ top: 4, right: 4, left: 4, bottom: 16 }}>
-                    <defs>
-                      <linearGradient id="gradAiSpend" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="var(--chart-4)" stopOpacity={0.2} />
-                        <stop offset="100%" stopColor="var(--chart-4)" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <XAxis
-                      dataKey="day"
-                      tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis hide />
-                    <RechartsTooltip content={<ChartTooltip />} />
-                    <Area
-                      type="monotone"
-                      dataKey="input"
-                      name="Spend"
-                      stroke="var(--chart-4)"
-                      fill="url(#gradAiSpend)"
-                      strokeWidth={1.5}
-                      dot={false}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="mt-2 flex items-center justify-center gap-4">
-                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                  <div
-                    className="size-1.5 rounded-full"
-                    style={{ backgroundColor: "var(--chart-4)" }}
-                  />
-                  {formatCurrency(aiUsage.aiSpend)} / {formatCurrency(aiUsage.aiBudget)}
-                </div>
-                <span className="text-[11px] text-muted-foreground">
-                  {formatTokens(aiUsage.totalInput)} in / {formatTokens(aiUsage.totalOutput)} out
-                </span>
-              </div>
-            </div>
-            <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-              <Info size={12} className="shrink-0" />
-              <span>
-                View per-request costs and token breakdowns in{" "}
-                <Link href="/app/billing" className="text-foreground underline underline-offset-2 hover:text-foreground/80">
-                  Billing
-                </Link>
-              </span>
-            </div>
-          </motion.div>
-        )}
-
         {/* Event feed */}
         <motion.div variants={fadeUp}>
           <div className="mb-3 flex items-center justify-between">
@@ -595,6 +462,11 @@ export default function LogsPage() {
                         <SourceIcon size={11} className="shrink-0 text-muted-foreground/60" />
                       )}
                       <p className="min-w-0 flex-1 truncate text-[12px] text-foreground">{event.message}</p>
+                      {event.cost !== undefined && event.cost > 0 && (
+                        <span className="shrink-0 text-[11px] tabular-nums font-medium text-muted-foreground">
+                          {formatCurrency(event.cost)}
+                        </span>
+                      )}
                       <span className="shrink-0 text-[11px] text-muted-foreground">
                         {formatRelativeTime(event.timestamp)}
                       </span>

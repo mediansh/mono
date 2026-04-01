@@ -2,6 +2,7 @@ import { generateText, Output } from "ai"
 import { google } from "@ai-sdk/google"
 import { trackLLMGeneration, trackFeedbackProcessing } from "./posthog"
 import { safeTrackAiUsage } from "../lib/billing/autumn"
+import { getAiCostForTokens } from "../lib/billing/config"
 import { Workpool, vOnCompleteArgs } from "@convex-dev/workpool"
 import { makeFunctionReference } from "convex/server"
 import { v } from "convex/values"
@@ -217,6 +218,7 @@ const createTasksFromDiscordFeedbackInternalMutation = makeFunctionReference<
   {
     workspaceId: Id<"workspaces">
     operations: DiscordFeedbackTaskOperation[]
+    cost?: number
   },
   {
     createdTaskIds: Id<"tasks">[]
@@ -878,6 +880,18 @@ export const processFeedbackWindow = internalAction({
         },
       })
 
+      const totalAiCost =
+        getAiCostForTokens({
+          model: "google/gemma-3-27b-it",
+          inputTokens: classifierResult.usage?.inputTokens,
+          outputTokens: classifierResult.usage?.outputTokens,
+        }) +
+        getAiCostForTokens({
+          model: "anthropic/claude-haiku-4.5",
+          inputTokens: extractorResult.usage?.inputTokens,
+          outputTokens: extractorResult.usage?.outputTokens,
+        })
+
       if (!extracted) {
         await ctx.runMutation(markFeedbackWindowProcessedInternalMutation, {
           integrationId: args.integrationId,
@@ -945,6 +959,7 @@ export const processFeedbackWindow = internalAction({
                     ),
                   }
             ),
+            cost: totalAiCost > 0 ? totalAiCost : undefined,
           }
         )
 

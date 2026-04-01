@@ -439,6 +439,7 @@ export default defineSchema({
         v.literal("ai")
       )
     ),
+    cost: v.optional(v.number()),
     timestamp: v.number(),
   })
     .index("by_workspace_timestamp", ["workspaceId", "timestamp"])

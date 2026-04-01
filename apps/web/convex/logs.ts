@@ -74,6 +74,7 @@ type WorkspaceLogInput = {
     | "feedback_processed"
   message: string
   source?: "discord" | "github" | "linear" | "x" | "cli" | "manual" | "ai"
+  cost?: number
   timestamp?: number
 }
 
@@ -148,6 +149,7 @@ export async function insertWorkspaceLogs(
       type: log.type,
       message: log.message,
       source: log.source,
+      cost: log.cost,
       timestamp: log.timestamp ?? Date.now(),
     })
 
@@ -176,6 +178,7 @@ export const recordWorkspaceLog = internalMutation({
     type: workspaceLogTypeValidator,
     message: v.string(),
     source: v.optional(workspaceLogSourceValidator),
+    cost: v.optional(v.number()),
     timestamp: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -192,6 +195,7 @@ export const recordWorkspaceLogs = internalMutation({
         type: workspaceLogTypeValidator,
         message: v.string(),
         source: v.optional(workspaceLogSourceValidator),
+        cost: v.optional(v.number()),
         timestamp: v.optional(v.number()),
       })
     ),

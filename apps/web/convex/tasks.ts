@@ -213,7 +213,8 @@ async function logFeedbackProcessed(
   workspaceId: Id<"workspaces">,
   createdTasks: Doc<"tasks">[],
   updatedTaskCount = 0,
-  sourcePlatform?: "discord" | "slack" | "x" | "linear" | "github" | "cli"
+  sourcePlatform?: "discord" | "slack" | "x" | "linear" | "github" | "cli",
+  cost?: number
 ) {
   if (createdTasks.length === 0 && updatedTaskCount === 0) {
     return
@@ -242,6 +243,7 @@ async function logFeedbackProcessed(
     source: getWorkspaceLogSource(
       sourcePlatform ?? createdTasks[0]?.source?.platform
     ),
+    cost,
   })
 }
 
@@ -502,7 +504,8 @@ async function applyFeedbackTaskOperations(
   ctx: MutationCtx,
   workspaceId: Id<"workspaces">,
   operations: FeedbackTaskOperationInput[],
-  sourcePlatform?: "discord" | "slack" | "x" | "linear" | "github" | "cli"
+  sourcePlatform?: "discord" | "slack" | "x" | "linear" | "github" | "cli",
+  cost?: number
 ) {
   const createInputs = operations
     .filter(
@@ -581,7 +584,8 @@ async function applyFeedbackTaskOperations(
     workspaceId,
     createdTasks,
     updatedTaskIds.length,
-    sourcePlatform
+    sourcePlatform,
+    cost
   )
 
   for (const task of createdTasks) {
@@ -759,13 +763,15 @@ export const createTasksFromDiscordFeedbackInternal = internalMutation({
         })
       )
     ),
+    cost: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     return await applyFeedbackTaskOperations(
       ctx,
       args.workspaceId,
       args.operations,
-      "discord"
+      "discord",
+      args.cost
     )
   },
 })
@@ -789,13 +795,15 @@ export const createTasksFromFeedbackInternal = internalMutation({
         })
       )
     ),
+    cost: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     return await applyFeedbackTaskOperations(
       ctx,
       args.workspaceId,
       args.operations,
-      "x"
+      "x",
+      args.cost
     )
   },
 })

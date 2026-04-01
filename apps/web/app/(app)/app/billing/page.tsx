@@ -9,6 +9,7 @@ import {
   ArrowUpRight,
   Warning,
   Crown,
+  Info,
 } from "@phosphor-icons/react"
 import {
   AreaChart,
@@ -19,6 +20,7 @@ import {
   ResponsiveContainer,
 } from "recharts"
 import { toast } from "sonner"
+import Link from "next/link"
 import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
 
@@ -603,6 +605,22 @@ export default function BillingPage() {
             </div>
           </motion.div>
         )}
+
+        <motion.div
+          variants={fadeUp}
+          className="flex items-center gap-1.5 text-[11px] text-muted-foreground"
+        >
+          <Info size={12} className="shrink-0" />
+          <span>
+            Per-request AI costs are shown alongside feedback events in{" "}
+            <Link
+              href="/app/logs"
+              className="text-foreground underline underline-offset-2 hover:text-foreground/80"
+            >
+              Logs
+            </Link>
+          </span>
+        </motion.div>
 
       </div>
     </Stagger>
