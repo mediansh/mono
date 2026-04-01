@@ -213,7 +213,9 @@ function ChartTooltip({
           <span className="font-medium text-foreground">
             {entry.name === "Events"
               ? entry.value.toLocaleString()
-              : formatTokens(entry.value)}
+              : entry.name === "Spend"
+                ? formatCurrency(entry.value)
+                : formatTokens(entry.value)}
           </span>
         </div>
       ))}
@@ -508,7 +510,7 @@ export default function BillingPage() {
         <motion.div variants={fadeUp} className="mb-6 grid grid-cols-2 gap-3">
           <div className="rounded-[4px] p-4 ring-1 ring-border">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-[13px] font-medium">Token usage</h3>
+              <h3 className="text-[13px] font-medium">AI spend</h3>
               <span className="text-[11px] text-muted-foreground">
                 {dashboard.monthLabel}
               </span>
@@ -517,13 +519,9 @@ export default function BillingPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={dashboard.tokens.days} margin={{ top: 4, right: 4, left: 4, bottom: 16 }}>
                   <defs>
-                    <linearGradient id="gradInput" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient id="gradSpend" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.2} />
                       <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="gradOutput" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--chart-3)" stopOpacity={0.2} />
-                      <stop offset="100%" stopColor="var(--chart-3)" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <XAxis
@@ -537,18 +535,9 @@ export default function BillingPage() {
                   <Area
                     type="monotone"
                     dataKey="input"
-                    name="Input"
+                    name="Spend"
                     stroke="var(--chart-1)"
-                    fill="url(#gradInput)"
-                    strokeWidth={1.5}
-                    dot={false}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="output"
-                    name="Output"
-                    stroke="var(--chart-3)"
-                    fill="url(#gradOutput)"
+                    fill="url(#gradSpend)"
                     strokeWidth={1.5}
                     dot={false}
                   />
@@ -561,15 +550,11 @@ export default function BillingPage() {
                   className="size-1.5 rounded-full"
                   style={{ backgroundColor: "var(--chart-1)" }}
                 />
-                Input ({formatTokens(dashboard.tokens.totalInput)})
+                {formatCurrency(dashboard.summary.aiSpend)} spent
               </div>
-              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                <div
-                  className="size-1.5 rounded-full"
-                  style={{ backgroundColor: "var(--chart-3)" }}
-                />
-                Output ({formatTokens(dashboard.tokens.totalOutput)})
-              </div>
+              <span className="text-[11px] text-muted-foreground">
+                {formatTokens(dashboard.tokens.totalInput)} in / {formatTokens(dashboard.tokens.totalOutput)} out
+              </span>
             </div>
           </div>
 

@@ -296,50 +296,31 @@ export const getWorkspaceBillingDashboard = action({
       AUTUMN_EVENTS_FEATURE_ID
     )
 
-    // Build token usage chart and totals from event list properties
-    // The aggregate only has total AI cost per day (no input/output split),
-    // so we reconstruct the per-day token breakdown from individual events.
-    let totalInput = 0
-    let totalOutput = 0
-    const tokensByDay = new Map<string, { timestamp: number; input: number; output: number }>()
-    for (const event of snapshot.recentEvents as Array<ListEvent>) {
-      if (event.featureId === AUTUMN_AI_USAGE_FEATURE_ID) {
-        const inputTok = typeof event.properties.input_tokens === "number"
-          ? event.properties.input_tokens
-          : 0
-        const outputTok = typeof event.properties.output_tokens === "number"
-          ? event.properties.output_tokens
-          : 0
-        totalInput += inputTok
-        totalOutput += outputTok
-
-        const date = new Date(event.timestamp)
-        const dayKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
-        const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
-        const existing = tokensByDay.get(dayKey)
-        if (existing) {
-          existing.input += inputTok
-          existing.output += outputTok
-        } else {
-          tokensByDay.set(dayKey, { timestamp: dayStart, input: inputTok, output: outputTok })
-        }
-      }
-    }
-
-    // Sort by date and make cumulative
-    const sortedDays = [...tokensByDay.values()].sort((a, b) => a.timestamp - b.timestamp)
-    let cumulativeInput = 0
-    let cumulativeOutput = 0
-    const tokenSeries = sortedDays.map((day) => {
-      cumulativeInput += day.input
-      cumulativeOutput += day.output
+    // Build AI spend chart from aggregate (gives every day in the period)
+    const aiUsageRows = snapshot.aiUsage.list as Array<AggregateRow>
+    let cumulativeSpend = 0
+    const tokenSeries = aiUsageRows.map((row) => {
+      const dayCost = row.values[AUTUMN_AI_USAGE_FEATURE_ID] ?? 0
+      cumulativeSpend += dayCost
       return {
-        timestamp: day.timestamp,
-        day: new Date(day.timestamp).getDate().toString(),
-        input: cumulativeInput,
-        output: cumulativeOutput,
+        timestamp: row.period,
+        day: new Date(row.period).getDate().toString(),
+        input: cumulativeSpend,
+        output: 0,
       }
     })
+
+    // Reconstruct token totals from recent events for the summary
+    let totalInput = 0
+    let totalOutput = 0
+    for (const event of snapshot.recentEvents as Array<ListEvent>) {
+      if (event.featureId === AUTUMN_AI_USAGE_FEATURE_ID) {
+        totalInput += typeof event.properties.input_tokens === "number"
+          ? event.properties.input_tokens : 0
+        totalOutput += typeof event.properties.output_tokens === "number"
+          ? event.properties.output_tokens : 0
+      }
+    }
 
     let cumulativeEvents = 0
     const eventSeries = (snapshot.eventUsage.list as Array<AggregateRow>).map((row) => {
