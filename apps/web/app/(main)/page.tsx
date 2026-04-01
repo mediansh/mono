@@ -37,19 +37,19 @@ export default function Page() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
-          className="flex w-full flex-col gap-2"
+          className="flex w-full flex-col items-center gap-3"
           onSubmit={(e) => e.preventDefault()}
         >
           <Input
             type="email"
             placeholder="you@company.com"
-            className="h-10 flex-1 px-4"
+            className="h-12 px-4"
             style={{ borderRadius: 16 }}
             required
           />
           <Button
             size="lg"
-            className="h-10 gap-2 px-5"
+            className="h-10 w-fit gap-2 px-6"
             style={{ borderRadius: 16 }}
           >
             Join waitlist
