@@ -80,6 +80,23 @@ type CreateTaskInput = {
   }[]
 }
 
+type FeedbackTaskUpdateInput = {
+  taskCode: string
+  title: string
+  description?: string
+  priority?: "urgent" | "high" | "medium" | "low" | "none"
+  labels: string[]
+}
+
+type FeedbackTaskOperationInput =
+  | {
+      action: "create"
+      task: CreateTaskInput
+    }
+  | ({
+      action: "update"
+    } & FeedbackTaskUpdateInput)
+
 type WorkspaceTaskLog = {
   workspaceId: Id<"workspaces">
   category: "tasks"
@@ -95,6 +112,14 @@ const TASK_STATUS_LABELS = {
   ready: "Ready",
   shipped: "Shipped",
   archive: "Archive",
+} as const
+
+const TASK_PRIORITY_ORDER = {
+  none: 0,
+  low: 1,
+  medium: 2,
+  high: 3,
+  urgent: 4,
 } as const
 
 function getWorkspaceLogSource(
@@ -186,21 +211,37 @@ async function logTaskDeleted(ctx: MutationCtx, task: Doc<"tasks">) {
 async function logFeedbackProcessed(
   ctx: MutationCtx,
   workspaceId: Id<"workspaces">,
-  createdTasks: Doc<"tasks">[]
+  createdTasks: Doc<"tasks">[],
+  updatedTaskCount = 0,
+  sourcePlatform?: "discord" | "slack" | "x" | "linear" | "github" | "cli"
 ) {
-  if (createdTasks.length === 0) {
+  if (createdTasks.length === 0 && updatedTaskCount === 0) {
     return
+  }
+
+  let message = ""
+  if (createdTasks.length > 0 && updatedTaskCount > 0) {
+    message = `Processed feedback and ${createdTasks.length === 1 ? "created 1 task" : `created ${createdTasks.length} tasks`} and ${updatedTaskCount === 1 ? "updated 1 task" : `updated ${updatedTaskCount} tasks`}`
+  } else if (createdTasks.length > 0) {
+    message =
+      createdTasks.length === 1
+        ? "Processed feedback and created 1 task"
+        : `Processed feedback and created ${createdTasks.length} tasks`
+  } else {
+    message =
+      updatedTaskCount === 1
+        ? "Processed feedback and updated 1 task"
+        : `Processed feedback and updated ${updatedTaskCount} tasks`
   }
 
   await insertWorkspaceLog(ctx, {
     workspaceId,
     category: "tasks",
     type: "feedback_processed",
-    message:
-      createdTasks.length === 1
-        ? "Processed feedback and created 1 task"
-        : `Processed feedback and created ${createdTasks.length} tasks`,
-    source: getWorkspaceLogSource(createdTasks[0]?.source?.platform),
+    message,
+    source: getWorkspaceLogSource(
+      sourcePlatform ?? createdTasks[0]?.source?.platform
+    ),
   })
 }
 
@@ -278,10 +319,7 @@ async function createTasksForWorkspace(
   return await insertTasksForWorkspace(ctx, workspaceId, taskInputs)
 }
 
-async function recordDeletedTaskSource(
-  ctx: MutationCtx,
-  task: Doc<"tasks">
-) {
+async function recordDeletedTaskSource(ctx: MutationCtx, task: Doc<"tasks">) {
   const source = task.source
   if (!source?.url) {
     return
@@ -446,6 +484,117 @@ async function queueGitHubSync(ctx: MutationCtx, taskId: Id<"tasks">) {
   })
 }
 
+function getHigherPriority(
+  currentPriority: Doc<"tasks">["priority"],
+  nextPriority: Doc<"tasks">["priority"]
+) {
+  return TASK_PRIORITY_ORDER[nextPriority] >
+    TASK_PRIORITY_ORDER[currentPriority]
+    ? nextPriority
+    : currentPriority
+}
+
+function mergeLabels(currentLabels: string[], nextLabels: string[]) {
+  return Array.from(new Set([...currentLabels, ...nextLabels]))
+}
+
+async function applyFeedbackTaskOperations(
+  ctx: MutationCtx,
+  workspaceId: Id<"workspaces">,
+  operations: FeedbackTaskOperationInput[],
+  sourcePlatform?: "discord" | "slack" | "x" | "linear" | "github" | "cli"
+) {
+  const createInputs = operations
+    .filter(
+      (
+        operation
+      ): operation is Extract<
+        FeedbackTaskOperationInput,
+        { action: "create" }
+      > => operation.action === "create"
+    )
+    .map((operation) => operation.task)
+  const filteredCreateInputs = await filterSuppressedTaskInputs(
+    ctx,
+    workspaceId,
+    createInputs,
+    "exact"
+  )
+  const createdTasks = await insertTasksForWorkspace(
+    ctx,
+    workspaceId,
+    filteredCreateInputs
+  )
+
+  const workspaceTasks = await getWorkspaceTasks(ctx, workspaceId)
+  const taskByCode = new Map(
+    workspaceTasks.map((task) => [task.taskCode, task] as const)
+  )
+
+  const updatedTaskIds: Id<"tasks">[] = []
+
+  for (const operation of operations) {
+    if (operation.action !== "update") {
+      continue
+    }
+
+    const task = taskByCode.get(operation.taskCode)
+    if (!task) {
+      continue
+    }
+
+    const nextTitle = operation.title.trim()
+    const nextDescription = operation.description?.trim() || undefined
+    const nextPriority = operation.priority
+      ? getHigherPriority(task.priority, operation.priority)
+      : task.priority
+    const nextLabels = mergeLabels(task.labels, operation.labels)
+
+    const hasChanges =
+      nextTitle !== task.title ||
+      nextDescription !== (task.description ?? undefined) ||
+      nextPriority !== task.priority ||
+      nextLabels.length !== task.labels.length ||
+      nextLabels.some((label, index) => label !== task.labels[index])
+
+    if (!hasChanges) {
+      continue
+    }
+
+    await ctx.db.patch(task._id, {
+      title: nextTitle,
+      description: nextDescription,
+      priority: nextPriority,
+      labels: nextLabels,
+      updatedAt: Date.now(),
+    })
+
+    await logTaskUpdated(ctx, task)
+    await queueLinearSync(ctx, task._id)
+    await queueGitHubSync(ctx, task._id)
+
+    updatedTaskIds.push(task._id)
+  }
+
+  await logFeedbackProcessed(
+    ctx,
+    workspaceId,
+    createdTasks,
+    updatedTaskIds.length,
+    sourcePlatform
+  )
+
+  for (const task of createdTasks) {
+    await queueLinearSync(ctx, task._id)
+    await queueGitHubSync(ctx, task._id)
+  }
+
+  return {
+    createdTaskIds: createdTasks.map((task) => task._id),
+    updatedTaskIds,
+  }
+}
+
 async function queueGitHubIssueClosure(
   ctx: MutationCtx,
   workspaceId: Id<"workspaces">,
@@ -594,52 +743,60 @@ export const createTasksFromDiscordFeedback = mutation({
 export const createTasksFromDiscordFeedbackInternal = internalMutation({
   args: {
     workspaceId: v.id("workspaces"),
-    tasks: v.array(taskInputValidator),
+    operations: v.array(
+      v.union(
+        v.object({
+          action: v.literal("create"),
+          task: taskInputValidator,
+        }),
+        v.object({
+          action: v.literal("update"),
+          taskCode: v.string(),
+          title: v.string(),
+          description: v.optional(v.string()),
+          priority: v.optional(taskPriorityValidator),
+          labels: v.array(v.string()),
+        })
+      )
+    ),
   },
   handler: async (ctx, args) => {
-    const filteredTasks = await filterSuppressedTaskInputs(
+    return await applyFeedbackTaskOperations(
       ctx,
       args.workspaceId,
-      args.tasks,
-      "exact"
+      args.operations,
+      "discord"
     )
-    const createdTasks = await insertTasksForWorkspace(
-      ctx,
-      args.workspaceId,
-      filteredTasks
-    )
-    await logFeedbackProcessed(ctx, args.workspaceId, createdTasks)
-    for (const task of createdTasks) {
-      await queueLinearSync(ctx, task._id)
-      await queueGitHubSync(ctx, task._id)
-    }
-    return createdTasks
   },
 })
 
 export const createTasksFromFeedbackInternal = internalMutation({
   args: {
     workspaceId: v.id("workspaces"),
-    tasks: v.array(taskInputValidator),
+    operations: v.array(
+      v.union(
+        v.object({
+          action: v.literal("create"),
+          task: taskInputValidator,
+        }),
+        v.object({
+          action: v.literal("update"),
+          taskCode: v.string(),
+          title: v.string(),
+          description: v.optional(v.string()),
+          priority: v.optional(taskPriorityValidator),
+          labels: v.array(v.string()),
+        })
+      )
+    ),
   },
   handler: async (ctx, args) => {
-    const filteredTasks = await filterSuppressedTaskInputs(
+    return await applyFeedbackTaskOperations(
       ctx,
       args.workspaceId,
-      args.tasks,
-      "exact"
+      args.operations,
+      "x"
     )
-    const createdTasks = await insertTasksForWorkspace(
-      ctx,
-      args.workspaceId,
-      filteredTasks
-    )
-    await logFeedbackProcessed(ctx, args.workspaceId, createdTasks)
-    for (const task of createdTasks) {
-      await queueLinearSync(ctx, task._id)
-      await queueGitHubSync(ctx, task._id)
-    }
-    return createdTasks
   },
 })
 
@@ -914,10 +1071,7 @@ export const updateTask = mutation({
     }
 
     // Queue Discord notifications for status transitions on tasks with a Discord source
-    if (
-      args.status !== undefined &&
-      args.status !== task.status
-    ) {
+    if (args.status !== undefined && args.status !== task.status) {
       await logTaskMoved(ctx, task, args.status)
       await queueDiscordNotificationForStatusChange(
         ctx,
@@ -994,10 +1148,7 @@ export const reorderTasks = mutation({
     // Queue Discord notifications for status transitions
     for (const change of args.changes) {
       const task = tasksBeforeUpdate.get(change.taskId)
-      if (
-        !task ||
-        change.status === task.status
-      ) {
+      if (!task || change.status === task.status) {
         continue
       }
 
@@ -1074,10 +1225,7 @@ export const bulkUpdateTasks = mutation({
           message: `${task.taskCode} moved from "${TASK_STATUS_LABELS[task.status]}" to "${TASK_STATUS_LABELS[args.status]}"`,
           source: getWorkspaceLogSource(task.source?.platform),
         })
-      } else if (
-        args.priority !== undefined ||
-        args.labels !== undefined
-      ) {
+      } else if (args.priority !== undefined || args.labels !== undefined) {
         taskLogs.push({
           workspaceId: task.workspaceId,
           category: "tasks",
@@ -1088,10 +1236,7 @@ export const bulkUpdateTasks = mutation({
       }
 
       // Queue Discord notifications for status transitions
-      if (
-        args.status !== undefined &&
-        args.status !== task.status
-      ) {
+      if (args.status !== undefined && args.status !== task.status) {
         await queueDiscordNotificationForStatusChange(
           ctx,
           task,

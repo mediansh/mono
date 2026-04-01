@@ -14,8 +14,9 @@ function getPostHogConfig() {
 
   return {
     key,
-    host: (process.env.NEXT_PUBLIC_POSTHOG_HOST ??
-      "https://us.i.posthog.com").replace(/\/$/, ""),
+    host: (
+      process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com"
+    ).replace(/\/$/, ""),
   }
 }
 
@@ -80,6 +81,7 @@ export async function trackFeedbackProcessing(props: {
   isProductFeedback: boolean
   confidence?: number
   createdTaskCount: number
+  updatedTaskCount?: number
   classifierDurationMs?: number
   extractorDurationMs?: number
   totalDurationMs: number
@@ -95,6 +97,7 @@ export async function trackFeedbackProcessing(props: {
       is_product_feedback: props.isProductFeedback,
       confidence: props.confidence,
       created_task_count: props.createdTaskCount,
+      updated_task_count: props.updatedTaskCount ?? 0,
       classifier_duration_ms: props.classifierDurationMs,
       extractor_duration_ms: props.extractorDurationMs,
       total_duration_ms: props.totalDurationMs,

@@ -58,7 +58,7 @@ type TaskSnapshot = {
   sourceUrl: string | null
 }
 
-type XFeedbackTaskInput = {
+type XFeedbackCreateTaskInput = {
   title: string
   description?: string
   status: "requests" | "todo" | "in_progress" | "ready" | "shipped" | "archive"
@@ -72,6 +72,20 @@ type XFeedbackTaskInput = {
   createdAtLabel?: string
 }
 
+type XFeedbackTaskOperation =
+  | {
+      action: "create"
+      task: XFeedbackCreateTaskInput
+    }
+  | {
+      action: "update"
+      taskCode: string
+      title: string
+      description?: string
+      priority?: "urgent" | "high" | "medium" | "low" | "none"
+      labels: string[]
+    }
+
 type WorkpoolResult =
   | { kind: "success"; returnValue: unknown }
   | { kind: "failed"; error: string }
@@ -79,7 +93,12 @@ type WorkpoolResult =
 
 type ProcessFeedbackWindowResult =
   | { skipped: true; reason: string }
-  | { skipped: false; createdTaskCount: number; reason?: string }
+  | {
+      skipped: false
+      createdTaskCount: number
+      updatedTaskCount: number
+      reason?: string
+    }
 
 const feedbackClassificationSchema = z.object({
   isProductFeedback: z.boolean(),
@@ -90,24 +109,36 @@ const feedbackClassificationSchema = z.object({
 })
 
 const extractedFeedbackTasksSchema = z.object({
-  tasks: z
+  actions: z
     .array(
-      z.object({
-        title: z.string().min(1).max(140),
-        description: z.string().max(2000).nullable(),
-        priority: z
-          .enum(["urgent", "high", "medium", "low", "none"])
-          .nullable(),
-        labels: z.array(z.string()).max(5),
-      })
+      z.discriminatedUnion("action", [
+        z.object({
+          action: z.literal("create"),
+          title: z.string().min(1).max(140),
+          description: z.string().max(2000).nullable(),
+          priority: z
+            .enum(["urgent", "high", "medium", "low", "none"])
+            .nullable(),
+          labels: z.array(z.string()).max(5),
+        }),
+        z.object({
+          action: z.literal("update"),
+          taskCode: z.string().min(1),
+          title: z.string().min(1).max(140),
+          description: z.string().max(2000).nullable(),
+          priority: z
+            .enum(["urgent", "high", "medium", "low", "none"])
+            .nullable(),
+          labels: z.array(z.string()).max(5),
+        }),
+      ])
     )
     .max(5),
 })
 
 function getFeedbackWorkpoolParallelism() {
   const parsed = Number(
-    process.env.X_FEEDBACK_WORKPOOL_PARALLELISM ??
-      DEFAULT_WORKPOOL_PARALLELISM
+    process.env.X_FEEDBACK_WORKPOOL_PARALLELISM ?? DEFAULT_WORKPOOL_PARALLELISM
   )
   if (!Number.isFinite(parsed) || parsed <= 0) {
     return DEFAULT_WORKPOOL_PARALLELISM
@@ -174,9 +205,12 @@ const createTasksFromFeedbackInternalMutation = makeFunctionReference<
   "mutation",
   {
     workspaceId: Id<"workspaces">
-    tasks: XFeedbackTaskInput[]
+    operations: XFeedbackTaskOperation[]
   },
-  { _id: Id<"tasks"> }[]
+  {
+    createdTaskIds: Id<"tasks">[]
+    updatedTaskIds: Id<"tasks">[]
+  }
 >("tasks:createTasksFromFeedbackInternal")
 
 function logInfo(message: string, details?: Record<string, unknown>) {
@@ -567,6 +601,13 @@ export const processFeedbackWindow = internalAction({
         pendingPosts.map((post) => post.postId)
       )
       const transcript = formatTranscript(contextPosts, pendingPostIds)
+      const existingTasks = await ctx.runQuery(
+        getTaskSnapshotForFeedbackInternalQuery,
+        {
+          workspaceId: feedbackWindow.integration.workspaceId,
+          limit: EXISTING_TASK_CONTEXT_LIMIT,
+        }
+      )
 
       const classifierSystemParts: string[] = [
         "You classify inbound X mentions and replies for a product team.",
@@ -574,6 +615,7 @@ export const processFeedbackWindow = internalAction({
         "Return isProductFeedback=true only when the newest posts contain concrete product feedback, a bug report, a feature request, workflow friction, or an actionable complaint about the actual product.",
         "Reject hype, compliments without a request, memes, repost-style chatter, marketing banter, hiring talk, and anything unrelated to the product itself.",
         "Use the recent context only to interpret what the new posts refer to.",
+        "If the new posts add detail, scope, reproduction steps, or acceptance criteria to an existing open task, that is still product feedback. A later step can update the existing task instead of creating a new one.",
         "Only include relevantPostIds from NEW posts.",
         "Each post has an [id:XXXXXXX] tag. Use the numeric ID from that tag as the relevantPostId, NOT the timestamp.",
         "Return valid JSON only. No markdown. No code fences. No commentary.",
@@ -593,6 +635,8 @@ export const processFeedbackWindow = internalAction({
         prompt: [
           `Workspace name: ${feedbackWindow.integration.workspaceName}`,
           `Connected X account: @${feedbackWindow.integration.username}`,
+          "Existing task context:",
+          formatExistingTasks(existingTasks),
           "Inbound post transcript:",
           transcript,
         ].join("\n\n"),
@@ -654,6 +698,7 @@ export const processFeedbackWindow = internalAction({
         return {
           skipped: false,
           createdTaskCount: 0,
+          updatedTaskCount: 0,
           reason: "not_product_feedback",
         }
       }
@@ -671,14 +716,6 @@ export const processFeedbackWindow = internalAction({
       const relevantPosts =
         matchedRelevantPosts.length > 0 ? matchedRelevantPosts : pendingPosts
 
-      const existingTasks = await ctx.runQuery(
-        getTaskSnapshotForFeedbackInternalQuery,
-        {
-          workspaceId: feedbackWindow.integration.workspaceId,
-          limit: EXISTING_TASK_CONTEXT_LIMIT,
-        }
-      )
-
       const labelsText =
         feedbackWindow.integration.availableLabels.length > 0
           ? feedbackWindow.integration.availableLabels.join(", ")
@@ -687,16 +724,21 @@ export const processFeedbackWindow = internalAction({
       const extractorSystemParts: string[] = [
         "You turn product feedback into concise task requests for a task board.",
         `The product is ${feedbackWindow.integration.workspaceName}.`,
-        "Only create tasks for actionable feedback about the real product. Ignore unrelated discussion.",
-        "Return between 0 and 5 tasks.",
-        "Each task must be distinct, concrete, and understandable without requiring the original X post.",
-        "You will be given existing tasks from the board, including shipped (resolved) tasks. Skip creating a task if an existing task — regardless of status — describes the EXACT same specific issue — same error message, same feature, same broken flow. A shipped task means the issue was already addressed; do not recreate it.",
+        "Only create or update tasks for actionable feedback about the real product. Ignore unrelated discussion.",
+        "Return between 0 and 5 actions total.",
+        "Each action must be distinct, concrete, and understandable without requiring the original X post.",
+        "You can either create a new task or update an existing task.",
+        "Use update when the new feedback materially adds detail to an existing open task, such as reproduction steps, missing scope, edge cases, urgency, or acceptance criteria.",
+        "For update actions, use the existing taskCode and return the full revised title, description, priority, and labels after incorporating the new feedback.",
+        "Do not update shipped or archived tasks. If the closest shipped task is only an exact duplicate, do nothing. If the new feedback is materially different, create a new task instead.",
+        "If an existing task — regardless of status — describes the EXACT same specific issue with no meaningful new information, do not create a task and do not update anything.",
         "Different error messages, different symptoms, or different contexts should each get their own task even if they relate to the same general area.",
-        "When in doubt, create the task. It is better to create a near-duplicate than to lose real user feedback.",
+        "When in doubt between update and create, prefer update only for the same underlying task; otherwise create.",
         "Descriptions should summarize the user problem and expected outcome in plain text.",
         "Priority may be urgent, high, medium, low, or none.",
         `Allowed labels: ${labelsText}`,
         "Only use labels from the allowed list. Use an empty array when none apply.",
+        'Return valid structured output only with action items shaped like {"action":"create",...} or {"action":"update","taskCode":"MDN-123",...}.',
       ]
 
       if (feedbackWindow.integration.additionalContext) {
@@ -762,41 +804,67 @@ export const processFeedbackWindow = internalAction({
         return {
           skipped: false,
           createdTaskCount: 0,
+          updatedTaskCount: 0,
           reason: "no_structured_output",
         }
       }
 
-      if (extracted.tasks.length > 0) {
+      let createdTaskCount = 0
+      let updatedTaskCount = 0
+
+      if (extracted.actions.length > 0) {
         const authors = Array.from(
-          new Set(
-            relevantPosts.map((post) => `@${post.authorUsername}`)
-          )
+          new Set(relevantPosts.map((post) => `@${post.authorUsername}`))
         )
         const sourceUrl = relevantPosts[relevantPosts.length - 1]?.permalink
         const createdAtLabel = formatCreatedAtLabel(
           latestPendingPost.postCreatedAt
         )
 
-        await ctx.runMutation(createTasksFromFeedbackInternalMutation, {
-          workspaceId: feedbackWindow.integration.workspaceId,
-          tasks: extracted.tasks.map((task) => ({
-            title: task.title,
-            description: task.description ?? undefined,
-            status: "requests" as const,
-            priority: task.priority ?? "none",
-            labels: task.labels.filter((label) =>
-              feedbackWindow.integration.availableLabels.includes(label)
+        const result = await ctx.runMutation(
+          createTasksFromFeedbackInternalMutation,
+          {
+            workspaceId: feedbackWindow.integration.workspaceId,
+            operations: extracted.actions.map((action) =>
+              action.action === "create"
+                ? {
+                    action: "create" as const,
+                    task: {
+                      title: action.title,
+                      description: action.description ?? undefined,
+                      status: "requests" as const,
+                      priority: action.priority ?? "none",
+                      labels: action.labels.filter((label) =>
+                        feedbackWindow.integration.availableLabels.includes(
+                          label
+                        )
+                      ),
+                      source: sourceUrl
+                        ? {
+                            platform: "x" as const,
+                            url: sourceUrl,
+                            author: authors.join(", "),
+                          }
+                        : undefined,
+                      createdAtLabel,
+                    },
+                  }
+                : {
+                    action: "update" as const,
+                    taskCode: action.taskCode,
+                    title: action.title,
+                    description: action.description ?? undefined,
+                    priority: action.priority ?? undefined,
+                    labels: action.labels.filter((label) =>
+                      feedbackWindow.integration.availableLabels.includes(label)
+                    ),
+                  }
             ),
-            source: sourceUrl
-              ? {
-                  platform: "x" as const,
-                  url: sourceUrl,
-                  author: authors.join(", "),
-                }
-              : undefined,
-            createdAtLabel,
-          })),
-        })
+          }
+        )
+
+        createdTaskCount = result.createdTaskIds.length
+        updatedTaskCount = result.updatedTaskIds.length
       }
 
       await ctx.runMutation(markFeedbackWindowProcessedInternalMutation, {
@@ -807,7 +875,8 @@ export const processFeedbackWindow = internalAction({
 
       logInfo("Finished X feedback processing attempt", {
         integrationId: args.integrationId,
-        createdTaskCount: extracted.tasks.length,
+        createdTaskCount,
+        updatedTaskCount,
       })
 
       await trackFeedbackProcessing({
@@ -818,7 +887,8 @@ export const processFeedbackWindow = internalAction({
         messageCount: pendingPosts.length,
         isProductFeedback: classification.isProductFeedback,
         confidence: classification.confidence,
-        createdTaskCount: extracted.tasks.length,
+        createdTaskCount,
+        updatedTaskCount,
         classifierDurationMs,
         extractorDurationMs,
         totalDurationMs: Date.now() - processingStart,
@@ -826,7 +896,8 @@ export const processFeedbackWindow = internalAction({
 
       return {
         skipped: false,
-        createdTaskCount: extracted.tasks.length,
+        createdTaskCount,
+        updatedTaskCount,
       }
     } catch (error) {
       logError("Failed to process X feedback window", error, {

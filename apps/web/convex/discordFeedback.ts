@@ -68,7 +68,7 @@ type TaskSnapshot = {
   sourceUrl: string | null
 }
 
-type DiscordFeedbackTaskInput = {
+type DiscordFeedbackCreateTaskInput = {
   title: string
   description?: string
   status: "requests" | "todo" | "in_progress" | "ready" | "shipped" | "archive"
@@ -82,6 +82,20 @@ type DiscordFeedbackTaskInput = {
   createdAtLabel?: string
 }
 
+type DiscordFeedbackTaskOperation =
+  | {
+      action: "create"
+      task: DiscordFeedbackCreateTaskInput
+    }
+  | {
+      action: "update"
+      taskCode: string
+      title: string
+      description?: string
+      priority?: "urgent" | "high" | "medium" | "low" | "none"
+      labels: string[]
+    }
+
 type WorkpoolResult =
   | { kind: "success"; returnValue: unknown }
   | { kind: "failed"; error: string }
@@ -89,7 +103,12 @@ type WorkpoolResult =
 
 type ProcessFeedbackWindowResult =
   | { skipped: true; reason: string }
-  | { skipped: false; createdTaskCount: number; reason?: string }
+  | {
+      skipped: false
+      createdTaskCount: number
+      updatedTaskCount: number
+      reason?: string
+    }
 
 const feedbackClassificationSchema = z.object({
   isProductFeedback: z.boolean(),
@@ -100,16 +119,29 @@ const feedbackClassificationSchema = z.object({
 })
 
 const extractedFeedbackTasksSchema = z.object({
-  tasks: z
+  actions: z
     .array(
-      z.object({
-        title: z.string().min(1).max(140),
-        description: z.string().max(2000).nullable(),
-        priority: z
-          .enum(["urgent", "high", "medium", "low", "none"])
-          .nullable(),
-        labels: z.array(z.string()).max(5),
-      })
+      z.discriminatedUnion("action", [
+        z.object({
+          action: z.literal("create"),
+          title: z.string().min(1).max(140),
+          description: z.string().max(2000).nullable(),
+          priority: z
+            .enum(["urgent", "high", "medium", "low", "none"])
+            .nullable(),
+          labels: z.array(z.string()).max(5),
+        }),
+        z.object({
+          action: z.literal("update"),
+          taskCode: z.string().min(1),
+          title: z.string().min(1).max(140),
+          description: z.string().max(2000).nullable(),
+          priority: z
+            .enum(["urgent", "high", "medium", "low", "none"])
+            .nullable(),
+          labels: z.array(z.string()).max(5),
+        }),
+      ])
     )
     .max(5),
 })
@@ -184,9 +216,12 @@ const createTasksFromDiscordFeedbackInternalMutation = makeFunctionReference<
   "mutation",
   {
     workspaceId: Id<"workspaces">
-    tasks: DiscordFeedbackTaskInput[]
+    operations: DiscordFeedbackTaskOperation[]
   },
-  { _id: Id<"tasks"> }[]
+  {
+    createdTaskIds: Id<"tasks">[]
+    updatedTaskIds: Id<"tasks">[]
+  }
 >("tasks:createTasksFromDiscordFeedbackInternal")
 
 function logInfo(message: string, details?: Record<string, unknown>) {
@@ -623,6 +658,7 @@ export const processFeedbackWindow = internalAction({
         return {
           skipped: false,
           createdTaskCount: 0,
+          updatedTaskCount: 0,
           reason: "admin_only_messages",
         }
       }
@@ -634,6 +670,13 @@ export const processFeedbackWindow = internalAction({
         pendingNonAdminMessages.map((message) => message.messageId)
       )
       const transcript = formatTranscript(contextMessages, pendingMessageIds)
+      const existingTasks = await ctx.runQuery(
+        getTaskSnapshotForDiscordInternalQuery,
+        {
+          workspaceId: feedbackWindow.integration.workspaceId,
+          limit: EXISTING_TASK_CONTEXT_LIMIT,
+        }
+      )
 
       const classifierSystemParts: string[] = [
         "You classify Discord conversations for a product team.",
@@ -641,6 +684,7 @@ export const processFeedbackWindow = internalAction({
         "Return isProductFeedback=true only when the newest messages contain concrete product feedback, a bug report, a feature request, workflow friction, or an actionable complaint about the actual product.",
         "Reject off-topic chat, memes, introductions, hiring talk, agency requests, feedback about unrelated tools, and generic conversation that is not about the product itself.",
         "Use the recent context only to interpret what the new messages refer to.",
+        "If the new messages add detail, scope, reproduction steps, or acceptance criteria to an existing open task, that is still product feedback. A later step can update the existing task instead of creating a new one.",
         "Forum and thread metadata may appear inline as forum/thread/channel labels; use that metadata, especially when a forum post body is empty.",
         "Only include relevantMessageIds from NEW messages.",
         "Each message has an [id:XXXXXXX] tag. Use the numeric ID from that tag as the relevantMessageId, NOT the timestamp.",
@@ -661,6 +705,8 @@ export const processFeedbackWindow = internalAction({
         prompt: [
           `Workspace name: ${feedbackWindow.integration.workspaceName}`,
           `Guild: ${feedbackWindow.integration.guildName}`,
+          "Existing task context:",
+          formatExistingTasks(existingTasks),
           "Conversation transcript:",
           transcript,
         ].join("\n\n"),
@@ -717,6 +763,7 @@ export const processFeedbackWindow = internalAction({
         return {
           skipped: false,
           createdTaskCount: 0,
+          updatedTaskCount: 0,
           reason: "not_product_feedback",
         }
       }
@@ -727,22 +774,15 @@ export const processFeedbackWindow = internalAction({
           .filter(Boolean)
       )
 
-      const matchedRelevantMessages = pendingNonAdminMessages.filter((message) =>
-        normalizedRelevantIds.has(normalizeDiscordId(message.messageId))
+      const matchedRelevantMessages = pendingNonAdminMessages.filter(
+        (message) =>
+          normalizedRelevantIds.has(normalizeDiscordId(message.messageId))
       )
 
       const relevantMessages =
         matchedRelevantMessages.length > 0
           ? matchedRelevantMessages
           : pendingNonAdminMessages
-
-      const existingTasks = await ctx.runQuery(
-        getTaskSnapshotForDiscordInternalQuery,
-        {
-          workspaceId: feedbackWindow.integration.workspaceId,
-          limit: EXISTING_TASK_CONTEXT_LIMIT,
-        }
-      )
 
       const labelsText =
         feedbackWindow.integration.availableLabels.length > 0
@@ -752,16 +792,21 @@ export const processFeedbackWindow = internalAction({
       const extractorSystemParts: string[] = [
         "You turn product feedback into concise task requests for a task board.",
         `The product is ${feedbackWindow.integration.workspaceName}.`,
-        "Only create tasks for actionable feedback about the real product. Ignore unrelated discussion.",
-        "Return between 0 and 5 tasks.",
-        "Each task must be distinct, concrete, and understandable without Discord context.",
-        "You will be given existing tasks from the board, including shipped (resolved) tasks. Skip creating a task if an existing task — regardless of status — describes the EXACT same specific issue — same error message, same feature, same broken flow. A shipped task means the issue was already addressed; do not recreate it.",
+        "Only create or update tasks for actionable feedback about the real product. Ignore unrelated discussion.",
+        "Return between 0 and 5 actions total.",
+        "Each action must be distinct, concrete, and understandable without Discord context.",
+        "You can either create a new task or update an existing task.",
+        "Use update when the new feedback materially adds detail to an existing open task, such as reproduction steps, missing scope, edge cases, urgency, or acceptance criteria.",
+        "For update actions, use the existing taskCode and return the full revised title, description, priority, and labels after incorporating the new feedback.",
+        "Do not update shipped or archived tasks. If the closest shipped task is only an exact duplicate, do nothing. If the new feedback is materially different, create a new task instead.",
+        "If an existing task — regardless of status — describes the EXACT same specific issue with no meaningful new information, do not create a task and do not update anything.",
         "Different error messages, different symptoms, or different contexts should each get their own task even if they relate to the same general area.",
-        "When in doubt, create the task. It is better to create a near-duplicate than to lose real user feedback.",
+        "When in doubt between update and create, prefer update only for the same underlying task; otherwise create.",
         "Descriptions should summarize the user problem and expected outcome in plain text.",
         "Priority may be urgent, high, medium, low, or none.",
         `Allowed labels: ${labelsText}`,
         "Only use labels from the allowed list. Use an empty array when none apply.",
+        'Return valid structured output only with action items shaped like {"action":"create",...} or {"action":"update","taskCode":"MDN-123",...}.',
       ]
 
       if (feedbackWindow.integration.additionalContext) {
@@ -781,25 +826,24 @@ export const processFeedbackWindow = internalAction({
           formatExistingTasks(existingTasks),
           "Relevant feedback messages:",
           relevantMessages
-            .map(
-              (message) =>
-                [
-                  `- ${new Date(message.messageCreatedAt).toISOString()}`,
-                  message.forumTitle ? `forum=${message.forumTitle}` : null,
-                  message.threadTitle ? `thread=${message.threadTitle}` : null,
-                  message.parentChannelName
-                    ? `parent_channel=${message.parentChannelName}`
-                    : null,
-                  message.channelName ? `channel=${message.channelName}` : null,
-                  `${message.authorUsername}: ${
-                    message.content ||
-                    (message.threadTitle
-                      ? "(no body text; rely on the thread title)"
-                      : "(no body text)")
-                  }`,
-                ]
-                  .filter(Boolean)
-                  .join(" | ")
+            .map((message) =>
+              [
+                `- ${new Date(message.messageCreatedAt).toISOString()}`,
+                message.forumTitle ? `forum=${message.forumTitle}` : null,
+                message.threadTitle ? `thread=${message.threadTitle}` : null,
+                message.parentChannelName
+                  ? `parent_channel=${message.parentChannelName}`
+                  : null,
+                message.channelName ? `channel=${message.channelName}` : null,
+                `${message.authorUsername}: ${
+                  message.content ||
+                  (message.threadTitle
+                    ? "(no body text; rely on the thread title)"
+                    : "(no body text)")
+                }`,
+              ]
+                .filter(Boolean)
+                .join(" | ")
             )
             .join("\n"),
         ].join("\n\n"),
@@ -844,11 +888,15 @@ export const processFeedbackWindow = internalAction({
         return {
           skipped: false,
           createdTaskCount: 0,
+          updatedTaskCount: 0,
           reason: "no_structured_output",
         }
       }
 
-      if (extracted.tasks.length > 0) {
+      let createdTaskCount = 0
+      let updatedTaskCount = 0
+
+      if (extracted.actions.length > 0) {
         const authors = Array.from(
           new Set(relevantMessages.map((message) => message.authorUsername))
         )
@@ -858,26 +906,50 @@ export const processFeedbackWindow = internalAction({
           latestPendingMessage.messageCreatedAt
         )
 
-        await ctx.runMutation(createTasksFromDiscordFeedbackInternalMutation, {
-          workspaceId: feedbackWindow.integration.workspaceId,
-          tasks: extracted.tasks.map((task) => ({
-            title: task.title,
-            description: task.description ?? undefined,
-            status: "requests" as const,
-            priority: task.priority ?? "none",
-            labels: task.labels.filter((label) =>
-              feedbackWindow.integration.availableLabels.includes(label)
+        const result = await ctx.runMutation(
+          createTasksFromDiscordFeedbackInternalMutation,
+          {
+            workspaceId: feedbackWindow.integration.workspaceId,
+            operations: extracted.actions.map((action) =>
+              action.action === "create"
+                ? {
+                    action: "create" as const,
+                    task: {
+                      title: action.title,
+                      description: action.description ?? undefined,
+                      status: "requests" as const,
+                      priority: action.priority ?? "none",
+                      labels: action.labels.filter((label) =>
+                        feedbackWindow.integration.availableLabels.includes(
+                          label
+                        )
+                      ),
+                      source: sourceUrl
+                        ? {
+                            platform: "discord" as const,
+                            url: sourceUrl,
+                            author: authors.join(", "),
+                          }
+                        : undefined,
+                      createdAtLabel,
+                    },
+                  }
+                : {
+                    action: "update" as const,
+                    taskCode: action.taskCode,
+                    title: action.title,
+                    description: action.description ?? undefined,
+                    priority: action.priority ?? undefined,
+                    labels: action.labels.filter((label) =>
+                      feedbackWindow.integration.availableLabels.includes(label)
+                    ),
+                  }
             ),
-            source: sourceUrl
-              ? {
-                  platform: "discord" as const,
-                  url: sourceUrl,
-                  author: authors.join(", "),
-                }
-              : undefined,
-            createdAtLabel,
-          })),
-        })
+          }
+        )
+
+        createdTaskCount = result.createdTaskIds.length
+        updatedTaskCount = result.updatedTaskIds.length
       }
 
       await ctx.runMutation(markFeedbackWindowProcessedInternalMutation, {
@@ -888,7 +960,8 @@ export const processFeedbackWindow = internalAction({
 
       logInfo("Finished Discord feedback processing attempt", {
         integrationId: args.integrationId,
-        createdTaskCount: extracted.tasks.length,
+        createdTaskCount,
+        updatedTaskCount,
       })
 
       await trackFeedbackProcessing({
@@ -899,7 +972,8 @@ export const processFeedbackWindow = internalAction({
         messageCount: pendingNonAdminMessages.length,
         isProductFeedback: classification.isProductFeedback,
         confidence: classification.confidence,
-        createdTaskCount: extracted.tasks.length,
+        createdTaskCount,
+        updatedTaskCount,
         classifierDurationMs,
         extractorDurationMs,
         totalDurationMs: Date.now() - processingStart,
@@ -907,7 +981,8 @@ export const processFeedbackWindow = internalAction({
 
       return {
         skipped: false,
-        createdTaskCount: extracted.tasks.length,
+        createdTaskCount,
+        updatedTaskCount,
       }
     } catch (error) {
       logError("Failed to process Discord feedback window", error, {
