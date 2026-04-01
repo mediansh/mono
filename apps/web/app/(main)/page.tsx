@@ -43,12 +43,12 @@ export default function Page() {
           <Input
             type="email"
             placeholder="you@company.com"
-            className="h-10 flex-1 rounded-2xl px-4"
+            className="h-10 flex-1 !rounded-2xl px-4"
             required
           />
           <Button
             size="lg"
-            className="h-10 gap-2 rounded-2xl px-5"
+            className="h-10 gap-2 !rounded-2xl px-5"
           >
             Join waitlist
             <HugeiconsIcon icon={ArrowRight02Icon} className="size-4" />
