@@ -5,6 +5,7 @@ import { z } from "zod"
 import { withAxiom, logger } from "@/lib/logger"
 import { getPostHogServerClient } from "@/lib/posthog-server"
 import { safeTrackAiUsage } from "@/lib/billing/autumn"
+import { getAiCostForTokens } from "@/lib/billing/config"
 
 import { TASK_PRIORITIES, TASK_STATUSES } from "@/lib/task-board"
 
@@ -167,7 +168,13 @@ export const POST = withAxiom(async (request: Request) => {
       },
     })
 
-    return NextResponse.json({ tasks: normalizedTasks })
+    const cost = getAiCostForTokens({
+      model,
+      inputTokens,
+      outputTokens,
+    })
+
+    return NextResponse.json({ tasks: normalizedTasks, cost: cost > 0 ? cost : undefined })
   } catch (error) {
     const durationMs = Date.now() - start
 

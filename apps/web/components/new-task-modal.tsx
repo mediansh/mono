@@ -400,6 +400,8 @@ export function NewTaskModal({
         { id: toastId }
       )
 
+      const generationCost = typeof payload.cost === "number" ? payload.cost : undefined
+
       const createdTasks = (await createTasks({
         workspaceId: currentWorkspace._id,
         tasks: generatedTasks.map((task) => ({
@@ -411,6 +413,7 @@ export function NewTaskModal({
             labelOptions.some((option) => option.id === label)
           ),
         })),
+        cost: generationCost,
       })) as Doc<"tasks">[]
 
       updateWorkspaceTasks(currentWorkspace._id, (tasks) => [

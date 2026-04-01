@@ -685,6 +685,7 @@ export const createTasks = mutation({
   args: {
     workspaceId: v.id("workspaces"),
     tasks: v.array(taskInputValidator),
+    cost: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const createdTasks = await createTasksForWorkspace(
@@ -702,6 +703,7 @@ export const createTasks = mutation({
             ? "AI generated 1 task from prompt"
             : `AI generated ${createdTasks.length} tasks from prompt`,
         source: "ai",
+        cost: args.cost,
       })
     }
     for (const task of createdTasks) {
