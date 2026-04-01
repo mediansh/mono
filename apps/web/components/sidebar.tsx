@@ -396,7 +396,7 @@ export function AppSidebar() {
                     <Plugs size={15} weight={pathname.startsWith("/app/integrations") ? "fill" : "regular"} />
                     <span>Integrations</span>
                   </SidebarMenuButton>
-                  <SidebarMenuSub>
+                  <SidebarMenuSub className="mr-0">
                     {integrationsSubNav.map((sub) => {
                       const isSubActive = pathname === sub.href
                       return (
@@ -405,8 +405,9 @@ export function AppSidebar() {
                             render={<Link href={sub.href} />}
                             isActive={isSubActive}
                             size="md"
+                            className={isSubActive ? "" : "text-sidebar-foreground/70"}
                           >
-                            <span className="text-inherit" style={{ lineHeight: 0 }}>
+                            <span style={{ lineHeight: 0 }}>
                               <sub.icon size={12} />
                             </span>
                             <span>{sub.label}</span>
