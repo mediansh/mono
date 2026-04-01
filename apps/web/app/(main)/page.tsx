@@ -56,6 +56,18 @@ export default function Page() {
             <HugeiconsIcon icon={ArrowRight02Icon} className="size-4" />
           </Button>
         </motion.form>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+          className="text-muted-foreground text-sm"
+        >
+          Already have access?{" "}
+          <a href="/sign-in" className="text-foreground underline underline-offset-4">
+            Sign in
+          </a>
+        </motion.p>
       </motion.div>
     </main>
   )
