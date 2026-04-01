@@ -296,28 +296,12 @@ export const getWorkspaceBillingDashboard = action({
       AUTUMN_EVENTS_FEATURE_ID
     )
 
-    // Build token usage chart from AI usage aggregate
-    // Each row has values keyed by feature ID, value is dollar cost
-    const aiUsageRows = snapshot.aiUsage.list as Array<AggregateRow>
-    let cumulativeInput = 0
-    let cumulativeOutput = 0
-    const tokenSeries = aiUsageRows.map((row) => {
-      // For the aggregate data, we track cost against ai_usage.
-      // To reconstruct token breakdown, use the events list below.
-      // For the chart, show cumulative cost as a proxy.
-      const aiCost = row.values[AUTUMN_AI_USAGE_FEATURE_ID] ?? 0
-      cumulativeInput += aiCost
-      return {
-        timestamp: row.period,
-        day: new Date(row.period).getDate().toString(),
-        input: cumulativeInput,
-        output: cumulativeOutput,
-      }
-    })
-
-    // Reconstruct token totals from recent events
+    // Build token usage chart and totals from event list properties
+    // The aggregate only has total AI cost per day (no input/output split),
+    // so we reconstruct the per-day token breakdown from individual events.
     let totalInput = 0
     let totalOutput = 0
+    const tokensByDay = new Map<string, { timestamp: number; input: number; output: number }>()
     for (const event of snapshot.recentEvents as Array<ListEvent>) {
       if (event.featureId === AUTUMN_AI_USAGE_FEATURE_ID) {
         const inputTok = typeof event.properties.input_tokens === "number"
@@ -328,8 +312,34 @@ export const getWorkspaceBillingDashboard = action({
           : 0
         totalInput += inputTok
         totalOutput += outputTok
+
+        const date = new Date(event.timestamp)
+        const dayKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+        const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
+        const existing = tokensByDay.get(dayKey)
+        if (existing) {
+          existing.input += inputTok
+          existing.output += outputTok
+        } else {
+          tokensByDay.set(dayKey, { timestamp: dayStart, input: inputTok, output: outputTok })
+        }
       }
     }
+
+    // Sort by date and make cumulative
+    const sortedDays = [...tokensByDay.values()].sort((a, b) => a.timestamp - b.timestamp)
+    let cumulativeInput = 0
+    let cumulativeOutput = 0
+    const tokenSeries = sortedDays.map((day) => {
+      cumulativeInput += day.input
+      cumulativeOutput += day.output
+      return {
+        timestamp: day.timestamp,
+        day: new Date(day.timestamp).getDate().toString(),
+        input: cumulativeInput,
+        output: cumulativeOutput,
+      }
+    })
 
     let cumulativeEvents = 0
     const eventSeries = (snapshot.eventUsage.list as Array<AggregateRow>).map((row) => {
