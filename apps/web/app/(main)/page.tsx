@@ -43,7 +43,7 @@ export default function Page() {
           <Input
             type="email"
             placeholder="you@company.com"
-            className="h-12 px-4"
+            className="h-10 px-4"
             style={{ borderRadius: 16 }}
             required
           />
