@@ -5,11 +5,6 @@ import { useAction } from "convex/react"
 import { motion } from "motion/react"
 import {
   CreditCard,
-  ArrowLeft,
-  ArrowRight,
-  Lightning,
-  Robot,
-  Plugs,
   Check,
   ArrowUpRight,
   Warning,
@@ -47,15 +42,6 @@ const fadeUp = {
     y: 0,
     transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] as const },
   },
-}
-
-type UsageRecord = {
-  id: string
-  type: "ai_generation" | "event_ingested" | "overage_charge" | "ai_tool_call"
-  description: string
-  tokens?: number
-  cost?: number
-  timestamp: number
 }
 
 type BillingPlan = {
@@ -107,23 +93,6 @@ type BillingDashboard = {
     }>
   }
   plans: BillingPlan[]
-  usageRecords: UsageRecord[]
-}
-
-const HOUR = 3600000
-const MIN = 60000
-const PAGE_SIZE = 20
-
-function formatRelativeTime(timestamp: number) {
-  const diff = Date.now() - timestamp
-  const minutes = Math.floor(diff / MIN)
-  const hours = Math.floor(diff / HOUR)
-  const days = Math.floor(diff / (24 * HOUR))
-
-  if (minutes < 1) return "Just now"
-  if (minutes < 60) return `${minutes}m ago`
-  if (hours < 24) return `${hours}h ago`
-  return `${days}d ago`
 }
 
 function formatTokens(tokens: number) {
@@ -134,39 +103,6 @@ function formatTokens(tokens: number) {
 
 function formatCurrency(amount: number) {
   return `$${amount.toFixed(amount < 0.01 ? 4 : 2)}`
-}
-
-const RECORD_CONFIG: Record<
-  UsageRecord["type"],
-  { icon: typeof Lightning; label: string; color: string }
-> = {
-  ai_generation: { icon: Robot, label: "AI Generation", color: "text-purple-500" },
-  event_ingested: { icon: Plugs, label: "Event Ingested", color: "text-blue-500" },
-  overage_charge: { icon: Warning, label: "Overage", color: "text-amber-500" },
-  ai_tool_call: { icon: Lightning, label: "Tool Call", color: "text-emerald-500" },
-}
-
-type FilterType = "all" | "ai" | "events" | "overages"
-
-const FILTER_OPTIONS: Array<{ value: FilterType; label: string }> = [
-  { value: "all", label: "All" },
-  { value: "ai", label: "AI Usage" },
-  { value: "events", label: "Events" },
-  { value: "overages", label: "Overages" },
-]
-
-function filterRecords(records: UsageRecord[], filter: FilterType): UsageRecord[] {
-  if (filter === "all") return records
-  if (filter === "ai") {
-    return records.filter(
-      (record) =>
-        record.type === "ai_generation" || record.type === "ai_tool_call"
-    )
-  }
-  if (filter === "events") {
-    return records.filter((record) => record.type === "event_ingested")
-  }
-  return records.filter((record) => record.type === "overage_charge")
 }
 
 function getPlanButtonLabel(plan: BillingPlan, isCurrent: boolean) {
@@ -253,19 +189,6 @@ function BillingSkeleton() {
           </div>
         ))}
       </div>
-      <div className="rounded-[4px] ring-1 ring-border">
-        {Array.from({ length: 6 }).map((_, index) => (
-          <div
-            key={index}
-            className="flex items-center gap-2.5 border-b border-border px-3 py-1.5 last:border-0"
-          >
-            <div className="size-5 rounded-[3px] bg-muted/40" />
-            <div className="h-3 w-16 rounded-[3px] bg-muted/30" />
-            <div className="h-3 flex-1 rounded-[3px] bg-muted/20" />
-            <div className="h-3 w-10 rounded-[3px] bg-muted/30" />
-          </div>
-        ))}
-      </div>
     </div>
   )
 }
@@ -275,8 +198,6 @@ export default function BillingPage() {
   const loadBillingDashboard = useAction(api.billing.getWorkspaceBillingDashboard)
   const openBillingPortal = useAction(api.billing.openWorkspaceBillingPortal)
   const attachBillingPlan = useAction(api.billing.attachWorkspaceBillingPlan)
-  const [filter, setFilter] = useState<FilterType>("all")
-  const [page, setPage] = useState(0)
   const [loading, setLoading] = useState(true)
   const [dashboard, setDashboard] = useState<BillingDashboard | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -286,10 +207,6 @@ export default function BillingPage() {
   useEffect(() => {
     document.title = "Billing — Median"
   }, [])
-
-  useEffect(() => {
-    setPage(0)
-  }, [filter])
 
   useEffect(() => {
     let cancelled = false
@@ -406,14 +323,6 @@ export default function BillingPage() {
     dashboard.summary.aiBudget > 0
       ? Math.min(dashboard.summary.aiSpend, dashboard.summary.aiBudget)
       : dashboard.summary.aiSpend
-  const filteredRecords = filterRecords(dashboard.usageRecords, filter)
-  const totalCount = filteredRecords.length
-  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
-  const paginatedRecords = filteredRecords.slice(
-    page * PAGE_SIZE,
-    (page + 1) * PAGE_SIZE
-  )
-
   return (
     <Stagger className="h-full overflow-y-auto">
       <div className="mx-auto w-full max-w-4xl px-6 py-6">
@@ -695,112 +604,6 @@ export default function BillingPage() {
           </motion.div>
         )}
 
-        <motion.div variants={fadeUp}>
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-[13px] font-medium">Usage records</h3>
-            <div className="flex items-center gap-1 rounded-[4px] p-0.5 ring-1 ring-border">
-              {FILTER_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  onClick={() => setFilter(option.value)}
-                  className={`rounded-[3px] px-2 py-0.5 text-[11px] font-medium transition-colors ${
-                    filter === option.value
-                      ? "bg-background text-foreground ring-1 ring-border"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-[4px] ring-1 ring-border">
-            {totalCount === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12">
-                <CreditCard size={24} className="text-muted-foreground/40" />
-                <p className="mt-2 text-[13px] text-muted-foreground">
-                  No records match this filter
-                </p>
-              </div>
-            ) : (
-              <div className="divide-y divide-border">
-                {paginatedRecords.map((record) => {
-                  const config = RECORD_CONFIG[record.type]
-                  const Icon = config.icon
-
-                  return (
-                    <div
-                      key={record.id}
-                      className="group flex items-center gap-2.5 px-3 py-1.5 transition-colors hover:bg-muted/30"
-                    >
-                      <div
-                        className={`flex size-5 shrink-0 items-center justify-center rounded-[3px] bg-muted/50 ${config.color}`}
-                      >
-                        <Icon size={11} weight="bold" />
-                      </div>
-                      <span className="shrink-0 text-[11px] font-medium text-muted-foreground">
-                        {config.label}
-                      </span>
-                      <p className="min-w-0 flex-1 truncate text-[12px] text-foreground">
-                        {record.description}
-                      </p>
-                      {record.tokens !== undefined && (
-                        <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
-                          {formatTokens(record.tokens)} tok
-                        </span>
-                      )}
-                      {record.cost !== undefined && (
-                        <span
-                          className={`shrink-0 text-[11px] tabular-nums font-medium ${
-                            record.type === "overage_charge"
-                              ? "text-amber-500"
-                              : "text-muted-foreground"
-                          }`}
-                        >
-                          {formatCurrency(record.cost)}
-                        </span>
-                      )}
-                      <span className="shrink-0 text-[11px] text-muted-foreground">
-                        {formatRelativeTime(record.timestamp)}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-
-          {totalCount > PAGE_SIZE && (
-            <div className="mt-3 flex items-center justify-between">
-              <p className="text-[11px] text-muted-foreground">
-                {page * PAGE_SIZE + 1}-
-                {Math.min((page + 1) * PAGE_SIZE, totalCount)} of {totalCount}
-              </p>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setPage((current) => Math.max(0, current - 1))}
-                  disabled={page === 0}
-                  className="flex size-7 items-center justify-center rounded-[4px] text-[11px] text-muted-foreground ring-1 ring-border transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent"
-                >
-                  <ArrowLeft size={12} />
-                </button>
-                <span className="px-2 text-[11px] text-muted-foreground">
-                  {page + 1} / {totalPages}
-                </span>
-                <button
-                  onClick={() =>
-                    setPage((current) => Math.min(totalPages - 1, current + 1))
-                  }
-                  disabled={page >= totalPages - 1}
-                  className="flex size-7 items-center justify-center rounded-[4px] text-[11px] text-muted-foreground ring-1 ring-border transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent"
-                >
-                  <ArrowRight size={12} />
-                </button>
-              </div>
-            </div>
-          )}
-        </motion.div>
       </div>
     </Stagger>
   )
