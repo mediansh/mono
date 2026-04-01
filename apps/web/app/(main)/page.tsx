@@ -28,7 +28,7 @@ export default function Page() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-          className="text-muted-foreground mt-4 text-base"
+          className="text-muted-foreground mt-6 text-base"
         >
           The feedback engine for modern teams.
         </motion.p>
@@ -37,7 +37,7 @@ export default function Page() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
-          className="mt-6 flex w-full flex-col items-center gap-2"
+          className="mt-8 flex w-full flex-col items-center gap-3"
           onSubmit={(e) => e.preventDefault()}
         >
           <Input
@@ -61,7 +61,7 @@ export default function Page() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.4, delay: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
-          className="text-muted-foreground mt-6 text-sm"
+          className="text-muted-foreground mt-8 text-sm"
         >
           Already have access?{" "}
           <a href="/sign-in" className="text-foreground underline underline-offset-4">
