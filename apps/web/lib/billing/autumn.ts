@@ -11,18 +11,30 @@ import {
 
 let cachedClient: Autumn | null = null
 
-function getAutumnSecretKey() {
+function getAutumnSecretKey(): string | null {
   const secretKey = process.env.AUTUMN_SECRET_KEY
   if (!secretKey) {
-    throw new Error("Missing AUTUMN_SECRET_KEY")
+    return null
   }
   return secretKey
 }
 
+export function isAutumnConfigured(): boolean {
+  return getAutumnSecretKey() !== null
+}
+
 export function getAutumnClient() {
+  const secretKey = getAutumnSecretKey()
+  if (!secretKey) {
+    throw new Error(
+      "[billing] AUTUMN_SECRET_KEY is not set. Billing tracking is disabled. " +
+        "Add it to .env.local (Next.js) and Convex environment variables."
+    )
+  }
+
   if (!cachedClient) {
     cachedClient = new Autumn({
-      secretKey: getAutumnSecretKey(),
+      secretKey,
       retryConfig: {
         strategy: "backoff",
         backoff: {
@@ -71,13 +83,14 @@ export async function trackAiUsage(args: {
     email: args.email,
   })
 
+  const customerId = getAutumnCustomerId(args.workspaceId)
   const features = getAiUsageFeatureIds(args.model)
   const tasks: Promise<unknown>[] = []
 
   if ((args.inputTokens ?? 0) > 0) {
     tasks.push(
       getAutumnClient().track({
-        customerId: getAutumnCustomerId(args.workspaceId),
+        customerId,
         featureId: features.input,
         value: args.inputTokens,
         properties: {
@@ -94,7 +107,7 @@ export async function trackAiUsage(args: {
   if ((args.outputTokens ?? 0) > 0) {
     tasks.push(
       getAutumnClient().track({
-        customerId: getAutumnCustomerId(args.workspaceId),
+        customerId,
         featureId: features.output,
         value: args.outputTokens,
         properties: {
@@ -106,6 +119,19 @@ export async function trackAiUsage(args: {
         },
       })
     )
+  }
+
+  if (tasks.length === 0) {
+    console.warn(
+      "[billing] trackAiUsage called with zero tokens — nothing to track",
+      {
+        workspaceId: args.workspaceId,
+        model: args.model,
+        inputTokens: args.inputTokens,
+        outputTokens: args.outputTokens,
+      }
+    )
+    return
   }
 
   await Promise.all(tasks)
@@ -138,20 +164,57 @@ export async function trackIntegrationEvent(args: {
 export async function safeTrackAiUsage(
   args: Parameters<typeof trackAiUsage>[0]
 ) {
+  if (!isAutumnConfigured()) {
+    console.error(
+      "[billing] AUTUMN_SECRET_KEY is not set — AI usage tracking skipped for workspace",
+      args.workspaceId,
+      "model",
+      args.model
+    )
+    return
+  }
+
   try {
     await trackAiUsage(args)
   } catch (error) {
-    console.error("[billing] Failed to track AI usage", error)
+    console.error(
+      "[billing] Failed to track AI usage",
+      {
+        workspaceId: args.workspaceId,
+        model: args.model,
+        inputTokens: args.inputTokens,
+        outputTokens: args.outputTokens,
+      },
+      error
+    )
   }
 }
 
 export async function safeTrackIntegrationEvent(
   args: Parameters<typeof trackIntegrationEvent>[0]
 ) {
+  if (!isAutumnConfigured()) {
+    console.error(
+      "[billing] AUTUMN_SECRET_KEY is not set — integration event tracking skipped for workspace",
+      args.workspaceId,
+      "source",
+      args.source
+    )
+    return
+  }
+
   try {
     await trackIntegrationEvent(args)
   } catch (error) {
-    console.error("[billing] Failed to track integration event", error)
+    console.error(
+      "[billing] Failed to track integration event",
+      {
+        workspaceId: args.workspaceId,
+        source: args.source,
+        properties: args.properties,
+      },
+      error
+    )
   }
 }
 

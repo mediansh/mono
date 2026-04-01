@@ -19,6 +19,9 @@ export const trackIntegrationEvent = internalAction({
     properties: v.optional(v.any()),
   },
   handler: async (_ctx, args) => {
+    console.info(
+      `[billing] Tracking integration event: source=${args.source} workspace=${args.workspaceId}`
+    )
     await safeTrackIntegrationEvent({
       workspaceId: args.workspaceId,
       workspaceName: args.workspaceName,
@@ -39,6 +42,9 @@ export const trackAiUsage = internalAction({
     properties: v.optional(v.any()),
   },
   handler: async (_ctx, args) => {
+    console.info(
+      `[billing] Tracking AI usage: model=${args.model} input=${args.inputTokens ?? 0} output=${args.outputTokens ?? 0} workspace=${args.workspaceId}`
+    )
     await safeTrackAiUsage({
       workspaceId: args.workspaceId,
       workspaceName: args.workspaceName,

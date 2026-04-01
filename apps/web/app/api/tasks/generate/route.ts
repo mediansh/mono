@@ -123,6 +123,17 @@ export const POST = withAxiom(async (request: Request) => {
       durationMs,
     })
 
+    const inputTokens = result.usage?.inputTokens ?? 0
+    const outputTokens = result.usage?.outputTokens ?? 0
+
+    if (inputTokens === 0 && outputTokens === 0) {
+      logger.warn("AI generation returned zero token usage — billing will not track", {
+        userId,
+        workspaceId,
+        model,
+      })
+    }
+
     // Track LLM generation metrics in PostHog
     const posthog = getPostHogServerClient()
     if (posthog) {
@@ -133,9 +144,9 @@ export const POST = withAxiom(async (request: Request) => {
           model,
           feature: "task_generation",
           prompt_length: prompt.length,
-          input_tokens: result.usage?.inputTokens,
-          output_tokens: result.usage?.outputTokens,
-          total_tokens: (result.usage?.inputTokens ?? 0) + (result.usage?.outputTokens ?? 0),
+          input_tokens: inputTokens,
+          output_tokens: outputTokens,
+          total_tokens: inputTokens + outputTokens,
           duration_ms: durationMs,
           task_count: normalizedTasks.length,
           success: true,
@@ -148,8 +159,8 @@ export const POST = withAxiom(async (request: Request) => {
       workspaceId,
       workspaceName,
       model,
-      inputTokens: result.usage?.inputTokens,
-      outputTokens: result.usage?.outputTokens,
+      inputTokens,
+      outputTokens,
       properties: {
         feature: "task_generation",
         user_id: userId,
