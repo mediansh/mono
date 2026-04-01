@@ -59,13 +59,23 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
 } from "@workspace/ui/components/sidebar"
 
 const mainNav = [
   { label: "Home", href: "/app", icon: House },
-  { label: "Integrations", href: "/app/integrations", icon: Plugs },
   { label: "Logs", href: "/app/logs", icon: ClockCounterClockwise },
   { label: "Billing", href: "/app/billing", icon: CreditCard },
+]
+
+const integrationsSubNav = [
+  { label: "Discord", href: "/app/integrations/discord" },
+  { label: "Linear", href: "/app/integrations/linear" },
+  { label: "X (Twitter)", href: "/app/integrations/x" },
+  { label: "GitHub", href: "/app/integrations/github" },
+  { label: "CLI", href: "/app/integrations/cli" },
 ]
 
 function CreateWorkspaceModal({
@@ -371,6 +381,38 @@ export function AppSidebar() {
                     </SidebarMenuItem>
                   )
                 })}
+
+                {/* Integrations with always-visible sub-items */}
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    render={<Link href="/app/integrations" />}
+                    isActive={pathname === "/app/integrations"}
+                    className={
+                      pathname.startsWith("/app/integrations")
+                        ? "data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground data-active:ring-1 data-active:ring-sidebar-border text-sidebar-accent-foreground"
+                        : "text-sidebar-foreground/70"
+                    }
+                  >
+                    <Plugs size={15} weight={pathname.startsWith("/app/integrations") ? "fill" : "regular"} />
+                    <span>Integrations</span>
+                  </SidebarMenuButton>
+                  <SidebarMenuSub>
+                    {integrationsSubNav.map((sub) => {
+                      const isSubActive = pathname === sub.href
+                      return (
+                        <SidebarMenuSubItem key={sub.href}>
+                          <SidebarMenuSubButton
+                            render={<Link href={sub.href} />}
+                            isActive={isSubActive}
+                            size="sm"
+                          >
+                            <span>{sub.label}</span>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      )
+                    })}
+                  </SidebarMenuSub>
+                </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
