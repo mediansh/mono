@@ -59,9 +59,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
 } from "@workspace/ui/components/sidebar"
 
 const mainNav = [
@@ -382,7 +379,7 @@ export function AppSidebar() {
                   )
                 })}
 
-                {/* Integrations with always-visible sub-items */}
+                {/* Integrations parent */}
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     render={<Link href="/app/integrations" />}
@@ -396,25 +393,26 @@ export function AppSidebar() {
                     <Plugs size={15} weight={pathname.startsWith("/app/integrations") ? "fill" : "regular"} />
                     <span>Integrations</span>
                   </SidebarMenuButton>
-                  <SidebarMenuSub className="!mx-0 !px-1.5 border-l-0">
-                    {integrationsSubNav.map((sub) => {
-                      const isSubActive = pathname === sub.href
-                      return (
-                        <SidebarMenuSubItem key={sub.href}>
-                          <SidebarMenuSubButton
-                            render={<Link href={sub.href} />}
-                            isActive={isSubActive}
-                            size="md"
-                            className="[&>svg]:!size-[14px] [&>svg]:!text-inherit"
-                          >
-                            <sub.icon size={14} />
-                            <span>{sub.label}</span>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      )
-                    })}
-                  </SidebarMenuSub>
                 </SidebarMenuItem>
+                {integrationsSubNav.map((sub) => {
+                  const isSubActive = pathname === sub.href
+                  return (
+                    <SidebarMenuItem key={sub.href}>
+                      <SidebarMenuButton
+                        render={<Link href={sub.href} />}
+                        isActive={isSubActive}
+                        className={
+                          isSubActive
+                            ? "pl-7 data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground data-active:ring-1 data-active:ring-sidebar-border"
+                            : "pl-7 text-sidebar-foreground/70"
+                        }
+                      >
+                        <sub.icon size={15} />
+                        <span>{sub.label}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )
+                })}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
