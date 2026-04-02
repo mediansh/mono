@@ -293,6 +293,7 @@ function areTaskDocListsEqual(left: TaskDoc[] | undefined, right: TaskDoc[]) {
       current._syncStatus !== next._syncStatus ||
       JSON.stringify(current.assignee ?? null) !== JSON.stringify(next.assignee ?? null) ||
       JSON.stringify(current.source ?? null) !== JSON.stringify(next.source ?? null) ||
+      JSON.stringify(current.sources ?? null) !== JSON.stringify(next.sources ?? null) ||
       JSON.stringify(current.attachments ?? null) !== JSON.stringify(next.attachments ?? null) ||
       JSON.stringify(current.labels) !== JSON.stringify(next.labels)
     ) {
@@ -581,9 +582,9 @@ const RequestRow = memo(function RequestRow({
           {sources.length > 0 ? (
             sources.map((source) => {
               const config = SOURCE_CONFIG[source.platform]
-              return (
+              return source.url ? (
                 <a
-                  key={`${source.platform}-${source.url}`}
+                  key={`${source.platform}-${source.author}`}
                   href={source.url}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -596,6 +597,15 @@ const RequestRow = memo(function RequestRow({
                   {source.author}
                   <LinkIcon size={9} className="opacity-60" />
                 </a>
+              ) : (
+                <span
+                  key={`${source.platform}-${source.author}`}
+                  className="flex items-center gap-1.5 rounded-[4px] py-0.5 pl-1.5 pr-2.5 text-[10px] font-medium"
+                  style={{ backgroundColor: config.bg, color: config.color }}
+                >
+                  <SourceIcon platform={source.platform} size={12} />
+                  {source.author}
+                </span>
               )
             })
           ) : (
@@ -1308,19 +1318,29 @@ function TaskDetailModal({
                   return taskSources.map((src) => {
                     const cfg = SOURCE_CONFIG[src.platform]
                     return (
-                      <span key={`${src.platform}-${src.url}`} className="contents">
+                      <span key={`${src.platform}-${src.author}`} className="contents">
                         <span className="text-muted-foreground/30">·</span>
-                        <a
-                          href={src.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 rounded-[4px] py-0.5 pl-1.5 pr-2.5 text-[10px] font-medium transition-opacity hover:opacity-80"
-                          style={{ backgroundColor: cfg.bg, color: cfg.color }}
-                        >
-                          <SourceIcon platform={src.platform} size={11} />
-                          <span>{src.author}</span>
-                          <LinkIcon size={10} />
-                        </a>
+                        {src.url ? (
+                          <a
+                            href={src.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 rounded-[4px] py-0.5 pl-1.5 pr-2.5 text-[10px] font-medium transition-opacity hover:opacity-80"
+                            style={{ backgroundColor: cfg.bg, color: cfg.color }}
+                          >
+                            <SourceIcon platform={src.platform} size={11} />
+                            <span>{src.author}</span>
+                            <LinkIcon size={10} />
+                          </a>
+                        ) : (
+                          <span
+                            className="flex items-center gap-1.5 rounded-[4px] py-0.5 pl-1.5 pr-2.5 text-[10px] font-medium"
+                            style={{ backgroundColor: cfg.bg, color: cfg.color }}
+                          >
+                            <SourceIcon platform={src.platform} size={11} />
+                            <span>{src.author}</span>
+                          </span>
+                        )}
                       </span>
                     )
                   })

@@ -684,16 +684,16 @@ export const listByWorkspace = query({
           : []
 
       const linearLink = linearByTask.get(task._id)
-      if (linearLink?.linearIssueUrl && !base.some((s) => s.platform === "linear")) {
+      if (linearLink && !base.some((s) => s.platform === "linear")) {
         base.push({
           platform: "linear" as const,
-          url: linearLink.linearIssueUrl,
+          url: linearLink.linearIssueUrl ?? "",
           author: linearLink.linearIssueIdentifier,
         })
       }
 
       const githubLink = githubByTask.get(task._id)
-      if (githubLink?.githubIssueUrl && !base.some((s) => s.platform === "github")) {
+      if (githubLink && !base.some((s) => s.platform === "github")) {
         base.push({
           platform: "github" as const,
           url: githubLink.githubIssueUrl,
