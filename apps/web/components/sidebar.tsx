@@ -266,7 +266,7 @@ export function AppSidebar() {
   const [newTaskOpen, setNewTaskOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const pathname = usePathname()
-  const { signOut } = useClerk()
+  const { signOut, openUserProfile } = useClerk()
   const { user } = useUser()
   const { theme, setTheme } = useTheme()
   const { workspaces, currentWorkspace, switchWorkspace } = useWorkspace()
@@ -531,9 +531,9 @@ export function AppSidebar() {
                   )}
 
                   <DropdownMenuGroup>
-                    <DropdownMenuItem render={<Link href="/settings" />}>
+                    <DropdownMenuItem onClick={() => openUserProfile()}>
                       <Gear size={15} weight="regular" />
-                      Settings
+                      Account
                     </DropdownMenuItem>
                     <DropdownMenuSub>
                       <DropdownMenuSubTrigger>
