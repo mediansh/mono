@@ -660,7 +660,49 @@ export const listByWorkspace = query({
   },
   handler: async (ctx, args) => {
     await requireWorkspaceAccess(ctx, args.workspaceId)
-    return await getWorkspaceTasks(ctx, args.workspaceId)
+    const tasks = await getWorkspaceTasks(ctx, args.workspaceId)
+
+    const [linearLinks, githubLinks] = await Promise.all([
+      ctx.db
+        .query("linearTaskLinks")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+        .collect(),
+      ctx.db
+        .query("githubTaskLinks")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+        .collect(),
+    ])
+
+    const linearByTask = new Map(linearLinks.map((l) => [l.taskId, l]))
+    const githubByTask = new Map(githubLinks.map((l) => [l.taskId, l]))
+
+    return tasks.map((task) => {
+      const base = task.sources?.length
+        ? [...task.sources]
+        : task.source
+          ? [task.source]
+          : []
+
+      const linearLink = linearByTask.get(task._id)
+      if (linearLink?.linearIssueUrl && !base.some((s) => s.platform === "linear")) {
+        base.push({
+          platform: "linear" as const,
+          url: linearLink.linearIssueUrl,
+          author: linearLink.linearIssueIdentifier,
+        })
+      }
+
+      const githubLink = githubByTask.get(task._id)
+      if (githubLink?.githubIssueUrl && !base.some((s) => s.platform === "github")) {
+        base.push({
+          platform: "github" as const,
+          url: githubLink.githubIssueUrl,
+          author: `${githubLink.githubRepositoryFullName}#${githubLink.githubIssueNumber}`,
+        })
+      }
+
+      return { ...task, sources: base.length > 0 ? base : undefined }
+    })
   },
 })
 
