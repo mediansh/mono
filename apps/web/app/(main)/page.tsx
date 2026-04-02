@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { useTheme } from "next-themes"
 import { motion } from "motion/react"
 import { Logo } from "@/components/logo"
@@ -10,6 +11,8 @@ import { HugeiconsIcon } from "@hugeicons/react"
 
 export default function Page() {
   const { resolvedTheme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
 
   return (
     <main className="flex min-h-svh">
@@ -22,16 +25,18 @@ export default function Page() {
           className="flex items-center justify-between"
         >
           <Logo className="text-2xl" />
-          <button
-            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-            className="text-muted-foreground hover:text-foreground transition-colors"
-            aria-label="Toggle theme"
-          >
-            <HugeiconsIcon
-              icon={resolvedTheme === "dark" ? Sun02Icon : Moon02Icon}
-              className="size-4"
-            />
-          </button>
+          {mounted && (
+            <button
+              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Toggle theme"
+            >
+              <HugeiconsIcon
+                icon={resolvedTheme === "dark" ? Sun02Icon : Moon02Icon}
+                className="size-4"
+              />
+            </button>
+          )}
         </motion.div>
 
         <motion.div
