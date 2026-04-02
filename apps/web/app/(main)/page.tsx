@@ -1,13 +1,16 @@
 "use client"
 
+import { useTheme } from "next-themes"
 import { motion } from "motion/react"
 import { Logo } from "@/components/logo"
 import { Input } from "@workspace/ui/components/input"
 import { Button } from "@workspace/ui/components/button"
-import { ArrowRight02Icon } from "@hugeicons/core-free-icons"
+import { ArrowRight02Icon, Sun02Icon, Moon02Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 
 export default function Page() {
+  const { resolvedTheme, setTheme } = useTheme()
+
   return (
     <main className="flex min-h-svh">
       {/* Left — waitlist form */}
@@ -16,8 +19,19 @@ export default function Page() {
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+          className="flex items-center justify-between"
         >
           <Logo className="text-2xl" />
+          <button
+            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Toggle theme"
+          >
+            <HugeiconsIcon
+              icon={resolvedTheme === "dark" ? Sun02Icon : Moon02Icon}
+              className="size-4"
+            />
+          </button>
         </motion.div>
 
         <motion.div
