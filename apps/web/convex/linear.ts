@@ -1338,6 +1338,12 @@ export const upsertTaskFromLinearIssue = internalMutation({
         if (!linkedTask.source || linkedTask.source.platform === "linear") {
           updates.source = nextSource
         }
+        if (nextSource) {
+          const existing = linkedTask.sources ?? (linkedTask.source ? [linkedTask.source] : [])
+          if (!existing.some((s) => s.platform === nextSource.platform && s.url === nextSource.url)) {
+            updates.sources = [...existing, nextSource]
+          }
+        }
 
         await ctx.db.patch(linkedTask._id, updates)
         await ctx.db.patch(existingLink._id, {
@@ -1392,6 +1398,12 @@ export const upsertTaskFromLinearIssue = internalMutation({
 
       if (!matchedTask.source || matchedTask.source.platform === "linear") {
         updates.source = nextSource
+      }
+      if (nextSource) {
+        const existing = matchedTask.sources ?? (matchedTask.source ? [matchedTask.source] : [])
+        if (!existing.some((s) => s.platform === nextSource.platform && s.url === nextSource.url)) {
+          updates.sources = [...existing, nextSource]
+        }
       }
 
       await ctx.db.patch(matchedTask._id, updates)

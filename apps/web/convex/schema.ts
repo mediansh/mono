@@ -503,6 +503,22 @@ export default defineSchema({
         author: v.string(),
       })
     ),
+    sources: v.optional(
+      v.array(
+        v.object({
+          platform: v.union(
+            v.literal("discord"),
+            v.literal("slack"),
+            v.literal("x"),
+            v.literal("linear"),
+            v.literal("github"),
+            v.literal("cli")
+          ),
+          url: v.string(),
+          author: v.string(),
+        })
+      )
+    ),
     createdAtLabel: v.optional(v.string()),
     attachments: v.optional(
       v.array(

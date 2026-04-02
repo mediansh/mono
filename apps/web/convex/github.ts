@@ -1512,6 +1512,12 @@ export const upsertTaskFromGitHubIssue = internalMutation({
           ) {
             updates.source = nextSource
           }
+          {
+            const existing = linkedTask.sources ?? (linkedTask.source ? [linkedTask.source] : [])
+            if (!existing.some((s) => s.platform === nextSource.platform && s.url === nextSource.url)) {
+              updates.sources = [...existing, nextSource]
+            }
+          }
 
           await ctx.db.patch(linkedTask._id, updates)
         }
@@ -1589,6 +1595,12 @@ export const upsertTaskFromGitHubIssue = internalMutation({
 
       if (!matchedTask.source || matchedTask.source.platform === "github") {
         updates.source = nextSource
+      }
+      {
+        const existing = matchedTask.sources ?? (matchedTask.source ? [matchedTask.source] : [])
+        if (!existing.some((s) => s.platform === nextSource.platform && s.url === nextSource.url)) {
+          updates.sources = [...existing, nextSource]
+        }
       }
 
       await ctx.db.patch(matchedTask._id, updates)

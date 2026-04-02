@@ -296,6 +296,7 @@ async function insertTasksForWorkspace(
         avatar: "",
       },
       source: taskInput.source,
+      sources: taskInput.source ? [taskInput.source] : undefined,
       createdAtLabel: taskInput.createdAtLabel,
       attachments: taskInput.attachments ?? undefined,
     })

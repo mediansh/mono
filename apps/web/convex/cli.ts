@@ -288,10 +288,15 @@ export const updateTaskStatus = mutation({
 
     // If an agent is updating, set source to track it
     if (args.agentName && !task.source) {
-      updates.source = {
+      const cliSource = {
         platform: "cli" as const,
         url: "",
         author: args.agentName,
+      }
+      updates.source = cliSource
+      const existing = task.sources ?? []
+      if (!existing.some((s) => s.platform === "cli" && s.author === args.agentName)) {
+        updates.sources = [...existing, cliSource]
       }
     }
 

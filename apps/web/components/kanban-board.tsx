@@ -566,8 +566,7 @@ const RequestRow = memo(function RequestRow({
   onSelect: (task: Task) => void
   canManageTasks: boolean
 }) {
-  const source = task.source
-  const config = source ? SOURCE_CONFIG[source.platform] : null
+  const sources = task.sources?.length ? task.sources : task.source ? [task.source] : []
   const { colors: labelColors } = useLabelConfig()
 
   if (dismissed) {
@@ -579,20 +578,26 @@ const RequestRow = memo(function RequestRow({
       {/* Top row: source + date */}
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          {source && config ? (
-            <a
-              href={source.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1.5 rounded-[4px] py-0.5 pl-1.5 pr-2.5 text-[10px] font-medium transition-opacity hover:opacity-80"
-              style={{ backgroundColor: config.bg, color: config.color }}
-              title={`View on ${config.label}`}
-            >
-              <SourceIcon platform={source.platform} size={12} />
-              {source.author}
-              <LinkIcon size={9} className="opacity-60" />
-            </a>
+          {sources.length > 0 ? (
+            sources.map((source) => {
+              const config = SOURCE_CONFIG[source.platform]
+              return (
+                <a
+                  key={`${source.platform}-${source.url}`}
+                  href={source.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center gap-1.5 rounded-[4px] py-0.5 pl-1.5 pr-2.5 text-[10px] font-medium transition-opacity hover:opacity-80"
+                  style={{ backgroundColor: config.bg, color: config.color }}
+                  title={`View on ${config.label}`}
+                >
+                  <SourceIcon platform={source.platform} size={12} />
+                  {source.author}
+                  <LinkIcon size={9} className="opacity-60" />
+                </a>
+              )
+            })
           ) : (
             <span className="text-[11px] text-muted-foreground/60">Request</span>
           )}
@@ -1298,24 +1303,27 @@ function TaskDetailModal({
                 <span className="font-mono text-[12px] font-medium text-muted-foreground">{task.taskCode}</span>
                 <span className="text-muted-foreground/30">·</span>
                 <span className="text-[12px] text-muted-foreground/60">{task.createdAt}</span>
-                {task.source && (() => {
-                  const cfg = SOURCE_CONFIG[task.source!.platform]
-                  return (
-                    <>
-                      <span className="text-muted-foreground/30">·</span>
-                      <a
-                        href={task.source!.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 rounded-[4px] py-0.5 pl-1.5 pr-2.5 text-[10px] font-medium transition-opacity hover:opacity-80"
-                        style={{ backgroundColor: cfg.bg, color: cfg.color }}
-                      >
-                        <SourceIcon platform={task.source!.platform} size={11} />
-                        <span>{task.source!.author}</span>
-                        <LinkIcon size={10} />
-                      </a>
-                    </>
-                  )
+                {(() => {
+                  const taskSources = task.sources?.length ? task.sources : task.source ? [task.source] : []
+                  return taskSources.map((src) => {
+                    const cfg = SOURCE_CONFIG[src.platform]
+                    return (
+                      <span key={`${src.platform}-${src.url}`} className="contents">
+                        <span className="text-muted-foreground/30">·</span>
+                        <a
+                          href={src.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 rounded-[4px] py-0.5 pl-1.5 pr-2.5 text-[10px] font-medium transition-opacity hover:opacity-80"
+                          style={{ backgroundColor: cfg.bg, color: cfg.color }}
+                        >
+                          <SourceIcon platform={src.platform} size={11} />
+                          <span>{src.author}</span>
+                          <LinkIcon size={10} />
+                        </a>
+                      </span>
+                    )
+                  })
                 })()}
               </div>
               <div className="flex items-center gap-1">
