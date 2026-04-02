@@ -459,7 +459,6 @@ export function NewTaskModal({
     setLabels([])
     setAttachments([])
     setAiPrompt("")
-    setActiveTab("manual")
     if (!options?.keepOpen) {
       setError("")
     }
