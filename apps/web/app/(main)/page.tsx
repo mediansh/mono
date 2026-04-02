@@ -25,18 +25,21 @@ export default function Page() {
           className="flex items-center justify-between"
         >
           <Logo className="text-2xl" />
-          {mounted && (
-            <button
-              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-              className="text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Toggle theme"
-            >
+          <button
+            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Toggle theme"
+            suppressHydrationWarning
+          >
+            {mounted ? (
               <HugeiconsIcon
                 icon={resolvedTheme === "dark" ? Sun02Icon : Moon02Icon}
                 className="size-4"
               />
-            </button>
-          )}
+            ) : (
+              <span className="block size-4" />
+            )}
+          </button>
         </motion.div>
 
         <motion.div
