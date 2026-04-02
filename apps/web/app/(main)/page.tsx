@@ -1,14 +1,11 @@
 "use client"
 
-import dynamic from "next/dynamic"
 import { motion } from "motion/react"
 import { Logo } from "@/components/logo"
 import { Input } from "@workspace/ui/components/input"
 import { Button } from "@workspace/ui/components/button"
 import { ArrowRight02Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
-
-const Beams = dynamic(() => import("@/components/Beams"), { ssr: false })
 
 export default function Page() {
   return (
@@ -72,26 +69,21 @@ export default function Page() {
         </motion.p>
       </div>
 
-      {/* Right — Beams background */}
-      <div className="relative hidden overflow-hidden md:block md:w-1/2">
+      {/* Right — inverted panel with logo */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6, delay: 0.2 }}
+        className="bg-foreground hidden items-center justify-center md:flex md:w-1/2"
+      >
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8, delay: 0.3 }}
-          className="absolute inset-0"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, delay: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
         >
-          <Beams
-            beamWidth={2.5}
-            beamHeight={13}
-            beamNumber={11}
-            lightColor="#ffffff"
-            speed={1.8}
-            noiseIntensity={1.25}
-            scale={0.15}
-            rotation={0}
-          />
+          <Logo symbolOnly className="text-background text-[12rem]" />
         </motion.div>
-      </div>
+      </motion.div>
     </main>
   )
 }
