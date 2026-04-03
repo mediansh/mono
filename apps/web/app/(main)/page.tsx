@@ -96,14 +96,21 @@ export default function Page() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.6, delay: 0.2 }}
-        className="bg-foreground hidden items-center justify-center md:flex md:w-1/2"
+        className="relative hidden items-center justify-center overflow-hidden md:flex md:w-1/2"
       >
+        <img
+          src="/waitlistbg.jpg"
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-black/40" />
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+          className="relative"
         >
-          <Logo symbolOnly className="text-background text-[12rem]" />
+          <Logo symbolOnly className="text-white text-[12rem] drop-shadow-2xl" />
         </motion.div>
       </motion.div>
     </main>
