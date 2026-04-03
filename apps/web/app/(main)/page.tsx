@@ -101,16 +101,15 @@ export default function Page() {
         <img
           src="/waitlistbg.jpg"
           alt=""
-          className="absolute inset-0 h-full w-full object-cover"
+          className="absolute inset-0 h-full w-full object-cover brightness-[0.35]"
         />
-        <div className="absolute inset-0 bg-black/40" />
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-          className="relative"
+          className="relative mix-blend-difference"
         >
-          <Logo symbolOnly className="text-white text-[12rem] drop-shadow-2xl" />
+          <Logo symbolOnly className="text-white text-[12rem]" />
         </motion.div>
       </motion.div>
     </main>
