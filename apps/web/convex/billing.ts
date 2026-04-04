@@ -19,6 +19,7 @@ import {
 import {
   attachWorkspacePlan,
   createBillingPortalUrl,
+  ensureAutumnCustomer,
   loadWorkspaceBillingSnapshot,
 } from "../lib/billing/autumn"
 import {
@@ -264,6 +265,30 @@ export const getWorkspaceBillingContext = internalQuery({
             ? identity.email
             : null,
       },
+    }
+  },
+})
+
+export const getWorkspacePlanStatus = action({
+  args: {
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args): Promise<{ hasActivePlan: boolean; currentPlanId: string | null }> => {
+    const billingContext: WorkspaceBillingContext = await ctx.runQuery(
+      internal.billing.getWorkspaceBillingContext,
+      { workspaceId: args.workspaceId }
+    )
+
+    const customer = await ensureAutumnCustomer({
+      workspaceId: billingContext.workspaceId,
+      workspaceName: billingContext.workspaceName,
+      email: billingContext.user.email,
+    })
+
+    const activeSubscription = getActiveSubscription(customer)
+    return {
+      hasActivePlan: activeSubscription !== null,
+      currentPlanId: activeSubscription?.planId ?? null,
     }
   },
 })

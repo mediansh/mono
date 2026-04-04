@@ -5,7 +5,6 @@ import { useAction, useMutation, useQuery } from "convex/react"
 import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  InformationCircleIcon,
   Link01Icon,
   RotateRight06Icon,
   Unlink01Icon,
@@ -128,8 +127,6 @@ export function GitHubIntegrationPanel() {
   })
 
   const integration = integrationState?.integration ?? null
-  const callbackUrl = integrationState?.callbackUrl ?? null
-  const webhookUrl = integrationState?.webhookUrl ?? null
 
   useEffect(() => {
     const status = searchParams.get("github_status")
@@ -351,48 +348,6 @@ export function GitHubIntegrationPanel() {
             </div>
           </motion.div>
 
-          <motion.div variants={fadeUp} className="rounded-[4px] ring-1 ring-border ring-dashed p-3.5">
-            <div className="mb-3 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              <HugeiconsIcon icon={InformationCircleIcon} size={14} strokeWidth={1.8} />
-              How it works
-            </div>
-            <div className="grid gap-2.5 text-[12px] text-muted-foreground">
-              <div className="flex items-start gap-2.5">
-                <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center text-[10px] font-semibold text-muted-foreground/60">1</span>
-                <span>Open PRs mentioning a task code move that task to Ready.</span>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center text-[10px] font-semibold text-muted-foreground/60">2</span>
-                <span>Merged PRs or default-branch commits move that task to Shipped.</span>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center text-[10px] font-semibold text-muted-foreground/60">3</span>
-                <span>Median-created tasks automatically open linked GitHub issues in your default repo.</span>
-              </div>
-            </div>
-          </motion.div>
-
-          {(callbackUrl || webhookUrl) && (
-            <motion.div variants={fadeUp} className="rounded-[4px] ring-1 ring-border ring-dashed p-3.5">
-              <div className="mb-3 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                GitHub App URLs
-              </div>
-              <div className="space-y-2">
-                {callbackUrl && (
-                  <div>
-                    <p className="text-[11px] text-muted-foreground">Setup URL (post-installation redirect)</p>
-                    <p className="mt-0.5 break-all font-mono text-[12px] text-foreground">{callbackUrl}</p>
-                  </div>
-                )}
-                {webhookUrl && (
-                  <div>
-                    <p className="text-[11px] text-muted-foreground">Webhook URL</p>
-                    <p className="mt-0.5 break-all font-mono text-[12px] text-foreground">{webhookUrl}</p>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
         </div>
       </Stagger>
     )

@@ -8,6 +8,7 @@ import { RoutePrefetch } from "@/components/route-prefetch"
 import { WorkspaceProvider } from "@/components/workspace-provider"
 import { WorkspaceGuard } from "@/components/workspace-guard"
 import { WorkspaceQueryPreloader } from "@/components/workspace-query-preloader"
+import { PlanGuard } from "@/components/plan-guard"
 import { DevErrorTrigger } from "@/components/dev-error-trigger"
 
 const appRoutes = ["/app", "/app/setup", "/app/settings", "/app/settings/labels", "/app/settings/members", "/app/logs", "/app/integrations", "/app/integrations/discord", "/app/integrations/linear", "/app/integrations/x", "/app/integrations/github", "/app/billing"]
@@ -32,7 +33,9 @@ export default function AppLayout({
           <SidebarProvider>
             <AppSidebar />
             <SidebarInset className="my-0">
-              <PageTransition>{children}</PageTransition>
+              <PlanGuard>
+                <PageTransition>{children}</PageTransition>
+              </PlanGuard>
             </SidebarInset>
           </SidebarProvider>
         )}
