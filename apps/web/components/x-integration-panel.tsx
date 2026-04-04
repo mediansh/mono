@@ -361,26 +361,6 @@ export function XIntegrationPanel() {
           </div>
         </motion.div>
 
-        <motion.div variants={fadeUp} className="rounded-[4px] ring-1 ring-border ring-dashed p-3.5">
-          <div className="mb-3 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            <HugeiconsIcon icon={InformationCircleIcon} size={14} strokeWidth={1.8} />
-            How it works
-          </div>
-          <div className="grid gap-2.5 text-[12px] text-muted-foreground">
-            <div className="flex items-start gap-2.5">
-              <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center text-[10px] font-semibold text-muted-foreground/60">1</span>
-              <span>Authorize the X account you want Median to monitor.</span>
-            </div>
-            <div className="flex items-start gap-2.5">
-              <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center text-[10px] font-semibold text-muted-foreground/60">2</span>
-              <span>Median stores inbound mentions and replies through the X webhook.</span>
-            </div>
-            <div className="flex items-start gap-2.5">
-              <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center text-[10px] font-semibold text-muted-foreground/60">3</span>
-              <span>The AI classifies those posts the same way Discord feedback becomes request tasks.</span>
-            </div>
-          </div>
-        </motion.div>
       </div>
     </Stagger>
   )
