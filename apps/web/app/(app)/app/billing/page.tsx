@@ -463,9 +463,6 @@ export default function BillingPage() {
                 />
                 {formatCurrency(dashboard.summary.aiSpend)} spent
               </div>
-              <span className="text-[11px] text-muted-foreground">
-                {formatTokens(dashboard.tokens.totalInput)} in / {formatTokens(dashboard.tokens.totalOutput)} out
-              </span>
             </div>
           </div>
 
