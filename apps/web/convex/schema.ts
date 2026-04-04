@@ -532,6 +532,11 @@ export default defineSchema({
     ),
   }).index("by_workspace", ["workspaceId"]),
 
+  waitlistEntries: defineTable({
+    email: v.string(),
+    joinedAt: v.number(),
+  }).index("by_email", ["email"]),
+
   deletedTaskSources: defineTable({
     workspaceId: v.id("workspaces"),
     platform: v.union(

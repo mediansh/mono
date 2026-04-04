@@ -2,17 +2,53 @@
 
 import { useState, useEffect } from "react"
 import { useTheme } from "next-themes"
-import { motion } from "motion/react"
+import { motion, AnimatePresence } from "motion/react"
+import { useMutation, useQuery } from "convex/react"
 import { Logo } from "@/components/logo"
 import { Input } from "@workspace/ui/components/input"
 import { Button } from "@workspace/ui/components/button"
-import { ArrowRight02Icon, Sun02Icon, Moon02Icon } from "@hugeicons/core-free-icons"
+import { ArrowRight02Icon, Sun02Icon, Moon02Icon, CheckmarkCircle02Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
+import { api } from "@/convex/_generated/api"
 
 export default function Page() {
   const { resolvedTheme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
+  const [email, setEmail] = useState("")
+  const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState("")
+
+  const joinWaitlist = useMutation(api.waitlist.join)
+  const waitlistCount = useQuery(api.waitlist.getCount)
+
   useEffect(() => setMounted(true), [])
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!email || submitting) return
+
+    setSubmitting(true)
+    setError("")
+
+    try {
+      const result = await joinWaitlist({ email })
+
+      if (!result.alreadyJoined) {
+        fetch("/api/waitlist/email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        }).catch(() => {})
+      }
+
+      setSubmitted(true)
+    } catch {
+      setError("Something went wrong. Please try again.")
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
     <main className="flex min-h-svh">
@@ -56,26 +92,60 @@ export default function Page() {
             The feedback engine for modern teams.
           </p>
 
-          <form
-            className="mt-8 flex flex-col gap-3"
-            onSubmit={(e) => e.preventDefault()}
-          >
-            <Input
-              type="email"
-              placeholder="you@company.com"
-              className="h-10 px-4"
-              style={{ borderRadius: 16 }}
-              required
-            />
-            <Button
-              size="lg"
-              className="h-10 w-fit gap-2 px-6"
-              style={{ borderRadius: 16 }}
+          <AnimatePresence mode="wait">
+            {submitted ? (
+              <motion.div
+                key="success"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+                className="mt-8 flex items-center gap-2.5 text-[14px] font-medium"
+              >
+                <HugeiconsIcon icon={CheckmarkCircle02Icon} className="size-5 text-emerald-500" />
+                You&apos;re on the list. We&apos;ll be in touch.
+              </motion.div>
+            ) : (
+              <motion.form
+                key="form"
+                className="mt-8 flex flex-col gap-3"
+                onSubmit={handleSubmit}
+              >
+                <Input
+                  type="email"
+                  placeholder="you@company.com"
+                  className="h-10 px-4"
+                  style={{ borderRadius: 16 }}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="h-10 w-fit gap-2 px-6"
+                  style={{ borderRadius: 16 }}
+                  disabled={submitting}
+                >
+                  {submitting ? "Joining..." : "Join waitlist"}
+                  {!submitting && <HugeiconsIcon icon={ArrowRight02Icon} className="size-4" />}
+                </Button>
+                {error && (
+                  <p className="text-[13px] text-destructive">{error}</p>
+                )}
+              </motion.form>
+            )}
+          </AnimatePresence>
+
+          {typeof waitlistCount === "number" && waitlistCount > 0 && (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.4, delay: 0.3 }}
+              className="text-muted-foreground mt-4 text-[13px]"
             >
-              Join waitlist
-              <HugeiconsIcon icon={ArrowRight02Icon} className="size-4" />
-            </Button>
-          </form>
+              {waitlistCount.toLocaleString()} {waitlistCount === 1 ? "person has" : "people have"} joined so far.
+            </motion.p>
+          )}
         </motion.div>
 
         <motion.p
