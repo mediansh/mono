@@ -10,7 +10,7 @@ import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
 import { useInstantNavigation } from "@/hooks/use-instant-navigation"
 
-const EXEMPT_PATHS = ["/app/billing", "/app/setup"]
+const EXEMPT_PATHS = ["/app/billing", "/app/setup", "/app/settings"]
 
 export function PlanGuard({ children }: { children: React.ReactNode }) {
   const { currentWorkspace } = useWorkspace()

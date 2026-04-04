@@ -283,6 +283,6 @@ export async function attachWorkspacePlan(args: {
     customerId: getAutumnCustomerId(args.workspaceId),
     planId: args.planId,
     successUrl: args.successUrl,
-    redirectMode: "always",
+    redirectMode: "if_required",
   })
 }
