@@ -141,12 +141,8 @@
     @apply bg-background text-foreground font-sans;
     }
   ::selection {
-    background-color: #33ff99;
-    color: #252728;
-    }
-  .dark ::selection {
-    background-color: #33ff99;
-    color: #252728;
+    background-color: var(--foreground);
+    color: var(--background);
     }
 }
 
