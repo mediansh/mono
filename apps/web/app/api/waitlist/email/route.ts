@@ -27,7 +27,7 @@ export const POST = withAxiom(async (request: Request) => {
       recipientEmail: body.email,
     })
 
-    const { error } = await inbound.emails.send({
+    const { error } = await inbound.email.send({
       from: fromEmail,
       to: [body.email],
       subject: "You're on the Median waitlist",

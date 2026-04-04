@@ -43,7 +43,7 @@ export const POST = withAxiom(async (request: Request) => {
       workspaceName: body.workspaceName,
     })
 
-    const { error } = await inbound.emails.send({
+    const { error } = await inbound.email.send({
       from: fromEmail,
       to: [body.email],
       subject: `${inviterName} invited you to ${body.workspaceName} on Median`,
