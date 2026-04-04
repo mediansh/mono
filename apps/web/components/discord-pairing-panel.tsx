@@ -617,29 +617,24 @@ export function DiscordPairingPanel() {
           </div>
         </motion.div>
 
-        {/* How it works — only when not connected */}
-        <motion.div
-          variants={fadeUp}
-          className="rounded-[4px] ring-1 ring-border ring-dashed p-3.5"
-        >
-          <div className="mb-3 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            <HugeiconsIcon icon={InformationCircleIcon} size={14} strokeWidth={1.8} />
-            How it works
+        {/* Invite bot */}
+        <motion.div variants={fadeUp} className="flex items-center justify-between rounded-[4px] ring-1 ring-border bg-card px-3.5 py-3">
+          <div>
+            <p className="text-[13px] font-medium text-foreground">Don&apos;t have the bot yet?</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              Add the Median bot to your Discord server to get started.
+            </p>
           </div>
-          <div className="grid gap-2.5 text-[12px] text-muted-foreground">
-            <div className="flex items-start gap-2.5">
-              <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center text-[10px] font-semibold text-muted-foreground/60">1</span>
-              <span>Add the Median bot to your Discord server.</span>
-            </div>
-            <div className="flex items-start gap-2.5">
-              <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center text-[10px] font-semibold text-muted-foreground/60">2</span>
-              <span>Run <span className="font-medium text-foreground">/pair</span> and copy the one-time code.</span>
-            </div>
-            <div className="flex items-start gap-2.5">
-              <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center text-[10px] font-semibold text-muted-foreground/60">3</span>
-              <span>Paste it above to bind {workspace.name} to that server.</span>
-            </div>
-          </div>
+          <a
+            href="https://discord.com/oauth2/authorize?client_id=1485985112427597975&permissions=4503894369577088&integration_type=0&scope=bot"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Button variant="outline" size="sm">
+              <DiscordBrandIcon size={14} />
+              Invite bot
+            </Button>
+          </a>
         </motion.div>
       </div>
     </Stagger>
