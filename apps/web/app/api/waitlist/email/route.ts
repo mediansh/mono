@@ -21,7 +21,7 @@ export const POST = withAxiom(async (request: Request) => {
 
   try {
     const body = bodySchema.parse(await request.json())
-    const inbound = new Inbound(apiKey)
+    const inbound = new Inbound(apiKey, "https://inbound.new/api/e2")
 
     logger.info("Sending waitlist confirmation email", {
       recipientEmail: body.email,

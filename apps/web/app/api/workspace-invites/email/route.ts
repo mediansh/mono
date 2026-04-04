@@ -34,7 +34,7 @@ export const POST = withAxiom(async (request: Request) => {
     const user = await currentUser()
     const inviterName = user?.fullName ?? user?.firstName ?? "A teammate"
     const roleLabel = getRoleLabel(body.role)
-    const inbound = new Inbound(apiKey)
+    const inbound = new Inbound(apiKey, "https://inbound.new/api/e2")
 
     logger.info("Sending workspace invite email", {
       userId,
