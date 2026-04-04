@@ -20,12 +20,14 @@ coverage
 
 # Vercel
 .vercel
+.fly
 
 # Build Outputs
 .next/
 out/
 build
 dist
+*.bun-build
 
 
 # Debug

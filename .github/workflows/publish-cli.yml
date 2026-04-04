@@ -1,0 +1,95 @@
+name: Publish CLI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/cli/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/publish-cli.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-cli-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    outputs:
+      should_publish: ${{ steps.changed.outputs.cli }}
+      version_changed: ${{ steps.version_check.outputs.version_changed }}
+    env:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect CLI code changes
+        id: changed
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            cli:
+              - "apps/cli/src/**"
+              - "apps/cli/package.json"
+              - "apps/cli/tsconfig.json"
+
+      - name: Setup pnpm
+        if: steps.changed.outputs.cli == 'true'
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        if: steps.changed.outputs.cli == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        if: steps.changed.outputs.cli == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck CLI
+        if: steps.changed.outputs.cli == 'true'
+        run: pnpm --filter @mediansh/cli typecheck
+
+      - name: Build CLI
+        if: steps.changed.outputs.cli == 'true'
+        run: pnpm --filter @mediansh/cli build
+
+      - name: Check published version
+        if: steps.changed.outputs.cli == 'true'
+        id: version_check
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./apps/cli/package.json').version")
+          PUBLISHED_VERSION=$(npm view @mediansh/cli version 2>/dev/null || true)
+          echo "package_version=$PACKAGE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "published_version=$PUBLISHED_VERSION" >> "$GITHUB_OUTPUT"
+          if [ "$PACKAGE_VERSION" = "$PUBLISHED_VERSION" ]; then
+            echo "version_changed=false" >> "$GITHUB_OUTPUT"
+            echo "CLI version $PACKAGE_VERSION already published; skipping."
+          else
+            echo "version_changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish CLI
+        if: steps.changed.outputs.cli == 'true' && steps.version_check.outputs.version_changed == 'true'
+        run: pnpm --filter @mediansh/cli run publish
+
+      - name: Skip summary
+        if: steps.changed.outputs.cli != 'true' || steps.version_check.outputs.version_changed != 'true'
+        run: |
+          echo "Skipping CLI publish."
+          echo "cli_changed=${{ steps.changed.outputs.cli }}"
+          echo "version_changed=${{ steps.version_check.outputs.version_changed }}"

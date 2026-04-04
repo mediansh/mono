@@ -136,16 +136,18 @@ export default function Page() {
             )}
           </AnimatePresence>
 
-          {typeof waitlistCount === "number" && waitlistCount > 0 && (
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.4, delay: 0.3 }}
-              className="text-muted-foreground mt-4 text-[13px]"
-            >
-              {waitlistCount.toLocaleString()} {waitlistCount === 1 ? "person has" : "people have"} joined so far.
-            </motion.p>
-          )}
+          <div className="mt-4 h-5">
+            {typeof waitlistCount === "number" && waitlistCount > 0 && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.4 }}
+                className="text-muted-foreground text-[13px]"
+              >
+                {waitlistCount.toLocaleString()} {waitlistCount === 1 ? "person has" : "people have"} joined so far.
+              </motion.p>
+            )}
+          </div>
         </motion.div>
 
         <motion.p

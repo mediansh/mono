@@ -20,6 +20,7 @@ import type * as logs from "../logs.js";
 import type * as permissions from "../permissions.js";
 import type * as posthog from "../posthog.js";
 import type * as tasks from "../tasks.js";
+import type * as waitlist from "../waitlist.js";
 import type * as workspaces from "../workspaces.js";
 import type * as x from "../x.js";
 import type * as xFeedback from "../xFeedback.js";
@@ -43,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   permissions: typeof permissions;
   posthog: typeof posthog;
   tasks: typeof tasks;
+  waitlist: typeof waitlist;
   workspaces: typeof workspaces;
   x: typeof x;
   xFeedback: typeof xFeedback;
