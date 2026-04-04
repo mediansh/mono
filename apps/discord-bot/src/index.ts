@@ -106,12 +106,14 @@ const syncGuildChannelsMutation = makeFunctionReference<
   null
 >("discord:syncGuildChannels")
 
-loadEnv({
-  path: path.join(repoRoot, ".env.local"),
-  override: true,
-  quiet: true,
-})
-loadEnv({ path: path.join(repoRoot, ".env"), override: false, quiet: true })
+if (process.env.NODE_ENV !== "production") {
+  loadEnv({
+    path: path.join(repoRoot, ".env.local"),
+    override: true,
+    quiet: true,
+  })
+  loadEnv({ path: path.join(repoRoot, ".env"), override: false, quiet: true })
+}
 
 function getEnv(name: string) {
   const value = process.env[name]
@@ -143,9 +145,9 @@ const discordToken = getEnv("DISCORD_BOT_TOKEN")
 const discordApplicationId = getEnv("DISCORD_APPLICATION_ID")
 const pairingSecret = getEnv("DISCORD_PAIRING_SECRET")
 const convexUrl =
-  process.env.NEXT_PUBLIC_CONVEX_URL ??
   process.env.CONVEX_URL ??
-  getEnv("NEXT_PUBLIC_CONVEX_URL")
+  process.env.NEXT_PUBLIC_CONVEX_URL ??
+  getEnv("CONVEX_URL")
 
 const convex = new ConvexHttpClient(convexUrl)
 
