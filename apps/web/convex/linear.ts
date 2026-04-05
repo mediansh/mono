@@ -17,6 +17,7 @@ import {
 import { type TaskPriority, type TaskStatus } from "../lib/task-board"
 
 const LINEAR_GRAPHQL_URL = "https://api.linear.app/graphql"
+const LINEAR_MEDIAN_TITLE_PREFIX = "[MDN]"
 const LINEAR_MAPPABLE_STATUSES: TaskStatus[] = [
   "requests",
   "todo",
@@ -101,6 +102,47 @@ const linearStatusMappingsValidator = v.object({
 
 function normalizeTitle(value: string) {
   return value.trim().replace(/\s+/g, " ").toLowerCase()
+}
+
+function formatMedianTaskTitleForLinear(title: string) {
+  const trimmed = title.trim()
+  if (!trimmed) return LINEAR_MEDIAN_TITLE_PREFIX
+  if (trimmed.startsWith(`${LINEAR_MEDIAN_TITLE_PREFIX} `)) {
+    return trimmed
+  }
+  if (trimmed === LINEAR_MEDIAN_TITLE_PREFIX) {
+    return trimmed
+  }
+
+  return `${LINEAR_MEDIAN_TITLE_PREFIX} ${trimmed}`
+}
+
+function stripMedianTaskTitlePrefixFromLinear(title: string) {
+  const trimmed = title.trim()
+  if (trimmed === LINEAR_MEDIAN_TITLE_PREFIX) return ""
+  if (trimmed.startsWith(`${LINEAR_MEDIAN_TITLE_PREFIX} `)) {
+    return trimmed.slice(LINEAR_MEDIAN_TITLE_PREFIX.length + 1).trim()
+  }
+
+  return trimmed
+}
+
+function shouldKeepLinearIssueTitleInMedian(
+  sourcePlatform?: "discord" | "slack" | "x" | "linear" | "github" | "cli"
+) {
+  return sourcePlatform === "linear"
+}
+
+function getMedianTaskTitleFromLinearIssue(
+  issueTitle: string,
+  sourcePlatform?: "discord" | "slack" | "x" | "linear" | "github" | "cli"
+) {
+  if (shouldKeepLinearIssueTitleInMedian(sourcePlatform)) {
+    return issueTitle.trim()
+  }
+
+  const stripped = stripMedianTaskTitlePrefixFromLinear(issueTitle)
+  return stripped || issueTitle.trim()
 }
 
 function maskApiKey(apiKey: string) {
@@ -750,7 +792,7 @@ async function syncTaskToLinear(
     integration.statusMappings
   )
   const input = {
-    title: task.title.trim(),
+    title: formatMedianTaskTitleForLinear(task.title),
     description: normalizeOptionalText(task.description),
     priority: mapTaskPriorityToLinear(task.priority),
     stateId,
@@ -1314,7 +1356,10 @@ export const upsertTaskFromLinearIssue = internalMutation({
         await ctx.db.delete(existingLink._id)
       } else {
         const updates: Partial<Doc<"tasks">> = {
-          title: issue.title.trim(),
+          title: getMedianTaskTitleFromLinearIssue(
+            issue.title,
+            linkedTask.source?.platform
+          ),
           description: nextDescription,
           priority: taskPriority,
           updatedAt: Number.isFinite(linearUpdatedAt)
@@ -1381,7 +1426,10 @@ export const upsertTaskFromLinearIssue = internalMutation({
 
     if (matchedTask) {
       const updates: Partial<Doc<"tasks">> = {
-        title: issue.title.trim(),
+        title: getMedianTaskTitleFromLinearIssue(
+          issue.title,
+          matchedTask.source?.platform
+        ),
         description: nextDescription,
         priority: taskPriority,
         updatedAt: Number.isFinite(linearUpdatedAt)
