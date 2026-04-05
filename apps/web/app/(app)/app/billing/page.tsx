@@ -136,7 +136,7 @@ function ChartTooltip({
   return (
     <div className="rounded-[4px] border border-border bg-card px-2.5 py-1.5 shadow-sm">
       {label && (
-        <p className="mb-1 text-[11px] font-medium text-foreground">Day {label}</p>
+        <p className="mb-1 text-[11px] font-medium text-foreground">{label}</p>
       )}
       {payload.map((entry) => (
         <div

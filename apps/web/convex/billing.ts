@@ -327,9 +327,10 @@ export const getWorkspaceBillingDashboard = action({
     const tokenSeries = aiUsageRows.map((row) => {
       const dayCost = row.values[AUTUMN_AI_USAGE_FEATURE_ID] ?? 0
       cumulativeSpend += dayCost
+      const date = new Date(row.period)
       return {
         timestamp: row.period,
-        day: new Date(row.period).getDate().toString(),
+        day: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
         input: cumulativeSpend,
         output: 0,
       }
@@ -351,10 +352,10 @@ export const getWorkspaceBillingDashboard = action({
     const eventSeries = (snapshot.eventUsage.list as Array<AggregateRow>).map((row) => {
       const events = row.values[AUTUMN_EVENTS_FEATURE_ID] ?? 0
       cumulativeEvents += events
-
+      const date = new Date(row.period)
       return {
         timestamp: row.period,
-        day: new Date(row.period).getDate().toString(),
+        day: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
         events: cumulativeEvents,
       }
     })
