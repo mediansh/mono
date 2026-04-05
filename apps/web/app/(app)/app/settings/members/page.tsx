@@ -452,7 +452,7 @@ export default function MembersSettingsPage() {
               {invites.map((invite) => (
                 <div
                   key={invite._id}
-                  className="flex items-center justify-between px-3.5 py-2.5"
+                  className="flex flex-col gap-2 px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="flex items-center gap-3">
                     <div className="flex size-8 items-center justify-center rounded-[4px] ring-1 ring-border bg-muted/50">
@@ -502,7 +502,7 @@ export default function MembersSettingsPage() {
             {members.map((member) => (
               <div
                 key={member._id}
-                className="group flex items-center justify-between px-3.5 py-2.5"
+                className="group flex flex-col gap-2 px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="flex items-center gap-3">
                   <div className="flex size-8 items-center justify-center overflow-hidden rounded-[4px] ring-1 ring-border bg-muted/50">
@@ -551,7 +551,7 @@ export default function MembersSettingsPage() {
                       type="button"
                       disabled={!canManageMembers || busyMemberId === member._id}
                       onClick={() => handleRemoveMember(member._id)}
-                      className="flex size-8 items-center justify-center rounded-[4px] text-muted-foreground opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex size-8 items-center justify-center rounded-[4px] text-muted-foreground opacity-100 transition-all hover:bg-destructive/10 hover:text-destructive sm:opacity-0 sm:group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <Trash size={14} />
                     </button>

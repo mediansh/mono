@@ -961,11 +961,11 @@ const ListRowContent = memo(function ListRowContent({ task }: { task: Task }) {
   const activeAgent = getActiveAgent(task)
   return (
     <>
-      <span className="w-14 shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground/50">{task.taskCode}</span>
+      <span className="hidden w-14 shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground/50 sm:inline">{task.taskCode}</span>
       <div className="shrink-0">{getPriorityIcon(task.priority)}</div>
       <div className="shrink-0">{getStatusIcon(task.status)}</div>
       <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground/90">{task.title}</span>
-      <div className="flex shrink-0 items-center gap-1.5">
+      <div className="hidden shrink-0 items-center gap-1.5 sm:flex">
         {activeAgent && <AgentBadge agentName={activeAgent} />}
         {(task.labels ?? []).map((label) => (
           <span
@@ -1308,8 +1308,8 @@ function TaskDetailModal({
         {task && (
           <div className="flex flex-col">
             {/* Top bar */}
-            <div className="flex items-center justify-between border-b border-border px-3.5 py-3">
-              <div className="flex items-center gap-2.5">
+            <div className="flex items-center justify-between gap-2 border-b border-border px-3.5 py-3">
+              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
                 <span className="font-mono text-[12px] font-medium text-muted-foreground">{task.taskCode}</span>
                 <span className="text-muted-foreground/30">·</span>
                 <span className="text-[12px] text-muted-foreground/60">{task.createdAt}</span>
@@ -1576,7 +1576,7 @@ function BulkActionToolbar({
 
   return createPortal(
     <div
-      className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1.5 rounded-[4px] border-2 border-border bg-popover px-3 py-2 shadow-none"
+      className="fixed bottom-6 left-1/2 z-50 flex w-[calc(100%-2rem)] max-w-fit -translate-x-1/2 items-center gap-1.5 overflow-x-auto rounded-[4px] border-2 border-border bg-popover px-3 py-2 shadow-none scrollbar-hide"
     >
       {/* Selection count & clear */}
       <div className="flex items-center gap-2 pr-2 border-r border-border mr-1">
@@ -3173,7 +3173,7 @@ export function KanbanBoard() {
       ) : null}
 
       {/* Toolbar */}
-      <div className="flex items-center gap-1 overflow-hidden border-b border-border bg-sidebar/60 px-3 py-2 dark:bg-accent/30">
+      <div className="flex items-center gap-1 overflow-x-auto border-b border-border bg-sidebar/60 px-3 py-2 scrollbar-hide dark:bg-accent/30">
         <ViewToggle view={boardView} onViewChange={handleViewChange} />
         {hiddenColumns.length > 0 && (
           <HiddenColumnsToolbar

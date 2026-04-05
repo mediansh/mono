@@ -437,7 +437,7 @@ export function SearchPalette({
             </div>
 
             {/* Footer */}
-            <div className="flex items-center gap-3 border-t border-border px-3 py-1.5">
+            <div className="hidden items-center gap-3 border-t border-border px-3 py-1.5 sm:flex">
               <div className="flex items-center gap-1.5">
                 <kbd className="flex h-5 min-w-5 items-center justify-center rounded-[4px] border border-border bg-muted px-1 font-mono text-[10px] text-muted-foreground">
                   ↑
