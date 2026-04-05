@@ -18,7 +18,7 @@ export function AppPageClient() {
   }, [isLoaded, replace, userId])
 
   return (
-    <main className="h-screen overflow-hidden">
+    <main className="h-[calc(100svh-2.75rem)] overflow-hidden md:h-screen">
       {isLoaded && userId ? <KanbanBoard /> : null}
     </main>
   )
