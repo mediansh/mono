@@ -1,7 +1,7 @@
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { config as loadEnv } from "dotenv"
-import { ConvexHttpClient } from "convex/browser"
+import { ConvexClient } from "convex/browser"
 import { makeFunctionReference } from "convex/server"
 import {
   ChannelType,
@@ -149,7 +149,16 @@ const convexUrl =
   process.env.NEXT_PUBLIC_CONVEX_URL ??
   getEnv("CONVEX_URL")
 
-const convex = new ConvexHttpClient(convexUrl)
+const convex = new ConvexClient(convexUrl)
+
+type PendingDiscordNotification = {
+  _id: string
+  type: "request_received" | "request_shipped"
+  channelId: string
+  replyToMessageId: string | null
+  taskTitle: string
+  taskCode: string
+}
 
 const client = new Client({
   intents: [
@@ -295,105 +304,143 @@ async function syncAllGuildChannels() {
   }
 }
 
-async function processPendingNotifications() {
+let latestPendingNotifications: PendingDiscordNotification[] = []
+let isProcessingPendingNotifications = false
+let shouldProcessPendingNotificationsAgain = false
+const processingNotificationIds = new Set<string>()
+
+async function sendPendingNotification(
+  notification: PendingDiscordNotification
+) {
   try {
-    const notifications = await convex.query(
-      getAllPendingDiscordNotificationsQuery,
-      {
+    const channel = await client.channels.fetch(notification.channelId)
+    if (!channel || !channel.isTextBased() || !("send" in channel)) {
+      await convex.mutation(markDiscordNotificationSentMutation, {
         botSecret: pairingSecret,
-        limit: 20,
-      }
-    )
+        notificationId: notification._id,
+        status: "failed",
+      })
+      return
+    }
 
-    if (notifications.length === 0) return
-
-    logger.info("Processing pending notifications", {
-      scope: "responder",
-      count: notifications.length,
-    })
-
-    for (const notification of notifications) {
-      try {
-        const channel = await client.channels.fetch(notification.channelId)
-        if (!channel || !channel.isTextBased() || !("send" in channel)) {
-          await convex.mutation(markDiscordNotificationSentMutation, {
-            botSecret: pairingSecret,
-            notificationId: notification._id,
-            status: "failed",
-          })
-          continue
-        }
-
-        const replyOptions: Record<string, unknown> = {}
-        if (notification.replyToMessageId) {
-          replyOptions.reply = {
-            messageReference: notification.replyToMessageId,
-            failIfNotExists: false,
-          }
-        }
-
-        if (notification.type === "request_shipped") {
-          await channel.send({
-            content: `This should be resolved now — shipped in **${notification.taskCode}**.`,
-            ...replyOptions,
-          })
-        } else if (notification.type === "request_received") {
-          await channel.send({
-            content: `Got it, we're on it.`,
-            ...replyOptions,
-          })
-        }
-
-        await convex.mutation(markDiscordNotificationSentMutation, {
-          botSecret: pairingSecret,
-          notificationId: notification._id,
-          status: "sent",
-        })
-
-        captureBot("notification_sent", {
-          notification_type: notification.type,
-          task_code: notification.taskCode,
-          channel_id: notification.channelId,
-        })
-        logger.info("Sent Discord notification", {
-          scope: "responder",
-          notificationId: notification._id,
-          type: notification.type,
-          taskCode: notification.taskCode,
-        })
-      } catch (notifError) {
-        logger.error("Failed to send notification", {
-          scope: "responder",
-          notificationId: notification._id,
-          error: notifError instanceof Error ? notifError.message : String(notifError),
-        })
-        await convex
-          .mutation(markDiscordNotificationSentMutation, {
-            botSecret: pairingSecret,
-            notificationId: notification._id,
-            status: "failed",
-          })
-          .catch(() => {})
+    const replyOptions: Record<string, unknown> = {}
+    if (notification.replyToMessageId) {
+      replyOptions.reply = {
+        messageReference: notification.replyToMessageId,
+        failIfNotExists: false,
       }
     }
-  } catch (error) {
-    logger.error("Failed to poll pending notifications", {
-      scope: "responder",
-      error: error instanceof Error ? error.message : String(error),
+
+    if (notification.type === "request_shipped") {
+      await channel.send({
+        content: `This should be resolved now — shipped in **${notification.taskCode}**.`,
+        ...replyOptions,
+      })
+    } else if (notification.type === "request_received") {
+      await channel.send({
+        content: `Got it, we're on it.`,
+        ...replyOptions,
+      })
+    }
+
+    await convex.mutation(markDiscordNotificationSentMutation, {
+      botSecret: pairingSecret,
+      notificationId: notification._id,
+      status: "sent",
     })
+
+    captureBot("notification_sent", {
+      notification_type: notification.type,
+      task_code: notification.taskCode,
+      channel_id: notification.channelId,
+    })
+    logger.info("Sent Discord notification", {
+      scope: "responder",
+      notificationId: notification._id,
+      type: notification.type,
+      taskCode: notification.taskCode,
+    })
+  } catch (notifError) {
+    logger.error("Failed to send notification", {
+      scope: "responder",
+      notificationId: notification._id,
+      error: notifError instanceof Error ? notifError.message : String(notifError),
+    })
+    await convex
+      .mutation(markDiscordNotificationSentMutation, {
+        botSecret: pairingSecret,
+        notificationId: notification._id,
+        status: "failed",
+      })
+      .catch(() => {})
   }
 }
 
-function startNotificationPolling() {
-  setInterval(() => {
-    void processPendingNotifications()
-  }, 10_000)
-  logger.info("Notification polling started", { scope: "responder", intervalMs: 10_000 })
+async function drainPendingNotifications() {
+  if (isProcessingPendingNotifications) {
+    shouldProcessPendingNotificationsAgain = true
+    return
+  }
+
+  isProcessingPendingNotifications = true
+
+  try {
+    do {
+      shouldProcessPendingNotificationsAgain = false
+
+      const notificationsToProcess = latestPendingNotifications.filter(
+        (notification) => !processingNotificationIds.has(notification._id)
+      )
+
+      if (notificationsToProcess.length === 0) {
+        continue
+      }
+
+      logger.info("Processing pending notifications", {
+        scope: "responder",
+        count: notificationsToProcess.length,
+      })
+
+      for (const notification of notificationsToProcess) {
+        processingNotificationIds.add(notification._id)
+
+        try {
+          await sendPendingNotification(notification)
+        } finally {
+          processingNotificationIds.delete(notification._id)
+        }
+      }
+    } while (shouldProcessPendingNotificationsAgain)
+  } finally {
+    isProcessingPendingNotifications = false
+  }
+}
+
+function startNotificationSubscription() {
+  convex.onUpdate(
+    getAllPendingDiscordNotificationsQuery,
+    {
+      botSecret: pairingSecret,
+      limit: 20,
+    },
+    (notifications) => {
+      latestPendingNotifications = notifications
+      void drainPendingNotifications()
+    },
+    (error) => {
+      logger.error("Pending notification subscription failed", {
+        scope: "responder",
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
+  )
+
+  logger.info("Notification subscription started", { scope: "responder" })
 }
 
 client.once(Events.ClientReady, async (readyClient) => {
   await registerCommands()
-  startNotificationPolling()
+  startNotificationSubscription()
 
   // Sync guild channels on startup and periodically (every 5 minutes)
   void syncAllGuildChannels()
@@ -578,14 +625,14 @@ client.on(Events.MessageCreate, async (message: Message) => {
 
 process.on("SIGINT", async () => {
   logger.info("Shutting down", { scope: "lifecycle" })
-  await Promise.all([logger.flush(), flushPostHog()])
+  await Promise.all([convex.close(), logger.flush(), flushPostHog()])
   client.destroy()
   process.exit(0)
 })
 
 process.on("SIGTERM", async () => {
   logger.info("Shutting down", { scope: "lifecycle" })
-  await Promise.all([logger.flush(), flushPostHog()])
+  await Promise.all([convex.close(), logger.flush(), flushPostHog()])
   client.destroy()
   process.exit(0)
 })
