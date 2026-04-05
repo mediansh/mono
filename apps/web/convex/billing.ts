@@ -351,7 +351,6 @@ export const getWorkspaceBillingDashboard = action({
     const eventSeries = (snapshot.eventUsage.list as Array<AggregateRow>).map((row) => {
       const events = row.values[AUTUMN_EVENTS_FEATURE_ID] ?? 0
       cumulativeEvents += events
-
       return {
         timestamp: row.period,
         day: new Date(row.period).getDate().toString(),

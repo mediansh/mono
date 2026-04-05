@@ -126,17 +126,20 @@ function getPlanButtonLabel(plan: BillingPlan, isCurrent: boolean) {
 function ChartTooltip({
   active,
   payload,
-  label,
 }: {
   active?: boolean
-  payload?: Array<{ name: string; value: number; color: string }>
+  payload?: Array<{ name: string; value: number; color: string; payload?: { timestamp?: number } }>
   label?: string
 }) {
   if (!active || !payload?.length) return null
+  const timestamp = payload[0]?.payload?.timestamp
+  const dateLabel = timestamp
+    ? new Date(timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    : null
   return (
     <div className="rounded-[4px] border border-border bg-card px-2.5 py-1.5 shadow-sm">
-      {label && (
-        <p className="mb-1 text-[11px] font-medium text-foreground">Day {label}</p>
+      {dateLabel && (
+        <p className="mb-1 text-[11px] font-medium text-foreground">{dateLabel}</p>
       )}
       {payload.map((entry) => (
         <div
