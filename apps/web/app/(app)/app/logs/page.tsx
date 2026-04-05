@@ -182,8 +182,8 @@ function LogsSkeleton() {
       </div>
 
       {/* Charts row */}
-      <div className="mb-6 grid grid-cols-3 gap-3">
-        <div className="col-span-2 rounded-[4px] ring-1 ring-border p-4">
+      <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-3">
+        <div className="col-span-1 rounded-[4px] ring-1 ring-border p-4 md:col-span-2">
           <div className="mb-3 h-3.5 w-28 rounded-[4px] bg-muted/40" />
           <div className="h-[180px] rounded-[4px] bg-muted/20" />
         </div>
@@ -291,9 +291,9 @@ export default function LogsPage() {
         </motion.div>
 
         {/* Charts row */}
-        <motion.div variants={fadeUp} className="mb-6 grid grid-cols-3 gap-3">
+        <motion.div variants={fadeUp} className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-3">
           {/* Activity over time */}
-          <div className="col-span-2 rounded-[4px] ring-1 ring-border p-4">
+          <div className="col-span-1 rounded-[4px] ring-1 ring-border p-4 md:col-span-2">
             <h3 className="mb-3 text-[13px] font-medium">Activity this week</h3>
             <div className="h-[180px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -370,9 +370,9 @@ export default function LogsPage() {
 
         {/* Event feed */}
         <motion.div variants={fadeUp}>
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <h3 className="text-[13px] font-medium">Recent activity</h3>
-            <div className="flex items-center gap-1 rounded-[4px] ring-1 ring-border p-0.5">
+            <div className="flex items-center gap-1 overflow-x-auto rounded-[4px] ring-1 ring-border p-0.5 scrollbar-hide">
               {FILTER_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}

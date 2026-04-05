@@ -178,7 +178,7 @@ function BillingSkeleton() {
           <div className="h-[180px] rounded-[4px] bg-muted/20" />
         </div>
       </div>
-      <div className="mb-6 grid grid-cols-3 gap-3">
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 3 }).map((_, index) => (
           <div key={index} className="rounded-[4px] p-4 ring-1 ring-border">
             <div className="mb-2 h-4 w-16 rounded-[4px] bg-muted/40" />
@@ -375,7 +375,7 @@ export default function BillingPage() {
           </motion.div>
         )}
 
-        <motion.div variants={fadeUp} className="mb-6 grid grid-cols-4 gap-3">
+        <motion.div variants={fadeUp} className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
           <div className="rounded-[4px] p-3 ring-1 ring-border">
             <p className="text-[11px] text-muted-foreground">Current plan</p>
             <p className="mt-0.5 text-[15px] font-semibold">
@@ -418,7 +418,7 @@ export default function BillingPage() {
           </div>
         </motion.div>
 
-        <motion.div variants={fadeUp} className="mb-6 grid grid-cols-2 gap-3">
+        <motion.div variants={fadeUp} className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-2">
           <div className="rounded-[4px] p-4 ring-1 ring-border">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-[13px] font-medium">AI spend</h3>
@@ -516,7 +516,7 @@ export default function BillingPage() {
 
         <motion.div variants={fadeUp} className="mb-6">
           <h3 className="mb-3 text-[13px] font-medium">Plans</h3>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {dashboard.plans.map((plan) => {
               const isCurrent = plan.id === dashboard.currentPlanId
               const buttonLabel = getPlanButtonLabel(plan, isCurrent)
