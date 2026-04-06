@@ -111,6 +111,7 @@ export function getPlanCopy(planId: string, price?: number | null) {
       `$${fallbackPlan.aiBudget} AI budget / month`,
       `${fallbackPlan.eventLimit.toLocaleString()} events included, then $0.015/event`,
       "Overages auto-charged",
+      ...(fallbackPlan.id === "scale" ? ["Priority support"] : []),
     ],
   }
 }
