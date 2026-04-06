@@ -26,27 +26,27 @@ export const AUTUMN_BILLING_PLANS = [
   {
     id: "starter",
     name: "Starter",
-    price: 8,
-    aiBudget: 8,
-    eventLimit: 1500,
+    price: 4.99,
+    aiBudget: 5,
+    eventLimit: 500,
   },
   {
     id: "plus",
     name: "Plus",
-    price: 20,
-    aiBudget: 20,
-    eventLimit: 5000,
+    price: 9.99,
+    aiBudget: 10,
+    eventLimit: 1000,
   },
   {
     id: "scale",
     name: "Scale",
-    price: 40,
-    aiBudget: 45,
-    eventLimit: 10000,
+    price: 19.99,
+    aiBudget: 20,
+    eventLimit: 2000,
   },
 ] as const
 
-export const AUTUMN_EVENT_OVERAGE_PRICE = 0.007
+export const AUTUMN_EVENT_OVERAGE_PRICE = 0.015
 export const BILLING_RECORD_PAGE_SIZE = 100
 export const BILLING_RANGE = "last_cycle" as const
 export const BILLING_BIN_SIZE = "day" as const
@@ -109,9 +109,8 @@ export function getPlanCopy(planId: string, price?: number | null) {
     eventLimit: fallbackPlan.eventLimit,
     features: [
       `$${fallbackPlan.aiBudget} AI budget / month`,
-      `Up to ${fallbackPlan.eventLimit.toLocaleString()} events ingested`,
+      `${fallbackPlan.eventLimit.toLocaleString()} events included, then $0.015/event`,
       "Overages auto-charged",
-      ...(fallbackPlan.id === "scale" ? ["Priority support"] : []),
     ],
   }
 }
