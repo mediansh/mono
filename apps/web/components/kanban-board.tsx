@@ -88,7 +88,7 @@ import {
   type LocalTaskDoc as TaskDoc,
 } from "@/lib/local-first-store"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { LeftToRightListBulletIcon, DashboardSquare01Icon } from "@hugeicons/core-free-icons"
+import { LeftToRightListBulletIcon, DashboardSquare01Icon, DashedLineIcon } from "@hugeicons/core-free-icons"
 import { hasTaskWritePermission } from "@/lib/workspace-permissions"
 import { useSearchPaletteTaskEvent } from "@/components/search-palette"
 import {
@@ -192,7 +192,7 @@ function getPriorityIcon(priority: Priority, size = 14) {
     case "low":
       return <CellSignalLow size={size} className="text-blue-400" />
     case "none":
-      return <CellSignalLow size={size} className="text-muted-foreground" />
+      return <HugeiconsIcon icon={DashedLineIcon} size={size} className="text-muted-foreground" />
   }
 }
 
