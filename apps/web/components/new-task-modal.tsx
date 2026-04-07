@@ -157,7 +157,9 @@ export function NewTaskModal({
   const canManageTasks = hasTaskWritePermission(currentWorkspace?.role)
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
-  const [status, setStatus] = useState<Status>(defaultStatus)
+  const [status, setStatus] = useState<Status>(
+    draft?.status ?? defaultStatus
+  )
   const [priority, setPriority] = useState<Priority>("none")
   const [labels, setLabels] = useState<Label[]>([])
   const [createMore, setCreateMore] = useState(false)
@@ -176,24 +178,36 @@ export function NewTaskModal({
   const updateDraftMutation = useMutation(api.drafts.updateDraft)
   const publishDraftMutation = useMutation(api.drafts.publishDraft)
 
-  // Populate form when editing a draft
+  // Keep draft population and default status initialization in one place so
+  // editing a draft never gets overwritten by the fallback default status.
   const draftIdRef = useRef<string | null>(null)
   useEffect(() => {
-    if (open && draft && draft._id !== draftIdRef.current) {
-      draftIdRef.current = draft._id
-      setTitle(draft.title)
-      setDescription(draft.description ?? "")
-      setStatus(draft.status)
-      setPriority(draft.priority)
-      setLabels(draft.labels)
-      setAttachments(
-        (draft.attachments ?? []).map((a) => ({ ...a, previewUrl: undefined }))
-      )
-    }
     if (!open) {
       draftIdRef.current = null
+      return
     }
-  }, [open, draft])
+
+    if (draft) {
+      if (draft._id !== draftIdRef.current) {
+        draftIdRef.current = draft._id
+        setTitle(draft.title)
+        setDescription(draft.description ?? "")
+        setStatus(draft.status)
+        setPriority(draft.priority)
+        setLabels(draft.labels)
+        setAttachments(
+          (draft.attachments ?? []).map((a) => ({
+            ...a,
+            previewUrl: undefined,
+          }))
+        )
+      }
+      return
+    }
+
+    draftIdRef.current = null
+    setStatus(defaultStatus)
+  }, [defaultStatus, open, draft])
 
   const labelOptions = useMemo(() => {
     const wsLabels = currentWorkspace?.labels
@@ -315,12 +329,6 @@ export function NewTaskModal({
     },
     [canManageTasks, generateUploadUrl, readImageMetadata]
   )
-
-  useEffect(() => {
-    if (open && !draft) {
-      setStatus(defaultStatus)
-    }
-  }, [defaultStatus, open, draft])
 
   // Auto-resize title textarea to fit content
   useEffect(() => {
@@ -517,7 +525,14 @@ export function NewTaskModal({
   )
 
   async function handleCreate() {
-    if (!title.trim() || !currentWorkspace || isPublishingDraft) return
+    if (
+      !title.trim() ||
+      !currentWorkspace ||
+      savingDraft ||
+      isPublishingDraft
+    ) {
+      return
+    }
     if (!canManageTasks) {
       setError("Guests can only view tasks.")
       return
@@ -1127,6 +1142,7 @@ export function NewTaskModal({
                               disabled={
                                 !title.trim() ||
                                 !currentWorkspace ||
+                                savingDraft ||
                                 isPublishingDraft
                               }
                               className="flex items-center gap-2 rounded-[4px] bg-primary px-3 py-1.5 text-[12px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
