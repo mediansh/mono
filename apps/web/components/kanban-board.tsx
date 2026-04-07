@@ -1842,6 +1842,7 @@ function TaskDetailModal({
                   <div className="h-px bg-border" />
                   <TaskAttachmentGallery
                     attachments={task.attachments}
+                    workspaceId={task.workspaceId}
                     canManageAttachments={canManageTasks}
                     onAttachmentsChange={(attachments) =>
                       onUpdate(task.id, { attachments })

@@ -1,5 +1,6 @@
 "use client"
 
+import { useQuery } from "convex/react"
 import { motion } from "motion/react"
 import {
   useEffect,
@@ -7,6 +8,7 @@ import {
   useState,
   type MouseEvent as ReactMouseEvent,
 } from "react"
+import { api } from "@/convex/_generated/api"
 
 export type TaskAttachment = {
   storageId: string
@@ -165,12 +167,24 @@ function AttachmentImageCard({
               <button
                 type="button"
                 onMouseDown={handleResizeStart}
-                className="absolute right-2 bottom-2 flex size-6 cursor-nwse-resize items-center justify-center rounded-[8px] border border-border/80 bg-background/90 text-muted-foreground opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                className="absolute right-2 bottom-2 flex size-7 cursor-nwse-resize items-center justify-center rounded-[9px] border border-border/80 bg-background/92 text-muted-foreground opacity-0 shadow-sm backdrop-blur-sm transition-all duration-150 group-hover:opacity-100 focus-visible:opacity-100"
                 aria-label={`Resize ${attachment.name}`}
               >
-                <span className="pointer-events-none text-[14px] leading-none">
-                  ↘
-                </span>
+                <svg
+                  viewBox="0 0 16 16"
+                  className="pointer-events-none size-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M5 11H2V8" />
+                  <path d="M11 5h3v3" />
+                  <path d="M2 11l4-4" />
+                  <path d="M14 5l-4 4" />
+                </svg>
               </button>
             ) : null}
           </div>
@@ -192,10 +206,12 @@ function AttachmentImageCard({
 
 export function TaskAttachmentGallery({
   attachments,
+  workspaceId,
   canManageAttachments = false,
   onAttachmentsChange,
 }: {
   attachments?: TaskAttachment[]
+  workspaceId?: string
   canManageAttachments?: boolean
   onAttachmentsChange?: (attachments: TaskAttachment[]) => void
 }) {
@@ -204,8 +220,26 @@ export function TaskAttachmentGallery({
   }
 
   const safeAttachments = attachments
-  const imageAttachments = safeAttachments.filter(isImageAttachment)
-  const fileAttachments = safeAttachments.filter(
+  const missingUrlStorageIds = workspaceId
+    ? safeAttachments
+        .filter((attachment) => !attachment.url)
+        .map((attachment) => attachment.storageId as any)
+    : []
+  const resolvedUrls = useQuery(
+    api.tasks.resolveAttachmentUrls,
+    workspaceId && missingUrlStorageIds.length > 0
+      ? ({
+          workspaceId,
+          storageIds: missingUrlStorageIds,
+        } as any)
+      : "skip"
+  )
+  const hydratedAttachments = safeAttachments.map((attachment) => ({
+    ...attachment,
+    url: attachment.url ?? resolvedUrls?.[attachment.storageId] ?? null,
+  }))
+  const imageAttachments = hydratedAttachments.filter(isImageAttachment)
+  const fileAttachments = hydratedAttachments.filter(
     (attachment) => !isImageAttachment(attachment)
   )
 

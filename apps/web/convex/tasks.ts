@@ -727,6 +727,27 @@ export const listByWorkspace = query({
   },
 })
 
+export const resolveAttachmentUrls = query({
+  args: {
+    workspaceId: v.id("workspaces"),
+    storageIds: v.array(v.id("_storage")),
+  },
+  handler: async (ctx, args) => {
+    await requireWorkspaceAccess(ctx, args.workspaceId)
+
+    const entries = await Promise.all(
+      args.storageIds.map(async (storageId) => ({
+        storageId,
+        url: await ctx.storage.getUrl(storageId),
+      }))
+    )
+
+    return Object.fromEntries(
+      entries.map(({ storageId, url }) => [String(storageId), url])
+    )
+  },
+})
+
 export const createTask = mutation({
   args: {
     workspaceId: v.id("workspaces"),
