@@ -55,6 +55,7 @@ import {
   type LocalTaskDoc,
 } from "@/lib/local-first-store"
 import {
+  cacheAttachmentPreview,
   getDefaultAttachmentDisplayWidth,
   TaskAttachmentGallery,
   type TaskAttachment,
@@ -171,6 +172,7 @@ export function NewTaskModal({
   const descriptionRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const previewUrlsRef = useRef<string[]>([])
+  const preservedPreviewUrlsRef = useRef(new Set<string>())
   const createTask = useMutation(api.tasks.createTask)
   const createTasks = useMutation(api.tasks.createTasks)
 
@@ -296,7 +298,10 @@ export function NewTaskModal({
       .filter((previewUrl): previewUrl is string => Boolean(previewUrl))
 
     for (const previousUrl of previewUrlsRef.current) {
-      if (!currentPreviewUrls.includes(previousUrl)) {
+      if (
+        !currentPreviewUrls.includes(previousUrl) &&
+        !preservedPreviewUrlsRef.current.has(previousUrl)
+      ) {
         URL.revokeObjectURL(previousUrl)
       }
     }
@@ -307,7 +312,9 @@ export function NewTaskModal({
   useEffect(() => {
     return () => {
       for (const previewUrl of previewUrlsRef.current) {
-        URL.revokeObjectURL(previewUrl)
+        if (!preservedPreviewUrlsRef.current.has(previewUrl)) {
+          URL.revokeObjectURL(previewUrl)
+        }
       }
     }
   }, [])
@@ -407,6 +414,16 @@ export function NewTaskModal({
         const createdTask = (await createTaskWithFallback(
           payload
         )) as Doc<"tasks">
+
+        payload.attachments?.forEach((attachment) => {
+          if (attachment.previewUrl) {
+            cacheAttachmentPreview(
+              String(attachment.storageId),
+              attachment.previewUrl
+            )
+            preservedPreviewUrlsRef.current.add(attachment.previewUrl)
+          }
+        })
 
         const hydratedTask = {
           ...createdTask,

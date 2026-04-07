@@ -21,12 +21,23 @@ export type TaskAttachment = {
   url?: string | null
 }
 
+const attachmentPreviewUrlCache = new Map<string, string>()
+
 const DEFAULT_IMAGE_WIDTH = 480
 const MIN_IMAGE_WIDTH = 240
 const MAX_IMAGE_WIDTH = 760
 
 export function isImageAttachment(attachment: TaskAttachment) {
   return attachment.type.startsWith("image/")
+}
+
+export function cacheAttachmentPreview(storageId: string, url?: string | null) {
+  if (!url) return
+  attachmentPreviewUrlCache.set(storageId, url)
+}
+
+function getCachedAttachmentPreview(storageId: string) {
+  return attachmentPreviewUrlCache.get(storageId) ?? null
 }
 
 export function getDefaultAttachmentDisplayWidth(naturalWidth?: number | null) {
@@ -278,7 +289,11 @@ export function TaskAttachmentGallery({
 
   const hydratedAttachments = safeAttachments.map((attachment) => ({
     ...attachment,
-    url: resolvedUrls[String(attachment.storageId)] ?? attachment.url ?? null,
+    url:
+      resolvedUrls[String(attachment.storageId)] ??
+      attachment.url ??
+      getCachedAttachmentPreview(String(attachment.storageId)) ??
+      null,
   }))
   const imageAttachments = hydratedAttachments.filter(isImageAttachment)
   const fileAttachments = hydratedAttachments.filter(
