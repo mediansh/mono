@@ -128,6 +128,8 @@ const TASK_PRIORITY_ORDER = {
   urgent: 4,
 } as const
 
+const LINEAR_MEDIAN_TITLE_PREFIX_REGEX = /^\[MDN\]\s*/
+
 function getWorkspaceLogSource(
   platform?: "discord" | "slack" | "x" | "linear" | "github" | "cli"
 ) {
@@ -142,6 +144,63 @@ function getWorkspaceLogSource(
   }
 
   return "manual"
+}
+
+function getCanonicalTaskSourceKey(source: {
+  platform: "discord" | "slack" | "x" | "linear" | "github" | "cli"
+  url: string
+  author: string
+}) {
+  const normalizedUrl = source.url.trim()
+  if (
+    normalizedUrl &&
+    (source.platform === "linear" || source.platform === "github")
+  ) {
+    return `${source.platform}:${normalizedUrl}`
+  }
+
+  return `${source.platform}:${normalizedUrl}:${source.author.trim()}`
+}
+
+function getTaskSourceKey(source: {
+  platform: "discord" | "slack" | "x" | "linear" | "github" | "cli"
+  url: string
+  author: string
+}) {
+  return getCanonicalTaskSourceKey(source)
+}
+
+function dedupeTaskSources(
+  sources:
+    | Array<{
+        platform: "discord" | "slack" | "x" | "linear" | "github" | "cli"
+        url: string
+        author: string
+      }>
+    | undefined
+) {
+  if (!sources?.length) return undefined
+
+  const seen = new Set<string>()
+
+  return sources.filter((source) => {
+    const key = getTaskSourceKey(source)
+    if (seen.has(key)) {
+      return false
+    }
+
+    seen.add(key)
+    return true
+  })
+}
+
+function stripLinearTitlePrefix(title: string) {
+  const trimmed = title.trim()
+  if (LINEAR_MEDIAN_TITLE_PREFIX_REGEX.test(trimmed)) {
+    return trimmed.replace(LINEAR_MEDIAN_TITLE_PREFIX_REGEX, "").trim()
+  }
+
+  return title
 }
 
 function normalizeTitleFingerprint(value: string) {
@@ -684,29 +743,68 @@ export const listByWorkspace = query({
 
     return await Promise.all(
       tasks.map(async (task) => {
-        const base = task.sources?.length
-          ? [...task.sources]
-          : task.source
-            ? [task.source]
-            : []
+        let base =
+          dedupeTaskSources(
+            task.sources?.length
+              ? [...task.sources]
+              : task.source
+                ? [task.source]
+                : []
+          ) ?? []
 
         const linearLink = linearByTask.get(task._id)
-        if (linearLink && !base.some((s) => s.platform === "linear")) {
-          base.push({
+        if (linearLink) {
+          const canonicalLinearUrl = linearLink.linearIssueUrl?.trim()
+          const canonicalLinearSource = {
             platform: "linear" as const,
-            url: linearLink.linearIssueUrl ?? "",
+            url: canonicalLinearUrl ?? "",
             author: linearLink.linearIssueIdentifier,
-          })
+          }
+
+          if (canonicalLinearUrl) {
+            base = base.filter(
+              (source) =>
+                !(
+                  source.platform === "linear" &&
+                  source.url.trim() === canonicalLinearUrl
+                )
+            )
+            base.push(canonicalLinearSource)
+          } else if (
+            !base.some(
+              (source) =>
+                source.platform === "linear" &&
+                source.author === linearLink.linearIssueIdentifier
+            )
+          ) {
+            base.push(canonicalLinearSource)
+          }
         }
 
         const githubLink = githubByTask.get(task._id)
-        if (githubLink && !base.some((s) => s.platform === "github")) {
+        if (
+          githubLink &&
+          !base.some(
+            (s) =>
+              s.platform === "github" &&
+              s.url === githubLink.githubIssueUrl &&
+              s.author ===
+                `${githubLink.githubRepositoryFullName}#${githubLink.githubIssueNumber}`
+          )
+        ) {
           base.push({
             platform: "github" as const,
             url: githubLink.githubIssueUrl,
             author: `${githubLink.githubRepositoryFullName}#${githubLink.githubIssueNumber}`,
           })
         }
+
+        const sources = dedupeTaskSources(base)
+        const hasLinearSource = Boolean(
+          linearLink ||
+          sources?.some((source) => source.platform === "linear") ||
+          task.source?.platform === "linear"
+        )
 
         const attachments = task.attachments
           ? await Promise.all(
@@ -720,7 +818,10 @@ export const listByWorkspace = query({
         return {
           ...task,
           attachments,
-          sources: base.length > 0 ? base : undefined,
+          title: hasLinearSource
+            ? stripLinearTitlePrefix(task.title)
+            : task.title,
+          sources,
         }
       })
     )

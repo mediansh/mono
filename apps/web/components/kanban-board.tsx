@@ -615,6 +615,25 @@ const SOURCE_CONFIG: Record<
   cli: { label: "CLI", color: "#22c55e", bg: "#22c55e18" },
 }
 
+function getTaskSources(task: Pick<Task, "source" | "sources">) {
+  const sources = task.sources?.length
+    ? task.sources
+    : task.source
+      ? [task.source]
+      : []
+  const seen = new Set<string>()
+
+  return sources.filter((source) => {
+    const key = `${source.platform}:${source.url}:${source.author}`
+    if (seen.has(key)) {
+      return false
+    }
+
+    seen.add(key)
+    return true
+  })
+}
+
 function SourceIcon({
   platform,
   size = 14,
@@ -723,11 +742,7 @@ const RequestRow = memo(function RequestRow({
   onSelect: (task: Task) => void
   canManageTasks: boolean
 }) {
-  const sources = task.sources?.length
-    ? task.sources
-    : task.source
-      ? [task.source]
-      : []
+  const sources = getTaskSources(task)
   const { colors: labelColors } = useLabelConfig()
 
   if (dismissed) {
@@ -747,7 +762,7 @@ const RequestRow = memo(function RequestRow({
               const config = SOURCE_CONFIG[source.platform]
               return source.url ? (
                 <a
-                  key={`${source.platform}-${source.author}`}
+                  key={`${source.platform}-${source.url}-${source.author}`}
                   href={source.url}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -762,7 +777,7 @@ const RequestRow = memo(function RequestRow({
                 </a>
               ) : (
                 <span
-                  key={`${source.platform}-${source.author}`}
+                  key={`${source.platform}-${source.url}-${source.author}`}
                   className="flex items-center gap-1.5 rounded-[4px] py-0.5 pr-2.5 pl-1.5 text-[10px] font-medium"
                   style={{ backgroundColor: config.bg, color: config.color }}
                 >
@@ -1611,16 +1626,12 @@ function TaskDetailModal({
                   {task.createdAt}
                 </span>
                 {(() => {
-                  const taskSources = task.sources?.length
-                    ? task.sources
-                    : task.source
-                      ? [task.source]
-                      : []
+                  const taskSources = getTaskSources(task)
                   return taskSources.map((src) => {
                     const cfg = SOURCE_CONFIG[src.platform]
                     return (
                       <span
-                        key={`${src.platform}-${src.author}`}
+                        key={`${src.platform}-${src.url}-${src.author}`}
                         className="contents"
                       >
                         <span className="text-muted-foreground/30">·</span>
