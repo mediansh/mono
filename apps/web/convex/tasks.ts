@@ -138,6 +138,19 @@ function getWorkspaceLogSource(
   return "manual"
 }
 
+function getTaskSourceKey(source: {
+  platform: "discord" | "slack" | "x" | "linear" | "github" | "cli"
+  url: string
+  author: string
+}) {
+  const normalizedUrl = source.url.trim()
+  if (normalizedUrl) {
+    return `${source.platform}:${normalizedUrl}`
+  }
+
+  return `${source.platform}:${source.author.trim()}`
+}
+
 function dedupeTaskSources(
   sources:
     | Array<{
@@ -152,7 +165,7 @@ function dedupeTaskSources(
   const seen = new Set<string>()
 
   return sources.filter((source) => {
-    const key = `${source.platform}:${source.url}:${source.author}`
+    const key = getTaskSourceKey(source)
     if (seen.has(key)) {
       return false
     }
@@ -164,9 +177,8 @@ function dedupeTaskSources(
 
 function stripLinearTitlePrefix(title: string) {
   const trimmed = title.trim()
-  if (trimmed === "[MDN]") return ""
-  if (trimmed.startsWith("[MDN] ")) {
-    return trimmed.slice(6).trim()
+  if (/^\[MDN\]/.test(trimmed)) {
+    return trimmed.replace(/^\[MDN\]\s*/, "").trim()
   }
 
   return title
@@ -711,7 +723,7 @@ export const listByWorkspace = query({
     const githubByTask = new Map(githubLinks.map((l) => [l.taskId, l]))
 
     return tasks.map((task) => {
-      const base =
+      let base =
         dedupeTaskSources(
           task.sources?.length
             ? [...task.sources]
@@ -721,19 +733,28 @@ export const listByWorkspace = query({
         ) ?? []
 
       const linearLink = linearByTask.get(task._id)
-      if (
-        linearLink &&
-        !base.some(
-          (s) =>
-            s.platform === "linear" &&
-            s.url === (linearLink.linearIssueUrl ?? "") &&
-            s.author === linearLink.linearIssueIdentifier
-        )
-      ) {
-        base.push({
+      if (linearLink) {
+        const canonicalLinearUrl = linearLink.linearIssueUrl?.trim() ?? ""
+        const canonicalLinearSource = {
           platform: "linear" as const,
-          url: linearLink.linearIssueUrl ?? "",
+          url: canonicalLinearUrl,
           author: linearLink.linearIssueIdentifier,
+        }
+
+        base = base.filter((source) => {
+          if (source.platform !== "linear") {
+            return true
+          }
+
+          if (canonicalLinearUrl) {
+            return source.url.trim() !== canonicalLinearUrl
+          }
+
+          return source.author !== linearLink.linearIssueIdentifier
+        })
+
+        base.push({
+          ...canonicalLinearSource,
         })
       }
 
