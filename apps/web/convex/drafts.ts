@@ -1,6 +1,8 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
-import type { Id } from "./_generated/dataModel"
+import type { Id, Doc } from "./_generated/dataModel"
+import type { MutationCtx } from "./_generated/server"
+import { internal } from "./_generated/api"
 import { requireTaskWriteAccess, requireWorkspaceAccess } from "./permissions"
 import { STATUS_ORDER } from "../lib/task-board"
 import { insertWorkspaceLog } from "./logs"
@@ -30,6 +32,18 @@ const attachmentValidator = v.object({
   height: v.optional(v.number()),
   displayWidth: v.optional(v.number()),
 })
+
+async function queueLinearSync(ctx: MutationCtx, taskId: Id<"tasks">) {
+  await ctx.scheduler.runAfter(0, internal.linear.syncTaskToLinearIssue, {
+    taskId,
+  })
+}
+
+async function queueGitHubSync(ctx: MutationCtx, taskId: Id<"tasks">) {
+  await ctx.scheduler.runAfter(0, internal.github.syncTaskToGitHubIssue, {
+    taskId,
+  })
+}
 
 // ── Queries ──
 
@@ -188,7 +202,7 @@ export const publishDraft = mutation({
       taskCounter: nextTaskNumber,
     })
 
-    // Log
+    // Log and sync integrations
     const task = await ctx.db.get(taskId)
     if (task) {
       await insertWorkspaceLog(ctx, {
@@ -198,6 +212,8 @@ export const publishDraft = mutation({
         message: `Published draft "${task.title}" as ${task.taskCode}`,
         source: "manual",
       })
+      await queueLinearSync(ctx, task._id)
+      await queueGitHubSync(ctx, task._id)
     }
 
     // Delete the draft
