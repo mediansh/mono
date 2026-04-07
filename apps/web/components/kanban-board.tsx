@@ -196,7 +196,8 @@ function getActiveAgent(task: Task): string | null {
   if (
     !task.source ||
     task.source.platform !== "cli" ||
-    task.source.author === "cli"
+    task.source.author === "cli" ||
+    !task.source.author
   )
     return null
   return task.source.author
@@ -1556,24 +1557,28 @@ function ListGroup({
             items={taskIds}
             strategy={verticalListSortingStrategy}
           >
-            {tasks.length === 0
-              ? null
-              : tasks.map((task, rowIndex) => (
-                  <SortableListRow
-                    key={task.id}
-                    task={task}
-                    rowIndex={rowIndex}
-                    groupDelay={groupIndex * 0.04}
-                    isSelected={selectedTaskIds.has(task.id)}
-                    hasSelection={hasSelection}
-                    isDraggedAway={draggedTaskIds.has(task.id)}
-                    canManageTasks={canManageTasks}
-                    onSelect={onSelectTask}
-                    onToggleSelect={onToggleSelectTask}
-                    onUpdate={onUpdateTask}
-                    onDelete={onDeleteTask}
-                  />
-                ))}
+            {tasks.length === 0 ? (
+              <div className="flex items-center justify-center py-6 text-[12px] text-muted-foreground/50">
+                No issues yet
+              </div>
+            ) : (
+              tasks.map((task, rowIndex) => (
+                <SortableListRow
+                  key={task.id}
+                  task={task}
+                  rowIndex={rowIndex}
+                  groupDelay={groupIndex * 0.04}
+                  isSelected={selectedTaskIds.has(task.id)}
+                  hasSelection={hasSelection}
+                  isDraggedAway={draggedTaskIds.has(task.id)}
+                  canManageTasks={canManageTasks}
+                  onSelect={onSelectTask}
+                  onToggleSelect={onToggleSelectTask}
+                  onUpdate={onUpdateTask}
+                  onDelete={onDeleteTask}
+                />
+              ))
+            )}
           </SortableContext>
         </div>
       )}
@@ -2338,22 +2343,28 @@ function KanbanColumn({
       >
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
           <div className="flex flex-col gap-2">
-            {tasks.map((task, cardIndex) => (
-              <KanbanCard
-                key={task.id}
-                task={task}
-                cardIndex={cardIndex}
-                columnIndex={columnIndex}
-                isSelected={selectedTaskIds.has(task.id)}
-                hasSelection={hasSelection}
-                isDraggedAway={draggedTaskIds.has(task.id)}
-                canManageTasks={canManageTasks}
-                onSelect={onSelectTask}
-                onToggleSelect={onToggleSelectTask}
-                onUpdate={onUpdateTask}
-                onDelete={onDeleteTask}
-              />
-            ))}
+            {tasks.length === 0 ? (
+              <div className="flex items-center justify-center py-8 text-[12px] text-muted-foreground/50">
+                No issues yet
+              </div>
+            ) : (
+              tasks.map((task, cardIndex) => (
+                <KanbanCard
+                  key={task.id}
+                  task={task}
+                  cardIndex={cardIndex}
+                  columnIndex={columnIndex}
+                  isSelected={selectedTaskIds.has(task.id)}
+                  hasSelection={hasSelection}
+                  isDraggedAway={draggedTaskIds.has(task.id)}
+                  canManageTasks={canManageTasks}
+                  onSelect={onSelectTask}
+                  onToggleSelect={onToggleSelectTask}
+                  onUpdate={onUpdateTask}
+                  onDelete={onDeleteTask}
+                />
+              ))
+            )}
           </div>
         </SortableContext>
       </div>
