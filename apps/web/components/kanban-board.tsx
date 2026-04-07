@@ -1712,7 +1712,7 @@ function TaskDetailModal({
                       setTitleValue(task.title)
                       setEditingTitle(true)
                     }}
-                    className={`-mx-1 rounded-[4px] px-1 py-0.5 text-[14px] leading-snug font-semibold tracking-tight transition-colors ${canManageTasks ? "cursor-text hover:bg-accent/50" : ""}`}
+                    className={`-mx-1 break-words rounded-[4px] px-1 py-0.5 text-[14px] leading-snug font-semibold tracking-tight transition-colors ${canManageTasks ? "cursor-text hover:bg-accent/50" : ""}`}
                   >
                     {task.title}
                   </h2>
