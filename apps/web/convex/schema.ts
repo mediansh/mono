@@ -8,6 +8,7 @@ export default defineSchema({
     iconId: v.optional(v.id("_storage")),
     ownerId: v.string(),
     taskCounter: v.optional(v.number()),
+    draftCount: v.optional(v.number()),
     labels: v.optional(
       v.array(
         v.object({
@@ -554,6 +555,56 @@ export default defineSchema({
       v.literal("none")
     ),
     labels: v.array(v.string()),
+    source: v.optional(
+      v.object({
+        platform: v.union(
+          v.literal("discord"),
+          v.literal("slack"),
+          v.literal("x"),
+          v.literal("linear"),
+          v.literal("github"),
+          v.literal("cli")
+        ),
+        url: v.string(),
+        author: v.string(),
+      })
+    ),
+    sources: v.optional(
+      v.array(
+        v.object({
+          platform: v.union(
+            v.literal("discord"),
+            v.literal("slack"),
+            v.literal("x"),
+            v.literal("linear"),
+            v.literal("github"),
+            v.literal("cli")
+          ),
+          url: v.string(),
+          author: v.string(),
+        })
+      )
+    ),
+    linearLink: v.optional(
+      v.object({
+        linearIssueId: v.string(),
+        linearIssueIdentifier: v.string(),
+        linearIssueUrl: v.optional(v.string()),
+        lastLinearUpdatedAt: v.optional(v.string()),
+      })
+    ),
+    githubLink: v.optional(
+      v.object({
+        installationId: v.string(),
+        githubRepositoryId: v.string(),
+        githubRepositoryName: v.string(),
+        githubRepositoryFullName: v.string(),
+        githubIssueId: v.string(),
+        githubIssueNumber: v.number(),
+        githubIssueUrl: v.string(),
+        lastGithubUpdatedAt: v.optional(v.string()),
+      })
+    ),
     updatedAt: v.number(),
     attachments: v.optional(
       v.array(
@@ -569,6 +620,24 @@ export default defineSchema({
       )
     ),
   }).index("by_workspace", ["workspaceId"]),
+
+  draftSuppressedTaskSources: defineTable({
+    draftId: v.id("drafts"),
+    workspaceId: v.id("workspaces"),
+    platform: v.union(
+      v.literal("discord"),
+      v.literal("slack"),
+      v.literal("x"),
+      v.literal("linear"),
+      v.literal("github"),
+      v.literal("cli")
+    ),
+    sourceUrl: v.string(),
+    titleFingerprint: v.string(),
+    suppressedAt: v.number(),
+  })
+    .index("by_draft", ["draftId"])
+    .index("by_workspace_source", ["workspaceId", "platform", "sourceUrl"]),
 
   waitlistEntries: defineTable({
     email: v.string(),

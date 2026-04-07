@@ -67,9 +67,12 @@ function getMemberDisplayName(member: {
 function sortMembers(members: Doc<"workspaceMembers">[]) {
   return [...members].sort((a, b) => {
     const roleDiff =
-      WORKSPACE_ROLE_RANK[b.role as WorkspaceRole] - WORKSPACE_ROLE_RANK[a.role as WorkspaceRole]
+      WORKSPACE_ROLE_RANK[b.role as WorkspaceRole] -
+      WORKSPACE_ROLE_RANK[a.role as WorkspaceRole]
     if (roleDiff !== 0) return roleDiff
-    return (a.name ?? a.email ?? a.userId).localeCompare(b.name ?? b.email ?? b.userId)
+    return (a.name ?? a.email ?? a.userId).localeCompare(
+      b.name ?? b.email ?? b.userId
+    )
   })
 }
 
@@ -88,7 +91,9 @@ export const getUserWorkspaces = query({
       memberships.map(async (membership) => {
         const workspace = await ctx.db.get(membership.workspaceId)
         if (!workspace) return null
-        const iconUrl = workspace.iconId ? await ctx.storage.getUrl(workspace.iconId) : null
+        const iconUrl = workspace.iconId
+          ? await ctx.storage.getUrl(workspace.iconId)
+          : null
         return { ...workspace, iconUrl, role: membership.role }
       })
     )
@@ -124,7 +129,8 @@ export const getWorkspaceMembers = query({
 
     return {
       currentUserRole: membership.role,
-      canManageMembers: membership.role === "admin" || membership.role === "owner",
+      canManageMembers:
+        membership.role === "admin" || membership.role === "owner",
       workspaceName: workspace.name,
       members: sortMembers(members).map((member) => ({
         _id: member._id,
@@ -186,7 +192,11 @@ export const getInviteByToken = query({
       .withIndex("by_token", (q) => q.eq("token", args.token))
       .unique()
 
-    if (!invite || invite.status !== "pending" || invite.expiresAt <= Date.now()) {
+    if (
+      !invite ||
+      invite.status !== "pending" ||
+      invite.expiresAt <= Date.now()
+    ) {
       return null
     }
 
@@ -286,6 +296,8 @@ export const deleteWorkspace = mutation({
       members,
       invites,
       tasks,
+      drafts,
+      draftSuppressedTaskSources,
       discordIntegrations,
       linearIntegrations,
       linearTaskLinks,
@@ -311,6 +323,16 @@ export const deleteWorkspace = mutation({
         .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
         .collect(),
       ctx.db
+        .query("drafts")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+        .collect(),
+      ctx.db
+        .query("draftSuppressedTaskSources")
+        .withIndex("by_workspace_source", (q) =>
+          q.eq("workspaceId", args.workspaceId)
+        )
+        .collect(),
+      ctx.db
         .query("discordWorkspaceIntegrations")
         .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
         .collect(),
@@ -324,7 +346,9 @@ export const deleteWorkspace = mutation({
         .collect(),
       ctx.db
         .query("discordPairingCodes")
-        .withIndex("by_paired_workspace", (q) => q.eq("pairedWorkspaceId", args.workspaceId))
+        .withIndex("by_paired_workspace", (q) =>
+          q.eq("pairedWorkspaceId", args.workspaceId)
+        )
         .collect(),
       ctx.db
         .query("xWorkspaceIntegrations")
@@ -332,7 +356,9 @@ export const deleteWorkspace = mutation({
         .collect(),
       ctx.db
         .query("xPosts")
-        .withIndex("by_workspace_created_at", (q) => q.eq("workspaceId", args.workspaceId))
+        .withIndex("by_workspace_created_at", (q) =>
+          q.eq("workspaceId", args.workspaceId)
+        )
         .collect(),
       ctx.db
         .query("xOAuthStates")
@@ -346,11 +372,15 @@ export const deleteWorkspace = mutation({
         .collect(),
       ctx.db
         .query("deletedTaskSources")
-        .withIndex("by_workspace_source", (q) => q.eq("workspaceId", args.workspaceId))
+        .withIndex("by_workspace_source", (q) =>
+          q.eq("workspaceId", args.workspaceId)
+        )
         .collect(),
       ctx.db
         .query("workspaceLogs")
-        .withIndex("by_workspace_timestamp", (q) => q.eq("workspaceId", args.workspaceId))
+        .withIndex("by_workspace_timestamp", (q) =>
+          q.eq("workspaceId", args.workspaceId)
+        )
         .collect(),
       ctx.db
         .query("workspaceLogMetrics")
@@ -360,6 +390,14 @@ export const deleteWorkspace = mutation({
 
     for (const task of tasks) {
       await ctx.db.delete(task._id)
+    }
+
+    for (const draft of drafts) {
+      await ctx.db.delete(draft._id)
+    }
+
+    for (const suppression of draftSuppressedTaskSources) {
+      await ctx.db.delete(suppression._id)
     }
 
     for (const invite of invites) {
@@ -457,7 +495,10 @@ export const createInviteLink = mutation({
     role: workspaceInviteRoleValidator,
   },
   handler: async (ctx, args) => {
-    const { identity } = await requireWorkspaceAdminAccess(ctx, args.workspaceId)
+    const { identity } = await requireWorkspaceAdminAccess(
+      ctx,
+      args.workspaceId
+    )
 
     const workspace = await ctx.db.get(args.workspaceId)
     if (!workspace) {
@@ -496,7 +537,10 @@ export const createEmailInvite = mutation({
     role: workspaceInviteRoleValidator,
   },
   handler: async (ctx, args) => {
-    const { identity } = await requireWorkspaceAdminAccess(ctx, args.workspaceId)
+    const { identity } = await requireWorkspaceAdminAccess(
+      ctx,
+      args.workspaceId
+    )
     const workspace = await ctx.db.get(args.workspaceId)
     if (!workspace) {
       throw new Error("Workspace not found")
@@ -508,7 +552,9 @@ export const createEmailInvite = mutation({
       .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
       .collect()
 
-    if (members.some((member) => normalizeEmail(member.email ?? "") === email)) {
+    if (
+      members.some((member) => normalizeEmail(member.email ?? "") === email)
+    ) {
       throw new Error("That user is already in the workspace")
     }
 
@@ -520,7 +566,9 @@ export const createEmailInvite = mutation({
       .collect()
 
     const duplicateInvite = existingInvite.find(
-      (invite) => invite.inviteType === "email" && normalizeEmail(invite.invitedEmail ?? "") === email
+      (invite) =>
+        invite.inviteType === "email" &&
+        normalizeEmail(invite.invitedEmail ?? "") === email
     )
 
     if (duplicateInvite && duplicateInvite.expiresAt > Date.now()) {
@@ -589,7 +637,10 @@ export const updateMemberRole = mutation({
       throw new Error("Member not found")
     }
 
-    const { membership } = await requireWorkspaceAdminAccess(ctx, member.workspaceId)
+    const { membership } = await requireWorkspaceAdminAccess(
+      ctx,
+      member.workspaceId
+    )
     if (member.role === "owner") {
       throw new Error("The workspace owner role cannot be changed")
     }
@@ -611,7 +662,10 @@ export const removeMember = mutation({
       throw new Error("Member not found")
     }
 
-    const { membership } = await requireWorkspaceAdminAccess(ctx, member.workspaceId)
+    const { membership } = await requireWorkspaceAdminAccess(
+      ctx,
+      member.workspaceId
+    )
     if (member.role === "owner") {
       throw new Error("The workspace owner cannot be removed")
     }
@@ -641,13 +695,20 @@ export const acceptInvite = mutation({
       .withIndex("by_token", (q) => q.eq("token", args.token))
       .unique()
 
-    if (!invite || invite.status !== "pending" || invite.expiresAt <= Date.now()) {
+    if (
+      !invite ||
+      invite.status !== "pending" ||
+      invite.expiresAt <= Date.now()
+    ) {
       throw new Error("Invite is no longer valid")
     }
 
     if (invite.invitedEmail) {
       const identityEmail = normalizeEmail(identity.email ?? "")
-      if (!identityEmail || identityEmail !== normalizeEmail(invite.invitedEmail)) {
+      if (
+        !identityEmail ||
+        identityEmail !== normalizeEmail(invite.invitedEmail)
+      ) {
         throw new Error("This invite was sent to a different email address")
       }
     }
@@ -669,7 +730,8 @@ export const acceptInvite = mutation({
     if (existingMembership) {
       if (
         existingMembership.role !== "owner" &&
-        WORKSPACE_ROLE_RANK[invite.role] > WORKSPACE_ROLE_RANK[existingMembership.role as WorkspaceRole]
+        WORKSPACE_ROLE_RANK[invite.role] >
+          WORKSPACE_ROLE_RANK[existingMembership.role as WorkspaceRole]
       ) {
         await ctx.db.patch(existingMembership._id, {
           role: invite.role,

@@ -170,6 +170,7 @@ export function NewTaskModal({
   const [aiPrompt, setAiPrompt] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
   const [savingDraft, setSavingDraft] = useState(false)
+  const [isPublishingDraft, setIsPublishingDraft] = useState(false)
 
   const saveDraftMutation = useMutation(api.drafts.saveDraft)
   const updateDraftMutation = useMutation(api.drafts.updateDraft)
@@ -516,7 +517,7 @@ export function NewTaskModal({
   )
 
   async function handleCreate() {
-    if (!title.trim() || !currentWorkspace) return
+    if (!title.trim() || !currentWorkspace || isPublishingDraft) return
     if (!canManageTasks) {
       setError("Guests can only view tasks.")
       return
@@ -526,9 +527,12 @@ export function NewTaskModal({
 
     // If editing a draft, save latest changes then publish
     if (draft) {
+      setIsPublishingDraft(true)
       try {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const draftAttachments = attachments.map(({ previewUrl, url, ...rest }) => rest)
+        const draftAttachments = attachments.map(
+          ({ previewUrl, url, ...rest }) => rest
+        )
         await updateDraftMutation({
           draftId: draft._id as any,
           title,
@@ -536,7 +540,8 @@ export function NewTaskModal({
           status: status === "requests" ? "todo" : status,
           priority,
           labels,
-          attachments: draftAttachments.length > 0 ? draftAttachments as any : undefined,
+          attachments:
+            draftAttachments.length > 0 ? (draftAttachments as any) : undefined,
         })
         await publishDraftMutation({ draftId: draft._id as any })
         toast.success("Draft published as task")
@@ -545,6 +550,8 @@ export function NewTaskModal({
         onDraftSaved?.()
       } catch {
         toast.error("Failed to publish draft.")
+      } finally {
+        setIsPublishingDraft(false)
       }
       return
     }
@@ -585,7 +592,7 @@ export function NewTaskModal({
   }
 
   async function handleSaveDraft() {
-    if (!currentWorkspace) return
+    if (!currentWorkspace || savingDraft || isPublishingDraft) return
     if (!canManageTasks) {
       setError("Guests can only view tasks.")
       return
@@ -616,7 +623,8 @@ export function NewTaskModal({
           status: status === "requests" ? "todo" : status,
           priority,
           labels,
-          attachments: draftAttachments.length > 0 ? draftAttachments as any : undefined,
+          attachments:
+            draftAttachments.length > 0 ? (draftAttachments as any) : undefined,
         })
         toast.success("Draft updated")
       } else {
@@ -627,7 +635,8 @@ export function NewTaskModal({
           status: status === "requests" ? "todo" : status,
           priority,
           labels,
-          attachments: draftAttachments.length > 0 ? draftAttachments as any : undefined,
+          attachments:
+            draftAttachments.length > 0 ? (draftAttachments as any) : undefined,
         })
         toast.success("Saved as draft")
       }
@@ -1094,11 +1103,18 @@ export function NewTaskModal({
                             {/* Draft button */}
                             <button
                               onClick={handleSaveDraft}
-                              disabled={!currentWorkspace || savingDraft}
+                              disabled={
+                                !currentWorkspace ||
+                                savingDraft ||
+                                isPublishingDraft
+                              }
                               className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[12px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
                             >
                               {savingDraft ? (
-                                <SpinnerGap size={13} className="animate-spin" />
+                                <SpinnerGap
+                                  size={13}
+                                  className="animate-spin"
+                                />
                               ) : (
                                 <NotePencil size={13} />
                               )}
@@ -1108,10 +1124,24 @@ export function NewTaskModal({
                             {/* Create button */}
                             <button
                               onClick={handleCreate}
-                              disabled={!title.trim() || !currentWorkspace}
+                              disabled={
+                                !title.trim() ||
+                                !currentWorkspace ||
+                                isPublishingDraft
+                              }
                               className="flex items-center gap-2 rounded-[4px] bg-primary px-3 py-1.5 text-[12px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                             >
-                              {draft ? "Publish" : "Create task"}
+                              {draft
+                                ? isPublishingDraft
+                                  ? "Publishing..."
+                                  : "Publish"
+                                : "Create task"}
+                              {draft && isPublishingDraft ? (
+                                <SpinnerGap
+                                  size={16}
+                                  className="animate-spin"
+                                />
+                              ) : null}
                               <kbd className="hidden rounded bg-primary-foreground/20 px-1.5 py-0.5 text-[10px] font-normal text-primary-foreground/70 sm:inline-block">
                                 {typeof navigator !== "undefined" &&
                                 /Mac|iPhone|iPad/.test(navigator.userAgent)

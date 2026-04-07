@@ -308,7 +308,21 @@ async function isDeletedLinearTaskSource(
     )
     .first()
 
-  return Boolean(suppression)
+  if (suppression) {
+    return true
+  }
+
+  const draftSuppression = await ctx.db
+    .query("draftSuppressedTaskSources")
+    .withIndex("by_workspace_source", (q: any) =>
+      q
+        .eq("workspaceId", workspaceId)
+        .eq("platform", "linear")
+        .eq("sourceUrl", sourceUrl)
+    )
+    .first()
+
+  return Boolean(draftSuppression)
 }
 
 function normalizeStatusMappings(
@@ -1111,7 +1125,8 @@ async function syncTaskToLinear(
   task: Doc<"tasks">,
   link: Doc<"linearTaskLinks"> | null,
   workflowStates: LinearWorkflowState[],
-  workspaceLabels: { name: string; color: string }[] | undefined
+  workspaceLabels: { name: string; color: string }[] | undefined,
+  teamLabelsByKey?: Map<string, LinearLabel>
 ) {
   const stateId = pickWorkflowStateId(
     workflowStates,
@@ -1126,13 +1141,13 @@ async function syncTaskToLinear(
 
   if (requestedLabels.length > 0) {
     try {
-      const teamLabels = await fetchTeamLabels(
-        integration.apiKey,
-        integration.teamId
-      )
-      const labelsByKey = new Map(
-        teamLabels.map((label) => [getLabelKey(label.name), label])
-      )
+      const labelsByKey =
+        teamLabelsByKey ??
+        new Map(
+          (await fetchTeamLabels(integration.apiKey, integration.teamId)).map(
+            (label) => [getLabelKey(label.name), label]
+          )
+        )
 
       for (const labelName of requestedLabels) {
         const labelKey = getLabelKey(labelName)
@@ -2296,6 +2311,16 @@ export const performWorkspaceLinearSync = internalAction({
         workspaceId: args.workspaceId,
       }
     )
+    const shouldLoadTeamLabels = taskSyncStates.some(
+      (item) => (item.task.labels ?? []).length > 0
+    )
+    const teamLabelsByKey = shouldLoadTeamLabels
+      ? new Map(
+          (await fetchTeamLabels(integration.apiKey, integration.teamId)).map(
+            (label) => [getLabelKey(label.name), label]
+          )
+        )
+      : undefined
 
     const workflowStates = await fetchWorkflowStates(
       integration.apiKey,
@@ -2324,7 +2349,8 @@ export const performWorkspaceLinearSync = internalAction({
         item.task,
         item.link,
         workflowStates,
-        workspaceLabelConfig ?? undefined
+        workspaceLabelConfig ?? undefined,
+        teamLabelsByKey
       )
       pushedCount += 1
     }

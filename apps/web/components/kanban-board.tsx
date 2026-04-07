@@ -129,7 +129,11 @@ interface Task extends Omit<TaskDoc, "attachments"> {
 const COLUMNS: { id: Status; label: string; emptyLabel: string }[] = [
   { id: "requests", label: "Requests", emptyLabel: "No requests yet" },
   { id: "todo", label: "Todo", emptyLabel: "No issues yet" },
-  { id: "in_progress", label: "In Progress", emptyLabel: "No issues in progress yet" },
+  {
+    id: "in_progress",
+    label: "In Progress",
+    emptyLabel: "No issues in progress yet",
+  },
   { id: "ready", label: "Ready", emptyLabel: "No issues ready yet" },
   { id: "shipped", label: "Shipped", emptyLabel: "No issues shipped yet" },
   { id: "archive", label: "Archive", emptyLabel: "No issues archived yet" },
@@ -1091,6 +1095,7 @@ function TaskContextMenu({
   onClose,
   onUpdate,
   onDelete,
+  onMoveToDraft,
   canManageTasks,
 }: {
   task: Task
@@ -1098,9 +1103,9 @@ function TaskContextMenu({
   onClose: () => void
   onUpdate: (taskId: string, updates: Partial<Task>) => void
   onDelete: (taskId: string) => void
+  onMoveToDraft: (taskId: string) => void
   canManageTasks: boolean
 }) {
-  const moveTaskToDraft = useMutation(api.drafts.moveTaskToDraft)
   const labelConfig = useLabelConfig()
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -1211,14 +1216,9 @@ function TaskContextMenu({
       {/* Move to drafts */}
       <button
         disabled={!canManageTasks}
-        onClick={async () => {
+        onClick={() => {
           onClose()
-          try {
-            await moveTaskToDraft({ taskId: task.id as any })
-            toast.success(`Moved "${task.title}" to drafts`)
-          } catch {
-            toast.error("Failed to move task to drafts")
-          }
+          onMoveToDraft(task.id)
         }}
         className="flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-accent"
       >
@@ -1306,6 +1306,7 @@ const SortableListRow = memo(function SortableListRow({
   onToggleSelect,
   onUpdate,
   onDelete,
+  onMoveToDraft,
 }: {
   task: Task
   rowIndex: number
@@ -1318,6 +1319,7 @@ const SortableListRow = memo(function SortableListRow({
   onToggleSelect: (taskId: string, shiftKey: boolean) => void
   onUpdate: (taskId: string, updates: Partial<Task>) => void
   onDelete: (taskId: string) => void
+  onMoveToDraft: (taskId: string) => void
 }) {
   const [contextMenu, setContextMenu] = useState<{
     x: number
@@ -1400,6 +1402,7 @@ const SortableListRow = memo(function SortableListRow({
           onClose={() => setContextMenu(null)}
           onUpdate={onUpdate}
           onDelete={onDelete}
+          onMoveToDraft={onMoveToDraft}
           canManageTasks={canManageTasks}
         />
       )}
@@ -1509,6 +1512,7 @@ function ListGroup({
   onToggleSelectTask,
   onUpdateTask,
   onDeleteTask,
+  onMoveToDraft,
 }: {
   column: (typeof COLUMNS)[number]
   tasks: Task[]
@@ -1523,6 +1527,7 @@ function ListGroup({
   onToggleSelectTask: (taskId: string, shiftKey: boolean) => void
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void
   onDeleteTask: (taskId: string) => void
+  onMoveToDraft: (taskId: string) => void
 }) {
   const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks])
   const hasSelection = selectedTaskIds.size > 0
@@ -1596,6 +1601,7 @@ function ListGroup({
                   onToggleSelect={onToggleSelectTask}
                   onUpdate={onUpdateTask}
                   onDelete={onDeleteTask}
+                  onMoveToDraft={onMoveToDraft}
                 />
               ))
             )}
@@ -1632,6 +1638,7 @@ function TaskDetailModal({
   onClose,
   onUpdate,
   onDelete,
+  onMoveToDraft,
   onAccept,
   onDeny,
   canManageTasks,
@@ -1640,12 +1647,12 @@ function TaskDetailModal({
   onClose: () => void
   onUpdate: (taskId: string, updates: Partial<Task>) => void
   onDelete: (taskId: string) => void
+  onMoveToDraft: (taskId: string) => void
   onAccept?: (task: Task) => void
   onDeny?: (task: Task) => void
   canManageTasks: boolean
 }) {
   const labelConfig = useLabelConfig()
-  const moveDetailToDraft = useMutation(api.drafts.moveTaskToDraft)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleValue, setTitleValue] = useState("")
   const [editingDesc, setEditingDesc] = useState(false)
@@ -1745,14 +1752,9 @@ function TaskDetailModal({
               <div className="flex items-center gap-1">
                 <button
                   disabled={!canManageTasks}
-                  onClick={async () => {
+                  onClick={() => {
                     onClose()
-                    try {
-                      await moveDetailToDraft({ taskId: task.id as any })
-                      toast.success(`Moved "${task.title}" to drafts`)
-                    } catch {
-                      toast.error("Failed to move task to drafts")
-                    }
+                    onMoveToDraft(task.id)
                   }}
                   className="rounded-[4px] p-1 text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
                   title="Move to drafts"
@@ -1908,7 +1910,11 @@ function TaskDetailModal({
                           />
                           <span>{label}</span>
                           {(task.labels ?? []).includes(label) && (
-                            <Check size={14} weight="bold" className="ml-auto text-primary" />
+                            <Check
+                              size={14}
+                              weight="bold"
+                              className="ml-auto text-primary"
+                            />
                           )}
                         </div>
                       </DropdownMenuItem>
@@ -2162,6 +2168,7 @@ const KanbanCard = memo(function KanbanCard({
   onToggleSelect,
   onUpdate,
   onDelete,
+  onMoveToDraft,
 }: {
   task: Task
   cardIndex: number
@@ -2174,6 +2181,7 @@ const KanbanCard = memo(function KanbanCard({
   onToggleSelect: (taskId: string, shiftKey: boolean) => void
   onUpdate: (taskId: string, updates: Partial<Task>) => void
   onDelete: (taskId: string) => void
+  onMoveToDraft: (taskId: string) => void
 }) {
   const { colors: labelColors } = useLabelConfig()
   const boardMounted = useBoardMounted()
@@ -2298,6 +2306,7 @@ const KanbanCard = memo(function KanbanCard({
           onClose={() => setContextMenu(null)}
           onUpdate={onUpdate}
           onDelete={onDelete}
+          onMoveToDraft={onMoveToDraft}
           canManageTasks={canManageTasks}
         />
       )}
@@ -2319,6 +2328,7 @@ function KanbanColumn({
   onToggleSelectTask,
   onUpdateTask,
   onDeleteTask,
+  onMoveToDraft,
 }: {
   column: (typeof COLUMNS)[number]
   columnIndex: number
@@ -2331,6 +2341,7 @@ function KanbanColumn({
   onToggleSelectTask: (taskId: string, shiftKey: boolean) => void
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void
   onDeleteTask: (taskId: string) => void
+  onMoveToDraft: (taskId: string) => void
 }) {
   const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks])
   const hasSelection = selectedTaskIds.size > 0
@@ -2397,6 +2408,7 @@ function KanbanColumn({
                   onToggleSelect={onToggleSelectTask}
                   onUpdate={onUpdateTask}
                   onDelete={onDeleteTask}
+                  onMoveToDraft={onMoveToDraft}
                 />
               ))
             )}
@@ -2417,6 +2429,7 @@ function ColumnBoardView({
   onMoveMultipleTasks,
   onUpdateTask,
   onDeleteTask,
+  onMoveToDraft,
   onBulkUpdateTasks,
   onBulkDeleteTasks,
   onAcceptRequest,
@@ -2433,6 +2446,7 @@ function ColumnBoardView({
   ) => void
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void
   onDeleteTask: (taskId: string) => void
+  onMoveToDraft: (taskId: string) => void
   onBulkUpdateTasks: (
     taskIds: string[],
     updates: Partial<Pick<Task, "status" | "priority" | "labels">>
@@ -2897,6 +2911,7 @@ function ColumnBoardView({
                   onToggleSelectTask={handleToggleSelectTask}
                   onUpdateTask={onUpdateTask}
                   onDeleteTask={onDeleteTask}
+                  onMoveToDraft={onMoveToDraft}
                 />
               </div>
             )
@@ -2918,6 +2933,10 @@ function ColumnBoardView({
         onUpdate={onUpdateTask}
         onDelete={(taskId) => {
           onDeleteTask(taskId)
+          setSelectedTaskId(null)
+        }}
+        onMoveToDraft={(taskId) => {
+          onMoveToDraft(taskId)
           setSelectedTaskId(null)
         }}
         onAccept={(task) => {
@@ -3000,6 +3019,7 @@ function ListView({
   onMoveMultipleTasks,
   onUpdateTask,
   onDeleteTask,
+  onMoveToDraft,
   onBulkUpdateTasks,
   onBulkDeleteTasks,
   onAcceptRequest,
@@ -3018,6 +3038,7 @@ function ListView({
   ) => void
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void
   onDeleteTask: (taskId: string) => void
+  onMoveToDraft: (taskId: string) => void
   onBulkUpdateTasks: (
     taskIds: string[],
     updates: Partial<Pick<Task, "status" | "priority" | "labels">>
@@ -3356,6 +3377,7 @@ function ListView({
                 onToggleSelectTask={handleToggleSelectTask}
                 onUpdateTask={onUpdateTask}
                 onDeleteTask={onDeleteTask}
+                onMoveToDraft={onMoveToDraft}
               />
             )
           })}
@@ -3376,6 +3398,10 @@ function ListView({
         onUpdate={onUpdateTask}
         onDelete={(taskId) => {
           onDeleteTask(taskId)
+          setSelectedTaskId(null)
+        }}
+        onMoveToDraft={(taskId) => {
+          onMoveToDraft(taskId)
           setSelectedTaskId(null)
         }}
         onAccept={(task) => {
@@ -3456,6 +3482,7 @@ export function KanbanBoard() {
   const clearDemoTasks = useMutation(api.tasks.clearDemoTasks)
   const updateTask = useMutation(api.tasks.updateTask)
   const deleteTask = useMutation(api.tasks.deleteTask)
+  const moveTaskToDraft = useMutation(api.drafts.moveTaskToDraft)
   const reorderTasks = useMutation(api.tasks.reorderTasks)
   const bulkUpdateTasks = useMutation(api.tasks.bulkUpdateTasks)
   const bulkDeleteTasks = useMutation(api.tasks.bulkDeleteTasks)
@@ -3798,6 +3825,43 @@ export function KanbanBoard() {
       })
   }
 
+  function handleMoveTaskToDraft(taskId: string) {
+    if (
+      !workspaceId ||
+      !taskDocs ||
+      !canManageTasks ||
+      taskId.startsWith("optimistic:")
+    ) {
+      return
+    }
+
+    const task = taskDocs.find((item) => item._id === taskId)
+    if (!task) {
+      return
+    }
+
+    lastLocalChangeRef.current = Date.now()
+    updateWorkspaceTasks(workspaceId, (tasks) =>
+      tasks.filter((item) => item._id !== taskId)
+    )
+
+    if (isDevTask(taskId)) {
+      toast.success(`Moved "${task.title}" to drafts`)
+      return
+    }
+
+    void moveTaskToDraft({ taskId: taskId as Id<"tasks"> })
+      .then(() => {
+        toast.success(`Moved "${task.title}" to drafts`)
+      })
+      .catch(() => {
+        updateWorkspaceTasks(workspaceId, (tasks) =>
+          sortTaskDocs([...tasks, task])
+        )
+        toast.error("Failed to move task to drafts")
+      })
+  }
+
   function handleMoveTask(taskId: string, toStatus: Status, toIndex: number) {
     if (!workspaceId || !canManageTasks || taskId.startsWith("optimistic:"))
       return
@@ -4042,6 +4106,7 @@ export function KanbanBoard() {
                 onMoveMultipleTasks={handleMoveMultipleTasks}
                 onUpdateTask={handleUpdateTask}
                 onDeleteTask={handleDeleteTask}
+                onMoveToDraft={handleMoveTaskToDraft}
                 onBulkUpdateTasks={handleBulkUpdateTasks}
                 onBulkDeleteTasks={handleBulkDeleteTasks}
                 onAcceptRequest={handleAcceptRequest}
@@ -4058,6 +4123,7 @@ export function KanbanBoard() {
                 onMoveMultipleTasks={handleMoveMultipleTasks}
                 onUpdateTask={handleUpdateTask}
                 onDeleteTask={handleDeleteTask}
+                onMoveToDraft={handleMoveTaskToDraft}
                 onBulkUpdateTasks={handleBulkUpdateTasks}
                 onBulkDeleteTasks={handleBulkDeleteTasks}
                 onAcceptRequest={handleAcceptRequest}
