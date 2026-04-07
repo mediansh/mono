@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useMutation, useQuery } from "convex/react"
+import { useUser } from "@clerk/nextjs"
 import { motion, AnimatePresence } from "motion/react"
 import { toast } from "sonner"
 import {
@@ -23,6 +24,13 @@ import { useWorkspace } from "@/components/workspace-provider"
 import { hasTaskWritePermission } from "@/lib/workspace-permissions"
 import { NewTaskModal } from "@/components/new-task-modal"
 import type { Doc } from "@/convex/_generated/dataModel"
+import {
+  getLocalFirstStoreSnapshot,
+  setWorkspaceTasks,
+  updateWorkspaceTasks,
+  type LocalTaskDoc,
+} from "@/lib/local-first-store"
+import { getTaskNumber } from "@/lib/task-board"
 
 type Draft = Doc<"drafts">
 
@@ -88,6 +96,7 @@ function formatRelativeTime(timestamp: number): string {
 }
 
 export default function DraftsPage() {
+  const { user } = useUser()
   const { currentWorkspace } = useWorkspace()
   const canManageTasks = hasTaskWritePermission(currentWorkspace?.role)
   const drafts = useQuery(
@@ -97,15 +106,68 @@ export default function DraftsPage() {
   const deleteDraft = useMutation(api.drafts.deleteDraft)
   const publishDraft = useMutation(api.drafts.publishDraft)
 
-  const [editingDraft, setEditingDraft] = useState<Draft | null>(null)
+  const [editingDraftId, setEditingDraftId] = useState<string | null>(null)
   const [publishingId, setPublishingId] = useState<string | null>(null)
+  const editingDraft = useMemo(
+    () => drafts?.find((draft) => draft._id === editingDraftId) ?? null,
+    [drafts, editingDraftId]
+  )
 
   async function handlePublish(draft: Draft) {
+    if (!currentWorkspace) {
+      toast.error("Workspace not found")
+      return
+    }
+
     setPublishingId(draft._id)
+    const existingTasks =
+      getLocalFirstStoreSnapshot().tasksByWorkspace[currentWorkspace._id] ?? []
+    const nextTaskNumber =
+      Math.max(
+        0,
+        ...existingTasks.map(
+          (task) => task.taskNumber ?? getTaskNumber(task.taskCode ?? "")
+        )
+      ) + 1
+    const optimisticId = `optimistic:${nextTaskNumber}`
+    const optimisticTask: LocalTaskDoc = {
+      _id: optimisticId,
+      _creationTime: Date.now(),
+      workspaceId: currentWorkspace._id,
+      taskCode: `${currentWorkspace.prefix || "MED"}-${nextTaskNumber}`,
+      taskNumber: nextTaskNumber,
+      title: draft.title.trim(),
+      description: draft.description?.trim() || undefined,
+      status: draft.status,
+      priority: draft.priority,
+      labels: draft.labels,
+      order: existingTasks.filter((task) => task.status === draft.status)
+        .length,
+      project: currentWorkspace.name,
+      assignee: {
+        name: user?.fullName ?? user?.firstName ?? "You",
+        avatar: user?.imageUrl ?? "",
+      },
+      attachments: draft.attachments?.length
+        ? (draft.attachments as any)
+        : undefined,
+      _syncStatus: "pending",
+    }
+
+    setWorkspaceTasks(currentWorkspace._id, [...existingTasks, optimisticTask])
+
     try {
-      await publishDraft({ draftId: draft._id })
+      const createdTask = (await publishDraft({
+        draftId: draft._id,
+      })) as Doc<"tasks">
+      updateWorkspaceTasks(currentWorkspace._id, (tasks) =>
+        tasks.map((task) => (task._id === optimisticId ? createdTask : task))
+      )
       toast.success(`Published "${draft.title}" as a task`)
     } catch {
+      updateWorkspaceTasks(currentWorkspace._id, (tasks) =>
+        tasks.filter((task) => task._id !== optimisticId)
+      )
       toast.error("Failed to publish draft")
     } finally {
       setPublishingId(null)
@@ -149,20 +211,18 @@ export default function DraftsPage() {
             variants={fadeUp}
             className="flex items-center justify-center py-20"
           >
-            <SpinnerGap size={20} className="animate-spin text-muted-foreground" />
+            <SpinnerGap
+              size={20}
+              className="animate-spin text-muted-foreground"
+            />
           </motion.div>
         ) : drafts.length === 0 ? (
           <motion.div
             variants={fadeUp}
             className="flex flex-col items-center justify-center py-20 text-center"
           >
-            <NotePencil
-              size={40}
-              className="mb-3 text-muted-foreground/30"
-            />
-            <p className="text-[13px] text-muted-foreground">
-              No drafts yet
-            </p>
+            <NotePencil size={40} className="mb-3 text-muted-foreground/30" />
+            <p className="text-[13px] text-muted-foreground">No drafts yet</p>
             <p className="mt-1 text-[12px] text-muted-foreground/60">
               Save a task as a draft to revisit it later.
             </p>
@@ -178,10 +238,10 @@ export default function DraftsPage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.97 }}
                   transition={{ duration: 0.2 }}
-                  onClick={() => setEditingDraft(draft)}
+                  onClick={() => setEditingDraftId(draft._id)}
                   className="group flex cursor-pointer items-start gap-3 rounded-[4px] px-3 py-2.5 ring-1 ring-border transition-colors hover:bg-accent/40"
                 >
-                  <div className="flex flex-1 min-w-0 flex-col gap-1">
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <div className="flex items-center gap-2">
                       <span className="truncate text-[13px] font-medium">
                         {draft.title || "Untitled draft"}
@@ -192,7 +252,7 @@ export default function DraftsPage() {
                         {draft.description}
                       </p>
                     )}
-                    <div className="flex items-center gap-2 mt-0.5">
+                    <div className="mt-0.5 flex items-center gap-2">
                       <span className="flex items-center gap-1 text-[11px] text-muted-foreground/60">
                         {getStatusIcon(draft.status)}
                         {STATUS_LABELS[draft.status]}
@@ -202,12 +262,14 @@ export default function DraftsPage() {
                       </span>
                       {draft.labels.length > 0 && (
                         <span className="text-[11px] text-muted-foreground/60">
-                          {draft.labels.length} label{draft.labels.length !== 1 ? "s" : ""}
+                          {draft.labels.length} label
+                          {draft.labels.length !== 1 ? "s" : ""}
                         </span>
                       )}
                       {draft.attachments && draft.attachments.length > 0 && (
                         <span className="text-[11px] text-muted-foreground/60">
-                          {draft.attachments.length} file{draft.attachments.length !== 1 ? "s" : ""}
+                          {draft.attachments.length} file
+                          {draft.attachments.length !== 1 ? "s" : ""}
                         </span>
                       )}
                       <span className="text-[11px] text-muted-foreground/40">
@@ -253,7 +315,7 @@ export default function DraftsPage() {
         <NewTaskModal
           open={!!editingDraft}
           onOpenChange={(open) => {
-            if (!open) setEditingDraft(null)
+            if (!open) setEditingDraftId(null)
           }}
           draft={{
             _id: editingDraft._id,
@@ -263,8 +325,9 @@ export default function DraftsPage() {
             priority: editingDraft.priority,
             labels: editingDraft.labels,
             attachments: editingDraft.attachments as any,
+            updatedAt: editingDraft.updatedAt,
           }}
-          onDraftSaved={() => setEditingDraft(null)}
+          onDraftSaved={() => setEditingDraftId(null)}
         />
       )}
     </>

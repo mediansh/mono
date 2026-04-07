@@ -124,6 +124,7 @@ interface NewTaskModalProps {
     priority: Priority
     labels: Label[]
     attachments?: TaskAttachment[]
+    updatedAt?: number
   }
   onDraftSaved?: () => void
 }
@@ -157,9 +158,7 @@ export function NewTaskModal({
   const canManageTasks = hasTaskWritePermission(currentWorkspace?.role)
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
-  const [status, setStatus] = useState<Status>(
-    draft?.status ?? defaultStatus
-  )
+  const [status, setStatus] = useState<Status>(draft?.status ?? defaultStatus)
   const [priority, setPriority] = useState<Priority>("none")
   const [labels, setLabels] = useState<Label[]>([])
   const [createMore, setCreateMore] = useState(false)
@@ -176,20 +175,23 @@ export function NewTaskModal({
 
   const saveDraftMutation = useMutation(api.drafts.saveDraft)
   const updateDraftMutation = useMutation(api.drafts.updateDraft)
-  const publishDraftMutation = useMutation(api.drafts.publishDraft)
+  const publishDraftWithUpdatesMutation = useMutation(
+    api.drafts.publishDraftWithUpdates
+  )
 
   // Keep draft population and default status initialization in one place so
   // editing a draft never gets overwritten by the fallback default status.
-  const draftIdRef = useRef<string | null>(null)
+  const draftRevisionRef = useRef<string | null>(null)
   useEffect(() => {
     if (!open) {
-      draftIdRef.current = null
+      draftRevisionRef.current = null
       return
     }
 
     if (draft) {
-      if (draft._id !== draftIdRef.current) {
-        draftIdRef.current = draft._id
+      const draftRevision = `${draft._id}:${draft.updatedAt ?? 0}`
+      if (draftRevision !== draftRevisionRef.current) {
+        draftRevisionRef.current = draftRevision
         setTitle(draft.title)
         setDescription(draft.description ?? "")
         setStatus(draft.status)
@@ -205,7 +207,7 @@ export function NewTaskModal({
       return
     }
 
-    draftIdRef.current = null
+    draftRevisionRef.current = null
     setStatus(defaultStatus)
   }, [defaultStatus, open, draft])
 
@@ -524,6 +526,100 @@ export function NewTaskModal({
     ]
   )
 
+  const publishDraftOptimistically = useCallback(
+    async (payload: TaskDraftPayload) => {
+      if (!currentWorkspace || !draft) {
+        throw new Error("Draft not found")
+      }
+
+      const existingTasks =
+        getLocalFirstStoreSnapshot().tasksByWorkspace[currentWorkspace._id] ??
+        []
+      const nextTaskNumber =
+        Math.max(
+          0,
+          ...existingTasks.map(
+            (task) => task.taskNumber ?? getTaskNumber(task.taskCode ?? "")
+          )
+        ) + 1
+      const optimisticId = `optimistic:${nextTaskNumber}`
+      const optimisticTask: LocalTaskDoc = {
+        _id: optimisticId,
+        _creationTime: Date.now(),
+        workspaceId: currentWorkspace._id,
+        taskCode: `${currentWorkspace.prefix || "MED"}-${nextTaskNumber}`,
+        taskNumber: nextTaskNumber,
+        title: payload.title.trim(),
+        description: payload.description?.trim() || undefined,
+        status: payload.status,
+        priority: payload.priority,
+        labels: payload.labels,
+        order: existingTasks.filter((task) => task.status === payload.status)
+          .length,
+        project: currentWorkspace.name,
+        assignee: {
+          name: user?.fullName ?? user?.firstName ?? "You",
+          avatar: user?.imageUrl ?? "",
+        },
+        attachments: payload.attachments?.length
+          ? (payload.attachments as any)
+          : undefined,
+        _syncStatus: "pending",
+      }
+
+      setWorkspaceTasks(currentWorkspace._id, [
+        ...existingTasks,
+        optimisticTask,
+      ])
+
+      try {
+        const draftAttachments = attachments.map(
+          ({ previewUrl, url, ...rest }) => rest
+        )
+        const createdTask = (await publishDraftWithUpdatesMutation({
+          draftId: draft._id as any,
+          title: payload.title,
+          description: payload.description,
+          status: payload.status === "requests" ? "todo" : payload.status,
+          priority: payload.priority,
+          labels: payload.labels,
+          attachments:
+            draftAttachments.length > 0 ? (draftAttachments as any) : undefined,
+        })) as Doc<"tasks">
+
+        const hydratedTask = {
+          ...createdTask,
+          attachments: payload.attachments?.length
+            ? payload.attachments.map(({ previewUrl, ...attachment }) => ({
+                ...attachment,
+                url: attachment.url ?? previewUrl ?? null,
+              }))
+            : createdTask.attachments,
+        } as LocalTaskDoc
+
+        updateWorkspaceTasks(currentWorkspace._id, (tasks) =>
+          tasks.map((task) => (task._id === optimisticId ? hydratedTask : task))
+        )
+
+        return hydratedTask
+      } catch {
+        updateWorkspaceTasks(currentWorkspace._id, (tasks) =>
+          tasks.filter((task) => task._id !== optimisticId)
+        )
+        throw new Error("Failed to publish draft.")
+      }
+    },
+    [
+      attachments,
+      currentWorkspace,
+      draft,
+      publishDraftWithUpdatesMutation,
+      user?.firstName,
+      user?.fullName,
+      user?.imageUrl,
+    ]
+  )
+
   async function handleCreate() {
     if (
       !title.trim() ||
@@ -543,25 +639,21 @@ export function NewTaskModal({
     // If editing a draft, save latest changes then publish
     if (draft) {
       setIsPublishingDraft(true)
+      const payload = {
+        title,
+        description,
+        status,
+        priority,
+        labels,
+        attachments,
+      }
+      preserveAttachmentPreviews(payload.attachments)
+      onOpenChange(false)
+      resetForm()
+
       try {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const draftAttachments = attachments.map(
-          ({ previewUrl, url, ...rest }) => rest
-        )
-        await updateDraftMutation({
-          draftId: draft._id as any,
-          title,
-          description,
-          status: status === "requests" ? "todo" : status,
-          priority,
-          labels,
-          attachments:
-            draftAttachments.length > 0 ? (draftAttachments as any) : undefined,
-        })
-        await publishDraftMutation({ draftId: draft._id as any })
+        await publishDraftOptimistically(payload)
         toast.success("Draft published as task")
-        onOpenChange(false)
-        resetForm()
         onDraftSaved?.()
       } catch {
         toast.error("Failed to publish draft.")

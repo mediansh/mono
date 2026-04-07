@@ -3,7 +3,11 @@ import { mutation, query } from "./_generated/server"
 import type { Id, Doc } from "./_generated/dataModel"
 import type { MutationCtx } from "./_generated/server"
 import { internal } from "./_generated/api"
-import { requireTaskWriteAccess, requireWorkspaceAccess } from "./permissions"
+import {
+  getIdentityProfile,
+  requireTaskWriteAccess,
+  requireWorkspaceAccess,
+} from "./permissions"
 import { insertWorkspaceLog } from "./logs"
 import { clearLinearTaskLink, clearGitHubTaskLink } from "./tasks"
 
@@ -282,6 +286,116 @@ async function adjustWorkspaceDraftCount(
   })
 }
 
+function getDraftAssignee(
+  access: Awaited<ReturnType<typeof requireTaskWriteAccess>>
+) {
+  const profile = getIdentityProfile(access.identity)
+
+  return {
+    name:
+      profile.name ??
+      access.membership.name ??
+      access.membership.email ??
+      access.membership.userId,
+    avatar: profile.imageUrl ?? access.membership.imageUrl ?? "",
+  }
+}
+
+async function publishDraftRecord(
+  ctx: MutationCtx,
+  draft: Doc<"drafts">,
+  assignee: { name: string; avatar: string }
+) {
+  const workspace = await ctx.db.get(draft.workspaceId)
+  if (!workspace) throw new Error("Workspace not found")
+
+  const now = Date.now()
+  const existingTasks = await ctx.db
+    .query("tasks")
+    .withIndex("by_workspace", (q) => q.eq("workspaceId", draft.workspaceId))
+    .collect()
+
+  const baseTaskNumber = Math.max(
+    workspace.taskCounter ?? 0,
+    ...existingTasks.map((t) => t.taskNumber)
+  )
+  const nextTaskNumber = baseTaskNumber + 1
+
+  let maxOrder = 0
+  for (const task of existingTasks) {
+    if (task.status === draft.status) {
+      maxOrder = Math.max(maxOrder, task.order + 1)
+    }
+  }
+
+  const taskId = await ctx.db.insert("tasks", {
+    workspaceId: draft.workspaceId,
+    taskCode: `${workspace.prefix || "MED"}-${nextTaskNumber}`,
+    taskNumber: nextTaskNumber,
+    title: draft.title,
+    description: draft.description,
+    status: draft.status,
+    priority: draft.priority,
+    labels: draft.labels,
+    order: maxOrder,
+    project: workspace.name,
+    updatedAt: now,
+    assignee,
+    source: draft.source,
+    sources:
+      draft.sources && draft.sources.length > 0
+        ? draft.sources
+        : draft.source
+          ? [draft.source]
+          : undefined,
+    attachments: draft.attachments,
+  })
+
+  if (draft.linearLink) {
+    await restoreLinearTaskLinkFromDraft(ctx, {
+      workspaceId: draft.workspaceId,
+      taskId,
+      linearLink: draft.linearLink,
+    })
+  }
+
+  if (draft.githubLink) {
+    await restoreGitHubTaskLinkFromDraft(ctx, {
+      workspaceId: draft.workspaceId,
+      taskId,
+      githubLink: draft.githubLink,
+    })
+  }
+
+  await ctx.db.patch(draft.workspaceId, {
+    taskCounter: nextTaskNumber,
+  })
+
+  await clearDraftSourceSuppressions(ctx, draft._id)
+  await adjustWorkspaceDraftCount(ctx, draft.workspaceId, -1)
+
+  const task = await ctx.db.get(taskId)
+  if (task) {
+    await insertWorkspaceLog(ctx, {
+      workspaceId: draft.workspaceId,
+      category: "tasks",
+      type: "task_created",
+      message: `Published draft "${task.title}" as ${task.taskCode}`,
+      source: "manual",
+    })
+    await queueLinearSync(ctx, task._id)
+    await queueGitHubSync(ctx, task._id)
+  }
+
+  await ctx.db.delete(draft._id)
+
+  if (!task) {
+    throw new Error("Failed to publish draft")
+  }
+
+  return task
+}
+
 // ── Queries ──
 
 export const listDrafts = query({
@@ -414,96 +528,49 @@ export const publishDraft = mutation({
   handler: async (ctx, args) => {
     const draft = await ctx.db.get(args.draftId)
     if (!draft) throw new Error("Draft not found")
-    await requireTaskWriteAccess(ctx, draft.workspaceId)
+    const access = await requireTaskWriteAccess(ctx, draft.workspaceId)
 
-    const workspace = await ctx.db.get(draft.workspaceId)
-    if (!workspace) throw new Error("Workspace not found")
+    return await publishDraftRecord(ctx, draft, getDraftAssignee(access))
+  },
+})
 
-    const now = Date.now()
+export const publishDraftWithUpdates = mutation({
+  args: {
+    draftId: v.id("drafts"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    status: draftStatusValidator,
+    priority: draftPriorityValidator,
+    labels: v.array(v.string()),
+    attachments: v.optional(v.array(attachmentValidator)),
+  },
+  handler: async (ctx, args) => {
+    const draft = await ctx.db.get(args.draftId)
+    if (!draft) throw new Error("Draft not found")
+    const access = await requireTaskWriteAccess(ctx, draft.workspaceId)
 
-    // Get existing tasks for ordering
-    const existingTasks = await ctx.db
-      .query("tasks")
-      .withIndex("by_workspace", (q) => q.eq("workspaceId", draft.workspaceId))
-      .collect()
-
-    const baseTaskNumber = Math.max(
-      workspace.taskCounter ?? 0,
-      ...existingTasks.map((t) => t.taskNumber)
-    )
-    const nextTaskNumber = baseTaskNumber + 1
-
-    let maxOrder = 0
-    for (const task of existingTasks) {
-      if (task.status === draft.status) {
-        maxOrder = Math.max(maxOrder, task.order + 1)
-      }
+    const updatedDraft = {
+      ...draft,
+      title: args.title.trim() || "Untitled draft",
+      description: args.description?.trim() || undefined,
+      status: args.status,
+      priority: args.priority,
+      labels: args.labels,
+      attachments: args.attachments,
+      updatedAt: Date.now(),
     }
 
-    const taskId = await ctx.db.insert("tasks", {
-      workspaceId: draft.workspaceId,
-      taskCode: `${workspace.prefix || "MED"}-${nextTaskNumber}`,
-      taskNumber: nextTaskNumber,
-      title: draft.title,
-      description: draft.description,
-      status: draft.status,
-      priority: draft.priority,
-      labels: draft.labels,
-      order: maxOrder,
-      project: workspace.name,
-      updatedAt: now,
-      assignee: { name: "Abdul", avatar: "" },
-      source: draft.source,
-      sources:
-        draft.sources && draft.sources.length > 0
-          ? draft.sources
-          : draft.source
-            ? [draft.source]
-            : undefined,
-      attachments: draft.attachments,
+    await ctx.db.patch(args.draftId, {
+      title: updatedDraft.title,
+      description: updatedDraft.description,
+      status: updatedDraft.status,
+      priority: updatedDraft.priority,
+      labels: updatedDraft.labels,
+      attachments: updatedDraft.attachments,
+      updatedAt: updatedDraft.updatedAt,
     })
 
-    if (draft.linearLink) {
-      await restoreLinearTaskLinkFromDraft(ctx, {
-        workspaceId: draft.workspaceId,
-        taskId,
-        linearLink: draft.linearLink,
-      })
-    }
-
-    if (draft.githubLink) {
-      await restoreGitHubTaskLinkFromDraft(ctx, {
-        workspaceId: draft.workspaceId,
-        taskId,
-        githubLink: draft.githubLink,
-      })
-    }
-
-    await ctx.db.patch(draft.workspaceId, {
-      taskCounter: nextTaskNumber,
-    })
-
-    await clearDraftSourceSuppressions(ctx, args.draftId)
-    await adjustWorkspaceDraftCount(ctx, draft.workspaceId, -1)
-
-    // Log and sync integrations
-    const task = await ctx.db.get(taskId)
-    if (task) {
-      await insertWorkspaceLog(ctx, {
-        workspaceId: draft.workspaceId,
-        category: "tasks",
-        type: "task_created",
-        message: `Published draft "${task.title}" as ${task.taskCode}`,
-        source: "manual",
-      })
-      await queueLinearSync(ctx, task._id)
-      await queueGitHubSync(ctx, task._id)
-    }
-
-    // Delete the draft
-    await ctx.db.delete(args.draftId)
-
-    return taskId
+    return await publishDraftRecord(ctx, updatedDraft, getDraftAssignee(access))
   },
 })
 
