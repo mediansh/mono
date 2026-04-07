@@ -770,6 +770,7 @@ export function NewTaskModal({
                         <div className="mt-3 rounded-[14px] border border-border/70 bg-accent/10 p-3">
                           <TaskAttachmentGallery
                             attachments={attachments}
+                            workspaceId={currentWorkspace?._id}
                             canManageAttachments
                             onAttachmentsChange={(nextAttachments) =>
                               setAttachments(

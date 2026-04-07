@@ -1,11 +1,13 @@
 "use client"
 
+import { useQuery } from "convex/react"
 import {
   useEffect,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react"
+import { api } from "@/convex/_generated/api"
 
 export type TaskAttachment = {
   storageId: string
@@ -209,10 +211,12 @@ function AttachmentImageCard({
 
 export function TaskAttachmentGallery({
   attachments,
+  workspaceId,
   canManageAttachments = false,
   onAttachmentsChange,
 }: {
   attachments?: TaskAttachment[]
+  workspaceId?: string
   canManageAttachments?: boolean
   onAttachmentsChange?: (attachments: TaskAttachment[]) => void
 }) {
@@ -221,8 +225,23 @@ export function TaskAttachmentGallery({
   }
 
   const safeAttachments = attachments
-  const imageAttachments = safeAttachments.filter(isImageAttachment)
-  const fileAttachments = safeAttachments.filter(
+  const storageIds = workspaceId
+    ? Array.from(
+        new Set(safeAttachments.map((attachment) => attachment.storageId))
+      )
+    : []
+  const resolvedUrls = useQuery(
+    api.tasks.resolveAttachmentUrls,
+    workspaceId && storageIds.length > 0
+      ? ({ workspaceId, storageIds } as any)
+      : "skip"
+  )
+  const hydratedAttachments = safeAttachments.map((attachment) => ({
+    ...attachment,
+    url: resolvedUrls?.[attachment.storageId] ?? attachment.url ?? null,
+  }))
+  const imageAttachments = hydratedAttachments.filter(isImageAttachment)
+  const fileAttachments = hydratedAttachments.filter(
     (attachment) => !isImageAttachment(attachment)
   )
 
