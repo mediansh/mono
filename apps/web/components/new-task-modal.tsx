@@ -282,6 +282,14 @@ export function NewTaskModal({
     }
   }, [defaultStatus, open])
 
+  // Auto-resize description textarea to fit content
+  useEffect(() => {
+    const el = descriptionRef.current
+    if (!el) return
+    el.style.height = "auto"
+    el.style.height = `${el.scrollHeight}px`
+  }, [description])
+
   useEffect(() => {
     const currentPreviewUrls = attachments
       .map((attachment) => attachment.previewUrl)
@@ -745,15 +753,16 @@ export function NewTaskModal({
                         onKeyDown={handleTitleKeyDown}
                         placeholder="Task title"
                         autoFocus
-                        className="w-full bg-transparent text-[14px] font-medium outline-none placeholder:text-muted-foreground/50"
+                        className="w-full shrink-0 bg-transparent text-[14px] font-medium outline-none placeholder:text-muted-foreground/50"
                       />
                       <textarea
                         ref={descriptionRef}
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
                         placeholder="Add description..."
-                        rows={3}
-                        className="mt-1.5 w-full resize-none bg-transparent text-[13px] outline-none placeholder:text-muted-foreground/50"
+                        rows={1}
+                        className="mt-1.5 w-full shrink-0 resize-none overflow-hidden bg-transparent text-[13px] outline-none placeholder:text-muted-foreground/50"
+                        style={{ minHeight: "3.5rem" }}
                       />
 
                       {/* Attachments inside scroll area */}
@@ -761,7 +770,6 @@ export function NewTaskModal({
                         <div className="mt-3 rounded-[14px] border border-border/70 bg-accent/10 p-3">
                           <TaskAttachmentGallery
                             attachments={attachments}
-                            workspaceId={currentWorkspace?._id}
                             canManageAttachments
                             onAttachmentsChange={(nextAttachments) =>
                               setAttachments(
