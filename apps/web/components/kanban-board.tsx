@@ -3656,7 +3656,9 @@ export function KanbanBoard() {
         priority: updates.priority,
         labels: updates.labels,
         attachments: updates.attachments as TaskDoc["attachments"],
-        _syncStatus: undefined,
+        ...(updates.attachments !== undefined
+          ? { _syncStatus: undefined }
+          : {}),
       })
     )
 

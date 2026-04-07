@@ -741,80 +741,78 @@ export const listByWorkspace = query({
     const linearByTask = new Map(linearLinks.map((l) => [l.taskId, l]))
     const githubByTask = new Map(githubLinks.map((l) => [l.taskId, l]))
 
-    return await Promise.all(
-      tasks.map(async (task) => {
-        let base =
-          dedupeTaskSources(
-            task.sources?.length
-              ? [...task.sources]
-              : task.source
-                ? [task.source]
-                : []
-          ) ?? []
+    return tasks.map((task) => {
+      let base =
+        dedupeTaskSources(
+          task.sources?.length
+            ? [...task.sources]
+            : task.source
+              ? [task.source]
+              : []
+        ) ?? []
 
-        const linearLink = linearByTask.get(task._id)
-        if (linearLink) {
-          const canonicalLinearUrl = linearLink.linearIssueUrl?.trim()
-          const canonicalLinearSource = {
-            platform: "linear" as const,
-            url: canonicalLinearUrl ?? "",
-            author: linearLink.linearIssueIdentifier,
-          }
-
-          if (canonicalLinearUrl) {
-            base = base.filter(
-              (source) =>
-                !(
-                  source.platform === "linear" &&
-                  source.url.trim() === canonicalLinearUrl
-                )
-            )
-            base.push(canonicalLinearSource)
-          } else if (
-            !base.some(
-              (source) =>
-                source.platform === "linear" &&
-                source.author === linearLink.linearIssueIdentifier
-            )
-          ) {
-            base.push(canonicalLinearSource)
-          }
+      const linearLink = linearByTask.get(task._id)
+      if (linearLink) {
+        const canonicalLinearUrl = linearLink.linearIssueUrl?.trim()
+        const canonicalLinearSource = {
+          platform: "linear" as const,
+          url: canonicalLinearUrl ?? "",
+          author: linearLink.linearIssueIdentifier,
         }
 
-        const githubLink = githubByTask.get(task._id)
-        if (
-          githubLink &&
+        if (canonicalLinearUrl) {
+          base = base.filter(
+            (source) =>
+              !(
+                source.platform === "linear" &&
+                source.url.trim() === canonicalLinearUrl
+              )
+          )
+          base.push(canonicalLinearSource)
+        } else if (
           !base.some(
-            (s) =>
-              s.platform === "github" &&
-              s.url === githubLink.githubIssueUrl &&
-              s.author ===
-                `${githubLink.githubRepositoryFullName}#${githubLink.githubIssueNumber}`
+            (source) =>
+              source.platform === "linear" &&
+              source.author === linearLink.linearIssueIdentifier
           )
         ) {
-          base.push({
-            platform: "github" as const,
-            url: githubLink.githubIssueUrl,
-            author: `${githubLink.githubRepositoryFullName}#${githubLink.githubIssueNumber}`,
-          })
+          base.push(canonicalLinearSource)
         }
+      }
 
-        const sources = dedupeTaskSources(base)
-        const hasLinearSource = Boolean(
-          linearLink ||
-          sources?.some((source) => source.platform === "linear") ||
-          task.source?.platform === "linear"
+      const githubLink = githubByTask.get(task._id)
+      if (
+        githubLink &&
+        !base.some(
+          (s) =>
+            s.platform === "github" &&
+            s.url === githubLink.githubIssueUrl &&
+            s.author ===
+              `${githubLink.githubRepositoryFullName}#${githubLink.githubIssueNumber}`
         )
+      ) {
+        base.push({
+          platform: "github" as const,
+          url: githubLink.githubIssueUrl,
+          author: `${githubLink.githubRepositoryFullName}#${githubLink.githubIssueNumber}`,
+        })
+      }
 
-        return {
-          ...task,
-          title: hasLinearSource
-            ? stripLinearTitlePrefix(task.title)
-            : task.title,
-          sources,
-        }
-      })
-    )
+      const sources = dedupeTaskSources(base)
+      const hasLinearSource = Boolean(
+        linearLink ||
+        sources?.some((source) => source.platform === "linear") ||
+        task.source?.platform === "linear"
+      )
+
+      return {
+        ...task,
+        title: hasLinearSource
+          ? stripLinearTitlePrefix(task.title)
+          : task.title,
+        sources,
+      }
+    })
   },
 })
 
@@ -825,6 +823,13 @@ export const resolveAttachmentUrls = query({
   },
   handler: async (ctx, args) => {
     await requireWorkspaceAccess(ctx, args.workspaceId)
+    const requestedStorageIds = Array.from(
+      new Set(args.storageIds.map((storageId) => String(storageId)))
+    )
+    if (requestedStorageIds.length === 0) {
+      return {}
+    }
+
     const tasks = await getWorkspaceTasks(ctx, args.workspaceId)
     const allowedStorageIds = new Set(
       tasks.flatMap((task) =>
@@ -835,10 +840,10 @@ export const resolveAttachmentUrls = query({
     )
 
     const entries = await Promise.all(
-      args.storageIds.map(async (storageId) => ({
+      requestedStorageIds.map(async (storageId) => ({
         storageId,
-        url: allowedStorageIds.has(String(storageId))
-          ? await ctx.storage.getUrl(storageId)
+        url: allowedStorageIds.has(storageId)
+          ? await ctx.storage.getUrl(storageId as Id<"_storage">)
           : null,
       }))
     )
