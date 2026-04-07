@@ -483,7 +483,10 @@ export function NewTaskModal({
   useEffect(() => {
     if (!open) return
     function handleClick(e: MouseEvent) {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+      const target = e.target as Element
+      if (panelRef.current && !panelRef.current.contains(target)) {
+        // Ignore clicks inside Radix portals (dropdowns, popovers, etc.)
+        if (target.closest("[data-radix-popper-content-wrapper], [data-radix-portal]")) return
         onOpenChange(false)
         resetForm()
       }
