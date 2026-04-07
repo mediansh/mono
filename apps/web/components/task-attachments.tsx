@@ -1,12 +1,13 @@
 "use client"
 
-import { useQuery } from "convex/react"
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react"
+import { useConvex } from "convex/react"
 import { api } from "@/convex/_generated/api"
 
 export type TaskAttachment = {
@@ -220,25 +221,64 @@ export function TaskAttachmentGallery({
   canManageAttachments?: boolean
   onAttachmentsChange?: (attachments: TaskAttachment[]) => void
 }) {
-  if (!attachments || attachments.length === 0) {
+  const convex = useConvex()
+  const safeAttachments = attachments ?? []
+  const [resolvedUrls, setResolvedUrls] = useState<
+    Record<string, string | null | undefined>
+  >({})
+  const storageIds = useMemo(
+    () =>
+      workspaceId
+        ? Array.from(
+            new Set(safeAttachments.map((attachment) => attachment.storageId))
+          )
+        : [],
+    [safeAttachments, workspaceId]
+  )
+  const needsResolvedUrls = safeAttachments.some(
+    (attachment) => !attachment.url
+  )
+  const storageIdsKey = storageIds.join(":")
+
+  useEffect(() => {
+    if (!workspaceId || storageIds.length === 0 || !needsResolvedUrls) {
+      setResolvedUrls({})
+      return
+    }
+
+    let cancelled = false
+
+    async function hydrateAttachmentUrls() {
+      try {
+        const nextResolvedUrls = (await convex.query(
+          api.tasks.resolveAttachmentUrls,
+          { workspaceId: workspaceId as any, storageIds: storageIds as any }
+        )) as Record<string, string | null>
+
+        if (!cancelled) {
+          setResolvedUrls(nextResolvedUrls ?? {})
+        }
+      } catch {
+        if (!cancelled) {
+          setResolvedUrls({})
+        }
+      }
+    }
+
+    void hydrateAttachmentUrls()
+
+    return () => {
+      cancelled = true
+    }
+  }, [convex, needsResolvedUrls, storageIds, storageIdsKey, workspaceId])
+
+  if (safeAttachments.length === 0) {
     return null
   }
 
-  const safeAttachments = attachments
-  const storageIds = workspaceId
-    ? Array.from(
-        new Set(safeAttachments.map((attachment) => attachment.storageId))
-      )
-    : []
-  const resolvedUrls = useQuery(
-    api.tasks.resolveAttachmentUrls,
-    workspaceId && storageIds.length > 0
-      ? ({ workspaceId, storageIds } as any)
-      : "skip"
-  )
   const hydratedAttachments = safeAttachments.map((attachment) => ({
     ...attachment,
-    url: resolvedUrls?.[attachment.storageId] ?? attachment.url ?? null,
+    url: resolvedUrls[String(attachment.storageId)] ?? attachment.url ?? null,
   }))
   const imageAttachments = hydratedAttachments.filter(isImageAttachment)
   const fileAttachments = hydratedAttachments.filter(
