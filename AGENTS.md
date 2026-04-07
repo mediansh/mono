@@ -33,6 +33,40 @@ To create a new task:
 mdn create --title "Description" --status todo --priority medium --agent <your-agent-name>
 ```
 
+## Linear Integration
+
+Tasks and issues are tracked in Linear. A helper script is at `scripts/linear.sh`.
+
+**Setup** (one-time): Add your Linear API key to `.env.local`:
+```
+LINEAR_API_KEY=lin_api_xxxxxxxxxxxx
+```
+Get a key at: Linear → Settings → API → Personal API keys
+
+**Create a Linear issue** when starting new work:
+```bash
+./scripts/linear.sh create "Fix auth bug" "Description here" 3
+# priorities: 0=none 1=urgent 2=high 3=medium 4=low
+# prints the issue ID (e.g. ENG-42) — use it in commits
+```
+
+**Update issue status** as work progresses:
+```bash
+./scripts/linear.sh update ENG-42 in_progress   # when starting
+./scripts/linear.sh update ENG-42 done          # when complete
+```
+
+**List recent issues:**
+```bash
+./scripts/linear.sh list
+```
+
+**Workflow:**
+1. Before starting: create a Linear issue or pick up an existing one
+2. While working: update to `in_progress`
+3. After committing: update to `done`
+4. Include the Linear issue ID in commit messages (e.g. `ENG-42 fix: ...`)
+
 ## Commit Messages & Pull Requests
 
 Always include the Median task ID in commit messages and PR titles so tasks get marked automatically.
