@@ -1,7 +1,6 @@
 "use client"
 
 import { useQuery } from "convex/react"
-import { motion } from "motion/react"
 import {
   useEffect,
   useRef,
@@ -139,13 +138,7 @@ function AttachmentImageCard({
   }
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2, ease: "easeOut" }}
-      className="space-y-2"
-    >
+    <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-[12px] font-medium text-foreground/80">
           {attachment.name}
@@ -199,9 +192,9 @@ function AttachmentImageCard({
                   strokeLinejoin="round"
                   aria-hidden="true"
                 >
-                  <path d="M6 10 2.5 13.5" />
+                  <path d="M2.5 13.5 6 10" />
                   <path d="M2.5 10.5v3h3" />
-                  <path d="M10 6 13.5 2.5" />
+                  <path d="M13.5 2.5 10 6" />
                   <path d="M10.5 2.5h3v3" />
                 </svg>
               </button>
@@ -219,7 +212,7 @@ function AttachmentImageCard({
           </div>
         )}
       </div>
-    </motion.div>
+    </div>
   )
 }
 
