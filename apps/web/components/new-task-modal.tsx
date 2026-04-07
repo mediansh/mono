@@ -325,6 +325,23 @@ export function NewTaskModal({
     []
   )
 
+  const preserveAttachmentPreviews = useCallback(
+    (taskAttachments?: (TaskAttachment & { previewUrl?: string })[]) => {
+      taskAttachments?.forEach((attachment) => {
+        if (!attachment.previewUrl) {
+          return
+        }
+
+        cacheAttachmentPreview(
+          String(attachment.storageId),
+          attachment.previewUrl
+        )
+        preservedPreviewUrlsRef.current.add(attachment.previewUrl)
+      })
+    },
+    []
+  )
+
   const createTaskWithFallback = useCallback(
     async (payload: TaskDraftPayload) => {
       const attachmentsWithMetadata = sanitizeAttachmentsForMutation(
@@ -415,16 +432,6 @@ export function NewTaskModal({
           payload
         )) as Doc<"tasks">
 
-        payload.attachments?.forEach((attachment) => {
-          if (attachment.previewUrl) {
-            cacheAttachmentPreview(
-              String(attachment.storageId),
-              attachment.previewUrl
-            )
-            preservedPreviewUrlsRef.current.add(attachment.previewUrl)
-          }
-        })
-
         const hydratedTask = {
           ...createdTask,
           attachments: payload.attachments?.length
@@ -450,6 +457,7 @@ export function NewTaskModal({
     [
       createTaskWithFallback,
       currentWorkspace,
+      preserveAttachmentPreviews,
       user?.firstName,
       user?.fullName,
       user?.imageUrl,
@@ -473,6 +481,8 @@ export function NewTaskModal({
       labels,
       attachments,
     }
+
+    preserveAttachmentPreviews(payload.attachments)
 
     // Close immediately — optimistic insert happens inside createSingleTask
     if (createMore) {
