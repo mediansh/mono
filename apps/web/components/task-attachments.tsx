@@ -160,7 +160,7 @@ function AttachmentImageCard({
       <div className="w-full overflow-hidden rounded-[14px] border border-border/80 bg-accent/20">
         {attachment.url ? (
           <div
-            className="group relative"
+            className="group relative min-w-0"
             style={{
               width: `${displayWidth}px`,
               maxWidth: "100%",
@@ -169,7 +169,7 @@ function AttachmentImageCard({
             <img
               src={attachment.url}
               alt={attachment.name}
-              className="block h-auto w-full rounded-[14px] object-cover"
+              className="block h-auto w-full rounded-[14px] object-contain"
             />
             {canManageAttachments ? (
               <button

@@ -732,7 +732,7 @@ export function NewTaskModal({
                 </div>
               </div>
 
-              <div className="flex min-h-0 min-h-[240px] flex-1 flex-col">
+              <div className="flex min-h-0 flex-1 flex-col">
                 {activeTab === "manual" ? (
                   <>
                     {/* Body — scrollable */}
