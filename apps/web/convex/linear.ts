@@ -18,6 +18,7 @@ import { type TaskPriority, type TaskStatus } from "../lib/task-board"
 
 const LINEAR_GRAPHQL_URL = "https://api.linear.app/graphql"
 const LINEAR_MEDIAN_TITLE_PREFIX = "[MDN]"
+const LINEAR_MEDIAN_TITLE_PREFIX_REGEX = /^\[MDN\]\s*/
 const LINEAR_MAPPABLE_STATUSES: TaskStatus[] = [
   "requests",
   "todo",
@@ -100,28 +101,41 @@ const linearStatusMappingsValidator = v.object({
   archive: v.optional(v.string()),
 })
 
+function getCanonicalTaskSourceKey(source: {
+  platform: "discord" | "slack" | "x" | "linear" | "github" | "cli"
+  url: string
+  author: string
+}) {
+  const normalizedUrl = source.url.trim()
+  if (
+    normalizedUrl &&
+    (source.platform === "linear" || source.platform === "github")
+  ) {
+    return `${source.platform}:${normalizedUrl}`
+  }
+
+  return `${source.platform}:${normalizedUrl}:${source.author.trim()}`
+}
+
 function normalizeTitle(value: string) {
-  return value.trim().replace(/\s+/g, " ").toLowerCase()
+  return stripMedianTaskTitlePrefixFromLinear(value)
+    .replace(/\s+/g, " ")
+    .toLowerCase()
 }
 
 function formatMedianTaskTitleForLinear(title: string) {
-  const trimmed = title.trim()
-  if (!trimmed) return LINEAR_MEDIAN_TITLE_PREFIX
-  if (trimmed.startsWith(`${LINEAR_MEDIAN_TITLE_PREFIX} `)) {
-    return trimmed
-  }
-  if (trimmed === LINEAR_MEDIAN_TITLE_PREFIX) {
-    return trimmed
+  const stripped = stripMedianTaskTitlePrefixFromLinear(title)
+  if (!stripped) {
+    return LINEAR_MEDIAN_TITLE_PREFIX
   }
 
-  return `${LINEAR_MEDIAN_TITLE_PREFIX} ${trimmed}`
+  return `${LINEAR_MEDIAN_TITLE_PREFIX} ${stripped}`
 }
 
 function stripMedianTaskTitlePrefixFromLinear(title: string) {
   const trimmed = title.trim()
-  if (trimmed === LINEAR_MEDIAN_TITLE_PREFIX) return ""
-  if (trimmed.startsWith(`${LINEAR_MEDIAN_TITLE_PREFIX} `)) {
-    return trimmed.slice(LINEAR_MEDIAN_TITLE_PREFIX.length + 1).trim()
+  if (LINEAR_MEDIAN_TITLE_PREFIX_REGEX.test(trimmed)) {
+    return trimmed.replace(LINEAR_MEDIAN_TITLE_PREFIX_REGEX, "").trim()
   }
 
   return trimmed
@@ -159,7 +173,7 @@ function mergeTaskSources(
     ...(existingSources ?? []),
     ...(nextSource ? [nextSource] : []),
   ]) {
-    const key = `${source.platform}:${source.url}:${source.author}`
+    const key = getCanonicalTaskSourceKey(source)
     if (seen.has(key)) continue
     seen.add(key)
     merged.push(source)

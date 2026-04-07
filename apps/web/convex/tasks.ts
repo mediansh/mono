@@ -122,6 +122,8 @@ const TASK_PRIORITY_ORDER = {
   urgent: 4,
 } as const
 
+const LINEAR_MEDIAN_TITLE_PREFIX_REGEX = /^\[MDN\]\s*/
+
 function getWorkspaceLogSource(
   platform?: "discord" | "slack" | "x" | "linear" | "github" | "cli"
 ) {
@@ -138,6 +140,30 @@ function getWorkspaceLogSource(
   return "manual"
 }
 
+function getCanonicalTaskSourceKey(source: {
+  platform: "discord" | "slack" | "x" | "linear" | "github" | "cli"
+  url: string
+  author: string
+}) {
+  const normalizedUrl = source.url.trim()
+  if (
+    normalizedUrl &&
+    (source.platform === "linear" || source.platform === "github")
+  ) {
+    return `${source.platform}:${normalizedUrl}`
+  }
+
+  return `${source.platform}:${normalizedUrl}:${source.author.trim()}`
+}
+
+function getTaskSourceKey(source: {
+  platform: "discord" | "slack" | "x" | "linear" | "github" | "cli"
+  url: string
+  author: string
+}) {
+  return getCanonicalTaskSourceKey(source)
+}
+
 function dedupeTaskSources(
   sources:
     | Array<{
@@ -152,7 +178,7 @@ function dedupeTaskSources(
   const seen = new Set<string>()
 
   return sources.filter((source) => {
-    const key = `${source.platform}:${source.url}:${source.author}`
+    const key = getTaskSourceKey(source)
     if (seen.has(key)) {
       return false
     }
@@ -164,9 +190,8 @@ function dedupeTaskSources(
 
 function stripLinearTitlePrefix(title: string) {
   const trimmed = title.trim()
-  if (trimmed === "[MDN]") return ""
-  if (trimmed.startsWith("[MDN] ")) {
-    return trimmed.slice(6).trim()
+  if (LINEAR_MEDIAN_TITLE_PREFIX_REGEX.test(trimmed)) {
+    return trimmed.replace(LINEAR_MEDIAN_TITLE_PREFIX_REGEX, "").trim()
   }
 
   return title
@@ -711,7 +736,7 @@ export const listByWorkspace = query({
     const githubByTask = new Map(githubLinks.map((l) => [l.taskId, l]))
 
     return tasks.map((task) => {
-      const base =
+      let base =
         dedupeTaskSources(
           task.sources?.length
             ? [...task.sources]
@@ -721,20 +746,32 @@ export const listByWorkspace = query({
         ) ?? []
 
       const linearLink = linearByTask.get(task._id)
-      if (
-        linearLink &&
-        !base.some(
-          (s) =>
-            s.platform === "linear" &&
-            s.url === (linearLink.linearIssueUrl ?? "") &&
-            s.author === linearLink.linearIssueIdentifier
-        )
-      ) {
-        base.push({
+      if (linearLink) {
+        const canonicalLinearUrl = linearLink.linearIssueUrl?.trim()
+        const canonicalLinearSource = {
           platform: "linear" as const,
-          url: linearLink.linearIssueUrl ?? "",
+          url: canonicalLinearUrl ?? "",
           author: linearLink.linearIssueIdentifier,
-        })
+        }
+
+        if (canonicalLinearUrl) {
+          base = base.filter(
+            (source) =>
+              !(
+                source.platform === "linear" &&
+                source.url.trim() === canonicalLinearUrl
+              )
+          )
+          base.push(canonicalLinearSource)
+        } else if (
+          !base.some(
+            (source) =>
+              source.platform === "linear" &&
+              source.author === linearLink.linearIssueIdentifier
+          )
+        ) {
+          base.push(canonicalLinearSource)
+        }
       }
 
       const githubLink = githubByTask.get(task._id)
