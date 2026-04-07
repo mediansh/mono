@@ -863,23 +863,6 @@ export function NewTaskModal({
                                 )
                               }
                             />
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              {attachments.map((attachment, index) => (
-                                <button
-                                  key={`${attachment.storageId}-${index}`}
-                                  type="button"
-                                  onClick={() =>
-                                    setAttachments((prev) =>
-                                      prev.filter((_, idx) => idx !== index)
-                                    )
-                                  }
-                                  className="inline-flex items-center gap-1.5 rounded-[8px] border border-border bg-background px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                                >
-                                  <X size={10} />
-                                  Remove {attachment.name}
-                                </button>
-                              ))}
-                            </div>
                           </div>
                         )}
 

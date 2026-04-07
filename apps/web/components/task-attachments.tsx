@@ -19,12 +19,7 @@ export type TaskAttachment = {
   url?: string | null
 }
 
-const IMAGE_PRESET_WIDTHS = {
-  small: 320,
-  medium: 480,
-  large: 640,
-} as const
-
+const DEFAULT_IMAGE_WIDTH = 480
 const MIN_IMAGE_WIDTH = 240
 const MAX_IMAGE_WIDTH = 760
 
@@ -34,7 +29,7 @@ export function isImageAttachment(attachment: TaskAttachment) {
 
 export function getDefaultAttachmentDisplayWidth(naturalWidth?: number | null) {
   if (typeof naturalWidth !== "number" || !Number.isFinite(naturalWidth)) {
-    return IMAGE_PRESET_WIDTHS.medium
+    return DEFAULT_IMAGE_WIDTH
   }
 
   return clampAttachmentDisplayWidth(naturalWidth)
@@ -61,10 +56,12 @@ function AttachmentImageCard({
   attachment,
   canManageAttachments,
   onDisplayWidthChange,
+  onRemove,
 }: {
   attachment: TaskAttachment
   canManageAttachments: boolean
   onDisplayWidthChange?: (displayWidth: number) => void
+  onRemove?: () => void
 }) {
   const [displayWidth, setDisplayWidth] = useState(
     getAttachmentDisplayWidth(attachment)
@@ -88,14 +85,12 @@ function AttachmentImageCard({
     onDisplayWidthChange?.(normalized)
   }
 
-  function handlePreset(width: number) {
-    commitDisplayWidth(width)
-  }
-
   function handleResizeStart(event: ReactMouseEvent<HTMLButtonElement>) {
     if (!canManageAttachments) return
 
     event.preventDefault()
+    document.body.style.cursor = "nwse-resize"
+    document.body.style.userSelect = "none"
     dragStateRef.current = {
       startX: event.clientX,
       startWidth: displayWidth,
@@ -115,6 +110,8 @@ function AttachmentImageCard({
       dragStateRef.current = null
       window.removeEventListener("mousemove", handlePointerMove)
       window.removeEventListener("mouseup", handlePointerUp)
+      document.body.style.cursor = ""
+      document.body.style.userSelect = ""
 
       if (!dragState) return
       commitDisplayWidth(displayWidthRef.current)
@@ -123,10 +120,6 @@ function AttachmentImageCard({
     window.addEventListener("mousemove", handlePointerMove)
     window.addEventListener("mouseup", handlePointerUp)
   }
-
-  const activePreset = Object.entries(IMAGE_PRESET_WIDTHS).find(
-    ([, width]) => Math.abs(displayWidth - width) < 24
-  )?.[0]
 
   return (
     <motion.div
@@ -144,29 +137,20 @@ function AttachmentImageCard({
           {formatFileSize(attachment.size)}
         </span>
         {canManageAttachments ? (
-          <div className="ml-auto flex items-center gap-1 rounded-[10px] border border-border/70 bg-background/90 p-1">
-            {Object.entries(IMAGE_PRESET_WIDTHS).map(([preset, width]) => (
-              <button
-                key={preset}
-                type="button"
-                onClick={() => handlePreset(width)}
-                className={`rounded-[8px] px-2 py-1 text-[11px] font-medium capitalize transition-colors ${
-                  activePreset === preset
-                    ? "bg-accent text-foreground"
-                    : "text-muted-foreground hover:bg-accent/70 hover:text-foreground"
-                }`}
-              >
-                {preset}
-              </button>
-            ))}
-          </div>
+          <button
+            type="button"
+            onClick={onRemove}
+            className="ml-auto rounded-[8px] border border-border/80 bg-background px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            Remove
+          </button>
         ) : null}
       </div>
 
       <div className="w-full overflow-hidden rounded-[14px] border border-border/80 bg-accent/20">
         {attachment.url ? (
           <div
-            className="group relative transition-[width] duration-150 ease-out"
+            className="group relative transition-[width] duration-75 ease-out"
             style={{
               width: `${displayWidth}px`,
               maxWidth: "100%",
@@ -181,9 +165,13 @@ function AttachmentImageCard({
               <button
                 type="button"
                 onMouseDown={handleResizeStart}
-                className="absolute inset-y-6 right-2 hidden w-3 cursor-ew-resize rounded-full bg-background/85 ring-1 ring-border transition-opacity group-hover:block"
+                className="absolute right-2 bottom-2 flex size-6 cursor-nwse-resize items-center justify-center rounded-[8px] border border-border/80 bg-background/90 text-muted-foreground opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
                 aria-label={`Resize ${attachment.name}`}
-              />
+              >
+                <span className="pointer-events-none text-[14px] leading-none">
+                  ↘
+                </span>
+              </button>
             ) : null}
           </div>
         ) : (
@@ -231,6 +219,12 @@ export function TaskAttachmentGallery({
     )
   }
 
+  function handleRemove(storageId: string) {
+    onAttachmentsChange?.(
+      safeAttachments.filter((attachment) => attachment.storageId !== storageId)
+    )
+  }
+
   return (
     <div className="space-y-4">
       {imageAttachments.length > 0 ? (
@@ -246,6 +240,7 @@ export function TaskAttachmentGallery({
               onDisplayWidthChange={(displayWidth) =>
                 handleDisplayWidthChange(attachment.storageId, displayWidth)
               }
+              onRemove={() => handleRemove(attachment.storageId)}
             />
           ))}
         </div>
@@ -258,20 +253,33 @@ export function TaskAttachmentGallery({
           </span>
           <div className="flex flex-wrap gap-2">
             {fileAttachments.map((attachment) => (
-              <a
+              <div
                 key={attachment.storageId}
-                href={attachment.url ?? "#"}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-2 rounded-[10px] border border-border/80 bg-background px-3 py-2 text-[12px] transition-colors hover:bg-accent/40"
+                className="flex items-center gap-2 rounded-[10px] border border-border/80 bg-background px-3 py-2 text-[12px]"
               >
-                <span className="max-w-[220px] truncate font-medium text-foreground/85">
-                  {attachment.name}
-                </span>
-                <span className="text-muted-foreground">
-                  {formatFileSize(attachment.size)}
-                </span>
-              </a>
+                <a
+                  href={attachment.url ?? "#"}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="min-w-0 flex-1 transition-colors hover:text-foreground"
+                >
+                  <span className="block max-w-[220px] truncate font-medium text-foreground/85">
+                    {attachment.name}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {formatFileSize(attachment.size)}
+                  </span>
+                </a>
+                {canManageAttachments ? (
+                  <button
+                    type="button"
+                    onClick={() => handleRemove(attachment.storageId)}
+                    className="rounded-[8px] border border-border/80 bg-background px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  >
+                    Remove
+                  </button>
+                ) : null}
+              </div>
             ))}
           </div>
         </div>
