@@ -789,7 +789,7 @@ export function NewTaskModal({
                         }`}
                       >
                         <div
-                          className="absolute top-1 size-3 rounded-[4px] bg-white transition-transform duration-150"
+                          className={`absolute top-1 size-3 rounded-[4px] transition-transform duration-150 ${createMore ? "bg-primary-foreground" : "bg-white"}`}
                           style={{ transform: createMore ? "translateX(18px)" : "translateX(2px)" }}
                         />
                       </div>
