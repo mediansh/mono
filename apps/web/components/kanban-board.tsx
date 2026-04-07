@@ -1686,7 +1686,7 @@ function TaskDetailModal({
             </div>
 
             {/* Content */}
-            <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-3.5 pt-5 pb-6">
+            <div className="flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto px-3.5 pt-5 pb-6">
               {/* Title */}
               <DialogHeader>
                 <DialogTitle className="sr-only">{task.title}</DialogTitle>
@@ -1861,7 +1861,7 @@ function TaskDetailModal({
                     className={`-mx-2 rounded-[4px] px-2 py-1.5 text-[13px] leading-relaxed transition-colors ${canManageTasks ? "cursor-text hover:bg-accent/40" : ""}`}
                   >
                     {task.description ? (
-                      <span className="text-foreground/80">
+                      <span className="block break-words whitespace-pre-wrap text-foreground/80">
                         {task.description}
                       </span>
                     ) : (
