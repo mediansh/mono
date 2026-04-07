@@ -735,7 +735,7 @@ export function NewTaskModal({
               <div className="flex min-h-0 min-h-[240px] flex-1 flex-col">
                 {activeTab === "manual" ? (
                   <>
-                    {/* Body */}
+                    {/* Body — scrollable */}
                     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 pt-3 pb-1.5">
                       <input
                         ref={titleRef}
@@ -755,9 +755,27 @@ export function NewTaskModal({
                         rows={3}
                         className="mt-1.5 w-full resize-none bg-transparent text-[13px] outline-none placeholder:text-muted-foreground/50"
                       />
+
+                      {/* Attachments inside scroll area */}
+                      {attachments.length > 0 && (
+                        <div className="mt-3 rounded-[14px] border border-border/70 bg-accent/10 p-3">
+                          <TaskAttachmentGallery
+                            attachments={attachments}
+                            workspaceId={currentWorkspace?._id}
+                            canManageAttachments
+                            onAttachmentsChange={(nextAttachments) =>
+                              setAttachments(
+                                nextAttachments as (TaskAttachment & {
+                                  previewUrl?: string
+                                })[]
+                              )
+                            }
+                          />
+                        </div>
+                      )}
                     </div>
 
-                    {/* Footer */}
+                    {/* Footer — sticky */}
                     <div className="shrink-0 border-t border-border px-3 py-2">
                       <div className="flex flex-col gap-2">
                         {/* Toolbar pills */}
@@ -848,24 +866,6 @@ export function NewTaskModal({
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
-
-                        {/* Attachments */}
-                        {attachments.length > 0 && (
-                          <div className="rounded-[14px] border border-border/70 bg-accent/10 p-3">
-                            <TaskAttachmentGallery
-                              attachments={attachments}
-                              workspaceId={currentWorkspace?._id}
-                              canManageAttachments
-                              onAttachmentsChange={(nextAttachments) =>
-                                setAttachments(
-                                  nextAttachments as (TaskAttachment & {
-                                    previewUrl?: string
-                                  })[]
-                                )
-                              }
-                            />
-                          </div>
-                        )}
 
                         {/* Actions row */}
                         <div className="flex items-center justify-between">
