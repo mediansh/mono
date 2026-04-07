@@ -527,6 +527,9 @@ export default defineSchema({
           name: v.string(),
           type: v.string(),
           size: v.number(),
+          width: v.optional(v.number()),
+          height: v.optional(v.number()),
+          displayWidth: v.optional(v.number()),
         })
       )
     ),

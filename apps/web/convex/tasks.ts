@@ -34,6 +34,9 @@ const attachmentValidator = v.object({
   name: v.string(),
   type: v.string(),
   size: v.number(),
+  width: v.optional(v.number()),
+  height: v.optional(v.number()),
+  displayWidth: v.optional(v.number()),
 })
 
 const taskSourceValidator = v.object({
@@ -77,6 +80,9 @@ type CreateTaskInput = {
     name: string
     type: string
     size: number
+    width?: number
+    height?: number
+    displayWidth?: number
   }[]
 }
 
@@ -676,33 +682,48 @@ export const listByWorkspace = query({
     const linearByTask = new Map(linearLinks.map((l) => [l.taskId, l]))
     const githubByTask = new Map(githubLinks.map((l) => [l.taskId, l]))
 
-    return tasks.map((task) => {
-      const base = task.sources?.length
-        ? [...task.sources]
-        : task.source
-          ? [task.source]
-          : []
+    return await Promise.all(
+      tasks.map(async (task) => {
+        const base = task.sources?.length
+          ? [...task.sources]
+          : task.source
+            ? [task.source]
+            : []
 
-      const linearLink = linearByTask.get(task._id)
-      if (linearLink && !base.some((s) => s.platform === "linear")) {
-        base.push({
-          platform: "linear" as const,
-          url: linearLink.linearIssueUrl ?? "",
-          author: linearLink.linearIssueIdentifier,
-        })
-      }
+        const linearLink = linearByTask.get(task._id)
+        if (linearLink && !base.some((s) => s.platform === "linear")) {
+          base.push({
+            platform: "linear" as const,
+            url: linearLink.linearIssueUrl ?? "",
+            author: linearLink.linearIssueIdentifier,
+          })
+        }
 
-      const githubLink = githubByTask.get(task._id)
-      if (githubLink && !base.some((s) => s.platform === "github")) {
-        base.push({
-          platform: "github" as const,
-          url: githubLink.githubIssueUrl,
-          author: `${githubLink.githubRepositoryFullName}#${githubLink.githubIssueNumber}`,
-        })
-      }
+        const githubLink = githubByTask.get(task._id)
+        if (githubLink && !base.some((s) => s.platform === "github")) {
+          base.push({
+            platform: "github" as const,
+            url: githubLink.githubIssueUrl,
+            author: `${githubLink.githubRepositoryFullName}#${githubLink.githubIssueNumber}`,
+          })
+        }
 
-      return { ...task, sources: base.length > 0 ? base : undefined }
-    })
+        const attachments = task.attachments
+          ? await Promise.all(
+              task.attachments.map(async (attachment) => ({
+                ...attachment,
+                url: await ctx.storage.getUrl(attachment.storageId),
+              }))
+            )
+          : undefined
+
+        return {
+          ...task,
+          attachments,
+          sources: base.length > 0 ? base : undefined,
+        }
+      })
+    )
   },
 })
 
@@ -1088,6 +1109,7 @@ export const updateTask = mutation({
       )
     ),
     labels: v.optional(v.array(v.string())),
+    attachments: v.optional(v.array(attachmentValidator)),
   },
   handler: async (ctx, args) => {
     const task = await ctx.db.get(args.taskId)
@@ -1102,12 +1124,17 @@ export const updateTask = mutation({
     if (args.status !== undefined) updates.status = args.status
     if (args.priority !== undefined) updates.priority = args.priority
     if (args.labels !== undefined) updates.labels = args.labels
+    if (args.attachments !== undefined) {
+      updates.attachments =
+        args.attachments.length > 0 ? args.attachments : undefined
+    }
     if (
       args.title !== undefined ||
       args.description !== undefined ||
       args.status !== undefined ||
       args.priority !== undefined ||
-      args.labels !== undefined
+      args.labels !== undefined ||
+      args.attachments !== undefined
     ) {
       updates.updatedAt = Date.now()
     }
@@ -1136,7 +1163,8 @@ export const updateTask = mutation({
       args.title !== undefined ||
       args.description !== undefined ||
       args.priority !== undefined ||
-      args.labels !== undefined
+      args.labels !== undefined ||
+      args.attachments !== undefined
     ) {
       await logTaskUpdated(ctx, task)
     }
