@@ -1153,7 +1153,7 @@ function TaskContextMenu({
             {getStatusIcon(s, 14)}
             <span>{STATUS_LABELS[s]}</span>
             {task.status === s && (
-              <span className="ml-auto text-[12px] text-primary">✓</span>
+              <Check size={14} weight="bold" className="ml-auto text-primary" />
             )}
           </button>
         ))}
@@ -1177,7 +1177,7 @@ function TaskContextMenu({
             {getPriorityIcon(p, 14)}
             <span>{PRIORITY_LABELS[p]}</span>
             {task.priority === p && (
-              <span className="ml-auto text-[12px] text-primary">✓</span>
+              <Check size={14} weight="bold" className="ml-auto text-primary" />
             )}
           </button>
         ))}
@@ -1198,7 +1198,7 @@ function TaskContextMenu({
             />
             <span>{label}</span>
             {(task.labels ?? []).includes(label) && (
-              <span className="ml-auto text-[12px] text-primary">✓</span>
+              <Check size={14} weight="bold" className="ml-auto text-primary" />
             )}
           </button>
         ))}
@@ -1871,9 +1871,7 @@ function TaskDetailModal({
                           />
                           <span>{label}</span>
                           {(task.labels ?? []).includes(label) && (
-                            <span className="ml-auto text-[12px] text-primary">
-                              ✓
-                            </span>
+                            <Check size={14} weight="bold" className="ml-auto text-primary" />
                           )}
                         </div>
                       </DropdownMenuItem>
