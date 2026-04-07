@@ -1271,7 +1271,8 @@ export const updateTask = mutation({
       args.title !== undefined ||
       args.description !== undefined ||
       args.status !== undefined ||
-      args.priority !== undefined
+      args.priority !== undefined ||
+      args.labels !== undefined
     ) {
       await queueLinearSync(ctx, args.taskId)
       await queueGitHubSync(ctx, args.taskId)
@@ -1420,7 +1421,11 @@ export const bulkUpdateTasks = mutation({
         throw new Error("Task not found")
       }
       await ctx.db.patch(taskId, updates)
-      if (args.status !== undefined || args.priority !== undefined) {
+      if (
+        args.status !== undefined ||
+        args.priority !== undefined ||
+        args.labels !== undefined
+      ) {
         await queueLinearSync(ctx, taskId)
         await queueGitHubSync(ctx, taskId)
       }
