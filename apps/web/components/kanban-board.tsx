@@ -305,7 +305,12 @@ function patchTaskDocs(
   updates: Partial<
     Pick<
       TaskDoc,
-      "title" | "description" | "priority" | "labels" | "attachments"
+      | "title"
+      | "description"
+      | "priority"
+      | "labels"
+      | "attachments"
+      | "_syncStatus"
     >
   >
 ) {
@@ -321,12 +326,32 @@ function mergeLiveTaskDocs(
   currentTasks: TaskDoc[] | undefined,
   liveTasks: Doc<"tasks">[]
 ) {
+  const currentTasksById = new Map(
+    (currentTasks ?? []).map((task) => [task._id, task])
+  )
   const liveTaskIds = new Set(liveTasks.map((task) => String(task._id)))
   const pendingTasks = (currentTasks ?? []).filter(
     (task) => task._syncStatus === "pending" && !liveTaskIds.has(task._id)
   )
 
-  return sortTaskDocs([...liveTasks, ...pendingTasks])
+  const mergedLiveTasks = liveTasks.map((liveTask) => {
+    const currentTask = currentTasksById.get(String(liveTask._id))
+    if (
+      currentTask?._syncStatus === "error" &&
+      JSON.stringify(currentTask.attachments ?? null) !==
+        JSON.stringify((liveTask as TaskDoc).attachments ?? null)
+    ) {
+      return {
+        ...liveTask,
+        attachments: currentTask.attachments,
+        _syncStatus: "error" as const,
+      }
+    }
+
+    return liveTask
+  })
+
+  return sortTaskDocs([...mergedLiveTasks, ...pendingTasks])
 }
 
 function areTaskDocListsEqual(left: TaskDoc[] | undefined, right: TaskDoc[]) {
@@ -3557,6 +3582,7 @@ export function KanbanBoard() {
         priority: updates.priority,
         labels: updates.labels,
         attachments: updates.attachments as TaskDoc["attachments"],
+        _syncStatus: undefined,
       })
     )
 
@@ -3584,6 +3610,22 @@ export function KanbanBoard() {
       labels: updates.labels,
       attachments: nextAttachments,
     }).catch((error) => {
+      const isAttachmentUpdate = updates.attachments !== undefined
+      const shouldKeepLocalAttachmentState =
+        isAttachmentUpdate &&
+        error instanceof Error &&
+        error.message.includes("attachments")
+
+      if (shouldKeepLocalAttachmentState) {
+        updateWorkspaceTasks(workspaceId, (tasks) =>
+          patchTaskDocs(tasks, taskId, {
+            attachments: updates.attachments as TaskDoc["attachments"],
+            _syncStatus: "error",
+          })
+        )
+        return
+      }
+
       if (previousTask) {
         updateWorkspaceTasks(workspaceId, (tasks) =>
           tasks.map((task) => (task._id === taskId ? previousTask : task))
