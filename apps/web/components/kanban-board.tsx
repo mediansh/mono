@@ -1,6 +1,16 @@
 "use client"
 
-import { createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react"
+import {
+  createContext,
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+} from "react"
 import { createPortal } from "react-dom"
 import { AnimatePresence, motion } from "motion/react"
 import { useConvexAuth, useMutation, useQuery } from "convex/react"
@@ -88,7 +98,10 @@ import {
   type LocalTaskDoc as TaskDoc,
 } from "@/lib/local-first-store"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { LeftToRightListBulletIcon, DashboardSquare01Icon } from "@hugeicons/core-free-icons"
+import {
+  LeftToRightListBulletIcon,
+  DashboardSquare01Icon,
+} from "@hugeicons/core-free-icons"
 import { hasTaskWritePermission } from "@/lib/workspace-permissions"
 import { useSearchPaletteTaskEvent } from "@/components/search-palette"
 import {
@@ -119,7 +132,9 @@ const COLUMNS: { id: Status; label: string }[] = [
 ]
 
 // Label colors — built from workspace config
-function buildLabelColors(workspaceLabels?: { name: string; color: string }[]): Record<string, string> {
+function buildLabelColors(
+  workspaceLabels?: { name: string; color: string }[]
+): Record<string, string> {
   const labels = workspaceLabels ?? DEFAULT_WORKSPACE_LABELS
   const map: Record<string, string> = {}
   for (const l of labels) map[l.name] = l.color
@@ -131,10 +146,14 @@ const LabelConfigContext = createContext<LabelConfig>({
   names: DEFAULT_WORKSPACE_LABELS.map((l) => l.name),
   colors: buildLabelColors(),
 })
-function useLabelConfig() { return useContext(LabelConfigContext) }
+function useLabelConfig() {
+  return useContext(LabelConfigContext)
+}
 
 const BoardMountedContext = createContext(false)
-function useBoardMounted() { return useContext(BoardMountedContext) }
+function useBoardMounted() {
+  return useContext(BoardMountedContext)
+}
 
 const STATUS_LABELS = TASK_STATUS_LABELS
 
@@ -149,7 +168,9 @@ function getStatusIcon(status: Status, size = 14) {
     case "in_progress":
       return <SpinnerGap size={size} className="text-yellow-500" />
     case "ready":
-      return <SealCheck size={size} weight="fill" className="text-emerald-500" />
+      return (
+        <SealCheck size={size} weight="fill" className="text-emerald-500" />
+      )
     case "shipped":
       return <Rocket size={size} weight="fill" className="text-blue-500" />
     case "archive":
@@ -159,17 +180,22 @@ function getStatusIcon(status: Status, size = 14) {
 
 const AGENT_ICONS: Record<string, string> = {
   "claude-code": "⚡",
-  "codex": "🔮",
-  "cursor": "▸",
-  "copilot": "●",
-  "windsurf": "🏄",
-  "gemini": "♦",
-  "cline": "◆",
+  codex: "🔮",
+  cursor: "▸",
+  copilot: "●",
+  windsurf: "🏄",
+  gemini: "♦",
+  cline: "◆",
 }
 
 function getActiveAgent(task: Task): string | null {
   if (task.status !== "in_progress") return null
-  if (!task.source || task.source.platform !== "cli" || task.source.author === "cli") return null
+  if (
+    !task.source ||
+    task.source.platform !== "cli" ||
+    task.source.author === "cli"
+  )
+    return null
   return task.source.author
 }
 
@@ -184,7 +210,9 @@ function getColumnIcon(status: Status) {
 function getPriorityIcon(priority: Priority, size = 14) {
   switch (priority) {
     case "urgent":
-      return <WarningCircle size={size} weight="fill" className="text-red-500" />
+      return (
+        <WarningCircle size={size} weight="fill" className="text-red-500" />
+      )
     case "high":
       return <CellSignalFull size={size} className="text-orange-500" />
     case "medium":
@@ -217,7 +245,12 @@ function normalizeTaskOrders(tasks: TaskDoc[]) {
   })
 }
 
-function moveTaskDocs(tasks: TaskDoc[], taskId: string, toStatus: Status, toIndex: number) {
+function moveTaskDocs(
+  tasks: TaskDoc[],
+  taskId: string,
+  toStatus: Status,
+  toIndex: number
+) {
   const task = tasks.find((item) => item._id === taskId)
   if (!task) return tasks
 
@@ -235,7 +268,11 @@ function moveTaskDocs(tasks: TaskDoc[], taskId: string, toStatus: Status, toInde
   for (const column of COLUMNS) {
     if (column.id === toStatus) {
       for (const id of targetIds) {
-        result.push(id === task._id ? insertedTask : updated.find((item) => item._id === id)!)
+        result.push(
+          id === task._id
+            ? insertedTask
+            : updated.find((item) => item._id === id)!
+        )
       }
       continue
     }
@@ -253,15 +290,22 @@ function moveTaskDocs(tasks: TaskDoc[], taskId: string, toStatus: Status, toInde
 function patchTaskDocs(
   tasks: TaskDoc[],
   taskId: string,
-  updates: Partial<Pick<TaskDoc, "title" | "description" | "priority" | "labels">>
+  updates: Partial<
+    Pick<TaskDoc, "title" | "description" | "priority" | "labels">
+  >
 ) {
   const defined = Object.fromEntries(
     Object.entries(updates).filter(([, v]) => v !== undefined)
   )
-  return tasks.map((task) => (task._id === taskId ? { ...task, ...defined } : task))
+  return tasks.map((task) =>
+    task._id === taskId ? { ...task, ...defined } : task
+  )
 }
 
-function mergeLiveTaskDocs(currentTasks: TaskDoc[] | undefined, liveTasks: Doc<"tasks">[]) {
+function mergeLiveTaskDocs(
+  currentTasks: TaskDoc[] | undefined,
+  liveTasks: Doc<"tasks">[]
+) {
   const liveTaskIds = new Set(liveTasks.map((task) => String(task._id)))
   const pendingTasks = (currentTasks ?? []).filter(
     (task) => task._syncStatus === "pending" && !liveTaskIds.has(task._id)
@@ -291,10 +335,14 @@ function areTaskDocListsEqual(left: TaskDoc[] | undefined, right: TaskDoc[]) {
       current.project !== next.project ||
       current.createdAtLabel !== next.createdAtLabel ||
       current._syncStatus !== next._syncStatus ||
-      JSON.stringify(current.assignee ?? null) !== JSON.stringify(next.assignee ?? null) ||
-      JSON.stringify(current.source ?? null) !== JSON.stringify(next.source ?? null) ||
-      JSON.stringify(current.sources ?? null) !== JSON.stringify(next.sources ?? null) ||
-      JSON.stringify(current.attachments ?? null) !== JSON.stringify(next.attachments ?? null) ||
+      JSON.stringify(current.assignee ?? null) !==
+        JSON.stringify(next.assignee ?? null) ||
+      JSON.stringify(current.source ?? null) !==
+        JSON.stringify(next.source ?? null) ||
+      JSON.stringify(current.sources ?? null) !==
+        JSON.stringify(next.sources ?? null) ||
+      JSON.stringify(current.attachments ?? null) !==
+        JSON.stringify(next.attachments ?? null) ||
       JSON.stringify(current.labels) !== JSON.stringify(next.labels)
     ) {
       return false
@@ -324,12 +372,18 @@ function BoardLoadingState() {
   return (
     <div className="h-full overflow-hidden px-3 py-2">
       {SKELETON_GROUPS.map((group, gi) => (
-        <div key={gi} className="mb-1.5 overflow-hidden rounded-[4px] ring-1 ring-border">
+        <div
+          key={gi}
+          className="mb-1.5 overflow-hidden rounded-[4px] ring-1 ring-border"
+        >
           {/* Group header skeleton — matches ListGroup header */}
           <div className="flex items-center gap-2.5 bg-card px-3 py-1.5">
             <span className="text-[10px] text-muted-foreground/60">▼</span>
-            <div className="size-3.5 rounded-[4px] bg-muted/70 animate-pulse" />
-            <div className="h-3 rounded-[4px] bg-muted/70 animate-pulse" style={{ width: group.label.length * 8 }} />
+            <div className="size-3.5 animate-pulse rounded-[4px] bg-muted/70" />
+            <div
+              className="h-3 animate-pulse rounded-[4px] bg-muted/70"
+              style={{ width: group.label.length * 8 }}
+            />
             <div className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-muted px-1.5">
               <div className="h-2 w-2 rounded-[4px] bg-muted-foreground/20" />
             </div>
@@ -342,20 +396,20 @@ function BoardLoadingState() {
               className="flex items-center gap-3 border-b border-l-2 border-border border-l-transparent px-3 py-2"
             >
               {/* Priority icon placeholder */}
-              <div className="size-3.5 shrink-0 rounded-[4px] bg-muted/60 animate-pulse" />
+              <div className="size-3.5 shrink-0 animate-pulse rounded-[4px] bg-muted/60" />
               {/* Status icon placeholder */}
-              <div className="size-3.5 shrink-0 rounded-[4px] bg-muted/60 animate-pulse" />
+              <div className="size-3.5 shrink-0 animate-pulse rounded-[4px] bg-muted/60" />
               {/* Title placeholder */}
               <div
-                className="h-3 flex-1 rounded-[4px] bg-muted/60 animate-pulse"
+                className="h-3 flex-1 animate-pulse rounded-[4px] bg-muted/60"
                 style={{ maxWidth: titleWidth }}
               />
               {/* Label pill placeholder */}
               {ri % 2 === 0 && (
-                <div className="h-4 w-14 shrink-0 rounded-[4px] bg-muted/40 animate-pulse" />
+                <div className="h-4 w-14 shrink-0 animate-pulse rounded-[4px] bg-muted/40" />
               )}
               {/* Date placeholder */}
-              <div className="h-2.5 w-12 shrink-0 rounded-[4px] bg-muted/30 animate-pulse" />
+              <div className="h-2.5 w-12 shrink-0 animate-pulse rounded-[4px] bg-muted/30" />
             </div>
           ))}
         </div>
@@ -371,7 +425,7 @@ function EmptyBoardState({ onCreateTask }: { onCreateTask: () => void }) {
         initial={{ opacity: 0, y: 12, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
-        className="w-full max-w-sm rounded-[4px] ring-1 ring-border bg-card p-5 text-center"
+        className="w-full max-w-sm rounded-[4px] bg-card p-5 text-center ring-1 ring-border"
       >
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
@@ -381,9 +435,12 @@ function EmptyBoardState({ onCreateTask }: { onCreateTask: () => void }) {
         >
           <SealCheck size={22} weight="fill" />
         </motion.div>
-        <h2 className="text-pretty text-[14px] font-semibold tracking-tight">No tasks yet</h2>
+        <h2 className="text-[14px] font-semibold tracking-tight text-pretty">
+          No tasks yet
+        </h2>
         <p className="mt-2 text-[13px] leading-6 text-muted-foreground">
-          This workspace starts empty now. Create your first task and the board will fill in immediately.
+          This workspace starts empty now. Create your first task and the board
+          will fill in immediately.
         </p>
         <button
           onClick={onCreateTask}
@@ -411,8 +468,12 @@ function HiddenColumnsToolbar({
 
   if (hiddenColumns.length === 0) return null
 
-  const selectedCol = selectedColumn ? COLUMNS.find((c) => c.id === selectedColumn) : null
-  const selectedTasks = selectedColumn ? tasks.filter((t) => t.status === selectedColumn) : []
+  const selectedCol = selectedColumn
+    ? COLUMNS.find((c) => c.id === selectedColumn)
+    : null
+  const selectedTasks = selectedColumn
+    ? tasks.filter((t) => t.status === selectedColumn)
+    : []
 
   return (
     <>
@@ -426,7 +487,7 @@ function HiddenColumnsToolbar({
             <button
               key={status}
               onClick={() => setSelectedColumn(status)}
-              className="flex items-center gap-1.5 rounded-[4px] ring-1 ring-border bg-sidebar px-2 py-1 text-[12px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground dark:bg-card"
+              className="flex items-center gap-1.5 rounded-[4px] bg-sidebar px-2 py-1 text-[12px] text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground dark:bg-card"
             >
               {getStatusIcon(status, 12)}
               {col.label}
@@ -435,14 +496,24 @@ function HiddenColumnsToolbar({
         })}
       </div>
 
-      <Dialog open={selectedColumn !== null} onOpenChange={(open) => { if (!open) setSelectedColumn(null) }}>
-        <DialogContent showCloseButton={false} className="max-h-[80vh] max-w-lg overflow-hidden flex flex-col">
+      <Dialog
+        open={selectedColumn !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedColumn(null)
+        }}
+      >
+        <DialogContent
+          showCloseButton={false}
+          className="flex max-h-[80vh] max-w-lg flex-col overflow-hidden"
+        >
           <DialogHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {selectedColumn && getStatusIcon(selectedColumn, 16)}
                 <DialogTitle>{selectedCol?.label ?? ""}</DialogTitle>
-                <span className="text-[12px] text-muted-foreground">{selectedTasks.length} tasks</span>
+                <span className="text-[12px] text-muted-foreground">
+                  {selectedTasks.length} tasks
+                </span>
               </div>
               <button
                 onClick={() => {
@@ -451,7 +522,7 @@ function HiddenColumnsToolbar({
                     setSelectedColumn(null)
                   }
                 }}
-                className="flex items-center gap-1.5 rounded-[4px] ring-1 ring-border px-2.5 py-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[12px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground"
               >
                 <Eye size={13} />
                 Show column
@@ -468,7 +539,7 @@ function HiddenColumnsToolbar({
                 {selectedTasks.map((task, index) => (
                   <div
                     key={task.id}
-                    className={`flex items-center gap-3 border-b border-l-2 border-border px-3 py-2 transition-colors hover:bg-accent/40 last:border-b-0 ${PRIORITY_ACCENT[task.priority]}`}
+                    className={`flex items-center gap-3 border-b border-l-2 border-border px-3 py-2 transition-colors last:border-b-0 hover:bg-accent/40 ${PRIORITY_ACCENT[task.priority]}`}
                   >
                     <ListRowContent task={task} />
                   </div>
@@ -492,7 +563,10 @@ const PRIORITY_ACCENT: Record<Priority, string> = {
 }
 
 // ── Platform source config ──
-const SOURCE_CONFIG: Record<RequestSource, { label: string; color: string; bg: string }> = {
+const SOURCE_CONFIG: Record<
+  RequestSource,
+  { label: string; color: string; bg: string }
+> = {
   discord: { label: "Discord", color: "#5865F2", bg: "#5865F218" },
   github: { label: "GitHub", color: "#111827", bg: "#11182718" },
   linear: { label: "Linear", color: "#5E6AD2", bg: "#5E6AD218" },
@@ -501,42 +575,97 @@ const SOURCE_CONFIG: Record<RequestSource, { label: string; color: string; bg: s
   cli: { label: "CLI", color: "#22c55e", bg: "#22c55e18" },
 }
 
-function SourceIcon({ platform, size = 14 }: { platform: RequestSource; size?: number }) {
+function getTaskSources(task: Pick<Task, "source" | "sources">) {
+  const sources = task.sources?.length
+    ? task.sources
+    : task.source
+      ? [task.source]
+      : []
+  const seen = new Set<string>()
+
+  return sources.filter((source) => {
+    const key = `${source.platform}:${source.url}:${source.author}`
+    if (seen.has(key)) {
+      return false
+    }
+
+    seen.add(key)
+    return true
+  })
+}
+
+function SourceIcon({
+  platform,
+  size = 14,
+}: {
+  platform: RequestSource
+  size?: number
+}) {
   const s = size
   if (platform === "discord") {
     return (
       <svg width={s} height={s} viewBox="0 0 24 24" fill="#5865F2">
-        <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.947 2.418-2.157 2.418z"/>
+        <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.947 2.418-2.157 2.418z" />
       </svg>
     )
   }
   if (platform === "slack") {
     return (
       <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
-        <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313z" fill="#E01E5A"/>
-        <path d="M8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312z" fill="#36C5F0"/>
-        <path d="M18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zm-1.27 0a2.528 2.528 0 0 1-2.522 2.521 2.528 2.528 0 0 1-2.52-2.521V2.522A2.528 2.528 0 0 1 15.165 0a2.528 2.528 0 0 1 2.521 2.522v6.312z" fill="#2EB67D"/>
-        <path d="M15.165 18.956a2.528 2.528 0 0 1 2.521 2.522A2.528 2.528 0 0 1 15.165 24a2.528 2.528 0 0 1-2.52-2.522v-2.522h2.52zm0-1.27a2.528 2.528 0 0 1-2.52-2.522 2.528 2.528 0 0 1 2.52-2.52h6.313A2.528 2.528 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.521h-6.313z" fill="#ECB22E"/>
+        <path
+          d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313z"
+          fill="#E01E5A"
+        />
+        <path
+          d="M8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312z"
+          fill="#36C5F0"
+        />
+        <path
+          d="M18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zm-1.27 0a2.528 2.528 0 0 1-2.522 2.521 2.528 2.528 0 0 1-2.52-2.521V2.522A2.528 2.528 0 0 1 15.165 0a2.528 2.528 0 0 1 2.521 2.522v6.312z"
+          fill="#2EB67D"
+        />
+        <path
+          d="M15.165 18.956a2.528 2.528 0 0 1 2.521 2.522A2.528 2.528 0 0 1 15.165 24a2.528 2.528 0 0 1-2.52-2.522v-2.522h2.52zm0-1.27a2.528 2.528 0 0 1-2.52-2.522 2.528 2.528 0 0 1 2.52-2.52h6.313A2.528 2.528 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.521h-6.313z"
+          fill="#ECB22E"
+        />
       </svg>
     )
   }
   if (platform === "linear") {
     return (
       <svg width={s} height={s} viewBox="0 0 100 100" fill="none">
-        <path fill="#5E6AD2" d="M1.225 61.523c-.222-.949.908-1.546 1.597-.857l36.512 36.512c.69.69.092 1.82-.857 1.597-18.425-4.323-32.93-18.827-37.252-37.252ZM.002 46.889a.99.99 0 0 0 .29.76L52.35 99.71c.201.2.478.307.76.29 2.37-.149 4.695-.46 6.963-.927.765-.157 1.03-1.096.478-1.648L2.576 39.448c-.552-.551-1.491-.286-1.648.479a50.067 50.067 0 0 0-.926 6.962ZM4.21 29.705a.988.988 0 0 0 .208 1.1l64.776 64.776c.289.29.726.375 1.1.208a49.908 49.908 0 0 0 5.185-2.684.981.981 0 0 0 .183-1.54L8.436 24.336a.981.981 0 0 0-1.541.183 49.896 49.896 0 0 0-2.684 5.185Zm8.448-11.631a.986.986 0 0 1-.045-1.354C21.78 6.46 35.111 0 49.952 0 77.592 0 100 22.407 100 50.048c0 14.84-6.46 28.172-16.72 37.338a.986.986 0 0 1-1.354-.045L12.659 18.074Z" />
+        <path
+          fill="#5E6AD2"
+          d="M1.225 61.523c-.222-.949.908-1.546 1.597-.857l36.512 36.512c.69.69.092 1.82-.857 1.597-18.425-4.323-32.93-18.827-37.252-37.252ZM.002 46.889a.99.99 0 0 0 .29.76L52.35 99.71c.201.2.478.307.76.29 2.37-.149 4.695-.46 6.963-.927.765-.157 1.03-1.096.478-1.648L2.576 39.448c-.552-.551-1.491-.286-1.648.479a50.067 50.067 0 0 0-.926 6.962ZM4.21 29.705a.988.988 0 0 0 .208 1.1l64.776 64.776c.289.29.726.375 1.1.208a49.908 49.908 0 0 0 5.185-2.684.981.981 0 0 0 .183-1.54L8.436 24.336a.981.981 0 0 0-1.541.183 49.896 49.896 0 0 0-2.684 5.185Zm8.448-11.631a.986.986 0 0 1-.045-1.354C21.78 6.46 35.111 0 49.952 0 77.592 0 100 22.407 100 50.048c0 14.84-6.46 28.172-16.72 37.338a.986.986 0 0 1-1.354-.045L12.659 18.074Z"
+        />
       </svg>
     )
   }
   if (platform === "github") {
     return (
-      <svg width={s} height={s} viewBox="0 0 24 24" fill="currentColor" className="text-foreground">
-        <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
+      <svg
+        width={s}
+        height={s}
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        className="text-foreground"
+      >
+        <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
       </svg>
     )
   }
   if (platform === "cli") {
     return (
-      <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width={s}
+        height={s}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#22c55e"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <polyline points="4 17 10 11 4 5" />
         <line x1="12" y1="19" x2="20" y2="19" />
       </svg>
@@ -544,8 +673,14 @@ function SourceIcon({ platform, size = 14 }: { platform: RequestSource; size?: n
   }
   // X (Twitter)
   return (
-    <svg width={s} height={s} viewBox="0 0 24 24" fill="currentColor" className="text-foreground">
-      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+    <svg
+      width={s}
+      height={s}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="text-foreground"
+    >
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
     </svg>
   )
 }
@@ -567,7 +702,7 @@ const RequestRow = memo(function RequestRow({
   onSelect: (task: Task) => void
   canManageTasks: boolean
 }) {
-  const sources = task.sources?.length ? task.sources : task.source ? [task.source] : []
+  const sources = getTaskSources(task)
   const { colors: labelColors } = useLabelConfig()
 
   if (dismissed) {
@@ -575,7 +710,10 @@ const RequestRow = memo(function RequestRow({
   }
 
   return (
-    <div onClick={() => onSelect(task)} className="cursor-pointer rounded-[4px] ring-1 ring-border bg-background p-3 transition-colors hover:border-border/80 hover:bg-accent/20 dark:bg-card">
+    <div
+      onClick={() => onSelect(task)}
+      className="cursor-pointer rounded-[4px] bg-background p-3 ring-1 ring-border transition-colors hover:border-border/80 hover:bg-accent/20 dark:bg-card"
+    >
       {/* Top row: source + date */}
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -584,12 +722,12 @@ const RequestRow = memo(function RequestRow({
               const config = SOURCE_CONFIG[source.platform]
               return source.url ? (
                 <a
-                  key={`${source.platform}-${source.author}`}
+                  key={`${source.platform}-${source.url}-${source.author}`}
                   href={source.url}
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
-                  className="flex items-center gap-1.5 rounded-[4px] py-0.5 pl-1.5 pr-2.5 text-[10px] font-medium transition-opacity hover:opacity-80"
+                  className="flex items-center gap-1.5 rounded-[4px] py-0.5 pr-2.5 pl-1.5 text-[10px] font-medium transition-opacity hover:opacity-80"
                   style={{ backgroundColor: config.bg, color: config.color }}
                   title={`View on ${config.label}`}
                 >
@@ -599,8 +737,8 @@ const RequestRow = memo(function RequestRow({
                 </a>
               ) : (
                 <span
-                  key={`${source.platform}-${source.author}`}
-                  className="flex items-center gap-1.5 rounded-[4px] py-0.5 pl-1.5 pr-2.5 text-[10px] font-medium"
+                  key={`${source.platform}-${source.url}-${source.author}`}
+                  className="flex items-center gap-1.5 rounded-[4px] py-0.5 pr-2.5 pl-1.5 text-[10px] font-medium"
                   style={{ backgroundColor: config.bg, color: config.color }}
                 >
                   <SourceIcon platform={source.platform} size={12} />
@@ -609,7 +747,9 @@ const RequestRow = memo(function RequestRow({
               )
             })
           ) : (
-            <span className="text-[11px] text-muted-foreground/60">Request</span>
+            <span className="text-[11px] text-muted-foreground/60">
+              Request
+            </span>
           )}
           {(task.labels ?? []).map((label) => (
             <span
@@ -624,13 +764,13 @@ const RequestRow = memo(function RequestRow({
             </span>
           ))}
         </div>
-        <span className="text-[11px] text-muted-foreground/50">{task.createdAt}</span>
+        <span className="text-[11px] text-muted-foreground/50">
+          {task.createdAt}
+        </span>
       </div>
 
       {/* Title */}
-      <p
-        className="mb-3 text-[13px] font-medium leading-snug text-foreground/90"
-      >
+      <p className="mb-3 text-[13px] leading-snug font-medium text-foreground/90">
         {task.title}
       </p>
 
@@ -638,7 +778,10 @@ const RequestRow = memo(function RequestRow({
       <div className="flex items-center gap-2">
         <button
           disabled={!canManageTasks}
-          onClick={(e) => { e.stopPropagation(); onAccept(task) }}
+          onClick={(e) => {
+            e.stopPropagation()
+            onAccept(task)
+          }}
           className="flex items-center gap-1.5 rounded-[4px] border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
         >
           <CheckCircle size={12} weight="fill" />
@@ -646,7 +789,10 @@ const RequestRow = memo(function RequestRow({
         </button>
         <button
           disabled={!canManageTasks}
-          onClick={(e) => { e.stopPropagation(); onDeny(task) }}
+          onClick={(e) => {
+            e.stopPropagation()
+            onDeny(task)
+          }}
           className="flex items-center gap-1.5 rounded-[4px] border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-[11px] font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
         >
           <XCircle size={12} />
@@ -696,15 +842,21 @@ function RequestsGroup({
     })
   }, [tasks]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleAccept = useCallback((task: Task) => {
-    setDismissedIds((prev) => new Set(prev).add(task.id))
-    onAccept(task)
-  }, [onAccept])
+  const handleAccept = useCallback(
+    (task: Task) => {
+      setDismissedIds((prev) => new Set(prev).add(task.id))
+      onAccept(task)
+    },
+    [onAccept]
+  )
 
-  const handleDeny = useCallback((task: Task) => {
-    setDismissedIds((prev) => new Set(prev).add(task.id))
-    onDeny(task)
-  }, [onDeny])
+  const handleDeny = useCallback(
+    (task: Task) => {
+      setDismissedIds((prev) => new Set(prev).add(task.id))
+      onDeny(task)
+    },
+    [onDeny]
+  )
 
   const hasMore = tasks.length > REQUESTS_PREVIEW_LIMIT
   const visibleTasks = showAll ? tasks : tasks.slice(0, REQUESTS_PREVIEW_LIMIT)
@@ -724,55 +876,66 @@ function RequestsGroup({
       >
         <span
           className="text-[10px] text-muted-foreground/60"
-          style={{ display: "inline-block", transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)" }}
+          style={{
+            display: "inline-block",
+            transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)",
+          }}
         >
           ▼
         </span>
         {getColumnIcon("requests")}
-        <span className="text-[13px] font-semibold tracking-tight">Requests</span>
-        <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">{tasks.length}</span>
-        <span className="ml-1 text-[11px] text-muted-foreground/50">from users</span>
+        <span className="text-[13px] font-semibold tracking-tight">
+          Requests
+        </span>
+        <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
+          {tasks.length}
+        </span>
+        <span className="ml-1 text-[11px] text-muted-foreground/50">
+          from users
+        </span>
       </button>
 
       {/* Cards — no drag, no sortable context */}
       {!collapsed && (
-          <div>
-            <div className="grid grid-cols-1 gap-2 px-3 py-3 sm:grid-cols-2 lg:grid-cols-3">
-              {visibleTasks.map((task) => (
-                <RequestRow
-                  key={task.id}
-                  task={task}
-                  dismissed={dismissedIds.has(task.id)}
-                  canManageTasks={canManageTasks}
-                  onAccept={handleAccept}
-                  onDeny={handleDeny}
-                  onSelect={onSelectTask}
-                />
-              ))}
-            </div>
-            {hasMore && !showAll && (
-              <div className="px-3 pb-3">
-                <button
-                  onClick={() => setShowAll(true)}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-[4px] ring-1 ring-border ring-dashed py-2 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground"
-                >
-                  View all requests
-                  <span className="rounded-[4px] bg-muted px-1.5 py-0.5 text-[10px]">{hiddenCount} more</span>
-                </button>
-              </div>
-            )}
-            {hasMore && showAll && (
-              <div className="px-3 pb-3">
-                <button
-                  onClick={() => setShowAll(false)}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-[4px] ring-1 ring-border ring-dashed py-2 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground"
-                >
-                  Show fewer
-                </button>
-              </div>
-            )}
+        <div>
+          <div className="grid grid-cols-1 gap-2 px-3 py-3 sm:grid-cols-2 lg:grid-cols-3">
+            {visibleTasks.map((task) => (
+              <RequestRow
+                key={task.id}
+                task={task}
+                dismissed={dismissedIds.has(task.id)}
+                canManageTasks={canManageTasks}
+                onAccept={handleAccept}
+                onDeny={handleDeny}
+                onSelect={onSelectTask}
+              />
+            ))}
           </div>
-        )}
+          {hasMore && !showAll && (
+            <div className="px-3 pb-3">
+              <button
+                onClick={() => setShowAll(true)}
+                className="ring-dashed flex w-full items-center justify-center gap-1.5 rounded-[4px] py-2 text-[12px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent/40 hover:text-foreground"
+              >
+                View all requests
+                <span className="rounded-[4px] bg-muted px-1.5 py-0.5 text-[10px]">
+                  {hiddenCount} more
+                </span>
+              </button>
+            </div>
+          )}
+          {hasMore && showAll && (
+            <div className="px-3 pb-3">
+              <button
+                onClick={() => setShowAll(false)}
+                className="ring-dashed flex w-full items-center justify-center gap-1.5 rounded-[4px] py-2 text-[12px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent/40 hover:text-foreground"
+              >
+                Show fewer
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </motion.div>
   )
 }
@@ -804,17 +967,25 @@ function ContextSubmenu({
       onMouseEnter={handleEnter}
       onMouseLeave={handleLeave}
     >
-      <button
-        className="flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-accent"
-      >
+      <button className="flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-accent">
         {icon}
         <span>{label}</span>
-        <svg className="ml-auto size-3.5 text-muted-foreground" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 4l4 4-4 4" /></svg>
+        <svg
+          className="ml-auto size-3.5 text-muted-foreground"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M6 4l4 4-4 4" />
+        </svg>
       </button>
       {open && (
         <div
           ref={submenuRef}
-          className="absolute left-full top-0 z-[101] ml-1 min-w-[180px] rounded-[4px] p-1 text-popover-foreground bg-popover shadow-none ring-1 ring-border"
+          className="absolute top-0 left-full z-[101] ml-1 min-w-[180px] rounded-[4px] bg-popover p-1 text-popover-foreground shadow-none ring-1 ring-border"
         >
           {children}
         </div>
@@ -868,7 +1039,7 @@ function TaskContextMenu({
   return createPortal(
     <div
       ref={menuRef}
-      className="fixed z-[100] min-w-[200px] rounded-[4px] p-1 text-popover-foreground bg-popover shadow-none ring-1 ring-border"
+      className="fixed z-[100] min-w-[200px] rounded-[4px] bg-popover p-1 text-popover-foreground shadow-none ring-1 ring-border"
       style={{ top: position.y, left: position.x }}
     >
       {!canManageTasks ? (
@@ -883,28 +1054,41 @@ function TaskContextMenu({
           <button
             key={s}
             disabled={!canManageTasks}
-            onClick={() => { onUpdate(task.id, { status: s }); onClose() }}
+            onClick={() => {
+              onUpdate(task.id, { status: s })
+              onClose()
+            }}
             className={`flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-accent ${task.status === s ? "font-medium" : ""}`}
           >
             {getStatusIcon(s, 14)}
             <span>{STATUS_LABELS[s]}</span>
-            {task.status === s && <span className="ml-auto text-[12px] text-primary">✓</span>}
+            {task.status === s && (
+              <span className="ml-auto text-[12px] text-primary">✓</span>
+            )}
           </button>
         ))}
       </ContextSubmenu>
 
       {/* Priority submenu */}
-      <ContextSubmenu label="Priority" icon={getPriorityIcon(task.priority, 14)}>
+      <ContextSubmenu
+        label="Priority"
+        icon={getPriorityIcon(task.priority, 14)}
+      >
         {ALL_PRIORITIES.map((p) => (
           <button
             key={p}
             disabled={!canManageTasks}
-            onClick={() => { onUpdate(task.id, { priority: p }); onClose() }}
+            onClick={() => {
+              onUpdate(task.id, { priority: p })
+              onClose()
+            }}
             className={`flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-accent ${task.priority === p ? "font-medium" : ""}`}
           >
             {getPriorityIcon(p, 14)}
             <span>{PRIORITY_LABELS[p]}</span>
-            {task.priority === p && <span className="ml-auto text-[12px] text-primary">✓</span>}
+            {task.priority === p && (
+              <span className="ml-auto text-[12px] text-primary">✓</span>
+            )}
           </button>
         ))}
       </ContextSubmenu>
@@ -923,7 +1107,9 @@ function TaskContextMenu({
               style={{ backgroundColor: labelConfig.colors[label] ?? "#888" }}
             />
             <span>{label}</span>
-            {(task.labels ?? []).includes(label) && <span className="ml-auto text-[12px] text-primary">✓</span>}
+            {(task.labels ?? []).includes(label) && (
+              <span className="ml-auto text-[12px] text-primary">✓</span>
+            )}
           </button>
         ))}
       </ContextSubmenu>
@@ -933,7 +1119,10 @@ function TaskContextMenu({
       {/* Delete */}
       <button
         disabled={!canManageTasks}
-        onClick={() => { onDelete(task.id); onClose() }}
+        onClick={() => {
+          onDelete(task.id)
+          onClose()
+        }}
         className="flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] text-destructive transition-colors hover:bg-destructive/10"
       >
         <Trash size={14} />
@@ -946,7 +1135,11 @@ function TaskContextMenu({
 
 // ── List View Components ──
 
-const AgentBadge = memo(function AgentBadge({ agentName }: { agentName: string }) {
+const AgentBadge = memo(function AgentBadge({
+  agentName,
+}: {
+  agentName: string
+}) {
   return (
     <span className="flex shrink-0 items-center gap-1 rounded-[4px] border border-yellow-500/25 bg-yellow-500/10 px-1.5 py-0.5 text-[10px] font-medium text-yellow-500">
       <SpinnerGap size={10} className="animate-spin" />
@@ -961,10 +1154,14 @@ const ListRowContent = memo(function ListRowContent({ task }: { task: Task }) {
   const activeAgent = getActiveAgent(task)
   return (
     <>
-      <span className="hidden w-14 shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground/50 sm:inline">{task.taskCode}</span>
+      <span className="hidden w-14 shrink-0 font-mono text-[11px] text-muted-foreground/50 tabular-nums sm:inline">
+        {task.taskCode}
+      </span>
       <div className="shrink-0">{getPriorityIcon(task.priority)}</div>
       <div className="shrink-0">{getStatusIcon(task.status)}</div>
-      <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground/90">{task.title}</span>
+      <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground/90">
+        {task.title}
+      </span>
       <div className="hidden shrink-0 items-center gap-1.5 sm:flex">
         {activeAgent && <AgentBadge agentName={activeAgent} />}
         {(task.labels ?? []).map((label) => (
@@ -979,7 +1176,9 @@ const ListRowContent = memo(function ListRowContent({ task }: { task: Task }) {
             {label}
           </span>
         ))}
-        <span className="ml-1 text-[11px] text-muted-foreground/60">{task.createdAt}</span>
+        <span className="ml-1 text-[11px] text-muted-foreground/60">
+          {task.createdAt}
+        </span>
       </div>
     </>
   )
@@ -1010,20 +1209,18 @@ const SortableListRow = memo(function SortableListRow({
   onUpdate: (taskId: string, updates: Partial<Task>) => void
   onDelete: (taskId: string) => void
 }) {
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
+  const [contextMenu, setContextMenu] = useState<{
+    x: number
+    y: number
+  } | null>(null)
   const boardMounted = useBoardMounted()
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    isDragging,
-  } = useSortable({
-    id: task.id,
-    data: { type: "task", task },
-    transition: SORTABLE_TRANSITION,
-    disabled: !canManageTasks,
-  })
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useSortable({
+      id: task.id,
+      data: { type: "task", task },
+      transition: SORTABLE_TRANSITION,
+      disabled: !canManageTasks,
+    })
 
   const [hasAnimated, setHasAnimated] = useState(boardMounted)
   const rowDelay = groupDelay + Math.min(rowIndex, 8) * 0.02
@@ -1031,27 +1228,35 @@ const SortableListRow = memo(function SortableListRow({
     transform: CSS.Transform.toString(transform),
     opacity: isDragging || isDraggedAway ? 0.3 : undefined,
     willChange: transform ? "transform" : undefined,
-    ...(!hasAnimated ? { animation: `kanban-row-in 0.25s ease-out ${rowDelay}s both` } : {}),
+    ...(!hasAnimated
+      ? { animation: `kanban-row-in 0.25s ease-out ${rowDelay}s both` }
+      : {}),
   }
 
-  const handleClick = useCallback((e: ReactMouseEvent) => {
-    if (hasSelection) {
-      e.preventDefault()
-      onToggleSelect(task.id, e.shiftKey)
-      return
-    }
-    onSelect(task)
-  }, [onSelect, onToggleSelect, task, hasSelection])
+  const handleClick = useCallback(
+    (e: ReactMouseEvent) => {
+      if (hasSelection) {
+        e.preventDefault()
+        onToggleSelect(task.id, e.shiftKey)
+        return
+      }
+      onSelect(task)
+    },
+    [onSelect, onToggleSelect, task, hasSelection]
+  )
 
   const handleContextMenu = useCallback((e: ReactMouseEvent) => {
     e.preventDefault()
     setContextMenu({ x: e.clientX, y: e.clientY })
   }, [])
 
-  const handleCheckboxClick = useCallback((e: ReactMouseEvent) => {
-    e.stopPropagation()
-    onToggleSelect(task.id, e.shiftKey)
-  }, [onToggleSelect, task.id])
+  const handleCheckboxClick = useCallback(
+    (e: ReactMouseEvent) => {
+      e.stopPropagation()
+      onToggleSelect(task.id, e.shiftKey)
+    },
+    [onToggleSelect, task.id]
+  )
 
   return (
     <>
@@ -1063,7 +1268,7 @@ const SortableListRow = memo(function SortableListRow({
         onClick={handleClick}
         onContextMenu={handleContextMenu}
         onAnimationEnd={() => setHasAnimated(true)}
-        className={`group flex cursor-pointer touch-none items-center gap-3 border-b border-l-2 border-border px-3 py-2 select-none transition-all duration-150 hover:bg-accent/40 ${PRIORITY_ACCENT[task.priority]} ${isSelected ? "bg-primary/[0.06] hover:bg-primary/[0.10]" : "bg-background"}`}
+        className={`group flex cursor-pointer touch-none items-center gap-3 border-b border-l-2 border-border px-3 py-2 transition-all duration-150 select-none hover:bg-accent/40 ${PRIORITY_ACCENT[task.priority]} ${isSelected ? "bg-primary/[0.06] hover:bg-primary/[0.10]" : "bg-background"}`}
       >
         {/* Checkbox */}
         <div
@@ -1092,29 +1297,39 @@ const SortableListRow = memo(function SortableListRow({
   )
 })
 
-function DragOverlayCard({ task, dragCount }: { task: Task; dragCount: number }) {
+function DragOverlayCard({
+  task,
+  dragCount,
+}: {
+  task: Task
+  dragCount: number
+}) {
   const { colors: labelColors } = useLabelConfig()
   const activeAgent = getActiveAgent(task)
   return (
     <div className="relative">
       {dragCount > 1 && (
         <>
-          <div className="absolute inset-0 translate-x-1 translate-y-1 rounded-[4px] ring-1 ring-border bg-muted" />
+          <div className="absolute inset-0 translate-x-1 translate-y-1 rounded-[4px] bg-muted ring-1 ring-border" />
           {dragCount > 2 && (
-            <div className="absolute inset-0 translate-x-2 translate-y-2 rounded-[4px] ring-1 ring-border bg-muted/60" />
+            <div className="absolute inset-0 translate-x-2 translate-y-2 rounded-[4px] bg-muted/60 ring-1 ring-border" />
           )}
         </>
       )}
-      <div className="relative w-[240px] rounded-[4px] ring-2 ring-primary/40 bg-background p-2.5 shadow-lg dark:bg-card">
+      <div className="relative w-[240px] rounded-[4px] bg-background p-2.5 shadow-lg ring-2 ring-primary/40 dark:bg-card">
         <div className="mb-1.5 flex items-center justify-between">
-          <span className="font-mono text-[10px] tabular-nums text-muted-foreground/50">{task.taskCode}</span>
+          <span className="font-mono text-[10px] text-muted-foreground/50 tabular-nums">
+            {task.taskCode}
+          </span>
           {dragCount > 1 && (
             <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
               {dragCount}
             </span>
           )}
         </div>
-        <p className="mb-2 line-clamp-2 text-[13px] font-medium leading-snug text-foreground/90">{task.title}</p>
+        <p className="mb-2 line-clamp-2 text-[13px] leading-snug font-medium text-foreground/90">
+          {task.title}
+        </p>
         <div className="flex flex-wrap items-center gap-1.5">
           <div className="shrink-0">{getPriorityIcon(task.priority, 12)}</div>
           {activeAgent && <AgentBadge agentName={activeAgent} />}
@@ -1130,14 +1345,22 @@ function DragOverlayCard({ task, dragCount }: { task: Task; dragCount: number })
               {label}
             </span>
           ))}
-          <span className="ml-auto text-[10px] text-muted-foreground/50">{task.createdAt}</span>
+          <span className="ml-auto text-[10px] text-muted-foreground/50">
+            {task.createdAt}
+          </span>
         </div>
       </div>
     </div>
   )
 }
 
-function DragOverlayListRow({ task, dragCount }: { task: Task; dragCount: number }) {
+function DragOverlayListRow({
+  task,
+  dragCount,
+}: {
+  task: Task
+  dragCount: number
+}) {
   return (
     <div className="relative">
       {/* Stacked cards behind for multi-drag */}
@@ -1208,7 +1431,11 @@ function ListGroup({
       animate={{ opacity: 1 }}
       transition={{ duration: 0.25, delay: groupIndex * 0.04, ease: "easeOut" }}
       className="mb-1.5 overflow-hidden rounded-[4px] ring-1 ring-border"
-      style={isDropTarget ? { outline: "2px solid var(--primary)", outlineOffset: "-2px" } : undefined}
+      style={
+        isDropTarget
+          ? { outline: "2px solid var(--primary)", outlineOffset: "-2px" }
+          : undefined
+      }
     >
       {/* Group header */}
       <button
@@ -1217,27 +1444,50 @@ function ListGroup({
       >
         <span
           className="text-[10px] text-muted-foreground/60"
-          style={{ display: "inline-block", transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)" }}
+          style={{
+            display: "inline-block",
+            transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)",
+          }}
         >
           ▼
         </span>
         {getColumnIcon(column.id)}
-        <span className="text-[13px] font-semibold tracking-tight">{column.label}</span>
-        <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">{tasks.length}</span>
+        <span className="text-[13px] font-semibold tracking-tight">
+          {column.label}
+        </span>
+        <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
+          {tasks.length}
+        </span>
       </button>
 
       {/* Rows */}
       {!collapsed && (
-          <div>
-            <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
-              {tasks.length === 0 ? null : (
-                tasks.map((task, rowIndex) => (
-                  <SortableListRow key={task.id} task={task} rowIndex={rowIndex} groupDelay={groupIndex * 0.04} isSelected={selectedTaskIds.has(task.id)} hasSelection={hasSelection} isDraggedAway={draggedTaskIds.has(task.id)} canManageTasks={canManageTasks} onSelect={onSelectTask} onToggleSelect={onToggleSelectTask} onUpdate={onUpdateTask} onDelete={onDeleteTask} />
-                ))
-              )}
-            </SortableContext>
-          </div>
-        )}
+        <div>
+          <SortableContext
+            items={taskIds}
+            strategy={verticalListSortingStrategy}
+          >
+            {tasks.length === 0
+              ? null
+              : tasks.map((task, rowIndex) => (
+                  <SortableListRow
+                    key={task.id}
+                    task={task}
+                    rowIndex={rowIndex}
+                    groupDelay={groupIndex * 0.04}
+                    isSelected={selectedTaskIds.has(task.id)}
+                    hasSelection={hasSelection}
+                    isDraggedAway={draggedTaskIds.has(task.id)}
+                    canManageTasks={canManageTasks}
+                    onSelect={onSelectTask}
+                    onToggleSelect={onToggleSelectTask}
+                    onUpdate={onUpdateTask}
+                    onDelete={onDeleteTask}
+                  />
+                ))}
+          </SortableContext>
+        </div>
+      )}
     </motion.div>
   )
 }
@@ -1245,7 +1495,13 @@ function ListGroup({
 // ── Task Detail Modal ──
 
 // "requests" excluded — requests are user-submitted and managed via accept/deny only
-const ALL_STATUSES: Status[] = ["todo", "in_progress", "ready", "shipped", "archive"]
+const ALL_STATUSES: Status[] = [
+  "todo",
+  "in_progress",
+  "ready",
+  "shipped",
+  "archive",
+]
 const ALL_PRIORITIES: Priority[] = ["urgent", "high", "medium", "low", "none"]
 // ALL_LABELS is now dynamic from workspace config via LabelConfigContext
 
@@ -1303,30 +1559,52 @@ function TaskDetailModal({
   }
 
   return (
-    <Dialog open={task !== null} onOpenChange={(open) => { if (!open) { setEditingTitle(false); setEditingDesc(false); onClose() } }}>
-      <DialogContent showCloseButton={false} className="max-h-[85vh] max-w-xl overflow-hidden p-0">
+    <Dialog
+      open={task !== null}
+      onOpenChange={(open) => {
+        if (!open) {
+          setEditingTitle(false)
+          setEditingDesc(false)
+          onClose()
+        }
+      }}
+    >
+      <DialogContent
+        showCloseButton={false}
+        className="max-h-[85vh] max-w-xl overflow-hidden p-0"
+      >
         {task && (
           <div className="flex flex-col">
             {/* Top bar */}
             <div className="flex items-center justify-between gap-2 border-b border-border px-3.5 py-3">
               <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
-                <span className="font-mono text-[12px] font-medium text-muted-foreground">{task.taskCode}</span>
+                <span className="font-mono text-[12px] font-medium text-muted-foreground">
+                  {task.taskCode}
+                </span>
                 <span className="text-muted-foreground/30">·</span>
-                <span className="text-[12px] text-muted-foreground/60">{task.createdAt}</span>
+                <span className="text-[12px] text-muted-foreground/60">
+                  {task.createdAt}
+                </span>
                 {(() => {
-                  const taskSources = task.sources?.length ? task.sources : task.source ? [task.source] : []
+                  const taskSources = getTaskSources(task)
                   return taskSources.map((src) => {
                     const cfg = SOURCE_CONFIG[src.platform]
                     return (
-                      <span key={`${src.platform}-${src.author}`} className="contents">
+                      <span
+                        key={`${src.platform}-${src.url}-${src.author}`}
+                        className="contents"
+                      >
                         <span className="text-muted-foreground/30">·</span>
                         {src.url ? (
                           <a
                             href={src.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-1.5 rounded-[4px] py-0.5 pl-1.5 pr-2.5 text-[10px] font-medium transition-opacity hover:opacity-80"
-                            style={{ backgroundColor: cfg.bg, color: cfg.color }}
+                            className="flex items-center gap-1.5 rounded-[4px] py-0.5 pr-2.5 pl-1.5 text-[10px] font-medium transition-opacity hover:opacity-80"
+                            style={{
+                              backgroundColor: cfg.bg,
+                              color: cfg.color,
+                            }}
                           >
                             <SourceIcon platform={src.platform} size={11} />
                             <span>{src.author}</span>
@@ -1334,8 +1612,11 @@ function TaskDetailModal({
                           </a>
                         ) : (
                           <span
-                            className="flex items-center gap-1.5 rounded-[4px] py-0.5 pl-1.5 pr-2.5 text-[10px] font-medium"
-                            style={{ backgroundColor: cfg.bg, color: cfg.color }}
+                            className="flex items-center gap-1.5 rounded-[4px] py-0.5 pr-2.5 pl-1.5 text-[10px] font-medium"
+                            style={{
+                              backgroundColor: cfg.bg,
+                              color: cfg.color,
+                            }}
                           >
                             <SourceIcon platform={src.platform} size={11} />
                             <span>{src.author}</span>
@@ -1375,8 +1656,14 @@ function TaskDetailModal({
                     value={titleValue}
                     onChange={(e) => setTitleValue(e.target.value)}
                     onBlur={handleTitleSave}
-                    onKeyDown={(e) => { if (e.key === "Enter") handleTitleSave(); if (e.key === "Escape") { setTitleValue(task.title); setEditingTitle(false) } }}
-                    className="w-full rounded-[4px] ring-1 ring-border bg-transparent px-1 py-0.5 text-[14px] font-semibold leading-snug tracking-tight outline-none focus:ring-1 focus:ring-primary"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleTitleSave()
+                      if (e.key === "Escape") {
+                        setTitleValue(task.title)
+                        setEditingTitle(false)
+                      }
+                    }}
+                    className="w-full rounded-[4px] bg-transparent px-1 py-0.5 text-[14px] leading-snug font-semibold tracking-tight ring-1 ring-border outline-none focus:ring-1 focus:ring-primary"
                   />
                 ) : (
                   <h2
@@ -1385,7 +1672,7 @@ function TaskDetailModal({
                       setTitleValue(task.title)
                       setEditingTitle(true)
                     }}
-                    className={`-mx-1 rounded-[4px] px-1 py-0.5 text-[14px] font-semibold leading-snug tracking-tight transition-colors ${canManageTasks ? "cursor-text hover:bg-accent/50" : ""}`}
+                    className={`-mx-1 rounded-[4px] px-1 py-0.5 text-[14px] leading-snug font-semibold tracking-tight transition-colors ${canManageTasks ? "cursor-text hover:bg-accent/50" : ""}`}
                   >
                     {task.title}
                   </h2>
@@ -1398,7 +1685,7 @@ function TaskDetailModal({
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     disabled={!canManageTasks}
-                    className="flex items-center gap-1.5 rounded-[4px] ring-1 ring-border bg-background px-2.5 py-1.5 text-[12px] font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex items-center gap-1.5 rounded-[4px] bg-background px-2.5 py-1.5 text-[12px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {getStatusIcon(task.status, 13)}
                     <span>{STATUS_LABELS[task.status]}</span>
@@ -1423,7 +1710,7 @@ function TaskDetailModal({
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     disabled={!canManageTasks}
-                    className="flex items-center gap-1.5 rounded-[4px] ring-1 ring-border bg-background px-2.5 py-1.5 text-[12px] font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex items-center gap-1.5 rounded-[4px] bg-background px-2.5 py-1.5 text-[12px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {getPriorityIcon(task.priority, 13)}
                     <span>{PRIORITY_LABELS[task.priority]}</span>
@@ -1448,7 +1735,7 @@ function TaskDetailModal({
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     disabled={!canManageTasks}
-                    className="flex items-center gap-1.5 rounded-[4px] ring-1 ring-border bg-background px-2.5 py-1.5 text-[12px] font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex items-center gap-1.5 rounded-[4px] bg-background px-2.5 py-1.5 text-[12px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {(task.labels ?? []).length > 0 ? (
                       <div className="flex items-center gap-1.5">
@@ -1457,11 +1744,18 @@ function TaskDetailModal({
                             <div
                               key={label}
                               className="size-2.5 rounded-[4px] ring-1 ring-background"
-                              style={{ backgroundColor: labelConfig.colors[label] ?? "#888" }}
+                              style={{
+                                backgroundColor:
+                                  labelConfig.colors[label] ?? "#888",
+                              }}
                             />
                           ))}
                         </div>
-                        <span>{(task.labels ?? []).length === 1 ? (task.labels ?? [])[0] : `${(task.labels ?? []).length} labels`}</span>
+                        <span>
+                          {(task.labels ?? []).length === 1
+                            ? (task.labels ?? [])[0]
+                            : `${(task.labels ?? []).length} labels`}
+                        </span>
                       </div>
                     ) : (
                       <span className="text-muted-foreground">Add label</span>
@@ -1476,11 +1770,16 @@ function TaskDetailModal({
                         <div className="flex w-full items-center gap-2 capitalize">
                           <div
                             className="size-2.5 rounded-[4px]"
-                            style={{ backgroundColor: labelConfig.colors[label] ?? "#888" }}
+                            style={{
+                              backgroundColor:
+                                labelConfig.colors[label] ?? "#888",
+                            }}
                           />
                           <span>{label}</span>
                           {(task.labels ?? []).includes(label) && (
-                            <span className="ml-auto text-[12px] text-primary">✓</span>
+                            <span className="ml-auto text-[12px] text-primary">
+                              ✓
+                            </span>
                           )}
                         </div>
                       </DropdownMenuItem>
@@ -1494,16 +1793,23 @@ function TaskDetailModal({
 
               {/* Description */}
               <div>
-                <span className="mb-2 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">Description</span>
+                <span className="mb-2 block text-[11px] font-medium tracking-wider text-muted-foreground/70 uppercase">
+                  Description
+                </span>
                 {editingDesc ? (
                   <textarea
                     autoFocus
                     value={descValue}
                     onChange={(e) => setDescValue(e.target.value)}
                     onBlur={handleDescSave}
-                    onKeyDown={(e) => { if (e.key === "Escape") { setDescValue(task.description ?? ""); setEditingDesc(false) } }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") {
+                        setDescValue(task.description ?? "")
+                        setEditingDesc(false)
+                      }
+                    }}
                     placeholder="Write something..."
-                    className="min-h-[100px] w-full resize-none rounded-[4px] ring-1 ring-border bg-transparent px-2 py-1.5 text-[13px] leading-relaxed outline-none focus:ring-1 focus:ring-primary"
+                    className="min-h-[100px] w-full resize-none rounded-[4px] bg-transparent px-2 py-1.5 text-[13px] leading-relaxed ring-1 ring-border outline-none focus:ring-1 focus:ring-primary"
                   />
                 ) : (
                   <div
@@ -1515,9 +1821,13 @@ function TaskDetailModal({
                     className={`-mx-2 rounded-[4px] px-2 py-1.5 text-[13px] leading-relaxed transition-colors ${canManageTasks ? "cursor-text hover:bg-accent/40" : ""}`}
                   >
                     {task.description ? (
-                      <span className="text-foreground/80">{task.description}</span>
+                      <span className="text-foreground/80">
+                        {task.description}
+                      </span>
                     ) : (
-                      <span className="text-muted-foreground/50">Write something...</span>
+                      <span className="text-muted-foreground/50">
+                        Write something...
+                      </span>
                     )}
                   </div>
                 )}
@@ -1530,7 +1840,10 @@ function TaskDetailModal({
                   <div className="flex items-center gap-2">
                     <button
                       disabled={!canManageTasks}
-                      onClick={() => { onAccept(task); onClose() }}
+                      onClick={() => {
+                        onAccept(task)
+                        onClose()
+                      }}
                       className="flex items-center gap-1.5 rounded-[4px] border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[12px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
                     >
                       <CheckCircle size={14} weight="fill" />
@@ -1538,7 +1851,10 @@ function TaskDetailModal({
                     </button>
                     <button
                       disabled={!canManageTasks}
-                      onClick={() => { onDeny(task); onClose() }}
+                      onClick={() => {
+                        onDeny(task)
+                        onClose()
+                      }}
                       className="flex items-center gap-1.5 rounded-[4px] border border-red-500/30 bg-red-500/10 px-3 py-2 text-[12px] font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
                     >
                       <XCircle size={14} />
@@ -1575,12 +1891,12 @@ function BulkActionToolbar({
   const labelConfig = useLabelConfig()
 
   return createPortal(
-    <div
-      className="fixed bottom-6 left-1/2 z-50 flex w-[calc(100%-2rem)] max-w-fit -translate-x-1/2 items-center gap-1.5 overflow-x-auto rounded-[4px] border-2 border-border bg-popover px-3 py-2 shadow-none scrollbar-hide"
-    >
+    <div className="fixed bottom-6 left-1/2 z-50 scrollbar-hide flex w-[calc(100%-2rem)] max-w-fit -translate-x-1/2 items-center gap-1.5 overflow-x-auto rounded-[4px] border-2 border-border bg-popover px-3 py-2 shadow-none">
       {/* Selection count & clear */}
-      <div className="flex items-center gap-2 pr-2 border-r border-border mr-1">
-        <span className="text-[12px] font-semibold tabular-nums text-foreground">{selectedCount} selected</span>
+      <div className="mr-1 flex items-center gap-2 border-r border-border pr-2">
+        <span className="text-[12px] font-semibold text-foreground tabular-nums">
+          {selectedCount} selected
+        </span>
         <button
           onClick={onClearSelection}
           className="rounded-[4px] p-0.5 text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
@@ -1634,11 +1950,16 @@ function BulkActionToolbar({
         </DropdownMenuTrigger>
         <DropdownMenuContent side="top" align="center">
           {labelConfig.names.map((label) => (
-            <DropdownMenuItem key={label} onClick={() => onChangeLabels([label])}>
+            <DropdownMenuItem
+              key={label}
+              onClick={() => onChangeLabels([label])}
+            >
               <div className="flex items-center gap-2 capitalize">
                 <div
                   className="size-2.5 rounded-[4px]"
-                  style={{ backgroundColor: labelConfig.colors[label] ?? "#888" }}
+                  style={{
+                    backgroundColor: labelConfig.colors[label] ?? "#888",
+                  }}
                 />
                 <span>{label}</span>
               </div>
@@ -1699,20 +2020,18 @@ const KanbanCard = memo(function KanbanCard({
 }) {
   const { colors: labelColors } = useLabelConfig()
   const boardMounted = useBoardMounted()
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
+  const [contextMenu, setContextMenu] = useState<{
+    x: number
+    y: number
+  } | null>(null)
   const activeAgent = getActiveAgent(task)
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    isDragging,
-  } = useSortable({
-    id: task.id,
-    data: { type: "task", task },
-    transition: SORTABLE_TRANSITION,
-    disabled: !canManageTasks,
-  })
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useSortable({
+      id: task.id,
+      data: { type: "task", task },
+      transition: SORTABLE_TRANSITION,
+      disabled: !canManageTasks,
+    })
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -1720,24 +2039,30 @@ const KanbanCard = memo(function KanbanCard({
     willChange: transform ? "transform" : undefined,
   }
 
-  const handleClick = useCallback((e: ReactMouseEvent) => {
-    if (hasSelection) {
-      e.preventDefault()
-      onToggleSelect(task.id, e.shiftKey)
-      return
-    }
-    onSelect(task)
-  }, [onSelect, onToggleSelect, task, hasSelection])
+  const handleClick = useCallback(
+    (e: ReactMouseEvent) => {
+      if (hasSelection) {
+        e.preventDefault()
+        onToggleSelect(task.id, e.shiftKey)
+        return
+      }
+      onSelect(task)
+    },
+    [onSelect, onToggleSelect, task, hasSelection]
+  )
 
   const handleContextMenu = useCallback((e: ReactMouseEvent) => {
     e.preventDefault()
     setContextMenu({ x: e.clientX, y: e.clientY })
   }, [])
 
-  const handleCheckboxClick = useCallback((e: ReactMouseEvent) => {
-    e.stopPropagation()
-    onToggleSelect(task.id, e.shiftKey)
-  }, [onToggleSelect, task.id])
+  const handleCheckboxClick = useCallback(
+    (e: ReactMouseEvent) => {
+      e.stopPropagation()
+      onToggleSelect(task.id, e.shiftKey)
+    },
+    [onToggleSelect, task.id]
+  )
 
   // Stagger: column delay + per-card delay (cap at 8 cards to avoid long waits)
   const staggerDelay = columnIndex * 0.06 + Math.min(cardIndex, 8) * 0.03
@@ -1749,18 +2074,28 @@ const KanbanCard = memo(function KanbanCard({
         style={style}
         initial={boardMounted ? false : { opacity: 0, y: 8, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={boardMounted ? { duration: 0 } : { duration: 0.25, delay: staggerDelay, ease: [0.25, 0.1, 0.25, 1] }}
+        transition={
+          boardMounted
+            ? { duration: 0 }
+            : {
+                duration: 0.25,
+                delay: staggerDelay,
+                ease: [0.25, 0.1, 0.25, 1],
+              }
+        }
         layout
         layoutId={`kanban-card-${task.id}`}
         {...attributes}
         {...listeners}
         onClick={handleClick}
         onContextMenu={handleContextMenu}
-        className={`group cursor-pointer touch-none rounded-[4px] ring-1 ring-border bg-background p-2.5 select-none transition-colors duration-150 hover:bg-accent/20 dark:bg-card ${isSelected ? "ring-2 ring-primary/40 bg-primary/[0.06]" : ""}`}
+        className={`group cursor-pointer touch-none rounded-[4px] bg-background p-2.5 ring-1 ring-border transition-colors duration-150 select-none hover:bg-accent/20 dark:bg-card ${isSelected ? "bg-primary/[0.06] ring-2 ring-primary/40" : ""}`}
       >
         {/* Top: task code + checkbox */}
         <div className="mb-1.5 flex items-center justify-between">
-          <span className="font-mono text-[10px] tabular-nums text-muted-foreground/50">{task.taskCode}</span>
+          <span className="font-mono text-[10px] text-muted-foreground/50 tabular-nums">
+            {task.taskCode}
+          </span>
           <div
             onClick={handleCheckboxClick}
             className={`flex size-3.5 shrink-0 items-center justify-center rounded border transition-all ${
@@ -1774,7 +2109,9 @@ const KanbanCard = memo(function KanbanCard({
         </div>
 
         {/* Title */}
-        <p className="mb-2 line-clamp-2 text-[13px] font-medium leading-snug text-foreground/90">{task.title}</p>
+        <p className="mb-2 line-clamp-2 text-[13px] leading-snug font-medium text-foreground/90">
+          {task.title}
+        </p>
 
         {/* Bottom: priority + labels + agent + date */}
         <div className="flex flex-wrap items-center gap-1.5">
@@ -1792,7 +2129,9 @@ const KanbanCard = memo(function KanbanCard({
               {label}
             </span>
           ))}
-          <span className="ml-auto text-[10px] text-muted-foreground/50">{task.createdAt}</span>
+          <span className="ml-auto text-[10px] text-muted-foreground/50">
+            {task.createdAt}
+          </span>
         </div>
       </motion.div>
       {contextMenu && (
@@ -1851,13 +2190,19 @@ function KanbanColumn({
       ref={setNodeRef}
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: columnIndex * 0.06, ease: [0.25, 0.1, 0.25, 1] }}
-      className={`flex h-full w-[260px] shrink-0 flex-col overflow-hidden rounded-[4px] ring-1 ring-border transition-shadow duration-200 ${isDropTarget ? "ring-2 ring-primary bg-primary/[0.03]" : ""}`}
+      transition={{
+        duration: 0.3,
+        delay: columnIndex * 0.06,
+        ease: [0.25, 0.1, 0.25, 1],
+      }}
+      className={`flex h-full w-[260px] shrink-0 flex-col overflow-hidden rounded-[4px] ring-1 ring-border transition-shadow duration-200 ${isDropTarget ? "bg-primary/[0.03] ring-2 ring-primary" : ""}`}
     >
       {/* Column header */}
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-card dark:bg-card shadow-[inset_0_-1px_0_var(--border)]">
+      <div className="flex items-center gap-2 bg-card px-3 py-1.5 shadow-[inset_0_-1px_0_var(--border)] dark:bg-card">
         {getColumnIcon(column.id)}
-        <span className="text-[13px] font-semibold tracking-tight">{column.label}</span>
+        <span className="text-[13px] font-semibold tracking-tight">
+          {column.label}
+        </span>
         <motion.span
           key={tasks.length}
           initial={{ scale: 0.8 }}
@@ -1870,7 +2215,10 @@ function KanbanColumn({
       </div>
 
       {/* Cards */}
-      <div data-column-scroll className="flex-1 overflow-y-auto p-2 scrollbar-hide">
+      <div
+        data-column-scroll
+        className="scrollbar-hide flex-1 overflow-y-auto p-2"
+      >
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
           <div className="flex flex-col gap-2">
             {tasks.map((task, cardIndex) => (
@@ -1915,15 +2263,24 @@ function ColumnBoardView({
   hiddenColumns: Status[]
   canManageTasks: boolean
   onMoveTask: (taskId: string, toStatus: Status, toIndex: number) => void
-  onMoveMultipleTasks: (taskIds: string[], toStatus: Status, toIndex: number) => void
+  onMoveMultipleTasks: (
+    taskIds: string[],
+    toStatus: Status,
+    toIndex: number
+  ) => void
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void
   onDeleteTask: (taskId: string) => void
-  onBulkUpdateTasks: (taskIds: string[], updates: Partial<Pick<Task, "status" | "priority" | "labels">>) => void
+  onBulkUpdateTasks: (
+    taskIds: string[],
+    updates: Partial<Pick<Task, "status" | "priority" | "labels">>
+  ) => void
   onBulkDeleteTasks: (taskIds: string[]) => void
   onAcceptRequest: (task: Task) => void
   onDenyRequest: (task: Task) => void
 }) {
-  const visibleColumns = COLUMNS.filter((c) => !hiddenColumns.includes(c.id) && c.id !== "requests")
+  const visibleColumns = COLUMNS.filter(
+    (c) => !hiddenColumns.includes(c.id) && c.id !== "requests"
+  )
   const showRequests = !hiddenColumns.includes("requests")
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [draggedTaskIds, setDraggedTaskIds] = useState<Set<string>>(new Set())
@@ -1932,7 +2289,9 @@ function ColumnBoardView({
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
   const lastToggledTaskIdRef = useRef<string | null>(null)
 
-  const selectedTask = selectedTaskId ? tasks.find((t) => t.id === selectedTaskId) ?? null : null
+  const selectedTask = selectedTaskId
+    ? (tasks.find((t) => t.id === selectedTaskId) ?? null)
+    : null
 
   const orderedTaskIds = useMemo(() => {
     const ids: string[] = []
@@ -1952,36 +2311,41 @@ function ColumnBoardView({
     window.dispatchEvent(new CustomEvent("search-palette:board-ready"))
   }, [])
 
-  useSearchPaletteTaskEvent(useCallback((taskId: string) => {
-    setSelectedTaskId(taskId)
-  }, []))
+  useSearchPaletteTaskEvent(
+    useCallback((taskId: string) => {
+      setSelectedTaskId(taskId)
+    }, [])
+  )
 
-  const handleToggleSelectTask = useCallback((taskId: string, shiftKey: boolean) => {
-    if (!canManageTasks) return
-    setSelectedTaskIds((prev) => {
-      const next = new Set(prev)
-      if (shiftKey && lastToggledTaskIdRef.current) {
-        const lastIdx = orderedTaskIds.indexOf(lastToggledTaskIdRef.current)
-        const currentIdx = orderedTaskIds.indexOf(taskId)
-        if (lastIdx !== -1 && currentIdx !== -1) {
-          const start = Math.min(lastIdx, currentIdx)
-          const end = Math.max(lastIdx, currentIdx)
-          for (let i = start; i <= end; i++) {
-            const id = orderedTaskIds[i]
-            if (id) next.add(id)
+  const handleToggleSelectTask = useCallback(
+    (taskId: string, shiftKey: boolean) => {
+      if (!canManageTasks) return
+      setSelectedTaskIds((prev) => {
+        const next = new Set(prev)
+        if (shiftKey && lastToggledTaskIdRef.current) {
+          const lastIdx = orderedTaskIds.indexOf(lastToggledTaskIdRef.current)
+          const currentIdx = orderedTaskIds.indexOf(taskId)
+          if (lastIdx !== -1 && currentIdx !== -1) {
+            const start = Math.min(lastIdx, currentIdx)
+            const end = Math.max(lastIdx, currentIdx)
+            for (let i = start; i <= end; i++) {
+              const id = orderedTaskIds[i]
+              if (id) next.add(id)
+            }
+            return next
           }
-          return next
         }
-      }
-      if (next.has(taskId)) {
-        next.delete(taskId)
-      } else {
-        next.add(taskId)
-      }
-      lastToggledTaskIdRef.current = taskId
-      return next
-    })
-  }, [canManageTasks, orderedTaskIds])
+        if (next.has(taskId)) {
+          next.delete(taskId)
+        } else {
+          next.add(taskId)
+        }
+        lastToggledTaskIdRef.current = taskId
+        return next
+      })
+    },
+    [canManageTasks, orderedTaskIds]
+  )
 
   const handleClearSelection = useCallback(() => {
     setSelectedTaskIds(new Set())
@@ -1993,7 +2357,11 @@ function ColumnBoardView({
       if (e.key === "Escape" && selectedTaskIds.size > 0) {
         handleClearSelection()
       }
-      if ((e.metaKey || e.ctrlKey) && e.key === "a" && selectedTaskIds.size > 0) {
+      if (
+        (e.metaKey || e.ctrlKey) &&
+        e.key === "a" &&
+        selectedTaskIds.size > 0
+      ) {
         e.preventDefault()
         setSelectedTaskIds(new Set(orderedTaskIds))
       }
@@ -2013,20 +2381,29 @@ function ColumnBoardView({
     })
   }, [tasks])
 
-  const handleBulkChangeStatus = useCallback((status: Status) => {
-    onBulkUpdateTasks(Array.from(selectedTaskIds), { status })
-    handleClearSelection()
-  }, [selectedTaskIds, onBulkUpdateTasks, handleClearSelection])
+  const handleBulkChangeStatus = useCallback(
+    (status: Status) => {
+      onBulkUpdateTasks(Array.from(selectedTaskIds), { status })
+      handleClearSelection()
+    },
+    [selectedTaskIds, onBulkUpdateTasks, handleClearSelection]
+  )
 
-  const handleBulkChangePriority = useCallback((priority: Priority) => {
-    onBulkUpdateTasks(Array.from(selectedTaskIds), { priority })
-    handleClearSelection()
-  }, [selectedTaskIds, onBulkUpdateTasks, handleClearSelection])
+  const handleBulkChangePriority = useCallback(
+    (priority: Priority) => {
+      onBulkUpdateTasks(Array.from(selectedTaskIds), { priority })
+      handleClearSelection()
+    },
+    [selectedTaskIds, onBulkUpdateTasks, handleClearSelection]
+  )
 
-  const handleBulkChangeLabels = useCallback((labels: string[]) => {
-    onBulkUpdateTasks(Array.from(selectedTaskIds), { labels })
-    handleClearSelection()
-  }, [selectedTaskIds, onBulkUpdateTasks, handleClearSelection])
+  const handleBulkChangeLabels = useCallback(
+    (labels: string[]) => {
+      onBulkUpdateTasks(Array.from(selectedTaskIds), { labels })
+      handleClearSelection()
+    },
+    [selectedTaskIds, onBulkUpdateTasks, handleClearSelection]
+  )
 
   const handleBulkDelete = useCallback(() => {
     onBulkDeleteTasks(Array.from(selectedTaskIds))
@@ -2078,10 +2455,19 @@ function ColumnBoardView({
   function handleDragOver(event: DragOverEvent) {
     if (!canManageTasks) return
     const { over } = event
-    if (!over) { setOverColumn(null); return }
+    if (!over) {
+      setOverColumn(null)
+      return
+    }
     const overId = over.id as string
-    const targetCol = over.data.current?.type === "column" ? (over.id as Status) : findColumnOfTask(overId)
-    if (targetCol === "requests") { setOverColumn(null); return }
+    const targetCol =
+      over.data.current?.type === "column"
+        ? (over.id as Status)
+        : findColumnOfTask(overId)
+    if (targetCol === "requests") {
+      setOverColumn(null)
+      return
+    }
     setOverColumn((current) => (current === targetCol ? current : targetCol))
   }
 
@@ -2105,7 +2491,9 @@ function ColumnBoardView({
 
       // Find the scrollable column under the cursor
       const target = e.target as HTMLElement
-      const column = target.closest("[data-column-scroll]") as HTMLElement | null
+      const column = target.closest(
+        "[data-column-scroll]"
+      ) as HTMLElement | null
 
       // Reset boundary counter if we moved to a different column
       if (column !== lastColumnRef.current) {
@@ -2115,7 +2503,8 @@ function ColumnBoardView({
 
       if (column) {
         const canScrollUp = column.scrollTop > 0
-        const canScrollDown = column.scrollTop + column.clientHeight < column.scrollHeight - 1
+        const canScrollDown =
+          column.scrollTop + column.clientHeight < column.scrollHeight - 1
         const scrollingDown = e.deltaY > 0
         const scrollingUp = e.deltaY < 0
         const hasOverflow = column.scrollHeight > column.clientHeight + 1
@@ -2207,16 +2596,27 @@ function ColumnBoardView({
     const activeId = active.id as string
     const overId = over.id as string
     const activeColumn = findColumnOfTask(activeId)
-    const targetColumn = over.data.current?.type === "column" ? (over.id as Status) : findColumnOfTask(overId)
+    const targetColumn =
+      over.data.current?.type === "column"
+        ? (over.id as Status)
+        : findColumnOfTask(overId)
     if (!activeColumn || !targetColumn) return
     if (targetColumn === "requests") return
 
     const isMultiDrag = currentDraggedIds.size > 1
     if (isMultiDrag) {
-      const targetIndex = over.data.current?.type === "column"
-        ? tasksByColumn[targetColumn].length
-        : Math.max(0, tasksByColumn[targetColumn].findIndex((t) => t.id === overId))
-      onMoveMultipleTasks(Array.from(currentDraggedIds), targetColumn, targetIndex)
+      const targetIndex =
+        over.data.current?.type === "column"
+          ? tasksByColumn[targetColumn].length
+          : Math.max(
+              0,
+              tasksByColumn[targetColumn].findIndex((t) => t.id === overId)
+            )
+      onMoveMultipleTasks(
+        Array.from(currentDraggedIds),
+        targetColumn,
+        targetIndex
+      )
       handleClearSelection()
       return
     }
@@ -2239,7 +2639,9 @@ function ColumnBoardView({
 
   // Clean up on unmount
   useEffect(() => {
-    return () => { stopAutoScroll() }
+    return () => {
+      stopAutoScroll()
+    }
   }, [])
 
   const activeTaskSource = activeTask ? activeTask.status : null
@@ -2258,7 +2660,10 @@ function ColumnBoardView({
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div ref={scrollContainerRef} className="flex h-full gap-2 overflow-x-auto p-2 scrollbar-hide">
+        <div
+          ref={scrollContainerRef}
+          className="scrollbar-hide flex h-full gap-2 overflow-x-auto p-2"
+        >
           {/* Requests column — special treatment */}
           {showRequests && tasksByColumn.requests.length > 0 && (
             <motion.div
@@ -2267,13 +2672,22 @@ function ColumnBoardView({
               transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
               className="flex h-full w-[260px] shrink-0 flex-col overflow-hidden rounded-[4px] ring-1 ring-border"
             >
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-card dark:bg-card shadow-[inset_0_-1px_0_var(--border)]">
+              <div className="flex items-center gap-2 bg-card px-3 py-1.5 shadow-[inset_0_-1px_0_var(--border)] dark:bg-card">
                 {getColumnIcon("requests")}
-                <span className="text-[13px] font-semibold tracking-tight">Requests</span>
-                <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">{tasksByColumn.requests.length}</span>
-                <span className="ml-1 text-[11px] text-muted-foreground/50">from users</span>
+                <span className="text-[13px] font-semibold tracking-tight">
+                  Requests
+                </span>
+                <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
+                  {tasksByColumn.requests.length}
+                </span>
+                <span className="ml-1 text-[11px] text-muted-foreground/50">
+                  from users
+                </span>
               </div>
-              <div data-column-scroll className="flex-1 overflow-y-auto p-2 scrollbar-hide">
+              <div
+                data-column-scroll
+                className="scrollbar-hide flex-1 overflow-y-auto p-2"
+              >
                 <div className="flex flex-col gap-2">
                   {tasksByColumn.requests.map((task) => (
                     <RequestRow
@@ -2295,14 +2709,24 @@ function ColumnBoardView({
           {visibleColumns.map((column, colIdx) => {
             const columnTasks = tasksByColumn[column.id]
             // Offset columnIndex if requests column is showing
-            const columnIndex = showRequests && tasksByColumn.requests.length > 0 ? colIdx + 1 : colIdx
+            const columnIndex =
+              showRequests && tasksByColumn.requests.length > 0
+                ? colIdx + 1
+                : colIdx
             return (
-              <div key={column.id} className="border-r border-border last:border-r-0">
+              <div
+                key={column.id}
+                className="border-r border-border last:border-r-0"
+              >
                 <KanbanColumn
                   column={column}
                   columnIndex={columnIndex}
                   tasks={columnTasks}
-                  isDropTarget={overColumn === column.id && activeTaskSource !== null && activeTaskSource !== column.id}
+                  isDropTarget={
+                    overColumn === column.id &&
+                    activeTaskSource !== null &&
+                    activeTaskSource !== column.id
+                  }
                   selectedTaskIds={selectedTaskIds}
                   draggedTaskIds={draggedTaskIds}
                   canManageTasks={canManageTasks}
@@ -2316,7 +2740,12 @@ function ColumnBoardView({
           })}
         </div>
         <DragOverlay dropAnimation={null}>
-          {activeTask ? <DragOverlayCard task={activeTask} dragCount={draggedTaskIds.size} /> : null}
+          {activeTask ? (
+            <DragOverlayCard
+              task={activeTask}
+              dragCount={draggedTaskIds.size}
+            />
+          ) : null}
         </DragOverlay>
       </DndContext>
 
@@ -2324,9 +2753,18 @@ function ColumnBoardView({
         task={selectedTask}
         onClose={() => setSelectedTaskId(null)}
         onUpdate={onUpdateTask}
-        onDelete={(taskId) => { onDeleteTask(taskId); setSelectedTaskId(null) }}
-        onAccept={(task) => { onAcceptRequest(task); setSelectedTaskId(null) }}
-        onDeny={(task) => { onDenyRequest(task); setSelectedTaskId(null) }}
+        onDelete={(taskId) => {
+          onDeleteTask(taskId)
+          setSelectedTaskId(null)
+        }}
+        onAccept={(task) => {
+          onAcceptRequest(task)
+          setSelectedTaskId(null)
+        }}
+        onDeny={(task) => {
+          onDenyRequest(task)
+          setSelectedTaskId(null)
+        }}
         canManageTasks={canManageTasks}
       />
 
@@ -2410,16 +2848,25 @@ function ListView({
   canManageTasks: boolean
   onToggleCollapsedColumn: (status: Status) => void
   onMoveTask: (taskId: string, toStatus: Status, toIndex: number) => void
-  onMoveMultipleTasks: (taskIds: string[], toStatus: Status, toIndex: number) => void
+  onMoveMultipleTasks: (
+    taskIds: string[],
+    toStatus: Status,
+    toIndex: number
+  ) => void
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void
   onDeleteTask: (taskId: string) => void
-  onBulkUpdateTasks: (taskIds: string[], updates: Partial<Pick<Task, "status" | "priority" | "labels">>) => void
+  onBulkUpdateTasks: (
+    taskIds: string[],
+    updates: Partial<Pick<Task, "status" | "priority" | "labels">>
+  ) => void
   onBulkDeleteTasks: (taskIds: string[]) => void
   onAcceptRequest: (task: Task) => void
   onDenyRequest: (task: Task) => void
 }) {
   // Non-request columns only for DnD
-  const visibleColumns = COLUMNS.filter((c) => !hiddenColumns.includes(c.id) && c.id !== "requests")
+  const visibleColumns = COLUMNS.filter(
+    (c) => !hiddenColumns.includes(c.id) && c.id !== "requests"
+  )
   const showRequests = !hiddenColumns.includes("requests")
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [draggedTaskIds, setDraggedTaskIds] = useState<Set<string>>(new Set())
@@ -2428,11 +2875,15 @@ function ListView({
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
   const lastToggledTaskIdRef = useRef<string | null>(null)
 
-  const selectedTask = selectedTaskId ? tasks.find((t) => t.id === selectedTaskId) ?? null : null
+  const selectedTask = selectedTaskId
+    ? (tasks.find((t) => t.id === selectedTaskId) ?? null)
+    : null
 
   // Build ordered flat list of non-request tasks for shift-click range selection
   const orderedTaskIds = useMemo(() => {
-    const nonRequestCols = COLUMNS.filter((c) => c.id !== "requests" && !hiddenColumns.includes(c.id))
+    const nonRequestCols = COLUMNS.filter(
+      (c) => c.id !== "requests" && !hiddenColumns.includes(c.id)
+    )
     const ids: string[] = []
     for (const col of nonRequestCols) {
       if (!collapsedColumns.includes(col.id)) {
@@ -2454,37 +2905,42 @@ function ListView({
   }, [])
 
   // Listen for task-open events from search palette
-  useSearchPaletteTaskEvent(useCallback((taskId: string) => {
-    setSelectedTaskId(taskId)
-  }, []))
+  useSearchPaletteTaskEvent(
+    useCallback((taskId: string) => {
+      setSelectedTaskId(taskId)
+    }, [])
+  )
 
-  const handleToggleSelectTask = useCallback((taskId: string, shiftKey: boolean) => {
-    if (!canManageTasks) return
-    setSelectedTaskIds((prev) => {
-      const next = new Set(prev)
-      if (shiftKey && lastToggledTaskIdRef.current) {
-        // Range select
-        const lastIdx = orderedTaskIds.indexOf(lastToggledTaskIdRef.current)
-        const currentIdx = orderedTaskIds.indexOf(taskId)
-        if (lastIdx !== -1 && currentIdx !== -1) {
-          const start = Math.min(lastIdx, currentIdx)
-          const end = Math.max(lastIdx, currentIdx)
-          for (let i = start; i <= end; i++) {
-            const id = orderedTaskIds[i]
-            if (id) next.add(id)
+  const handleToggleSelectTask = useCallback(
+    (taskId: string, shiftKey: boolean) => {
+      if (!canManageTasks) return
+      setSelectedTaskIds((prev) => {
+        const next = new Set(prev)
+        if (shiftKey && lastToggledTaskIdRef.current) {
+          // Range select
+          const lastIdx = orderedTaskIds.indexOf(lastToggledTaskIdRef.current)
+          const currentIdx = orderedTaskIds.indexOf(taskId)
+          if (lastIdx !== -1 && currentIdx !== -1) {
+            const start = Math.min(lastIdx, currentIdx)
+            const end = Math.max(lastIdx, currentIdx)
+            for (let i = start; i <= end; i++) {
+              const id = orderedTaskIds[i]
+              if (id) next.add(id)
+            }
+            return next
           }
-          return next
         }
-      }
-      if (next.has(taskId)) {
-        next.delete(taskId)
-      } else {
-        next.add(taskId)
-      }
-      lastToggledTaskIdRef.current = taskId
-      return next
-    })
-  }, [canManageTasks, orderedTaskIds])
+        if (next.has(taskId)) {
+          next.delete(taskId)
+        } else {
+          next.add(taskId)
+        }
+        lastToggledTaskIdRef.current = taskId
+        return next
+      })
+    },
+    [canManageTasks, orderedTaskIds]
+  )
 
   const handleClearSelection = useCallback(() => {
     setSelectedTaskIds(new Set())
@@ -2497,7 +2953,11 @@ function ListView({
       if (e.key === "Escape" && selectedTaskIds.size > 0) {
         handleClearSelection()
       }
-      if ((e.metaKey || e.ctrlKey) && e.key === "a" && selectedTaskIds.size > 0) {
+      if (
+        (e.metaKey || e.ctrlKey) &&
+        e.key === "a" &&
+        selectedTaskIds.size > 0
+      ) {
         e.preventDefault()
         setSelectedTaskIds(new Set(orderedTaskIds))
       }
@@ -2518,20 +2978,29 @@ function ListView({
     })
   }, [tasks])
 
-  const handleBulkChangeStatus = useCallback((status: Status) => {
-    onBulkUpdateTasks(Array.from(selectedTaskIds), { status })
-    handleClearSelection()
-  }, [selectedTaskIds, onBulkUpdateTasks, handleClearSelection])
+  const handleBulkChangeStatus = useCallback(
+    (status: Status) => {
+      onBulkUpdateTasks(Array.from(selectedTaskIds), { status })
+      handleClearSelection()
+    },
+    [selectedTaskIds, onBulkUpdateTasks, handleClearSelection]
+  )
 
-  const handleBulkChangePriority = useCallback((priority: Priority) => {
-    onBulkUpdateTasks(Array.from(selectedTaskIds), { priority })
-    handleClearSelection()
-  }, [selectedTaskIds, onBulkUpdateTasks, handleClearSelection])
+  const handleBulkChangePriority = useCallback(
+    (priority: Priority) => {
+      onBulkUpdateTasks(Array.from(selectedTaskIds), { priority })
+      handleClearSelection()
+    },
+    [selectedTaskIds, onBulkUpdateTasks, handleClearSelection]
+  )
 
-  const handleBulkChangeLabels = useCallback((labels: string[]) => {
-    onBulkUpdateTasks(Array.from(selectedTaskIds), { labels })
-    handleClearSelection()
-  }, [selectedTaskIds, onBulkUpdateTasks, handleClearSelection])
+  const handleBulkChangeLabels = useCallback(
+    (labels: string[]) => {
+      onBulkUpdateTasks(Array.from(selectedTaskIds), { labels })
+      handleClearSelection()
+    },
+    [selectedTaskIds, onBulkUpdateTasks, handleClearSelection]
+  )
 
   const handleBulkDelete = useCallback(() => {
     onBulkDeleteTasks(Array.from(selectedTaskIds))
@@ -2634,11 +3103,19 @@ function ListView({
 
     if (isMultiDrag) {
       // Multi-drag: move all dragged tasks to target column
-      const targetIndex = over.data.current?.type === "column"
-        ? tasksByColumn[targetColumn].length
-        : Math.max(0, tasksByColumn[targetColumn].findIndex((t) => t.id === overId))
+      const targetIndex =
+        over.data.current?.type === "column"
+          ? tasksByColumn[targetColumn].length
+          : Math.max(
+              0,
+              tasksByColumn[targetColumn].findIndex((t) => t.id === overId)
+            )
 
-      onMoveMultipleTasks(Array.from(currentDraggedIds), targetColumn, targetIndex)
+      onMoveMultipleTasks(
+        Array.from(currentDraggedIds),
+        targetColumn,
+        targetIndex
+      )
       handleClearSelection()
       return
     }
@@ -2664,85 +3141,103 @@ function ListView({
   const activeTaskSource = activeTask ? activeTask.status : null
 
   return (
-  <>
-    <DndContext
-      sensors={sensors}
-      collisionDetection={(args) => {
-        const pointerIntersections = pointerWithin(args)
-        if (pointerIntersections.length > 0) {
-          return pointerIntersections
-        }
-        return closestCenter(args)
-      }}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="h-full overflow-y-auto scrollbar-hide px-3 py-2">
-        {/* Requests group — rendered separately, outside DnD sortable */}
-        {showRequests && tasksByColumn.requests.length > 0 && (
-          <RequestsGroup
-            tasks={tasksByColumn.requests}
-            groupIndex={0}
-            collapsed={collapsedColumns.includes("requests")}
-            canManageTasks={canManageTasks}
-            onToggleCollapsed={() => onToggleCollapsedColumn("requests")}
-            onAccept={onAcceptRequest}
-            onDeny={onDenyRequest}
-            onSelectTask={handleSelectTask}
-          />
-        )}
-
-        {/* Regular columns with DnD */}
-        {visibleColumns.map((column, groupIndex) => {
-          const columnTasks = tasksByColumn[column.id]
-          return (
-            <ListGroup
-              key={column.id}
-              column={column}
-              tasks={columnTasks}
-              groupIndex={showRequests ? groupIndex + 1 : groupIndex}
-              isDropTarget={overColumn === column.id && activeTaskSource !== null && activeTaskSource !== column.id}
-              collapsed={collapsedColumns.includes(column.id)}
-              selectedTaskIds={selectedTaskIds}
-              draggedTaskIds={draggedTaskIds}
+    <>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={(args) => {
+          const pointerIntersections = pointerWithin(args)
+          if (pointerIntersections.length > 0) {
+            return pointerIntersections
+          }
+          return closestCenter(args)
+        }}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="scrollbar-hide h-full overflow-y-auto px-3 py-2">
+          {/* Requests group — rendered separately, outside DnD sortable */}
+          {showRequests && tasksByColumn.requests.length > 0 && (
+            <RequestsGroup
+              tasks={tasksByColumn.requests}
+              groupIndex={0}
+              collapsed={collapsedColumns.includes("requests")}
               canManageTasks={canManageTasks}
-              onToggleCollapsed={() => onToggleCollapsedColumn(column.id)}
+              onToggleCollapsed={() => onToggleCollapsedColumn("requests")}
+              onAccept={onAcceptRequest}
+              onDeny={onDenyRequest}
               onSelectTask={handleSelectTask}
-              onToggleSelectTask={handleToggleSelectTask}
-              onUpdateTask={onUpdateTask}
-              onDeleteTask={onDeleteTask}
             />
-          )
-        })}
-      </div>
-      <DragOverlay dropAnimation={null}>
-        {activeTask ? <DragOverlayListRow task={activeTask} dragCount={draggedTaskIds.size} /> : null}
-      </DragOverlay>
-    </DndContext>
+          )}
 
-    <TaskDetailModal
-      task={selectedTask}
-      onClose={() => setSelectedTaskId(null)}
-      onUpdate={onUpdateTask}
-      onDelete={(taskId) => { onDeleteTask(taskId); setSelectedTaskId(null) }}
-      onAccept={(task) => { onAcceptRequest(task); setSelectedTaskId(null) }}
-      onDeny={(task) => { onDenyRequest(task); setSelectedTaskId(null) }}
-      canManageTasks={canManageTasks}
-    />
+          {/* Regular columns with DnD */}
+          {visibleColumns.map((column, groupIndex) => {
+            const columnTasks = tasksByColumn[column.id]
+            return (
+              <ListGroup
+                key={column.id}
+                column={column}
+                tasks={columnTasks}
+                groupIndex={showRequests ? groupIndex + 1 : groupIndex}
+                isDropTarget={
+                  overColumn === column.id &&
+                  activeTaskSource !== null &&
+                  activeTaskSource !== column.id
+                }
+                collapsed={collapsedColumns.includes(column.id)}
+                selectedTaskIds={selectedTaskIds}
+                draggedTaskIds={draggedTaskIds}
+                canManageTasks={canManageTasks}
+                onToggleCollapsed={() => onToggleCollapsedColumn(column.id)}
+                onSelectTask={handleSelectTask}
+                onToggleSelectTask={handleToggleSelectTask}
+                onUpdateTask={onUpdateTask}
+                onDeleteTask={onDeleteTask}
+              />
+            )
+          })}
+        </div>
+        <DragOverlay dropAnimation={null}>
+          {activeTask ? (
+            <DragOverlayListRow
+              task={activeTask}
+              dragCount={draggedTaskIds.size}
+            />
+          ) : null}
+        </DragOverlay>
+      </DndContext>
 
-    {/* Bulk action toolbar */}
-    {canManageTasks && selectedTaskIds.size > 0 && (
-      <BulkActionToolbar
-        selectedCount={selectedTaskIds.size}
-        onChangeStatus={handleBulkChangeStatus}
-        onChangePriority={handleBulkChangePriority}
-        onChangeLabels={handleBulkChangeLabels}
-        onDelete={handleBulkDelete}
-        onClearSelection={handleClearSelection}
+      <TaskDetailModal
+        task={selectedTask}
+        onClose={() => setSelectedTaskId(null)}
+        onUpdate={onUpdateTask}
+        onDelete={(taskId) => {
+          onDeleteTask(taskId)
+          setSelectedTaskId(null)
+        }}
+        onAccept={(task) => {
+          onAcceptRequest(task)
+          setSelectedTaskId(null)
+        }}
+        onDeny={(task) => {
+          onDenyRequest(task)
+          setSelectedTaskId(null)
+        }}
+        canManageTasks={canManageTasks}
       />
-    )}
-  </>
+
+      {/* Bulk action toolbar */}
+      {canManageTasks && selectedTaskIds.size > 0 && (
+        <BulkActionToolbar
+          selectedCount={selectedTaskIds.size}
+          onChangeStatus={handleBulkChangeStatus}
+          onChangePriority={handleBulkChangePriority}
+          onChangeLabels={handleBulkChangeLabels}
+          onDelete={handleBulkDelete}
+          onClearSelection={handleClearSelection}
+        />
+      )}
+    </>
   )
 }
 
@@ -2751,7 +3246,11 @@ function ListView({
 export function KanbanBoard() {
   const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth()
   const { currentWorkspace } = useWorkspace()
-  const { tasksByWorkspace, collapsedColumnsByWorkspace, boardViewByWorkspace } = useLocalFirstStore()
+  const {
+    tasksByWorkspace,
+    collapsedColumnsByWorkspace,
+    boardViewByWorkspace,
+  } = useLocalFirstStore()
   const [modalOpen, setModalOpen] = useState(false)
   const [modalDefaultStatus, setModalDefaultStatus] = useState<Status>("todo")
   const [hiddenColumns, setHiddenColumns] = useState<Status[]>([])
@@ -2776,10 +3275,15 @@ export function KanbanBoard() {
     workspaceId ? { workspaceId } : "skip"
   )
   const collapsedColumns = useMemo(
-    () => (workspaceId ? (collapsedColumnsByWorkspace[workspaceId] ?? []) as Status[] : []),
+    () =>
+      workspaceId
+        ? ((collapsedColumnsByWorkspace[workspaceId] ?? []) as Status[])
+        : [],
     [collapsedColumnsByWorkspace, workspaceId]
   )
-  const boardView: BoardView = workspaceId ? (boardViewByWorkspace[workspaceId] ?? "list") : "list"
+  const boardView: BoardView = workspaceId
+    ? (boardViewByWorkspace[workspaceId] ?? "list")
+    : "list"
 
   function handleViewChange(view: BoardView) {
     if (!workspaceId) return
@@ -2817,7 +3321,9 @@ export function KanbanBoard() {
 
     updateWorkspaceTasks(workspaceId, (currentTasks) => {
       const mergedTasks = mergeLiveTaskDocs(currentTasks, liveTaskDocs)
-      return areTaskDocListsEqual(currentTasks, mergedTasks) ? currentTasks : mergedTasks
+      return areTaskDocListsEqual(currentTasks, mergedTasks)
+        ? currentTasks
+        : mergedTasks
     })
     setHasFetchedTasks(true)
   }, [isAuthLoading, isAuthenticated, liveTaskDocs, workspaceId])
@@ -2884,14 +3390,17 @@ export function KanbanBoard() {
     trackRequestAccepted({ taskId: task.id })
     if (isDevTask(task.id)) return
     // Read the freshly-written state for the server call
-    const freshTasks = getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
+    const freshTasks =
+      getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
     void reorderTasks({
       workspaceId,
-      changes: freshTasks.filter((item) => !isDevTask(item._id)).map((item) => ({
-        taskId: item._id as Id<"tasks">,
-        status: item.status,
-        order: item.order,
-      })),
+      changes: freshTasks
+        .filter((item) => !isDevTask(item._id))
+        .map((item) => ({
+          taskId: item._id as Id<"tasks">,
+          status: item.status,
+          order: item.order,
+        })),
     }).catch(() => {
       if (snapshotBefore) setWorkspaceTasks(workspaceId, snapshotBefore)
       toast.error("Failed to accept request. Try again.")
@@ -2899,7 +3408,8 @@ export function KanbanBoard() {
   }
 
   function handleDenyRequest(task: Task) {
-    if (!workspaceId || !canManageTasks || task.id.startsWith("optimistic:")) return
+    if (!workspaceId || !canManageTasks || task.id.startsWith("optimistic:"))
+      return
     lastLocalChangeRef.current = Date.now()
     let removedTask: TaskDoc | undefined
     updateWorkspaceTasks(workspaceId, (current) => {
@@ -2911,7 +3421,9 @@ export function KanbanBoard() {
     if (isDevTask(task.id)) return
     void deleteTask({ taskId: task.id as Id<"tasks"> }).catch(() => {
       if (removedTask) {
-        updateWorkspaceTasks(workspaceId, (current) => sortTaskDocs([...current, removedTask!]))
+        updateWorkspaceTasks(workspaceId, (current) =>
+          sortTaskDocs([...current, removedTask!])
+        )
       }
       toast.error("Failed to deny request. Try again.")
     })
@@ -2927,18 +3439,23 @@ export function KanbanBoard() {
       updateWorkspaceTasks(workspaceId, (current) => {
         const currentTask = current.find((task) => task._id === taskId)
         if (!currentTask) return current
-        const targetIndex = current.filter((task) => task.status === updates.status).length
+        const targetIndex = current.filter(
+          (task) => task.status === updates.status
+        ).length
         return moveTaskDocs(current, taskId, updates.status!, targetIndex)
       })
       if (!isDevTask(taskId)) {
-        const freshTasks = getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
+        const freshTasks =
+          getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
         void reorderTasks({
           workspaceId,
-          changes: freshTasks.filter((item) => !isDevTask(item._id)).map((item) => ({
-            taskId: item._id as Id<"tasks">,
-            status: item.status,
-            order: item.order,
-          })),
+          changes: freshTasks
+            .filter((item) => !isDevTask(item._id))
+            .map((item) => ({
+              taskId: item._id as Id<"tasks">,
+              status: item.status,
+              order: item.order,
+            })),
         })
       }
       return
@@ -2967,7 +3484,13 @@ export function KanbanBoard() {
   }
 
   function handleDeleteTask(taskId: string) {
-    if (!workspaceId || !taskDocs || !canManageTasks || taskId.startsWith("optimistic:")) return
+    if (
+      !workspaceId ||
+      !taskDocs ||
+      !canManageTasks ||
+      taskId.startsWith("optimistic:")
+    )
+      return
 
     const deletedTask = taskDocs.find((task) => task._id === taskId)
     if (!deletedTask) return
@@ -2998,16 +3521,25 @@ export function KanbanBoard() {
   }
 
   function handleMoveTask(taskId: string, toStatus: Status, toIndex: number) {
-    if (!workspaceId || !canManageTasks || taskId.startsWith("optimistic:")) return
+    if (!workspaceId || !canManageTasks || taskId.startsWith("optimistic:"))
+      return
     lastLocalChangeRef.current = Date.now()
 
-    const fromTask = (getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []).find((t) => t._id === taskId)
-    trackTaskMoved({ taskId, fromStatus: fromTask?.status ?? "unknown", toStatus, method: "drag" })
+    const fromTask = (
+      getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
+    ).find((t) => t._id === taskId)
+    trackTaskMoved({
+      taskId,
+      fromStatus: fromTask?.status ?? "unknown",
+      toStatus,
+      method: "drag",
+    })
 
     updateWorkspaceTasks(workspaceId, (current) =>
       moveTaskDocs(current, taskId, toStatus, toIndex)
     )
-    const freshTasks = getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
+    const freshTasks =
+      getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
     const realChanges = freshTasks.filter((item) => !isDevTask(item._id))
     if (realChanges.length > 0) {
       void reorderTasks({
@@ -3021,7 +3553,11 @@ export function KanbanBoard() {
     }
   }
 
-  function handleMoveMultipleTasks(taskIds: string[], toStatus: Status, toIndex: number) {
+  function handleMoveMultipleTasks(
+    taskIds: string[],
+    toStatus: Status,
+    toIndex: number
+  ) {
     if (!workspaceId || !canManageTasks) return
     lastLocalChangeRef.current = Date.now()
 
@@ -3035,7 +3571,8 @@ export function KanbanBoard() {
       }
       return result
     })
-    const freshTasks = getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
+    const freshTasks =
+      getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
     const realChanges = freshTasks.filter((item) => !isDevTask(item._id))
     if (realChanges.length > 0) {
       void reorderTasks({
@@ -3049,15 +3586,23 @@ export function KanbanBoard() {
     }
   }
 
-  function handleBulkUpdateTasks(taskIds: string[], updates: Partial<Pick<Task, "status" | "priority" | "labels">>) {
+  function handleBulkUpdateTasks(
+    taskIds: string[],
+    updates: Partial<Pick<Task, "status" | "priority" | "labels">>
+  ) {
     if (!workspaceId || !canManageTasks) return
     lastLocalChangeRef.current = Date.now()
 
     const validIds = taskIds.filter((id) => !id.startsWith("optimistic:"))
     if (validIds.length === 0) return
 
-    const field = updates.status ? "status" : updates.priority ? "priority" : "labels"
-    const value = updates.status ?? updates.priority ?? (updates.labels ?? []).join(",")
+    const field = updates.status
+      ? "status"
+      : updates.priority
+        ? "priority"
+        : "labels"
+    const value =
+      updates.status ?? updates.priority ?? (updates.labels ?? []).join(",")
     trackTasksBulkUpdated({ taskCount: validIds.length, field, value })
 
     const realIds = validIds.filter((id) => !isDevTask(id))
@@ -3067,31 +3612,45 @@ export function KanbanBoard() {
       updateWorkspaceTasks(workspaceId, (current) => {
         let result = current
         for (const id of validIds) {
-          const targetIndex = result.filter((t) => t.status === updates.status).length
+          const targetIndex = result.filter(
+            (t) => t.status === updates.status
+          ).length
           result = moveTaskDocs(result, id, updates.status!, targetIndex)
         }
         return result
       })
       if (realIds.length > 0) {
-        const freshTasks = getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
+        const freshTasks =
+          getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
         void reorderTasks({
           workspaceId,
-          changes: freshTasks.filter((item) => !isDevTask(item._id)).map((item) => ({
-            taskId: item._id as Id<"tasks">,
-            status: item.status,
-            order: item.order,
-          })),
+          changes: freshTasks
+            .filter((item) => !isDevTask(item._id))
+            .map((item) => ({
+              taskId: item._id as Id<"tasks">,
+              status: item.status,
+              order: item.order,
+            })),
         }).then(() => {
-          toast.success(`Updated ${validIds.length} task${validIds.length > 1 ? "s" : ""}.`)
+          toast.success(
+            `Updated ${validIds.length} task${validIds.length > 1 ? "s" : ""}.`
+          )
         })
       } else {
-        toast.success(`Updated ${validIds.length} task${validIds.length > 1 ? "s" : ""}.`)
+        toast.success(
+          `Updated ${validIds.length} task${validIds.length > 1 ? "s" : ""}.`
+        )
       }
     } else {
       updateWorkspaceTasks(workspaceId, (tasks) =>
         tasks.map((task) =>
           validIds.includes(task._id)
-            ? { ...task, ...Object.fromEntries(Object.entries(updates).filter(([, v]) => v !== undefined)) }
+            ? {
+                ...task,
+                ...Object.fromEntries(
+                  Object.entries(updates).filter(([, v]) => v !== undefined)
+                ),
+              }
             : task
         )
       )
@@ -3102,10 +3661,14 @@ export function KanbanBoard() {
           priority: updates.priority,
           labels: updates.labels,
         }).then(() => {
-          toast.success(`Updated ${validIds.length} task${validIds.length > 1 ? "s" : ""}.`)
+          toast.success(
+            `Updated ${validIds.length} task${validIds.length > 1 ? "s" : ""}.`
+          )
         })
       } else {
-        toast.success(`Updated ${validIds.length} task${validIds.length > 1 ? "s" : ""}.`)
+        toast.success(
+          `Updated ${validIds.length} task${validIds.length > 1 ? "s" : ""}.`
+        )
       }
     }
   }
@@ -3127,7 +3690,9 @@ export function KanbanBoard() {
     )
 
     if (realIds.length === 0) {
-      toast.success(`Deleted ${validIds.length} task${validIds.length > 1 ? "s" : ""}.`)
+      toast.success(
+        `Deleted ${validIds.length} task${validIds.length > 1 ? "s" : ""}.`
+      )
       return
     }
 
@@ -3136,17 +3701,22 @@ export function KanbanBoard() {
       taskIds: realIds as Id<"tasks">[],
     })
       .then(() => {
-        toast.success(`Deleted ${validIds.length} task${validIds.length > 1 ? "s" : ""}.`)
+        toast.success(
+          `Deleted ${validIds.length} task${validIds.length > 1 ? "s" : ""}.`
+        )
       })
       .catch(() => {
-        updateWorkspaceTasks(workspaceId, (tasks) => sortTaskDocs([...tasks, ...deletedTasks]))
+        updateWorkspaceTasks(workspaceId, (tasks) =>
+          sortTaskDocs([...tasks, ...deletedTasks])
+        )
         toast.error("Bulk deletion failed. Try again.")
       })
   }
 
   const labelConfig = useMemo<LabelConfig>(() => {
     const wsLabels = currentWorkspace?.labels
-    const labels = wsLabels && wsLabels.length > 0 ? wsLabels : DEFAULT_WORKSPACE_LABELS
+    const labels =
+      wsLabels && wsLabels.length > 0 ? wsLabels : DEFAULT_WORKSPACE_LABELS
     return {
       names: labels.map((l) => l.name),
       colors: buildLabelColors(labels),
@@ -3155,78 +3725,77 @@ export function KanbanBoard() {
 
   if (
     !workspaceId ||
-    (taskDocs === undefined && (isAuthLoading || !hasFetchedTasks || isCleaningDemoTasks))
+    (taskDocs === undefined &&
+      (isAuthLoading || !hasFetchedTasks || isCleaningDemoTasks))
   ) {
     return <BoardLoadingState />
   }
 
   return (
     <BoardMountedContext.Provider value={boardMounted}>
-    <LabelConfigContext.Provider value={labelConfig}>
-    <div className="flex h-full flex-col">
-      {!canManageTasks ? (
-        <div
-          className="mx-4 mt-4 rounded-[4px] ring-1 ring-border bg-card px-3 py-3 text-[13px] text-muted-foreground"
-        >
-          You’re in guest mode. Tasks are read-only in this workspace.
+      <LabelConfigContext.Provider value={labelConfig}>
+        <div className="flex h-full flex-col">
+          {!canManageTasks ? (
+            <div className="mx-4 mt-4 rounded-[4px] bg-card px-3 py-3 text-[13px] text-muted-foreground ring-1 ring-border">
+              You’re in guest mode. Tasks are read-only in this workspace.
+            </div>
+          ) : null}
+
+          {/* Toolbar */}
+          <div className="scrollbar-hide flex items-center gap-1 overflow-x-auto border-b border-border bg-sidebar/60 px-3 py-2 dark:bg-accent/30">
+            <ViewToggle view={boardView} onViewChange={handleViewChange} />
+            {hiddenColumns.length > 0 && (
+              <HiddenColumnsToolbar
+                hiddenColumns={hiddenColumns}
+                onShow={handleShowColumn}
+                tasks={tasks}
+              />
+            )}
+          </div>
+
+          {/* Content */}
+          <div className="min-h-0 flex-1">
+            {boardView === "board" ? (
+              <ColumnBoardView
+                tasks={tasks}
+                hiddenColumns={hiddenColumns}
+                canManageTasks={canManageTasks}
+                onMoveTask={handleMoveTask}
+                onMoveMultipleTasks={handleMoveMultipleTasks}
+                onUpdateTask={handleUpdateTask}
+                onDeleteTask={handleDeleteTask}
+                onBulkUpdateTasks={handleBulkUpdateTasks}
+                onBulkDeleteTasks={handleBulkDeleteTasks}
+                onAcceptRequest={handleAcceptRequest}
+                onDenyRequest={handleDenyRequest}
+              />
+            ) : (
+              <ListView
+                tasks={tasks}
+                hiddenColumns={hiddenColumns}
+                collapsedColumns={collapsedColumns}
+                canManageTasks={canManageTasks}
+                onToggleCollapsedColumn={handleToggleCollapsedColumn}
+                onMoveTask={handleMoveTask}
+                onMoveMultipleTasks={handleMoveMultipleTasks}
+                onUpdateTask={handleUpdateTask}
+                onDeleteTask={handleDeleteTask}
+                onBulkUpdateTasks={handleBulkUpdateTasks}
+                onBulkDeleteTasks={handleBulkDeleteTasks}
+                onAcceptRequest={handleAcceptRequest}
+                onDenyRequest={handleDenyRequest}
+              />
+            )}
+          </div>
+
+          {/* New task modal */}
+          <NewTaskModal
+            open={modalOpen}
+            onOpenChange={setModalOpen}
+            defaultStatus={modalDefaultStatus}
+          />
         </div>
-      ) : null}
-
-      {/* Toolbar */}
-      <div className="flex items-center gap-1 overflow-x-auto border-b border-border bg-sidebar/60 px-3 py-2 scrollbar-hide dark:bg-accent/30">
-        <ViewToggle view={boardView} onViewChange={handleViewChange} />
-        {hiddenColumns.length > 0 && (
-          <HiddenColumnsToolbar
-            hiddenColumns={hiddenColumns}
-            onShow={handleShowColumn}
-            tasks={tasks}
-          />
-        )}
-      </div>
-
-      {/* Content */}
-      <div className="min-h-0 flex-1">
-        {boardView === "board" ? (
-          <ColumnBoardView
-            tasks={tasks}
-            hiddenColumns={hiddenColumns}
-            canManageTasks={canManageTasks}
-            onMoveTask={handleMoveTask}
-            onMoveMultipleTasks={handleMoveMultipleTasks}
-            onUpdateTask={handleUpdateTask}
-            onDeleteTask={handleDeleteTask}
-            onBulkUpdateTasks={handleBulkUpdateTasks}
-            onBulkDeleteTasks={handleBulkDeleteTasks}
-            onAcceptRequest={handleAcceptRequest}
-            onDenyRequest={handleDenyRequest}
-          />
-        ) : (
-          <ListView
-            tasks={tasks}
-            hiddenColumns={hiddenColumns}
-            collapsedColumns={collapsedColumns}
-            canManageTasks={canManageTasks}
-            onToggleCollapsedColumn={handleToggleCollapsedColumn}
-            onMoveTask={handleMoveTask}
-            onMoveMultipleTasks={handleMoveMultipleTasks}
-            onUpdateTask={handleUpdateTask}
-            onDeleteTask={handleDeleteTask}
-            onBulkUpdateTasks={handleBulkUpdateTasks}
-            onBulkDeleteTasks={handleBulkDeleteTasks}
-            onAcceptRequest={handleAcceptRequest}
-            onDenyRequest={handleDenyRequest}
-          />
-        )}
-      </div>
-
-      {/* New task modal */}
-      <NewTaskModal
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        defaultStatus={modalDefaultStatus}
-      />
-    </div>
-    </LabelConfigContext.Provider>
+      </LabelConfigContext.Provider>
     </BoardMountedContext.Provider>
   )
 }

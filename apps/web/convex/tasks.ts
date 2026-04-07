@@ -138,6 +138,30 @@ function getWorkspaceLogSource(
   return "manual"
 }
 
+function dedupeTaskSources(
+  sources:
+    | Array<{
+        platform: "discord" | "slack" | "x" | "linear" | "github" | "cli"
+        url: string
+        author: string
+      }>
+    | undefined
+) {
+  if (!sources?.length) return undefined
+
+  const seen = new Set<string>()
+
+  return sources.filter((source) => {
+    const key = `${source.platform}:${source.url}:${source.author}`
+    if (seen.has(key)) {
+      return false
+    }
+
+    seen.add(key)
+    return true
+  })
+}
+
 function normalizeTitleFingerprint(value: string) {
   return value.trim().replace(/\s+/g, " ").toLowerCase()
 }
@@ -677,14 +701,25 @@ export const listByWorkspace = query({
     const githubByTask = new Map(githubLinks.map((l) => [l.taskId, l]))
 
     return tasks.map((task) => {
-      const base = task.sources?.length
-        ? [...task.sources]
-        : task.source
-          ? [task.source]
-          : []
+      const base =
+        dedupeTaskSources(
+          task.sources?.length
+            ? [...task.sources]
+            : task.source
+              ? [task.source]
+              : []
+        ) ?? []
 
       const linearLink = linearByTask.get(task._id)
-      if (linearLink && !base.some((s) => s.platform === "linear")) {
+      if (
+        linearLink &&
+        !base.some(
+          (s) =>
+            s.platform === "linear" &&
+            s.url === (linearLink.linearIssueUrl ?? "") &&
+            s.author === linearLink.linearIssueIdentifier
+        )
+      ) {
         base.push({
           platform: "linear" as const,
           url: linearLink.linearIssueUrl ?? "",
@@ -693,7 +728,16 @@ export const listByWorkspace = query({
       }
 
       const githubLink = githubByTask.get(task._id)
-      if (githubLink && !base.some((s) => s.platform === "github")) {
+      if (
+        githubLink &&
+        !base.some(
+          (s) =>
+            s.platform === "github" &&
+            s.url === githubLink.githubIssueUrl &&
+            s.author ===
+              `${githubLink.githubRepositoryFullName}#${githubLink.githubIssueNumber}`
+        )
+      ) {
         base.push({
           platform: "github" as const,
           url: githubLink.githubIssueUrl,
@@ -701,7 +745,9 @@ export const listByWorkspace = query({
         })
       }
 
-      return { ...task, sources: base.length > 0 ? base : undefined }
+      const sources = dedupeTaskSources(base)
+
+      return { ...task, sources }
     })
   },
 })

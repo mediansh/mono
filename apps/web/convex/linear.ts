@@ -127,22 +127,45 @@ function stripMedianTaskTitlePrefixFromLinear(title: string) {
   return trimmed
 }
 
-function shouldKeepLinearIssueTitleInMedian(
-  sourcePlatform?: "discord" | "slack" | "x" | "linear" | "github" | "cli"
-) {
-  return sourcePlatform === "linear"
-}
-
-function getMedianTaskTitleFromLinearIssue(
-  issueTitle: string,
-  sourcePlatform?: "discord" | "slack" | "x" | "linear" | "github" | "cli"
-) {
-  if (shouldKeepLinearIssueTitleInMedian(sourcePlatform)) {
-    return issueTitle.trim()
-  }
-
+function getMedianTaskTitleFromLinearIssue(issueTitle: string) {
   const stripped = stripMedianTaskTitlePrefixFromLinear(issueTitle)
   return stripped || issueTitle.trim()
+}
+
+function mergeTaskSources(
+  existingSources:
+    | Array<{
+        platform: "discord" | "slack" | "x" | "linear" | "github" | "cli"
+        url: string
+        author: string
+      }>
+    | undefined,
+  nextSource:
+    | {
+        platform: "discord" | "slack" | "x" | "linear" | "github" | "cli"
+        url: string
+        author: string
+      }
+    | undefined
+) {
+  const seen = new Set<string>()
+  const merged: Array<{
+    platform: "discord" | "slack" | "x" | "linear" | "github" | "cli"
+    url: string
+    author: string
+  }> = []
+
+  for (const source of [
+    ...(existingSources ?? []),
+    ...(nextSource ? [nextSource] : []),
+  ]) {
+    const key = `${source.platform}:${source.url}:${source.author}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    merged.push(source)
+  }
+
+  return merged.length > 0 ? merged : undefined
 }
 
 function maskApiKey(apiKey: string) {
@@ -1356,10 +1379,7 @@ export const upsertTaskFromLinearIssue = internalMutation({
         await ctx.db.delete(existingLink._id)
       } else {
         const updates: Partial<Doc<"tasks">> = {
-          title: getMedianTaskTitleFromLinearIssue(
-            issue.title,
-            linkedTask.source?.platform
-          ),
+          title: getMedianTaskTitleFromLinearIssue(issue.title),
           description: nextDescription,
           priority: taskPriority,
           updatedAt: Number.isFinite(linearUpdatedAt)
@@ -1383,12 +1403,10 @@ export const upsertTaskFromLinearIssue = internalMutation({
         if (!linkedTask.source || linkedTask.source.platform === "linear") {
           updates.source = nextSource
         }
-        if (nextSource) {
-          const existing = linkedTask.sources ?? (linkedTask.source ? [linkedTask.source] : [])
-          if (!existing.some((s) => s.platform === nextSource.platform && s.url === nextSource.url)) {
-            updates.sources = [...existing, nextSource]
-          }
-        }
+        updates.sources = mergeTaskSources(
+          linkedTask.sources ?? (linkedTask.source ? [linkedTask.source] : []),
+          nextSource
+        )
 
         await ctx.db.patch(linkedTask._id, updates)
         await ctx.db.patch(existingLink._id, {
@@ -1426,10 +1444,7 @@ export const upsertTaskFromLinearIssue = internalMutation({
 
     if (matchedTask) {
       const updates: Partial<Doc<"tasks">> = {
-        title: getMedianTaskTitleFromLinearIssue(
-          issue.title,
-          matchedTask.source?.platform
-        ),
+        title: getMedianTaskTitleFromLinearIssue(issue.title),
         description: nextDescription,
         priority: taskPriority,
         updatedAt: Number.isFinite(linearUpdatedAt)
@@ -1447,12 +1462,10 @@ export const upsertTaskFromLinearIssue = internalMutation({
       if (!matchedTask.source || matchedTask.source.platform === "linear") {
         updates.source = nextSource
       }
-      if (nextSource) {
-        const existing = matchedTask.sources ?? (matchedTask.source ? [matchedTask.source] : [])
-        if (!existing.some((s) => s.platform === nextSource.platform && s.url === nextSource.url)) {
-          updates.sources = [...existing, nextSource]
-        }
-      }
+      updates.sources = mergeTaskSources(
+        matchedTask.sources ?? (matchedTask.source ? [matchedTask.source] : []),
+        nextSource
+      )
 
       await ctx.db.patch(matchedTask._id, updates)
       await insertWorkspaceLog(ctx, {
@@ -1486,7 +1499,7 @@ export const upsertTaskFromLinearIssue = internalMutation({
       workspaceId: args.workspaceId,
       taskCode: `${workspace.prefix || "MED"}-${nextTaskNumber}`,
       taskNumber: nextTaskNumber,
-      title: issue.title.trim(),
+      title: getMedianTaskTitleFromLinearIssue(issue.title),
       description: nextDescription,
       status: taskStatus,
       priority: taskPriority,
