@@ -7,15 +7,14 @@ import {
 import { internal } from "./_generated/api"
 import {
   AUTUMN_AI_USAGE_FEATURE_ID,
-  AUTUMN_BILLING_PLAN_ORDER,
-  AUTUMN_EVENT_OVERAGE_PRICE_FALLBACK,
+  AUTUMN_BILLING_PLANS,
+  AUTUMN_EVENT_OVERAGE_PRICE,
   AUTUMN_EVENTS_FEATURE_ID,
   BILLING_RECORD_PAGE_SIZE,
-  buildPlanFeatures,
-  extractPlanEntitlements,
   formatTrackedModelName,
   getAiCostForTokens,
   getCurrentMonthLabel,
+  getPlanCopy,
 } from "../lib/billing/config"
 import {
   attachWorkspacePlan,
@@ -313,17 +312,6 @@ export const getWorkspaceBillingDashboard = action({
     })
 
     const activeSubscription = getActiveSubscription(snapshot.customer)
-
-    // Extract overage price from the customer's active plan items
-    const activePlanData = activeSubscription
-      ? snapshot.plans.find((p) => p.id === activeSubscription.planId)
-      : null
-    const activeEntitlements = activePlanData
-      ? extractPlanEntitlements(activePlanData.items ?? [])
-      : null
-    const eventOveragePrice =
-      activeEntitlements?.eventOveragePrice ?? AUTUMN_EVENT_OVERAGE_PRICE_FALLBACK
-
     const aiBalance = getBalance(
       snapshot.customer.balances,
       AUTUMN_AI_USAGE_FEATURE_ID
@@ -378,32 +366,26 @@ export const getWorkspaceBillingDashboard = action({
       (snapshot.recentEvents as Array<ListEvent>).slice(0, BILLING_RECORD_PAGE_SIZE)
     )
 
-    // Order plans by the preferred display order, then fall back to price
     const planOrder = new Map<string, number>(
-      AUTUMN_BILLING_PLAN_ORDER.map((id, index) => [id, index] as [string, number])
+      AUTUMN_BILLING_PLANS.map((plan, index) => [plan.id, index] as [string, number])
     )
     const plans = snapshot.plans
-      .filter((plan) => !plan.archived)
-      .sort((left, right) => {
-        const leftOrder = planOrder.get(left.id) ?? Number.MAX_SAFE_INTEGER
-        const rightOrder = planOrder.get(right.id) ?? Number.MAX_SAFE_INTEGER
-        if (leftOrder !== rightOrder) return leftOrder - rightOrder
-        return (left.price?.amount ?? 0) - (right.price?.amount ?? 0)
-      })
+      .filter((plan) => planOrder.has(plan.id))
+      .sort(
+        (left, right) =>
+          (planOrder.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
+          (planOrder.get(right.id) ?? Number.MAX_SAFE_INTEGER)
+      )
       .map((plan) => {
-        const entitlements = extractPlanEntitlements(plan.items ?? [])
-        const features = buildPlanFeatures({
-          planId: plan.id,
-          ...entitlements,
-        })
+        const planCopy = getPlanCopy(plan.id, plan.price?.amount ?? null)
 
         return {
           id: plan.id,
-          name: plan.name ?? plan.id,
-          price: plan.price?.amount ?? 0,
-          aiBudget: entitlements.aiBudget,
-          eventLimit: entitlements.eventLimit,
-          features,
+          name: planCopy.name,
+          price: planCopy.price,
+          aiBudget: planCopy.aiBudget,
+          eventLimit: planCopy.eventLimit,
+          features: planCopy.features,
           eligibility: {
             attachAction: normalizeAttachAction(
               plan.customerEligibility?.attachAction
@@ -432,7 +414,7 @@ export const getWorkspaceBillingDashboard = action({
         overageTotal:
           Math.max(0, totalAiSpend - aiBalance.granted) +
           Math.max(0, eventBalance.usage - eventBalance.granted) *
-            eventOveragePrice,
+            AUTUMN_EVENT_OVERAGE_PRICE,
       },
       tokens: {
         totalInput,
