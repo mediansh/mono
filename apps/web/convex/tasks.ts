@@ -825,11 +825,21 @@ export const resolveAttachmentUrls = query({
   },
   handler: async (ctx, args) => {
     await requireWorkspaceAccess(ctx, args.workspaceId)
+    const tasks = await getWorkspaceTasks(ctx, args.workspaceId)
+    const allowedStorageIds = new Set(
+      tasks.flatMap((task) =>
+        (task.attachments ?? []).map((attachment) =>
+          String(attachment.storageId)
+        )
+      )
+    )
 
     const entries = await Promise.all(
       args.storageIds.map(async (storageId) => ({
         storageId,
-        url: await ctx.storage.getUrl(storageId),
+        url: allowedStorageIds.has(String(storageId))
+          ? await ctx.storage.getUrl(storageId)
+          : null,
       }))
     )
 

@@ -118,7 +118,7 @@ import {
   trackNewTaskModalOpened,
 } from "@/lib/analytics"
 
-interface Task extends Omit<TaskDoc, "_syncStatus" | "attachments"> {
+interface Task extends Omit<TaskDoc, "attachments"> {
   id: string
   createdAt: string
   attachments?: TaskAttachment[]
@@ -1820,6 +1820,20 @@ function TaskDetailModal({
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
+
+              {task._syncStatus === "error" ? (
+                <div className="flex items-start gap-2 rounded-[8px] border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-200">
+                  <WarningCircle
+                    size={14}
+                    weight="fill"
+                    className="mt-0.5 shrink-0 text-amber-400"
+                  />
+                  <span className="leading-relaxed">
+                    Attachment changes are visible locally, but they have not
+                    synced to the server yet.
+                  </span>
+                </div>
+              ) : null}
 
               {/* Divider */}
               <div className="h-px bg-border" />
@@ -3626,6 +3640,9 @@ export function KanbanBoard() {
             attachments: updates.attachments as TaskDoc["attachments"],
             _syncStatus: "error",
           })
+        )
+        toast.error(
+          "Attachment changes are only saved locally right now. They haven't synced to the server yet."
         )
         return
       }
