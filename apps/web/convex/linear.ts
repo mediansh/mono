@@ -101,6 +101,22 @@ const linearStatusMappingsValidator = v.object({
   archive: v.optional(v.string()),
 })
 
+function getCanonicalTaskSourceKey(source: {
+  platform: "discord" | "slack" | "x" | "linear" | "github" | "cli"
+  url: string
+  author: string
+}) {
+  const normalizedUrl = source.url.trim()
+  if (
+    normalizedUrl &&
+    (source.platform === "linear" || source.platform === "github")
+  ) {
+    return `${source.platform}:${normalizedUrl}`
+  }
+
+  return `${source.platform}:${normalizedUrl}:${source.author.trim()}`
+}
+
 function normalizeTitle(value: string) {
   return stripMedianTaskTitlePrefixFromLinear(value)
     .replace(/\s+/g, " ")
@@ -157,10 +173,7 @@ function mergeTaskSources(
     ...(existingSources ?? []),
     ...(nextSource ? [nextSource] : []),
   ]) {
-    const normalizedUrl = source.url.trim()
-    const key = normalizedUrl
-      ? `${source.platform}:${normalizedUrl}`
-      : `${source.platform}:${source.author.trim()}`
+    const key = getCanonicalTaskSourceKey(source)
     if (seen.has(key)) continue
     seen.add(key)
     merged.push(source)

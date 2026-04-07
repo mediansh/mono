@@ -122,6 +122,8 @@ const TASK_PRIORITY_ORDER = {
   urgent: 4,
 } as const
 
+const LINEAR_MEDIAN_TITLE_PREFIX_REGEX = /^\[MDN\]\s*/
+
 function getWorkspaceLogSource(
   platform?: "discord" | "slack" | "x" | "linear" | "github" | "cli"
 ) {
@@ -138,17 +140,28 @@ function getWorkspaceLogSource(
   return "manual"
 }
 
-function getTaskSourceKey(source: {
+function getCanonicalTaskSourceKey(source: {
   platform: "discord" | "slack" | "x" | "linear" | "github" | "cli"
   url: string
   author: string
 }) {
   const normalizedUrl = source.url.trim()
-  if (normalizedUrl) {
+  if (
+    normalizedUrl &&
+    (source.platform === "linear" || source.platform === "github")
+  ) {
     return `${source.platform}:${normalizedUrl}`
   }
 
-  return `${source.platform}:${source.author.trim()}`
+  return `${source.platform}:${normalizedUrl}:${source.author.trim()}`
+}
+
+function getTaskSourceKey(source: {
+  platform: "discord" | "slack" | "x" | "linear" | "github" | "cli"
+  url: string
+  author: string
+}) {
+  return getCanonicalTaskSourceKey(source)
 }
 
 function dedupeTaskSources(
@@ -177,8 +190,8 @@ function dedupeTaskSources(
 
 function stripLinearTitlePrefix(title: string) {
   const trimmed = title.trim()
-  if (/^\[MDN\]/.test(trimmed)) {
-    return trimmed.replace(/^\[MDN\]\s*/, "").trim()
+  if (LINEAR_MEDIAN_TITLE_PREFIX_REGEX.test(trimmed)) {
+    return trimmed.replace(LINEAR_MEDIAN_TITLE_PREFIX_REGEX, "").trim()
   }
 
   return title
@@ -734,28 +747,31 @@ export const listByWorkspace = query({
 
       const linearLink = linearByTask.get(task._id)
       if (linearLink) {
-        const canonicalLinearUrl = linearLink.linearIssueUrl?.trim() ?? ""
+        const canonicalLinearUrl = linearLink.linearIssueUrl?.trim()
         const canonicalLinearSource = {
           platform: "linear" as const,
-          url: canonicalLinearUrl,
+          url: canonicalLinearUrl ?? "",
           author: linearLink.linearIssueIdentifier,
         }
 
-        base = base.filter((source) => {
-          if (source.platform !== "linear") {
-            return true
-          }
-
-          if (canonicalLinearUrl) {
-            return source.url.trim() !== canonicalLinearUrl
-          }
-
-          return source.author !== linearLink.linearIssueIdentifier
-        })
-
-        base.push({
-          ...canonicalLinearSource,
-        })
+        if (canonicalLinearUrl) {
+          base = base.filter(
+            (source) =>
+              !(
+                source.platform === "linear" &&
+                source.url.trim() === canonicalLinearUrl
+              )
+          )
+          base.push(canonicalLinearSource)
+        } else if (
+          !base.some(
+            (source) =>
+              source.platform === "linear" &&
+              source.author === linearLink.linearIssueIdentifier
+          )
+        ) {
+          base.push(canonicalLinearSource)
+        }
       }
 
       const githubLink = githubByTask.get(task._id)
