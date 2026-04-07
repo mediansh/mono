@@ -472,7 +472,6 @@ export function NewTaskModal({
     [
       createTaskWithFallback,
       currentWorkspace,
-      preserveAttachmentPreviews,
       user?.firstName,
       user?.fullName,
       user?.imageUrl,

@@ -21,7 +21,9 @@ export type TaskAttachment = {
   url?: string | null
 }
 
+const EMPTY_ATTACHMENTS: TaskAttachment[] = []
 const attachmentPreviewUrlCache = new Map<string, string>()
+const MAX_ATTACHMENT_PREVIEW_CACHE_SIZE = 24
 
 const DEFAULT_IMAGE_WIDTH = 480
 const MIN_IMAGE_WIDTH = 240
@@ -33,7 +35,39 @@ export function isImageAttachment(attachment: TaskAttachment) {
 
 export function cacheAttachmentPreview(storageId: string, url?: string | null) {
   if (!url) return
+
+  const existingUrl = attachmentPreviewUrlCache.get(storageId)
+  if (existingUrl && existingUrl !== url && existingUrl.startsWith("blob:")) {
+    URL.revokeObjectURL(existingUrl)
+  }
+
+  if (existingUrl) {
+    attachmentPreviewUrlCache.delete(storageId)
+  }
+
   attachmentPreviewUrlCache.set(storageId, url)
+
+  while (attachmentPreviewUrlCache.size > MAX_ATTACHMENT_PREVIEW_CACHE_SIZE) {
+    const oldestEntry = attachmentPreviewUrlCache.entries().next().value as
+      | [string, string]
+      | undefined
+    if (!oldestEntry) break
+    const [oldestStorageId, oldestUrl] = oldestEntry
+    attachmentPreviewUrlCache.delete(oldestStorageId)
+    if (oldestUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(oldestUrl)
+    }
+  }
+}
+
+function releaseAttachmentPreview(storageId: string) {
+  const existingUrl = attachmentPreviewUrlCache.get(storageId)
+  if (!existingUrl) return
+
+  attachmentPreviewUrlCache.delete(storageId)
+  if (existingUrl.startsWith("blob:")) {
+    URL.revokeObjectURL(existingUrl)
+  }
 }
 
 function getCachedAttachmentPreview(storageId: string) {
@@ -79,7 +113,6 @@ function AttachmentImageCard({
   const [displayWidth, setDisplayWidth] = useState(
     getAttachmentDisplayWidth(attachment)
   )
-  const [isResizing, setIsResizing] = useState(false)
   const isMountedRef = useRef(true)
   const displayWidthRef = useRef(displayWidth)
   const dragStateRef = useRef<{
@@ -138,7 +171,6 @@ function AttachmentImageCard({
     event.currentTarget.setPointerCapture(event.pointerId)
     document.body.style.cursor = "nwse-resize"
     document.body.style.userSelect = "none"
-    setIsResizing(true)
     dragStateRef.current = {
       pointerId: event.pointerId,
       startX: event.clientX,
@@ -161,7 +193,6 @@ function AttachmentImageCard({
       cleanupResizeSession()
       if (!isMountedRef.current) return
 
-      setIsResizing(false)
       commitDisplayWidth(displayWidthRef.current)
     }
 
@@ -255,7 +286,7 @@ export function TaskAttachmentGallery({
   onAttachmentsChange?: (attachments: TaskAttachment[]) => void
 }) {
   const convex = useConvex()
-  const safeAttachments = attachments ?? []
+  const safeAttachments = attachments ?? EMPTY_ATTACHMENTS
   const [resolvedUrls, setResolvedUrls] = useState<
     Record<string, string | null | undefined>
   >({})
@@ -304,6 +335,16 @@ export function TaskAttachmentGallery({
       cancelled = true
     }
   }, [convex, needsResolvedUrls, storageIds, storageIdsKey, workspaceId])
+
+  useEffect(() => {
+    for (const attachment of safeAttachments) {
+      const resolvedUrl =
+        resolvedUrls[String(attachment.storageId)] ?? attachment.url ?? null
+      if (resolvedUrl && !resolvedUrl.startsWith("blob:")) {
+        releaseAttachmentPreview(String(attachment.storageId))
+      }
+    }
+  }, [resolvedUrls, safeAttachments])
 
   if (safeAttachments.length === 0) {
     return null

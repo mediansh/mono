@@ -806,18 +806,8 @@ export const listByWorkspace = query({
           task.source?.platform === "linear"
         )
 
-        const attachments = task.attachments
-          ? await Promise.all(
-              task.attachments.map(async (attachment) => ({
-                ...attachment,
-                url: await ctx.storage.getUrl(attachment.storageId),
-              }))
-            )
-          : undefined
-
         return {
           ...task,
-          attachments,
           title: hasLinearSource
             ? stripLinearTitlePrefix(task.title)
             : task.title,

@@ -33,6 +33,9 @@ import {
   Trash,
   Tag,
   Check,
+  Minus,
+  ListBullets,
+  SquaresFour,
 } from "@phosphor-icons/react"
 import { NewTaskModal } from "@/components/new-task-modal"
 import {
@@ -101,12 +104,6 @@ import {
   type BoardView,
   type LocalTaskDoc as TaskDoc,
 } from "@/lib/local-first-store"
-import { HugeiconsIcon } from "@hugeicons/react"
-import {
-  LeftToRightListBulletIcon,
-  DashboardSquare01Icon,
-  DashedLineIcon,
-} from "@hugeicons/core-free-icons"
 import { hasTaskWritePermission } from "@/lib/workspace-permissions"
 import { useSearchPaletteTaskEvent } from "@/components/search-palette"
 import {
@@ -226,13 +223,7 @@ function getPriorityIcon(priority: Priority, size = 14) {
     case "low":
       return <CellSignalLow size={size} className="text-blue-400" />
     case "none":
-      return (
-        <HugeiconsIcon
-          icon={DashedLineIcon}
-          size={size}
-          className="text-muted-foreground"
-        />
-      )
+      return <Minus size={size} className="text-muted-foreground" />
   }
 }
 
@@ -315,7 +306,9 @@ function patchTaskDocs(
   >
 ) {
   const defined = Object.fromEntries(
-    Object.entries(updates).filter(([, v]) => v !== undefined)
+    Object.entries(updates).filter(
+      ([key, value]) => key === "_syncStatus" || value !== undefined
+    )
   )
   return tasks.map((task) =>
     task._id === taskId ? { ...task, ...defined } : task
@@ -2864,7 +2857,7 @@ function ViewToggle({
         }`}
         title="List view"
       >
-        <HugeiconsIcon icon={LeftToRightListBulletIcon} size={14} />
+        <ListBullets size={14} />
       </button>
       <button
         onClick={() => onViewChange("board")}
@@ -2875,7 +2868,7 @@ function ViewToggle({
         }`}
         title="Board view"
       >
-        <HugeiconsIcon icon={DashboardSquare01Icon} size={14} />
+        <SquaresFour size={14} />
       </button>
     </div>
   )
