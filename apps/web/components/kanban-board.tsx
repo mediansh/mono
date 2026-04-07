@@ -3315,6 +3315,72 @@ export function KanbanBoard() {
   const bulkUpdateTasks = useMutation(api.tasks.bulkUpdateTasks)
   const bulkDeleteTasks = useMutation(api.tasks.bulkDeleteTasks)
 
+  const updateTaskWithAttachmentFallback = useCallback(
+    async ({
+      taskId,
+      title,
+      description,
+      priority,
+      labels,
+      attachments,
+    }: {
+      taskId: Id<"tasks">
+      title?: string
+      description?: string
+      priority?: Priority
+      labels?: Label[]
+      attachments?:
+        | {
+            storageId: Id<"_storage">
+            name: string
+            type: string
+            size: number
+            width?: number
+            height?: number
+            displayWidth?: number
+          }[]
+        | undefined
+    }) => {
+      try {
+        return await updateTask({
+          taskId,
+          title,
+          description,
+          priority,
+          labels,
+          attachments,
+        })
+      } catch (error) {
+        const shouldRetryWithoutAttachmentMetadata =
+          attachments !== undefined &&
+          error instanceof Error &&
+          error.message.includes("attachments") &&
+          error.message.includes("validator")
+
+        if (!shouldRetryWithoutAttachmentMetadata) {
+          throw error
+        }
+
+        return await updateTask({
+          taskId,
+          title,
+          description,
+          priority,
+          labels,
+          attachments: attachments.map(
+            ({ width, height, displayWidth, ...attachment }) => attachment
+          ) as {
+            storageId: Id<"_storage">
+            name: string
+            type: string
+            size: number
+          }[],
+        })
+      }
+    },
+    [updateTask]
+  )
+
   useEffect(() => {
     if (workspaceId !== lastLoadedWorkspaceIdRef.current) {
       setHasFetchedTasks(false)
@@ -3496,25 +3562,27 @@ export function KanbanBoard() {
 
     if (isDevTask(taskId)) return
 
-    void updateTask({
+    const nextAttachments = updates.attachments?.map(
+      ({ url, ...attachment }) => attachment
+    ) as
+      | undefined
+      | {
+          storageId: Id<"_storage">
+          name: string
+          type: string
+          size: number
+          width?: number
+          height?: number
+          displayWidth?: number
+        }[]
+
+    void updateTaskWithAttachmentFallback({
       taskId: taskId as Id<"tasks">,
       title: updates.title,
       description: updates.description,
       priority: updates.priority,
       labels: updates.labels,
-      attachments: updates.attachments?.map(
-        ({ url, ...attachment }) => attachment
-      ) as
-        | undefined
-        | {
-            storageId: Id<"_storage">
-            name: string
-            type: string
-            size: number
-            width?: number
-            height?: number
-            displayWidth?: number
-          }[],
+      attachments: nextAttachments,
     }).catch((error) => {
       if (previousTask) {
         updateWorkspaceTasks(workspaceId, (tasks) =>
@@ -3522,14 +3590,7 @@ export function KanbanBoard() {
         )
       }
 
-      const message =
-        error instanceof Error &&
-        error.message.includes("attachments") &&
-        error.message.includes("validator")
-          ? "Attachment updates aren't available right now. Refresh Convex and try again."
-          : "Task update failed. Try again."
-
-      toast.error(message)
+      toast.error("Task update failed. Try again.")
     })
   }
 
