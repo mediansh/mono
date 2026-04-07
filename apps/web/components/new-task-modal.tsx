@@ -168,7 +168,7 @@ export function NewTaskModal({
     }))
   }, [currentWorkspace?.labels])
 
-  const titleRef = useRef<HTMLInputElement>(null)
+  const titleRef = useRef<HTMLTextAreaElement>(null)
   const descriptionRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const previewUrlsRef = useRef<string[]>([])
@@ -283,6 +283,14 @@ export function NewTaskModal({
       setStatus(defaultStatus)
     }
   }, [defaultStatus, open])
+
+  // Auto-resize title textarea to fit content
+  useEffect(() => {
+    const el = titleRef.current
+    if (!el) return
+    el.style.height = "auto"
+    el.style.height = `${el.scrollHeight}px`
+  }, [title])
 
   // Auto-resize description textarea to fit content
   useEffect(() => {
@@ -636,7 +644,7 @@ export function NewTaskModal({
     )
   }
 
-  function handleTitleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+  function handleTitleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.metaKey && !e.ctrlKey) {
       e.preventDefault()
       descriptionRef.current?.focus()
@@ -779,15 +787,15 @@ export function NewTaskModal({
                   <>
                     {/* Body — scrollable */}
                     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 pt-3 pb-1.5">
-                      <input
+                      <textarea
                         ref={titleRef}
-                        type="text"
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
                         onKeyDown={handleTitleKeyDown}
                         placeholder="Task title"
                         autoFocus
-                        className="w-full shrink-0 bg-transparent text-[14px] font-medium outline-none placeholder:text-muted-foreground/50"
+                        rows={1}
+                        className="w-full shrink-0 resize-none overflow-hidden bg-transparent text-[14px] font-medium outline-none placeholder:text-muted-foreground/50"
                       />
                       <textarea
                         ref={descriptionRef}
