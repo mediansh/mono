@@ -667,7 +667,7 @@ export function NewTaskModal({
             className="fixed inset-0 z-50 bg-black/40"
           />
 
-          <div className="fixed inset-0 z-50 overflow-y-auto px-4 py-6 sm:px-6 sm:py-10">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
             {/* Panel */}
             <motion.div
               ref={panelRef}
@@ -675,7 +675,7 @@ export function NewTaskModal({
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, y: 6, scale: 0.98 }}
               transition={{ duration: 0.12, ease: [0.32, 0, 0.67, 0] }}
-              className="relative mx-auto flex max-h-[calc(100vh-3rem)] w-full max-w-xl flex-col overflow-hidden rounded-[4px] bg-background shadow-2xl ring-1 ring-border sm:max-h-[calc(100vh-5rem)]"
+              className="relative flex max-h-[calc(100vh-2rem)] w-full max-w-xl flex-col overflow-hidden rounded-[4px] bg-background shadow-2xl ring-1 ring-border sm:max-h-[calc(100vh-3rem)]"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                   e.preventDefault()
