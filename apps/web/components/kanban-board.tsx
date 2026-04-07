@@ -315,6 +315,51 @@ function patchTaskDocs(
   )
 }
 
+function mergeAttachmentMetadata(
+  liveAttachments: TaskDoc["attachments"],
+  currentAttachments: TaskDoc["attachments"]
+) {
+  if (!liveAttachments?.length || !currentAttachments?.length) {
+    return liveAttachments
+  }
+
+  const currentAttachmentsById = new Map(
+    currentAttachments.map((attachment) => [
+      String(attachment.storageId),
+      attachment,
+    ])
+  )
+  let didHydrateMetadata = false
+
+  const mergedAttachments = liveAttachments.map((attachment) => {
+    const currentAttachment = currentAttachmentsById.get(
+      String(attachment.storageId)
+    )
+    if (!currentAttachment) {
+      return attachment
+    }
+
+    const nextAttachment = {
+      ...attachment,
+      width: attachment.width ?? currentAttachment.width,
+      height: attachment.height ?? currentAttachment.height,
+      displayWidth: attachment.displayWidth ?? currentAttachment.displayWidth,
+    }
+
+    if (
+      nextAttachment.width !== attachment.width ||
+      nextAttachment.height !== attachment.height ||
+      nextAttachment.displayWidth !== attachment.displayWidth
+    ) {
+      didHydrateMetadata = true
+    }
+
+    return nextAttachment
+  })
+
+  return didHydrateMetadata ? mergedAttachments : liveAttachments
+}
+
 function mergeLiveTaskDocs(
   currentTasks: TaskDoc[] | undefined,
   liveTasks: Doc<"tasks">[]
@@ -329,6 +374,10 @@ function mergeLiveTaskDocs(
 
   const mergedLiveTasks = liveTasks.map((liveTask) => {
     const currentTask = currentTasksById.get(String(liveTask._id))
+    const mergedAttachments = mergeAttachmentMetadata(
+      (liveTask as TaskDoc).attachments,
+      currentTask?.attachments
+    )
     if (
       currentTask?._syncStatus === "error" &&
       JSON.stringify(currentTask.attachments ?? null) !==
@@ -338,6 +387,13 @@ function mergeLiveTaskDocs(
         ...liveTask,
         attachments: currentTask.attachments,
         _syncStatus: "error" as const,
+      }
+    }
+
+    if (mergedAttachments !== (liveTask as TaskDoc).attachments) {
+      return {
+        ...liveTask,
+        attachments: mergedAttachments,
       }
     }
 
