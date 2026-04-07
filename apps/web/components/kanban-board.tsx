@@ -3449,6 +3449,9 @@ export function KanbanBoard() {
   function handleUpdateTask(taskId: string, updates: Partial<Task>) {
     if (!workspaceId || !canManageTasks) return
     lastLocalChangeRef.current = Date.now()
+    const previousTask = (
+      getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
+    ).find((task) => task._id === taskId)
 
     trackTaskUpdated({ taskId, fields: Object.keys(updates) })
 
@@ -3511,6 +3514,21 @@ export function KanbanBoard() {
             height?: number
             displayWidth?: number
           }[],
+    }).catch((error) => {
+      if (previousTask) {
+        updateWorkspaceTasks(workspaceId, (tasks) =>
+          tasks.map((task) => (task._id === taskId ? previousTask : task))
+        )
+      }
+
+      const message =
+        error instanceof Error &&
+        error.message.includes("attachments") &&
+        error.message.includes("validator")
+          ? "Attachment updates aren't available right now. Refresh Convex and try again."
+          : "Task update failed. Try again."
+
+      toast.error(message)
     })
   }
 
