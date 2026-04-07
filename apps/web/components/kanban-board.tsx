@@ -125,13 +125,13 @@ interface Task extends Omit<TaskDoc, "attachments"> {
 }
 
 // Column config
-const COLUMNS: { id: Status; label: string }[] = [
-  { id: "requests", label: "Requests" },
-  { id: "todo", label: "Todo" },
-  { id: "in_progress", label: "In Progress" },
-  { id: "ready", label: "Ready" },
-  { id: "shipped", label: "Shipped" },
-  { id: "archive", label: "Archive" },
+const COLUMNS: { id: Status; label: string; emptyLabel: string }[] = [
+  { id: "requests", label: "Requests", emptyLabel: "No requests yet" },
+  { id: "todo", label: "Todo", emptyLabel: "No issues yet" },
+  { id: "in_progress", label: "In Progress", emptyLabel: "No issues in progress yet" },
+  { id: "ready", label: "Ready", emptyLabel: "No issues ready yet" },
+  { id: "shipped", label: "Shipped", emptyLabel: "No issues shipped yet" },
+  { id: "archive", label: "Archive", emptyLabel: "No issues archived yet" },
 ]
 
 // Label colors — built from workspace config
@@ -1559,7 +1559,7 @@ function ListGroup({
           >
             {tasks.length === 0 ? (
               <div className="flex items-center justify-center py-6 text-[12px] text-muted-foreground/50">
-                No issues yet
+                {column.emptyLabel}
               </div>
             ) : (
               tasks.map((task, rowIndex) => (
@@ -2345,7 +2345,7 @@ function KanbanColumn({
           <div className="flex flex-col gap-2">
             {tasks.length === 0 ? (
               <div className="flex items-center justify-center py-8 text-[12px] text-muted-foreground/50">
-                No issues yet
+                {column.emptyLabel}
               </div>
             ) : (
               tasks.map((task, cardIndex) => (
