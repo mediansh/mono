@@ -6,6 +6,14 @@ import { internal } from "./_generated/api"
 import { requireTaskWriteAccess, requireWorkspaceAccess } from "./permissions"
 import { STATUS_ORDER } from "../lib/task-board"
 import { insertWorkspaceLog } from "./logs"
+import {
+  recordDeletedTaskSource,
+  recordLinkedPlatformDeletions,
+  queueGitHubIssueClosure,
+  queueLinearIssueDeletion,
+  clearLinearTaskLink,
+  clearGitHubTaskLink,
+} from "./tasks"
 
 const draftStatusValidator = v.union(
   v.literal("todo"),
@@ -252,6 +260,14 @@ export const moveTaskToDraft = mutation({
       message: `Moved ${task.taskCode} "${task.title}" to drafts`,
       source: "manual",
     })
+
+    // Clean up integration links (same as deleteTask in tasks.ts)
+    await recordDeletedTaskSource(ctx, task)
+    await recordLinkedPlatformDeletions(ctx, task)
+    await queueGitHubIssueClosure(ctx, task.workspaceId, args.taskId)
+    await queueLinearIssueDeletion(ctx, task.workspaceId, args.taskId)
+    await clearLinearTaskLink(ctx, args.taskId)
+    await clearGitHubTaskLink(ctx, args.taskId)
 
     // Delete the task
     await ctx.db.delete(args.taskId)

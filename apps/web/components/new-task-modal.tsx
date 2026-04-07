@@ -316,10 +316,10 @@ export function NewTaskModal({
   )
 
   useEffect(() => {
-    if (open) {
+    if (open && !draft) {
       setStatus(defaultStatus)
     }
-  }, [defaultStatus, open])
+  }, [defaultStatus, open, draft])
 
   // Auto-resize title textarea to fit content
   useEffect(() => {

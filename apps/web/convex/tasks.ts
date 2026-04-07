@@ -387,7 +387,7 @@ async function createTasksForWorkspace(
   return await insertTasksForWorkspace(ctx, workspaceId, taskInputs)
 }
 
-async function recordDeletedTaskSource(ctx: MutationCtx, task: Doc<"tasks">) {
+export async function recordDeletedTaskSource(ctx: MutationCtx, task: Doc<"tasks">) {
   const source = task.source
   if (!source?.url) {
     return
@@ -421,7 +421,7 @@ async function recordDeletedTaskSource(ctx: MutationCtx, task: Doc<"tasks">) {
   })
 }
 
-async function recordLinkedPlatformDeletions(
+export async function recordLinkedPlatformDeletions(
   ctx: MutationCtx,
   task: Doc<"tasks">
 ) {
@@ -665,7 +665,7 @@ async function applyFeedbackTaskOperations(
   }
 }
 
-async function queueGitHubIssueClosure(
+export async function queueGitHubIssueClosure(
   ctx: MutationCtx,
   workspaceId: Id<"workspaces">,
   taskId: Id<"tasks">
@@ -684,7 +684,7 @@ async function queueGitHubIssueClosure(
   })
 }
 
-async function queueLinearIssueDeletion(
+export async function queueLinearIssueDeletion(
   ctx: MutationCtx,
   workspaceId: Id<"workspaces">,
   taskId: Id<"tasks">
@@ -702,7 +702,7 @@ async function queueLinearIssueDeletion(
   })
 }
 
-async function clearLinearTaskLink(ctx: MutationCtx, taskId: Id<"tasks">) {
+export async function clearLinearTaskLink(ctx: MutationCtx, taskId: Id<"tasks">) {
   const link = await ctx.db
     .query("linearTaskLinks")
     .withIndex("by_task", (q) => q.eq("taskId", taskId))
@@ -713,7 +713,7 @@ async function clearLinearTaskLink(ctx: MutationCtx, taskId: Id<"tasks">) {
   }
 }
 
-async function clearGitHubTaskLink(ctx: MutationCtx, taskId: Id<"tasks">) {
+export async function clearGitHubTaskLink(ctx: MutationCtx, taskId: Id<"tasks">) {
   await ctx.runMutation(internal.github.deleteGitHubTaskLinkByTaskId, {
     taskId,
   })
