@@ -175,27 +175,20 @@ function AttachmentImageCard({
               <button
                 type="button"
                 onPointerDown={handleResizeStart}
-                className={`absolute -right-3 -bottom-3 z-10 flex size-8 cursor-nwse-resize items-center justify-center rounded-[10px] border border-border/80 bg-background/95 text-muted-foreground shadow-sm backdrop-blur-sm transition-opacity duration-100 focus-visible:opacity-100 ${
-                  isResizing
-                    ? "opacity-100"
-                    : "opacity-0 group-hover:opacity-100"
-                }`}
+                className="absolute right-2 bottom-2 z-10 flex size-5 cursor-nwse-resize items-center justify-center rounded-[4px] bg-black/40 text-white/80 backdrop-blur-sm transition-colors hover:bg-black/60"
                 aria-label={`Resize ${attachment.name}`}
               >
                 <svg
-                  viewBox="0 0 16 16"
-                  className="pointer-events-none size-4"
+                  viewBox="0 0 8 8"
+                  className="pointer-events-none size-3"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="1.5"
                   strokeLinecap="round"
-                  strokeLinejoin="round"
                   aria-hidden="true"
                 >
-                  <path d="M2.5 13.5 6 10" />
-                  <path d="M2.5 10.5v3h3" />
-                  <path d="M13.5 2.5 10 6" />
-                  <path d="M10.5 2.5h3v3" />
+                  <line x1="7" y1="2" x2="2" y2="7" />
+                  <line x1="7" y1="5" x2="5" y2="7" />
                 </svg>
               </button>
             ) : null}
