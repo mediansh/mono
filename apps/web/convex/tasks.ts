@@ -34,6 +34,9 @@ const attachmentValidator = v.object({
   name: v.string(),
   type: v.string(),
   size: v.number(),
+  width: v.optional(v.number()),
+  height: v.optional(v.number()),
+  displayWidth: v.optional(v.number()),
 })
 
 const taskSourceValidator = v.object({
@@ -77,6 +80,9 @@ type CreateTaskInput = {
     name: string
     type: string
     size: number
+    width?: number
+    height?: number
+    displayWidth?: number
   }[]
 }
 
@@ -810,6 +816,44 @@ export const listByWorkspace = query({
   },
 })
 
+export const resolveAttachmentUrls = query({
+  args: {
+    workspaceId: v.id("workspaces"),
+    storageIds: v.array(v.id("_storage")),
+  },
+  handler: async (ctx, args) => {
+    await requireWorkspaceAccess(ctx, args.workspaceId)
+    const requestedStorageIds = Array.from(
+      new Set(args.storageIds.map((storageId) => String(storageId)))
+    )
+    if (requestedStorageIds.length === 0) {
+      return {}
+    }
+
+    const tasks = await getWorkspaceTasks(ctx, args.workspaceId)
+    const allowedStorageIds = new Set(
+      tasks.flatMap((task) =>
+        (task.attachments ?? []).map((attachment) =>
+          String(attachment.storageId)
+        )
+      )
+    )
+
+    const entries = await Promise.all(
+      requestedStorageIds.map(async (storageId) => ({
+        storageId,
+        url: allowedStorageIds.has(storageId)
+          ? await ctx.storage.getUrl(storageId as Id<"_storage">)
+          : null,
+      }))
+    )
+
+    return Object.fromEntries(
+      entries.map(({ storageId, url }) => [String(storageId), url])
+    )
+  },
+})
+
 export const createTask = mutation({
   args: {
     workspaceId: v.id("workspaces"),
@@ -1192,6 +1236,7 @@ export const updateTask = mutation({
       )
     ),
     labels: v.optional(v.array(v.string())),
+    attachments: v.optional(v.array(attachmentValidator)),
   },
   handler: async (ctx, args) => {
     const task = await ctx.db.get(args.taskId)
@@ -1206,12 +1251,17 @@ export const updateTask = mutation({
     if (args.status !== undefined) updates.status = args.status
     if (args.priority !== undefined) updates.priority = args.priority
     if (args.labels !== undefined) updates.labels = args.labels
+    if (args.attachments !== undefined) {
+      updates.attachments =
+        args.attachments.length > 0 ? args.attachments : undefined
+    }
     if (
       args.title !== undefined ||
       args.description !== undefined ||
       args.status !== undefined ||
       args.priority !== undefined ||
-      args.labels !== undefined
+      args.labels !== undefined ||
+      args.attachments !== undefined
     ) {
       updates.updatedAt = Date.now()
     }
@@ -1240,7 +1290,8 @@ export const updateTask = mutation({
       args.title !== undefined ||
       args.description !== undefined ||
       args.priority !== undefined ||
-      args.labels !== undefined
+      args.labels !== undefined ||
+      args.attachments !== undefined
     ) {
       await logTaskUpdated(ctx, task)
     }

@@ -1,6 +1,6 @@
 - Always use pnpm
 - Never run the dev servers
-- Always use Hugeicons
+- Always use Phosphor Icons
 - Keep the UI/branding consistent
 - Ensure your components are reusable
 - When you complete a task, always commit it to git
@@ -32,6 +32,35 @@ To create a new task:
 ```
 mdn create --title "Description" --status todo --priority medium --agent <your-agent-name>
 ```
+
+## Linear Integration
+
+Tasks are tracked in the **Median** Linear team using the `linear` CLI (`schpet/linear-cli`).
+Config is in `.linear.toml` at the repo root (team: MED, workspace: clovrai).
+The API key is in `~/.config/linear/linear.toml` (never commit it).
+
+**List issues:**
+```bash
+linear issue query --team MED --all-states
+```
+
+**Create an issue** before starting work:
+```bash
+linear issue create --title "Fix auth bug" --team MED
+# prints the issue ID e.g. MED-42 — use it in commits
+```
+
+**Start / complete an issue:**
+```bash
+linear issue start MED-42    # marks In Progress
+linear issue close MED-42    # marks Done
+```
+
+**Workflow:**
+1. Create a Linear issue (or pick up an existing one)
+2. Run `linear issue start MED-42` when beginning
+3. Include the issue ID in every commit: `MED-42 fix: ...`
+4. Run `linear issue close MED-42` after merging
 
 ## Commit Messages & Pull Requests
 

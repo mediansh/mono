@@ -33,8 +33,15 @@ import {
   Trash,
   Tag,
   Check,
+  Minus,
+  ListBullets,
+  SquaresFour,
 } from "@phosphor-icons/react"
 import { NewTaskModal } from "@/components/new-task-modal"
+import {
+  TaskAttachmentGallery,
+  type TaskAttachment,
+} from "@/components/task-attachments"
 import {
   Dialog,
   DialogContent,
@@ -97,11 +104,6 @@ import {
   type BoardView,
   type LocalTaskDoc as TaskDoc,
 } from "@/lib/local-first-store"
-import { HugeiconsIcon } from "@hugeicons/react"
-import {
-  LeftToRightListBulletIcon,
-  DashboardSquare01Icon,
-} from "@hugeicons/core-free-icons"
 import { hasTaskWritePermission } from "@/lib/workspace-permissions"
 import { useSearchPaletteTaskEvent } from "@/components/search-palette"
 import {
@@ -116,9 +118,10 @@ import {
   trackNewTaskModalOpened,
 } from "@/lib/analytics"
 
-interface Task extends Omit<TaskDoc, "_syncStatus"> {
+interface Task extends Omit<TaskDoc, "attachments"> {
   id: string
   createdAt: string
+  attachments?: TaskAttachment[]
 }
 
 // Column config
@@ -220,7 +223,7 @@ function getPriorityIcon(priority: Priority, size = 14) {
     case "low":
       return <CellSignalLow size={size} className="text-blue-400" />
     case "none":
-      return <CellSignalLow size={size} className="text-muted-foreground" />
+      return <Minus size={size} className="text-muted-foreground" />
   }
 }
 
@@ -291,27 +294,113 @@ function patchTaskDocs(
   tasks: TaskDoc[],
   taskId: string,
   updates: Partial<
-    Pick<TaskDoc, "title" | "description" | "priority" | "labels">
+    Pick<
+      TaskDoc,
+      | "title"
+      | "description"
+      | "priority"
+      | "labels"
+      | "attachments"
+      | "_syncStatus"
+    >
   >
 ) {
   const defined = Object.fromEntries(
-    Object.entries(updates).filter(([, v]) => v !== undefined)
+    Object.entries(updates).filter(
+      ([key, value]) => key === "_syncStatus" || value !== undefined
+    )
   )
   return tasks.map((task) =>
     task._id === taskId ? { ...task, ...defined } : task
   )
 }
 
+function mergeAttachmentMetadata(
+  liveAttachments: TaskDoc["attachments"],
+  currentAttachments: TaskDoc["attachments"]
+) {
+  if (!liveAttachments?.length || !currentAttachments?.length) {
+    return liveAttachments
+  }
+
+  const currentAttachmentsById = new Map(
+    currentAttachments.map((attachment) => [
+      String(attachment.storageId),
+      attachment,
+    ])
+  )
+  let didHydrateMetadata = false
+
+  const mergedAttachments = liveAttachments.map((attachment) => {
+    const currentAttachment = currentAttachmentsById.get(
+      String(attachment.storageId)
+    )
+    if (!currentAttachment) {
+      return attachment
+    }
+
+    const nextAttachment = {
+      ...attachment,
+      width: attachment.width ?? currentAttachment.width,
+      height: attachment.height ?? currentAttachment.height,
+      displayWidth: attachment.displayWidth ?? currentAttachment.displayWidth,
+    }
+
+    if (
+      nextAttachment.width !== attachment.width ||
+      nextAttachment.height !== attachment.height ||
+      nextAttachment.displayWidth !== attachment.displayWidth
+    ) {
+      didHydrateMetadata = true
+    }
+
+    return nextAttachment
+  })
+
+  return didHydrateMetadata ? mergedAttachments : liveAttachments
+}
+
 function mergeLiveTaskDocs(
   currentTasks: TaskDoc[] | undefined,
   liveTasks: Doc<"tasks">[]
 ) {
+  const currentTasksById = new Map(
+    (currentTasks ?? []).map((task) => [task._id, task])
+  )
   const liveTaskIds = new Set(liveTasks.map((task) => String(task._id)))
   const pendingTasks = (currentTasks ?? []).filter(
     (task) => task._syncStatus === "pending" && !liveTaskIds.has(task._id)
   )
 
-  return sortTaskDocs([...liveTasks, ...pendingTasks])
+  const mergedLiveTasks = liveTasks.map((liveTask) => {
+    const currentTask = currentTasksById.get(String(liveTask._id))
+    const mergedAttachments = mergeAttachmentMetadata(
+      (liveTask as TaskDoc).attachments,
+      currentTask?.attachments
+    )
+    if (
+      currentTask?._syncStatus === "error" &&
+      JSON.stringify(currentTask.attachments ?? null) !==
+        JSON.stringify((liveTask as TaskDoc).attachments ?? null)
+    ) {
+      return {
+        ...liveTask,
+        attachments: currentTask.attachments,
+        _syncStatus: "error" as const,
+      }
+    }
+
+    if (mergedAttachments !== (liveTask as TaskDoc).attachments) {
+      return {
+        ...liveTask,
+        attachments: mergedAttachments,
+      }
+    }
+
+    return liveTask
+  })
+
+  return sortTaskDocs([...mergedLiveTasks, ...pendingTasks])
 }
 
 function areTaskDocListsEqual(left: TaskDoc[] | undefined, right: TaskDoc[]) {
@@ -1571,10 +1660,10 @@ function TaskDetailModal({
     >
       <DialogContent
         showCloseButton={false}
-        className="max-h-[85vh] max-w-xl overflow-hidden p-0"
+        className="max-h-[88vh] w-[min(92vw,72rem)] max-w-4xl overflow-hidden p-0"
       >
         {task && (
-          <div className="flex flex-col">
+          <div className="flex max-h-[88vh] flex-col">
             {/* Top bar */}
             <div className="flex items-center justify-between gap-2 border-b border-border px-3.5 py-3">
               <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
@@ -1646,7 +1735,7 @@ function TaskDetailModal({
             </div>
 
             {/* Content */}
-            <div className="flex flex-col gap-5 px-3.5 pt-5 pb-6">
+            <div className="flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto px-3.5 pt-5 pb-6">
               {/* Title */}
               <DialogHeader>
                 <DialogTitle className="sr-only">{task.title}</DialogTitle>
@@ -1672,7 +1761,7 @@ function TaskDetailModal({
                       setTitleValue(task.title)
                       setEditingTitle(true)
                     }}
-                    className={`-mx-1 rounded-[4px] px-1 py-0.5 text-[14px] leading-snug font-semibold tracking-tight transition-colors ${canManageTasks ? "cursor-text hover:bg-accent/50" : ""}`}
+                    className={`-mx-1 rounded-[4px] px-1 py-0.5 text-[14px] leading-snug font-semibold tracking-tight break-words transition-colors ${canManageTasks ? "cursor-text hover:bg-accent/50" : ""}`}
                   >
                     {task.title}
                   </h2>
@@ -1788,6 +1877,20 @@ function TaskDetailModal({
                 </DropdownMenu>
               </div>
 
+              {task._syncStatus === "error" ? (
+                <div className="flex items-start gap-2 rounded-[8px] border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-200">
+                  <WarningCircle
+                    size={14}
+                    weight="fill"
+                    className="mt-0.5 shrink-0 text-amber-400"
+                  />
+                  <span className="leading-relaxed">
+                    Attachment changes are visible locally, but they have not
+                    synced to the server yet.
+                  </span>
+                </div>
+              ) : null}
+
               {/* Divider */}
               <div className="h-px bg-border" />
 
@@ -1821,7 +1924,7 @@ function TaskDetailModal({
                     className={`-mx-2 rounded-[4px] px-2 py-1.5 text-[13px] leading-relaxed transition-colors ${canManageTasks ? "cursor-text hover:bg-accent/40" : ""}`}
                   >
                     {task.description ? (
-                      <span className="text-foreground/80">
+                      <span className="block break-words whitespace-pre-wrap text-foreground/80">
                         {task.description}
                       </span>
                     ) : (
@@ -1832,6 +1935,20 @@ function TaskDetailModal({
                   </div>
                 )}
               </div>
+
+              {task.attachments && task.attachments.length > 0 ? (
+                <>
+                  <div className="h-px bg-border" />
+                  <TaskAttachmentGallery
+                    attachments={task.attachments}
+                    workspaceId={task.workspaceId}
+                    canManageAttachments={canManageTasks}
+                    onAttachmentsChange={(attachments) =>
+                      onUpdate(task.id, { attachments })
+                    }
+                  />
+                </>
+              ) : null}
 
               {/* Accept / Deny for request tasks */}
               {task.status === "requests" && onAccept && onDeny && (
@@ -2810,7 +2927,7 @@ function ViewToggle({
         }`}
         title="List view"
       >
-        <HugeiconsIcon icon={LeftToRightListBulletIcon} size={14} />
+        <ListBullets size={14} />
       </button>
       <button
         onClick={() => onViewChange("board")}
@@ -2821,7 +2938,7 @@ function ViewToggle({
         }`}
         title="Board view"
       >
-        <HugeiconsIcon icon={DashboardSquare01Icon} size={14} />
+        <SquaresFour size={14} />
       </button>
     </div>
   )
@@ -3297,6 +3414,72 @@ export function KanbanBoard() {
   const bulkUpdateTasks = useMutation(api.tasks.bulkUpdateTasks)
   const bulkDeleteTasks = useMutation(api.tasks.bulkDeleteTasks)
 
+  const updateTaskWithAttachmentFallback = useCallback(
+    async ({
+      taskId,
+      title,
+      description,
+      priority,
+      labels,
+      attachments,
+    }: {
+      taskId: Id<"tasks">
+      title?: string
+      description?: string
+      priority?: Priority
+      labels?: Label[]
+      attachments?:
+        | {
+            storageId: Id<"_storage">
+            name: string
+            type: string
+            size: number
+            width?: number
+            height?: number
+            displayWidth?: number
+          }[]
+        | undefined
+    }) => {
+      try {
+        return await updateTask({
+          taskId,
+          title,
+          description,
+          priority,
+          labels,
+          attachments,
+        })
+      } catch (error) {
+        const shouldRetryWithoutAttachmentMetadata =
+          attachments !== undefined &&
+          error instanceof Error &&
+          error.message.includes("attachments") &&
+          error.message.includes("validator")
+
+        if (!shouldRetryWithoutAttachmentMetadata) {
+          throw error
+        }
+
+        return await updateTask({
+          taskId,
+          title,
+          description,
+          priority,
+          labels,
+          attachments: attachments.map(
+            ({ width, height, displayWidth, ...attachment }) => attachment
+          ) as {
+            storageId: Id<"_storage">
+            name: string
+            type: string
+            size: number
+          }[],
+        })
+      }
+    },
+    [updateTask]
+  )
+
   useEffect(() => {
     if (workspaceId !== lastLoadedWorkspaceIdRef.current) {
       setHasFetchedTasks(false)
@@ -3432,6 +3615,9 @@ export function KanbanBoard() {
   function handleUpdateTask(taskId: string, updates: Partial<Task>) {
     if (!workspaceId || !canManageTasks) return
     lastLocalChangeRef.current = Date.now()
+    const previousTask = (
+      getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
+    ).find((task) => task._id === taskId)
 
     trackTaskUpdated({ taskId, fields: Object.keys(updates) })
 
@@ -3469,17 +3655,63 @@ export function KanbanBoard() {
         description: updates.description,
         priority: updates.priority,
         labels: updates.labels,
+        attachments: updates.attachments as TaskDoc["attachments"],
+        ...(updates.attachments !== undefined
+          ? { _syncStatus: undefined }
+          : {}),
       })
     )
 
     if (isDevTask(taskId)) return
 
-    void updateTask({
+    const nextAttachments = updates.attachments?.map(
+      ({ url, ...attachment }) => attachment
+    ) as
+      | undefined
+      | {
+          storageId: Id<"_storage">
+          name: string
+          type: string
+          size: number
+          width?: number
+          height?: number
+          displayWidth?: number
+        }[]
+
+    void updateTaskWithAttachmentFallback({
       taskId: taskId as Id<"tasks">,
       title: updates.title,
       description: updates.description,
       priority: updates.priority,
       labels: updates.labels,
+      attachments: nextAttachments,
+    }).catch((error) => {
+      const isAttachmentUpdate = updates.attachments !== undefined
+      const shouldKeepLocalAttachmentState =
+        isAttachmentUpdate &&
+        error instanceof Error &&
+        error.message.includes("attachments")
+
+      if (shouldKeepLocalAttachmentState) {
+        updateWorkspaceTasks(workspaceId, (tasks) =>
+          patchTaskDocs(tasks, taskId, {
+            attachments: updates.attachments as TaskDoc["attachments"],
+            _syncStatus: "error",
+          })
+        )
+        toast.error(
+          "Attachment changes are only saved locally right now. They haven't synced to the server yet."
+        )
+        return
+      }
+
+      if (previousTask) {
+        updateWorkspaceTasks(workspaceId, (tasks) =>
+          tasks.map((task) => (task._id === taskId ? previousTask : task))
+        )
+      }
+
+      toast.error("Task update failed. Try again.")
     })
   }
 
