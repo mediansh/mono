@@ -3483,6 +3483,7 @@ export function KanbanBoard() {
   const updateTask = useMutation(api.tasks.updateTask)
   const deleteTask = useMutation(api.tasks.deleteTask)
   const moveTaskToDraft = useMutation(api.drafts.moveTaskToDraft)
+  const saveDraft = useMutation(api.drafts.saveDraft)
   const reorderTasks = useMutation(api.tasks.reorderTasks)
   const bulkUpdateTasks = useMutation(api.tasks.bulkUpdateTasks)
   const bulkDeleteTasks = useMutation(api.tasks.bulkDeleteTasks)
@@ -3846,7 +3847,26 @@ export function KanbanBoard() {
     )
 
     if (isDevTask(taskId)) {
-      toast.success(`Moved "${task.title}" to drafts`)
+      const draftAttachments = task.attachments ?? []
+
+      void saveDraft({
+        workspaceId,
+        title: task.title,
+        description: task.description,
+        status: task.status === "requests" ? "todo" : task.status,
+        priority: task.priority,
+        labels: task.labels,
+        attachments: draftAttachments.length > 0 ? draftAttachments : undefined,
+      })
+        .then(() => {
+          toast.success(`Moved "${task.title}" to drafts`)
+        })
+        .catch(() => {
+          updateWorkspaceTasks(workspaceId, (tasks) =>
+            sortTaskDocs([...tasks, task])
+          )
+          toast.error("Failed to move task to drafts")
+        })
       return
     }
 
