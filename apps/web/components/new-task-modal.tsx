@@ -54,7 +54,11 @@ import {
   updateWorkspaceTasks,
   type LocalTaskDoc,
 } from "@/lib/local-first-store"
-import { getDefaultAttachmentDisplayWidth } from "@/components/task-attachments"
+import {
+  getDefaultAttachmentDisplayWidth,
+  TaskAttachmentGallery,
+  type TaskAttachment,
+} from "@/components/task-attachments"
 
 const STATUS_OPTIONS: { id: Status; label: string }[] = [
   { id: "todo", label: "Todo" },
@@ -118,15 +122,7 @@ type TaskDraftPayload = {
   status: Status
   priority: Priority
   labels: Label[]
-  attachments?: {
-    storageId: string
-    name: string
-    type: string
-    size: number
-    width?: number
-    height?: number
-    displayWidth?: number
-  }[]
+  attachments?: (TaskAttachment & { previewUrl?: string })[]
 }
 
 type GeneratedTaskPayload = {
@@ -153,15 +149,7 @@ export function NewTaskModal({
   const [createMore, setCreateMore] = useState(false)
   const [error, setError] = useState("")
   const [attachments, setAttachments] = useState<
-    {
-      storageId: string
-      name: string
-      type: string
-      size: number
-      width?: number
-      height?: number
-      displayWidth?: number
-    }[]
+    (TaskAttachment & { previewUrl?: string })[]
   >([])
   const [uploading, setUploading] = useState(false)
   const [activeTab, setActiveTab] = useState<"manual" | "ai">("manual")
@@ -182,6 +170,7 @@ export function NewTaskModal({
   const titleRef = useRef<HTMLInputElement>(null)
   const descriptionRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const previewUrlsRef = useRef<string[]>([])
   const createTask = useMutation(api.tasks.createTask)
   const createTasks = useMutation(api.tasks.createTasks)
 
@@ -243,6 +232,9 @@ export function NewTaskModal({
           }
 
           const imageMetadata = await readImageMetadata(file)
+          const previewUrl = file.type.startsWith("image/")
+            ? URL.createObjectURL(file)
+            : undefined
 
           const uploadUrl = await generateUploadUrl()
           const result = await fetch(uploadUrl, {
@@ -252,6 +244,9 @@ export function NewTaskModal({
           })
 
           if (!result.ok) {
+            if (previewUrl) {
+              URL.revokeObjectURL(previewUrl)
+            }
             setError(`Failed to upload "${file.name}".`)
             continue
           }
@@ -265,6 +260,8 @@ export function NewTaskModal({
             width: imageMetadata?.width,
             height: imageMetadata?.height,
             displayWidth: imageMetadata?.displayWidth,
+            url: previewUrl,
+            previewUrl,
           })
         }
 
@@ -284,6 +281,73 @@ export function NewTaskModal({
       setStatus(defaultStatus)
     }
   }, [defaultStatus, open])
+
+  useEffect(() => {
+    const currentPreviewUrls = attachments
+      .map((attachment) => attachment.previewUrl)
+      .filter((previewUrl): previewUrl is string => Boolean(previewUrl))
+
+    for (const previousUrl of previewUrlsRef.current) {
+      if (!currentPreviewUrls.includes(previousUrl)) {
+        URL.revokeObjectURL(previousUrl)
+      }
+    }
+
+    previewUrlsRef.current = currentPreviewUrls
+  }, [attachments])
+
+  useEffect(() => {
+    return () => {
+      for (const previewUrl of previewUrlsRef.current) {
+        URL.revokeObjectURL(previewUrl)
+      }
+    }
+  }, [])
+
+  const sanitizeAttachmentsForMutation = useCallback(
+    (taskAttachments?: (TaskAttachment & { previewUrl?: string })[]) =>
+      taskAttachments?.map(({ url, previewUrl, ...attachment }) => attachment),
+    []
+  )
+
+  const createTaskWithFallback = useCallback(
+    async (payload: TaskDraftPayload) => {
+      const attachmentsWithMetadata = sanitizeAttachmentsForMutation(
+        payload.attachments
+      )
+
+      try {
+        return await createTask({
+          workspaceId: currentWorkspace!._id,
+          title: payload.title.trim(),
+          description: payload.description?.trim() || undefined,
+          status: payload.status,
+          priority: payload.priority,
+          labels: payload.labels,
+          attachments: attachmentsWithMetadata?.length
+            ? (attachmentsWithMetadata as any)
+            : undefined,
+        })
+      } catch {
+        const legacyAttachments = attachmentsWithMetadata?.map(
+          ({ width, height, displayWidth, ...attachment }) => attachment
+        )
+
+        return await createTask({
+          workspaceId: currentWorkspace!._id,
+          title: payload.title.trim(),
+          description: payload.description?.trim() || undefined,
+          status: payload.status,
+          priority: payload.priority,
+          labels: payload.labels,
+          attachments: legacyAttachments?.length
+            ? (legacyAttachments as any)
+            : undefined,
+        })
+      }
+    },
+    [createTask, currentWorkspace, sanitizeAttachmentsForMutation]
+  )
 
   const createSingleTask = useCallback(
     async (payload: TaskDraftPayload) => {
@@ -332,23 +396,25 @@ export function NewTaskModal({
       ])
 
       try {
-        const createdTask = (await createTask({
-          workspaceId: currentWorkspace._id,
-          title: payload.title.trim(),
-          description: payload.description?.trim() || undefined,
-          status: payload.status,
-          priority: payload.priority,
-          labels: payload.labels,
+        const createdTask = (await createTaskWithFallback(
+          payload
+        )) as Doc<"tasks">
+
+        const hydratedTask = {
+          ...createdTask,
           attachments: payload.attachments?.length
-            ? (payload.attachments as any)
-            : undefined,
-        })) as Doc<"tasks">
+            ? payload.attachments.map(({ previewUrl, ...attachment }) => ({
+                ...attachment,
+                url: attachment.url ?? previewUrl ?? null,
+              }))
+            : createdTask.attachments,
+        } as LocalTaskDoc
 
         updateWorkspaceTasks(currentWorkspace._id, (tasks) =>
-          tasks.map((task) => (task._id === optimisticId ? createdTask : task))
+          tasks.map((task) => (task._id === optimisticId ? hydratedTask : task))
         )
 
-        return createdTask
+        return hydratedTask
       } catch {
         updateWorkspaceTasks(currentWorkspace._id, (tasks) =>
           tasks.filter((task) => task._id !== optimisticId)
@@ -357,7 +423,7 @@ export function NewTaskModal({
       }
     },
     [
-      createTask,
+      createTaskWithFallback,
       currentWorkspace,
       user?.firstName,
       user?.fullName,
@@ -779,31 +845,35 @@ export function NewTaskModal({
 
                     {/* Attachments */}
                     {attachments.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {attachments.map((file, i) => (
-                          <div
-                            key={i}
-                            className="flex items-center gap-1.5 rounded-[4px] border border-border bg-accent/50 px-2.5 py-1 text-xs"
-                          >
-                            <Paperclip
-                              size={12}
-                              className="text-muted-foreground"
-                            />
-                            <span className="max-w-[150px] truncate">
-                              {file.name}
-                            </span>
+                      <div className="rounded-[14px] border border-border/70 bg-accent/10 p-3">
+                        <TaskAttachmentGallery
+                          attachments={attachments}
+                          canManageAttachments
+                          onAttachmentsChange={(nextAttachments) =>
+                            setAttachments(
+                              nextAttachments as (TaskAttachment & {
+                                previewUrl?: string
+                              })[]
+                            )
+                          }
+                        />
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {attachments.map((attachment, index) => (
                             <button
+                              key={`${attachment.storageId}-${index}`}
+                              type="button"
                               onClick={() =>
                                 setAttachments((prev) =>
-                                  prev.filter((_, idx) => idx !== i)
+                                  prev.filter((_, idx) => idx !== index)
                                 )
                               }
-                              className="ml-0.5 text-muted-foreground transition-colors hover:text-foreground"
+                              className="inline-flex items-center gap-1.5 rounded-[8px] border border-border bg-background px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                             >
                               <X size={10} />
+                              Remove {attachment.name}
                             </button>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
                     )}
 
