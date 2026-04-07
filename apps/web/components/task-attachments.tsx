@@ -6,7 +6,7 @@ import {
   useEffect,
   useRef,
   useState,
-  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
 } from "react"
 import { api } from "@/convex/_generated/api"
 
@@ -68,10 +68,13 @@ function AttachmentImageCard({
   const [displayWidth, setDisplayWidth] = useState(
     getAttachmentDisplayWidth(attachment)
   )
+  const [isResizing, setIsResizing] = useState(false)
   const displayWidthRef = useRef(displayWidth)
-  const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(
-    null
-  )
+  const dragStateRef = useRef<{
+    pointerId: number
+    startX: number
+    startWidth: number
+  } | null>(null)
 
   useEffect(() => {
     displayWidthRef.current = displayWidth
@@ -81,46 +84,58 @@ function AttachmentImageCard({
     setDisplayWidth(getAttachmentDisplayWidth(attachment))
   }, [attachment.displayWidth, attachment.width, attachment.url])
 
+  useEffect(() => {
+    return () => {
+      document.body.style.cursor = ""
+      document.body.style.userSelect = ""
+    }
+  }, [])
+
   function commitDisplayWidth(nextWidth: number) {
     const normalized = clampAttachmentDisplayWidth(nextWidth)
     setDisplayWidth(normalized)
     onDisplayWidthChange?.(normalized)
   }
 
-  function handleResizeStart(event: ReactMouseEvent<HTMLButtonElement>) {
+  function handleResizeStart(event: ReactPointerEvent<HTMLButtonElement>) {
     if (!canManageAttachments) return
 
     event.preventDefault()
+    event.currentTarget.setPointerCapture(event.pointerId)
     document.body.style.cursor = "nwse-resize"
     document.body.style.userSelect = "none"
+    setIsResizing(true)
     dragStateRef.current = {
+      pointerId: event.pointerId,
       startX: event.clientX,
       startWidth: displayWidth,
     }
 
-    function handlePointerMove(moveEvent: MouseEvent) {
+    function handlePointerMove(moveEvent: PointerEvent) {
       const dragState = dragStateRef.current
-      if (!dragState) return
+      if (!dragState || moveEvent.pointerId !== dragState.pointerId) return
 
       const nextWidth =
         dragState.startWidth + (moveEvent.clientX - dragState.startX)
       setDisplayWidth(clampAttachmentDisplayWidth(nextWidth))
     }
 
-    function handlePointerUp() {
+    function handlePointerUp(moveEvent: PointerEvent) {
       const dragState = dragStateRef.current
+      if (!dragState || moveEvent.pointerId !== dragState.pointerId) return
+
       dragStateRef.current = null
-      window.removeEventListener("mousemove", handlePointerMove)
-      window.removeEventListener("mouseup", handlePointerUp)
+      window.removeEventListener("pointermove", handlePointerMove)
+      window.removeEventListener("pointerup", handlePointerUp)
       document.body.style.cursor = ""
       document.body.style.userSelect = ""
+      setIsResizing(false)
 
-      if (!dragState) return
       commitDisplayWidth(displayWidthRef.current)
     }
 
-    window.addEventListener("mousemove", handlePointerMove)
-    window.addEventListener("mouseup", handlePointerUp)
+    window.addEventListener("pointermove", handlePointerMove)
+    window.addEventListener("pointerup", handlePointerUp)
   }
 
   return (
@@ -152,7 +167,7 @@ function AttachmentImageCard({
       <div className="w-full overflow-hidden rounded-[14px] border border-border/80 bg-accent/20">
         {attachment.url ? (
           <div
-            className="group relative transition-[width] duration-75 ease-out"
+            className="group relative"
             style={{
               width: `${displayWidth}px`,
               maxWidth: "100%",
@@ -166,13 +181,17 @@ function AttachmentImageCard({
             {canManageAttachments ? (
               <button
                 type="button"
-                onMouseDown={handleResizeStart}
-                className="absolute right-2 bottom-2 flex size-7 cursor-nwse-resize items-center justify-center rounded-[9px] border border-border/80 bg-background/92 text-muted-foreground opacity-0 shadow-sm backdrop-blur-sm transition-all duration-150 group-hover:opacity-100 focus-visible:opacity-100"
+                onPointerDown={handleResizeStart}
+                className={`absolute -right-3 -bottom-3 z-10 flex size-8 cursor-nwse-resize items-center justify-center rounded-[10px] border border-border/80 bg-background/95 text-muted-foreground shadow-sm backdrop-blur-sm transition-opacity duration-100 focus-visible:opacity-100 ${
+                  isResizing
+                    ? "opacity-100"
+                    : "opacity-0 group-hover:opacity-100"
+                }`}
                 aria-label={`Resize ${attachment.name}`}
               >
                 <svg
                   viewBox="0 0 16 16"
-                  className="pointer-events-none size-3.5"
+                  className="pointer-events-none size-4"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="1.5"
@@ -180,10 +199,10 @@ function AttachmentImageCard({
                   strokeLinejoin="round"
                   aria-hidden="true"
                 >
-                  <path d="M5 11H2V8" />
-                  <path d="M11 5h3v3" />
-                  <path d="M2 11l4-4" />
-                  <path d="M14 5l-4 4" />
+                  <path d="M6 10 2.5 13.5" />
+                  <path d="M2.5 10.5v3h3" />
+                  <path d="M10 6 13.5 2.5" />
+                  <path d="M10.5 2.5h3v3" />
                 </svg>
               </button>
             ) : null}
