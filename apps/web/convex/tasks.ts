@@ -162,6 +162,16 @@ function dedupeTaskSources(
   })
 }
 
+function stripLinearTitlePrefix(title: string) {
+  const trimmed = title.trim()
+  if (trimmed === "[MDN]") return ""
+  if (trimmed.startsWith("[MDN] ")) {
+    return trimmed.slice(6).trim()
+  }
+
+  return title
+}
+
 function normalizeTitleFingerprint(value: string) {
   return value.trim().replace(/\s+/g, " ").toLowerCase()
 }
@@ -746,8 +756,19 @@ export const listByWorkspace = query({
       }
 
       const sources = dedupeTaskSources(base)
+      const hasLinearSource = Boolean(
+        linearLink ||
+        sources?.some((source) => source.platform === "linear") ||
+        task.source?.platform === "linear"
+      )
 
-      return { ...task, sources }
+      return {
+        ...task,
+        title: hasLinearSource
+          ? stripLinearTitlePrefix(task.title)
+          : task.title,
+        sources,
+      }
     })
   },
 })
