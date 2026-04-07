@@ -13,6 +13,7 @@ import type * as billingTracking from "../billingTracking.js";
 import type * as cli from "../cli.js";
 import type * as discord from "../discord.js";
 import type * as discordFeedback from "../discordFeedback.js";
+import type * as drafts from "../drafts.js";
 import type * as github from "../github.js";
 import type * as http from "../http.js";
 import type * as linear from "../linear.js";
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   cli: typeof cli;
   discord: typeof discord;
   discordFeedback: typeof discordFeedback;
+  drafts: typeof drafts;
   github: typeof github;
   http: typeof http;
   linear: typeof linear;

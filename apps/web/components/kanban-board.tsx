@@ -36,6 +36,7 @@ import {
   Minus,
   ListBullets,
   SquaresFour,
+  NotePencil,
 } from "@phosphor-icons/react"
 import { NewTaskModal } from "@/components/new-task-modal"
 import {
@@ -1099,6 +1100,7 @@ function TaskContextMenu({
   onDelete: (taskId: string) => void
   canManageTasks: boolean
 }) {
+  const moveTaskToDraft = useMutation(api.drafts.moveTaskToDraft)
   const labelConfig = useLabelConfig()
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -1205,6 +1207,24 @@ function TaskContextMenu({
       </ContextSubmenu>
 
       <div className="-mx-1 my-1 h-px bg-border" />
+
+      {/* Move to drafts */}
+      <button
+        disabled={!canManageTasks}
+        onClick={async () => {
+          onClose()
+          try {
+            await moveTaskToDraft({ taskId: task.id as any })
+            toast.success(`Moved "${task.title}" to drafts`)
+          } catch {
+            toast.error("Failed to move task to drafts")
+          }
+        }}
+        className="flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-accent"
+      >
+        <NotePencil size={14} />
+        <span>Move to drafts</span>
+      </button>
 
       {/* Delete */}
       <button
@@ -1625,6 +1645,7 @@ function TaskDetailModal({
   canManageTasks: boolean
 }) {
   const labelConfig = useLabelConfig()
+  const moveDetailToDraft = useMutation(api.drafts.moveTaskToDraft)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleValue, setTitleValue] = useState("")
   const [editingDesc, setEditingDesc] = useState(false)
@@ -1722,6 +1743,22 @@ function TaskDetailModal({
                 })()}
               </div>
               <div className="flex items-center gap-1">
+                <button
+                  disabled={!canManageTasks}
+                  onClick={async () => {
+                    onClose()
+                    try {
+                      await moveDetailToDraft({ taskId: task.id as any })
+                      toast.success(`Moved "${task.title}" to drafts`)
+                    } catch {
+                      toast.error("Failed to move task to drafts")
+                    }
+                  }}
+                  className="rounded-[4px] p-1 text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
+                  title="Move to drafts"
+                >
+                  <NotePencil size={14} />
+                </button>
                 <button
                   disabled={!canManageTasks}
                   onClick={() => onDelete(task.id)}

@@ -23,6 +23,7 @@ import {
   PencilSimple,
   Sparkle,
   ArrowRight,
+  NotePencil,
 } from "@phosphor-icons/react"
 import {
   DropdownMenu,
@@ -115,6 +116,16 @@ interface NewTaskModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   defaultStatus?: Status
+  draft?: {
+    _id: string
+    title: string
+    description?: string
+    status: Status
+    priority: Priority
+    labels: Label[]
+    attachments?: TaskAttachment[]
+  }
+  onDraftSaved?: () => void
 }
 
 type TaskDraftPayload = {
@@ -138,6 +149,8 @@ export function NewTaskModal({
   open,
   onOpenChange,
   defaultStatus = "todo",
+  draft,
+  onDraftSaved,
 }: NewTaskModalProps) {
   const { user } = useUser()
   const { currentWorkspace } = useWorkspace()
@@ -156,6 +169,30 @@ export function NewTaskModal({
   const [activeTab, setActiveTab] = useState<"manual" | "ai">("manual")
   const [aiPrompt, setAiPrompt] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
+  const [savingDraft, setSavingDraft] = useState(false)
+
+  const saveDraftMutation = useMutation(api.drafts.saveDraft)
+  const updateDraftMutation = useMutation(api.drafts.updateDraft)
+  const publishDraftMutation = useMutation(api.drafts.publishDraft)
+
+  // Populate form when editing a draft
+  const draftIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (open && draft && draft._id !== draftIdRef.current) {
+      draftIdRef.current = draft._id
+      setTitle(draft.title)
+      setDescription(draft.description ?? "")
+      setStatus(draft.status)
+      setPriority(draft.priority)
+      setLabels(draft.labels)
+      setAttachments(
+        (draft.attachments ?? []).map((a) => ({ ...a, previewUrl: undefined }))
+      )
+    }
+    if (!open) {
+      draftIdRef.current = null
+    }
+  }, [open, draft])
 
   const labelOptions = useMemo(() => {
     const wsLabels = currentWorkspace?.labels
@@ -478,7 +515,7 @@ export function NewTaskModal({
     ]
   )
 
-  function handleCreate() {
+  async function handleCreate() {
     if (!title.trim() || !currentWorkspace) return
     if (!canManageTasks) {
       setError("Guests can only view tasks.")
@@ -486,6 +523,31 @@ export function NewTaskModal({
     }
 
     setError("")
+
+    // If editing a draft, save latest changes then publish
+    if (draft) {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const draftAttachments = attachments.map(({ previewUrl, url, ...rest }) => rest)
+        await updateDraftMutation({
+          draftId: draft._id as any,
+          title,
+          description,
+          status: status === "requests" ? "todo" : status,
+          priority,
+          labels,
+          attachments: draftAttachments.length > 0 ? draftAttachments as any : undefined,
+        })
+        await publishDraftMutation({ draftId: draft._id as any })
+        toast.success("Draft published as task")
+        onOpenChange(false)
+        resetForm()
+        onDraftSaved?.()
+      } catch {
+        toast.error("Failed to publish draft.")
+      }
+      return
+    }
 
     const payload = {
       title,
@@ -520,6 +582,64 @@ export function NewTaskModal({
     createSingleTask(payload).catch(() => {
       toast.error("Task creation failed. Try again.")
     })
+  }
+
+  async function handleSaveDraft() {
+    if (!currentWorkspace) return
+    if (!canManageTasks) {
+      setError("Guests can only view tasks.")
+      return
+    }
+
+    setSavingDraft(true)
+    setError("")
+
+    try {
+      const draftAttachments = attachments.map(
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        ({ previewUrl, url, ...rest }) => rest
+      ) as {
+        storageId: string
+        name: string
+        type: string
+        size: number
+        width?: number
+        height?: number
+        displayWidth?: number
+      }[]
+
+      if (draft) {
+        await updateDraftMutation({
+          draftId: draft._id as any,
+          title: title || "Untitled draft",
+          description,
+          status: status === "requests" ? "todo" : status,
+          priority,
+          labels,
+          attachments: draftAttachments.length > 0 ? draftAttachments as any : undefined,
+        })
+        toast.success("Draft updated")
+      } else {
+        await saveDraftMutation({
+          workspaceId: currentWorkspace._id,
+          title: title || "Untitled draft",
+          description,
+          status: status === "requests" ? "todo" : status,
+          priority,
+          labels,
+          attachments: draftAttachments.length > 0 ? draftAttachments as any : undefined,
+        })
+        toast.success("Saved as draft")
+      }
+
+      onOpenChange(false)
+      resetForm()
+      onDraftSaved?.()
+    } catch {
+      setError("Failed to save draft.")
+    } finally {
+      setSavingDraft(false)
+    }
   }
 
   async function handleGenerateTasks() {
@@ -971,13 +1091,27 @@ export function NewTaskModal({
                               Create more
                             </button>
 
+                            {/* Draft button */}
+                            <button
+                              onClick={handleSaveDraft}
+                              disabled={!currentWorkspace || savingDraft}
+                              className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[12px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+                            >
+                              {savingDraft ? (
+                                <SpinnerGap size={13} className="animate-spin" />
+                              ) : (
+                                <NotePencil size={13} />
+                              )}
+                              {draft ? "Update draft" : "Draft"}
+                            </button>
+
                             {/* Create button */}
                             <button
                               onClick={handleCreate}
                               disabled={!title.trim() || !currentWorkspace}
                               className="flex items-center gap-2 rounded-[4px] bg-primary px-3 py-1.5 text-[12px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                             >
-                              Create task
+                              {draft ? "Publish" : "Create task"}
                               <kbd className="hidden rounded bg-primary-foreground/20 px-1.5 py-0.5 text-[10px] font-normal text-primary-foreground/70 sm:inline-block">
                                 {typeof navigator !== "undefined" &&
                                 /Mac|iPhone|iPad/.test(navigator.userAgent)

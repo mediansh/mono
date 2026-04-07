@@ -535,6 +535,41 @@ export default defineSchema({
     ),
   }).index("by_workspace", ["workspaceId"]),
 
+  drafts: defineTable({
+    workspaceId: v.id("workspaces"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    status: v.union(
+      v.literal("todo"),
+      v.literal("in_progress"),
+      v.literal("ready"),
+      v.literal("shipped"),
+      v.literal("archive")
+    ),
+    priority: v.union(
+      v.literal("urgent"),
+      v.literal("high"),
+      v.literal("medium"),
+      v.literal("low"),
+      v.literal("none")
+    ),
+    labels: v.array(v.string()),
+    updatedAt: v.number(),
+    attachments: v.optional(
+      v.array(
+        v.object({
+          storageId: v.id("_storage"),
+          name: v.string(),
+          type: v.string(),
+          size: v.number(),
+          width: v.optional(v.number()),
+          height: v.optional(v.number()),
+          displayWidth: v.optional(v.number()),
+        })
+      )
+    ),
+  }).index("by_workspace", ["workspaceId"]),
+
   waitlistEntries: defineTable({
     email: v.string(),
     joinedAt: v.number(),

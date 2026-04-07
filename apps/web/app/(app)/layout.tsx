@@ -14,7 +14,7 @@ import { Logo } from "@/components/logo"
 import Link from "next/link"
 import { Separator } from "@workspace/ui/components/separator"
 
-const appRoutes = ["/app", "/app/setup", "/app/settings", "/app/settings/labels", "/app/settings/members", "/app/logs", "/app/integrations", "/app/integrations/discord", "/app/integrations/linear", "/app/integrations/x", "/app/integrations/github", "/app/billing"]
+const appRoutes = ["/app", "/app/setup", "/app/settings", "/app/settings/labels", "/app/settings/members", "/app/logs", "/app/drafts", "/app/integrations", "/app/integrations/discord", "/app/integrations/linear", "/app/integrations/x", "/app/integrations/github", "/app/billing"]
 
 export default function AppLayout({
   children,
