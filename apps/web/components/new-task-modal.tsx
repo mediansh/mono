@@ -347,34 +347,41 @@ export function NewTaskModal({
       const attachmentsWithMetadata = sanitizeAttachmentsForMutation(
         payload.attachments
       )
+      const baseArgs = {
+        workspaceId: currentWorkspace!._id,
+        title: payload.title.trim(),
+        description: payload.description?.trim() || undefined,
+        status: payload.status,
+        priority: payload.priority,
+        labels: payload.labels,
+      }
+
+      if (!attachmentsWithMetadata?.length) {
+        return await createTask(baseArgs)
+      }
 
       try {
         return await createTask({
-          workspaceId: currentWorkspace!._id,
-          title: payload.title.trim(),
-          description: payload.description?.trim() || undefined,
-          status: payload.status,
-          priority: payload.priority,
-          labels: payload.labels,
-          attachments: attachmentsWithMetadata?.length
-            ? (attachmentsWithMetadata as any)
-            : undefined,
+          ...baseArgs,
+          attachments: attachmentsWithMetadata as any,
         })
-      } catch {
-        const legacyAttachments = attachmentsWithMetadata?.map(
+      } catch (error) {
+        const shouldRetryWithoutAttachmentMetadata =
+          error instanceof Error &&
+          error.message.includes("attachments") &&
+          error.message.includes("validator")
+
+        if (!shouldRetryWithoutAttachmentMetadata) {
+          throw error
+        }
+
+        const legacyAttachments = attachmentsWithMetadata.map(
           ({ width, height, displayWidth, ...attachment }) => attachment
         )
 
         return await createTask({
-          workspaceId: currentWorkspace!._id,
-          title: payload.title.trim(),
-          description: payload.description?.trim() || undefined,
-          status: payload.status,
-          priority: payload.priority,
-          labels: payload.labels,
-          attachments: legacyAttachments?.length
-            ? (legacyAttachments as any)
-            : undefined,
+          ...baseArgs,
+          attachments: legacyAttachments as any,
         })
       }
     },

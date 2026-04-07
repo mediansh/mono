@@ -80,12 +80,19 @@ function AttachmentImageCard({
     getAttachmentDisplayWidth(attachment)
   )
   const [isResizing, setIsResizing] = useState(false)
+  const isMountedRef = useRef(true)
   const displayWidthRef = useRef(displayWidth)
   const dragStateRef = useRef<{
     pointerId: number
     startX: number
     startWidth: number
   } | null>(null)
+  const pointerMoveHandlerRef = useRef<((event: PointerEvent) => void) | null>(
+    null
+  )
+  const pointerUpHandlerRef = useRef<((event: PointerEvent) => void) | null>(
+    null
+  )
 
   useEffect(() => {
     displayWidthRef.current = displayWidth
@@ -95,10 +102,26 @@ function AttachmentImageCard({
     setDisplayWidth(getAttachmentDisplayWidth(attachment))
   }, [attachment.displayWidth, attachment.width, attachment.url])
 
+  function cleanupResizeSession() {
+    if (pointerMoveHandlerRef.current) {
+      window.removeEventListener("pointermove", pointerMoveHandlerRef.current)
+      pointerMoveHandlerRef.current = null
+    }
+
+    if (pointerUpHandlerRef.current) {
+      window.removeEventListener("pointerup", pointerUpHandlerRef.current)
+      pointerUpHandlerRef.current = null
+    }
+
+    dragStateRef.current = null
+    document.body.style.cursor = ""
+    document.body.style.userSelect = ""
+  }
+
   useEffect(() => {
     return () => {
-      document.body.style.cursor = ""
-      document.body.style.userSelect = ""
+      isMountedRef.current = false
+      cleanupResizeSession()
     }
   }, [])
 
@@ -135,16 +158,15 @@ function AttachmentImageCard({
       const dragState = dragStateRef.current
       if (!dragState || moveEvent.pointerId !== dragState.pointerId) return
 
-      dragStateRef.current = null
-      window.removeEventListener("pointermove", handlePointerMove)
-      window.removeEventListener("pointerup", handlePointerUp)
-      document.body.style.cursor = ""
-      document.body.style.userSelect = ""
-      setIsResizing(false)
+      cleanupResizeSession()
+      if (!isMountedRef.current) return
 
+      setIsResizing(false)
       commitDisplayWidth(displayWidthRef.current)
     }
 
+    pointerMoveHandlerRef.current = handlePointerMove
+    pointerUpHandlerRef.current = handlePointerUp
     window.addEventListener("pointermove", handlePointerMove)
     window.addEventListener("pointerup", handlePointerUp)
   }
