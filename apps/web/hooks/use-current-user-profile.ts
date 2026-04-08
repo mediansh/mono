@@ -1,7 +1,11 @@
 "use client"
 
 import { useUser } from "@clerk/nextjs"
-import { normalizeAssigneeEmail, type TaskAssignee } from "@/lib/task-board"
+import {
+  normalizeAssigneeEmail,
+  normalizeAssigneeName,
+  type TaskAssignee,
+} from "@/lib/task-board"
 
 export type CurrentUserProfile = {
   userId?: string
@@ -34,6 +38,7 @@ function isCurrentUserMatch(
   target: {
     userId?: string | null
     email?: string | null
+    name?: string | null
   },
   profile: CurrentUserProfile | null
 ) {
@@ -46,7 +51,13 @@ function isCurrentUserMatch(
   }
 
   const normalizedTargetEmail = normalizeAssigneeEmail(target.email)
-  return Boolean(normalizedTargetEmail && profile.email && normalizedTargetEmail === profile.email)
+  if (normalizedTargetEmail && profile.email && normalizedTargetEmail === profile.email) {
+    return true
+  }
+
+  const normalizedTargetName = normalizeAssigneeName(target.name ?? "").toLowerCase()
+  const normalizedProfileName = normalizeAssigneeName(profile.name ?? "").toLowerCase()
+  return Boolean(normalizedTargetName && normalizedProfileName && normalizedTargetName === normalizedProfileName)
 }
 
 export function useCurrentUserProfile() {
@@ -68,7 +79,13 @@ export function resolveAssigneeWithCurrentUserProfile<T extends TaskAssignee>(
   assignee: T | null | undefined,
   profile: CurrentUserProfile | null
 ) {
-  if (!assignee || !isCurrentUserMatch({ userId: assignee.id, email: assignee.email }, profile)) {
+  if (
+    !assignee ||
+    !isCurrentUserMatch(
+      { userId: assignee.id, email: assignee.email, name: assignee.name },
+      profile
+    )
+  ) {
     return assignee
   }
 

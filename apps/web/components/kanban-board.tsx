@@ -37,6 +37,9 @@ import {
   Minus,
   ListBullets,
   SquaresFour,
+  Funnel,
+  SortAscending,
+  SortDescending,
 } from "@phosphor-icons/react"
 import { NewTaskModal } from "@/components/new-task-modal"
 import { AssigneeAvatar } from "@/components/assignee-avatar"
@@ -61,6 +64,10 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSeparator,
   DropdownMenuCheckboxItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuLabel,
+  DropdownMenuGroup,
 } from "@workspace/ui/components/dropdown-menu"
 import { X } from "@phosphor-icons/react"
 import {
@@ -3085,6 +3092,266 @@ function ViewToggle({
   )
 }
 
+// ── Filter Types & Component ──
+
+type SortOption = "manual" | "newest" | "oldest" | "priority"
+
+interface FilterState {
+  assignees: string[] // assignee IDs
+  statuses: Status[]
+  priorities: Priority[]
+  sort: SortOption
+}
+
+const EMPTY_FILTER: FilterState = {
+  assignees: [],
+  statuses: [],
+  priorities: [],
+  sort: "manual",
+}
+
+const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: "manual", label: "Manual" },
+  { value: "newest", label: "Newest first" },
+  { value: "oldest", label: "Oldest first" },
+  { value: "priority", label: "Priority" },
+]
+
+const PRIORITY_ORDER: Record<Priority, number> = {
+  urgent: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+  none: 4,
+}
+
+function filterAndSortTasks(
+  tasks: Task[],
+  filter: FilterState,
+  assigneeOptions: TaskAssignee[]
+): Task[] {
+  let filtered = tasks
+
+  if (filter.assignees.length > 0) {
+    const ids = new Set(filter.assignees)
+    filtered = filtered.filter((t) => t.assignee && ids.has(t.assignee.id))
+  }
+  if (filter.statuses.length > 0) {
+    const set = new Set(filter.statuses)
+    filtered = filtered.filter((t) => set.has(t.status))
+  }
+  if (filter.priorities.length > 0) {
+    const set = new Set(filter.priorities)
+    filtered = filtered.filter((t) => set.has(t.priority))
+  }
+
+  if (filter.sort !== "manual") {
+    filtered = [...filtered].sort((a, b) => {
+      if (filter.sort === "newest")
+        return (
+          getTaskSortTimestamp(b as unknown as TaskDoc) -
+          getTaskSortTimestamp(a as unknown as TaskDoc)
+        )
+      if (filter.sort === "oldest")
+        return (
+          getTaskSortTimestamp(a as unknown as TaskDoc) -
+          getTaskSortTimestamp(b as unknown as TaskDoc)
+        )
+      if (filter.sort === "priority")
+        return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]
+      return 0
+    })
+  }
+
+  return filtered
+}
+
+function hasActiveFilters(filter: FilterState): boolean {
+  return (
+    filter.assignees.length > 0 ||
+    filter.statuses.length > 0 ||
+    filter.priorities.length > 0 ||
+    filter.sort !== "manual"
+  )
+}
+
+function FilterDropdown({
+  filter,
+  onFilterChange,
+  assigneeOptions,
+}: {
+  filter: FilterState
+  onFilterChange: (filter: FilterState) => void
+  assigneeOptions: TaskAssignee[]
+}) {
+  const active = hasActiveFilters(filter)
+  const activeCount =
+    filter.assignees.length + filter.statuses.length + filter.priorities.length
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        className={`relative flex items-center gap-1.5 rounded-[5px] px-2 py-1.5 text-[13px] transition-colors ${
+          active
+            ? "bg-muted/60 text-foreground ring-1 ring-border/50"
+            : "text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        <Funnel size={14} weight={active ? "fill" : "regular"} />
+        <span>Filter</span>
+        {activeCount > 0 && (
+          <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground/10 px-1 text-[10px] font-medium text-foreground">
+            {activeCount}
+          </span>
+        )}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-48">
+        {/* Sort */}
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            {filter.sort === "newest" || filter.sort === "oldest" ? (
+              filter.sort === "newest" ? (
+                <SortDescending size={14} />
+              ) : (
+                <SortAscending size={14} />
+              )
+            ) : (
+              <SortAscending size={14} />
+            )}
+            Sort
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent>
+            <DropdownMenuRadioGroup
+              value={filter.sort}
+              onValueChange={(v) =>
+                onFilterChange({ ...filter, sort: v as SortOption })
+              }
+            >
+              {SORT_OPTIONS.map((opt) => (
+                <DropdownMenuRadioItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+
+        <DropdownMenuSeparator />
+
+        {/* Status */}
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            {getStatusIcon("todo")}
+            Status
+            {filter.statuses.length > 0 && (
+              <span className="ml-auto text-[10px] text-muted-foreground">
+                {filter.statuses.length}
+              </span>
+            )}
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent>
+            {COLUMNS.map((col) => (
+              <DropdownMenuCheckboxItem
+                key={col.id}
+                checked={filter.statuses.includes(col.id)}
+                onCheckedChange={(checked) => {
+                  const next = checked
+                    ? [...filter.statuses, col.id]
+                    : filter.statuses.filter((s) => s !== col.id)
+                  onFilterChange({ ...filter, statuses: next })
+                }}
+              >
+                {getStatusIcon(col.id)}
+                {col.label}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+
+        {/* Priority */}
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <CellSignalMedium size={14} />
+            Priority
+            {filter.priorities.length > 0 && (
+              <span className="ml-auto text-[10px] text-muted-foreground">
+                {filter.priorities.length}
+              </span>
+            )}
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent>
+            {(
+              ["urgent", "high", "medium", "low", "none"] as Priority[]
+            ).map((p) => (
+              <DropdownMenuCheckboxItem
+                key={p}
+                checked={filter.priorities.includes(p)}
+                onCheckedChange={(checked) => {
+                  const next = checked
+                    ? [...filter.priorities, p]
+                    : filter.priorities.filter((x) => x !== p)
+                  onFilterChange({ ...filter, priorities: next })
+                }}
+              >
+                {getPriorityIcon(p)}
+                {PRIORITY_LABELS[p]}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+
+        {/* Assignee */}
+        {assigneeOptions.length > 0 && (
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              <UserCircle size={14} />
+              Assignee
+              {filter.assignees.length > 0 && (
+                <span className="ml-auto text-[10px] text-muted-foreground">
+                  {filter.assignees.length}
+                </span>
+              )}
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              {assigneeOptions.map((a) => (
+                <DropdownMenuCheckboxItem
+                  key={a.id}
+                  checked={filter.assignees.includes(a.id)}
+                  onCheckedChange={(checked) => {
+                    const next = checked
+                      ? [...filter.assignees, a.id]
+                      : filter.assignees.filter((id) => id !== a.id)
+                    onFilterChange({ ...filter, assignees: next })
+                  }}
+                >
+                  <AssigneeAvatar
+                    assignee={a}
+                    className="size-4 shrink-0"
+                  />
+                  {a.name}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        )}
+
+        {/* Clear filters */}
+        {active && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => onFilterChange(EMPTY_FILTER)}
+            >
+              <X size={14} />
+              Clear filters
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
 function ListView({
   tasks,
   hiddenColumns,
@@ -3517,6 +3784,7 @@ export function KanbanBoard() {
   const [modalOpen, setModalOpen] = useState(false)
   const [modalDefaultStatus, setModalDefaultStatus] = useState<Status>("todo")
   const [hiddenColumns, setHiddenColumns] = useState<Status[]>([])
+  const [filter, setFilter] = useState<FilterState>(EMPTY_FILTER)
   const [isCleaningDemoTasks, setIsCleaningDemoTasks] = useState(false)
   const [boardMounted, setBoardMounted] = useState(false)
 
@@ -3683,7 +3951,11 @@ export function KanbanBoard() {
     }
   }, [cleanedWorkspaceIds, clearDemoTasks, taskDocs, workspaceId])
 
-  const tasks = useMemo(() => (taskDocs ?? []).map(mapTaskDoc), [taskDocs])
+  const allTasks = useMemo(() => (taskDocs ?? []).map(mapTaskDoc), [taskDocs])
+  const tasks = useMemo(
+    () => filterAndSortTasks(allTasks, filter, assigneeOptions),
+    [allTasks, filter, assigneeOptions]
+  )
 
   function handleAddTask(status: Status) {
     if (!canManageTasks) {
@@ -4129,6 +4401,11 @@ export function KanbanBoard() {
           {/* Toolbar */}
           <div className="scrollbar-hide flex items-center gap-1 overflow-x-auto border-b border-border bg-sidebar/60 px-3 py-2 dark:bg-accent/30">
             <ViewToggle view={boardView} onViewChange={handleViewChange} />
+            <FilterDropdown
+              filter={filter}
+              onFilterChange={setFilter}
+              assigneeOptions={assigneeOptions}
+            />
             {hiddenColumns.length > 0 && (
               <HiddenColumnsToolbar
                 hiddenColumns={hiddenColumns}
