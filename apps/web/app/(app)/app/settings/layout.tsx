@@ -3,12 +3,11 @@
 import { useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Gear, Key, Tag, UserCircle, Users } from "@phosphor-icons/react"
+import { Gear, Key, Tag, Users } from "@phosphor-icons/react"
 
 const settingsNav = [
   { label: "General", href: "/app/settings", icon: Gear },
   { label: "Labels", href: "/app/settings/labels", icon: Tag },
-  { label: "Assignees", href: "/app/settings/assignees", icon: UserCircle },
   { label: "Members", href: "/app/settings/members", icon: Users },
   { label: "API Keys", href: "/app/settings/api-keys", icon: Key },
 ]

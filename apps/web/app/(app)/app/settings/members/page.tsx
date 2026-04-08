@@ -1,9 +1,19 @@
 "use client"
 
-import { useEffect, useRef, useState, type ReactNode } from "react"
+import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react"
+import { useRouter } from "next/navigation"
 import type { OptimisticLocalStore } from "convex/browser"
-import { useMutation, useQuery } from "convex/react"
-import { Trash, Link as LinkIcon, Envelope } from "@phosphor-icons/react"
+import { useAction, useMutation, useQuery } from "convex/react"
+import {
+  Trash,
+  Link as LinkIcon,
+  Envelope,
+  ArrowClockwise,
+  CheckCircle,
+  ImageSquare,
+  LinkSimple,
+  SpinnerGap,
+} from "@phosphor-icons/react"
 import { motion } from "motion/react"
 import { toast } from "sonner"
 import type { Id } from "@/convex/_generated/dataModel"
@@ -17,6 +27,10 @@ import {
   type WorkspaceInviteRole,
 } from "@/lib/workspace-permissions"
 import { SettingsAccessState } from "@/components/settings-access-state"
+import {
+  buildWorkspaceMemberAssignee,
+  findMatchingAssignee,
+} from "@/lib/task-board"
 import {
   trackInviteLinkCreated,
   trackInviteEmailSent,
@@ -80,6 +94,25 @@ function getInviteUrl(token: string) {
   return `${window.location.origin}/invite/${token}`
 }
 
+async function uploadImageFile(uploadUrl: string, file: File) {
+  const result = await fetch(uploadUrl, {
+    method: "POST",
+    headers: { "Content-Type": file.type },
+    body: file,
+  })
+
+  if (!result.ok) {
+    throw new Error("Failed to upload the image")
+  }
+
+  const data = (await result.json()) as { storageId?: string }
+  if (!data.storageId) {
+    throw new Error("Upload did not return a storage id")
+  }
+
+  return data.storageId as Id<"_storage">
+}
+
 function MembersSkeleton() {
   return (
     <div className="mx-auto w-full max-w-lg px-6 py-6">
@@ -112,11 +145,23 @@ function updateWorkspaceMembersQueries(
 
 export default function MembersSettingsPage() {
   const { currentWorkspace } = useWorkspace()
+  const router = useRouter()
   const workspaceData = useQuery(
     api.workspaces.getWorkspaceMembers,
     currentWorkspace ? { workspaceId: currentWorkspace._id } : "skip"
   )
+  const integrationState = useQuery(
+    api.linear.getWorkspaceLinearIntegration,
+    currentWorkspace ? { workspaceId: currentWorkspace._id } : "skip"
+  )
   const syncMyProfile = useMutation(api.workspaces.syncMyProfile)
+  const generateUploadUrl = useMutation(api.workspaces.generateUploadUrl)
+  const updateMemberAssigneeAvatar = useMutation(
+    api.workspaces.updateMemberAssigneeAvatar
+  )
+  const refreshWorkspaceLinearAssignees = useAction(
+    api.linear.refreshWorkspaceLinearAssignees
+  )
   const createInviteLink = useMutation(
     api.workspaces.createInviteLink
   ).withOptimisticUpdate((localStore, args) => {
@@ -207,6 +252,14 @@ export default function MembersSettingsPage() {
   const [sendingInvite, setSendingInvite] = useState(false)
   const [busyMemberId, setBusyMemberId] = useState<string | null>(null)
   const [busyInviteId, setBusyInviteId] = useState<string | null>(null)
+  const [syncingLinear, setSyncingLinear] = useState(false)
+  const [uploadingMemberId, setUploadingMemberId] = useState<string | null>(null)
+  const [memberAvatarPreviews, setMemberAvatarPreviews] = useState<
+    Record<string, string>
+  >({})
+  const pendingMemberIdRef = useRef<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const autoRefreshKeyRef = useRef<string | null>(null)
 
   const hasSynced = useRef(false)
 
@@ -235,6 +288,119 @@ export default function MembersSettingsPage() {
   const canManageMembers = workspaceData.canManageMembers
   const members = workspaceData.members
   const invites = workspaceData.invites
+  const linearIntegration = integrationState?.integration ?? null
+  const isLinearLinked = Boolean(linearIntegration)
+  const linkedMemberCount = members.filter((member) =>
+    findMatchingAssignee(
+      buildWorkspaceMemberAssignee({
+        userId: member.userId,
+        role: member.role,
+        name: member.name,
+        email: member.email,
+        imageUrl: member.imageUrl,
+      }),
+      currentWorkspace.assignees ?? []
+    )?.linearUserId
+  ).length
+
+  useEffect(() => {
+    if (!currentWorkspace || !isLinearLinked) {
+      autoRefreshKeyRef.current = null
+      return
+    }
+
+    const nextKey = `${currentWorkspace._id}:${linearIntegration?.teamId ?? "linear"}`
+    if (autoRefreshKeyRef.current === nextKey) {
+      return
+    }
+
+    autoRefreshKeyRef.current = nextKey
+    setSyncingLinear(true)
+    void refreshWorkspaceLinearAssignees({ workspaceId: currentWorkspace._id })
+      .catch((error) => {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to refresh members from Linear."
+        )
+      })
+      .finally(() => {
+        setSyncingLinear(false)
+      })
+  }, [
+    currentWorkspace,
+    isLinearLinked,
+    linearIntegration?.teamId,
+    refreshWorkspaceLinearAssignees,
+  ])
+
+  function handleSelectMemberAvatar(memberId: string) {
+    pendingMemberIdRef.current = memberId
+    fileInputRef.current?.click()
+  }
+
+  async function handleMemberAvatarChange(
+    event: ChangeEvent<HTMLInputElement>
+  ) {
+    const file = event.target.files?.[0]
+    const memberId = pendingMemberIdRef.current
+    event.target.value = ""
+
+    if (!file || !memberId) {
+      pendingMemberIdRef.current = null
+      return
+    }
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Choose an image file.")
+      pendingMemberIdRef.current = null
+      return
+    }
+
+    try {
+      setUploadingMemberId(memberId)
+      const uploadUrl = await generateUploadUrl()
+      const previewUrl = URL.createObjectURL(file)
+      setMemberAvatarPreviews((current) => ({
+        ...current,
+        [memberId]: previewUrl,
+      }))
+      const storageId = await uploadImageFile(uploadUrl, file)
+
+      await updateMemberAssigneeAvatar({
+        memberId: memberId as Id<"workspaceMembers">,
+        storageId,
+      })
+
+      toast.success("Profile picture updated.")
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to update the profile picture."
+      )
+    } finally {
+      pendingMemberIdRef.current = null
+      setUploadingMemberId(null)
+    }
+  }
+
+  async function handleRefreshLinearAssignees() {
+    if (!currentWorkspace) return
+    setSyncingLinear(true)
+    try {
+      await refreshWorkspaceLinearAssignees({ workspaceId: currentWorkspace._id })
+      toast.success("Members refreshed from Linear.")
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to refresh members from Linear."
+      )
+    } finally {
+      setSyncingLinear(false)
+    }
+  }
 
   async function handleCreateInviteLink() {
     setCreatingLink(true)
@@ -328,12 +494,55 @@ export default function MembersSettingsPage() {
 
   return (
     <Stagger className="mx-auto w-full max-w-lg px-6 py-6">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleMemberAvatarChange}
+        className="hidden"
+      />
+
       {/* Header */}
-      <motion.div variants={fadeUp} className="mb-4">
-        <h2 className="text-[14px] font-semibold">Members</h2>
-        <p className="mt-0.5 text-[12px] text-muted-foreground">
-          Invite teammates and manage who has access to this workspace.
-        </p>
+      <motion.div
+        variants={fadeUp}
+        className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+      >
+        <div>
+          <h2 className="text-[14px] font-semibold">Members</h2>
+          <p className="mt-0.5 text-[12px] text-muted-foreground">
+            Invite teammates. Members are assignable on issues.
+          </p>
+        </div>
+        {isLinearLinked ? (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleRefreshLinearAssignees}
+              disabled={syncingLinear}
+              className="inline-flex h-9 items-center gap-2 rounded-[4px] border border-border bg-card px-3 text-[11px] font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-60"
+            >
+              {syncingLinear ? (
+                <SpinnerGap size={13} className="animate-spin" />
+              ) : (
+                <ArrowClockwise size={13} />
+              )}
+              Refresh
+            </button>
+            <div className="inline-flex h-9 items-center gap-2 rounded-[4px] border border-emerald-500/30 bg-emerald-500/10 px-3 text-[11px] font-medium text-emerald-400">
+              <CheckCircle size={13} weight="fill" />
+              {linkedMemberCount}/{members.length} linked
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => router.push("/app/integrations/linear")}
+            className="inline-flex h-9 items-center gap-2 rounded-[4px] border border-border bg-card px-3 text-[11px] font-medium text-foreground transition-colors hover:bg-accent"
+          >
+            <LinkSimple size={13} />
+            Sync with Linear
+          </button>
+        )}
       </motion.div>
 
       {/* Invite card */}
@@ -505,10 +714,15 @@ export default function MembersSettingsPage() {
                 className="group flex flex-col gap-2 px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex size-8 items-center justify-center overflow-hidden rounded-[4px] ring-1 ring-border bg-muted/50">
-                    {member.imageUrl ? (
+                  <button
+                    type="button"
+                    onClick={() => handleSelectMemberAvatar(String(member._id))}
+                    disabled={uploadingMemberId === member._id}
+                    className="relative flex size-8 items-center justify-center overflow-hidden rounded-[4px] ring-1 ring-border bg-muted/50 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {memberAvatarPreviews[String(member._id)] ?? member.imageUrl ? (
                       <img
-                        src={member.imageUrl}
+                        src={memberAvatarPreviews[String(member._id)] ?? member.imageUrl ?? ""}
                         alt={member.name ?? member.email ?? ""}
                         className="size-full object-cover"
                       />
@@ -517,13 +731,34 @@ export default function MembersSettingsPage() {
                         {(member.name ?? member.email ?? "?").charAt(0).toUpperCase()}
                       </span>
                     )}
-                  </div>
+                    <span className="absolute -bottom-1 -right-1 flex size-4.5 items-center justify-center rounded-full border border-border bg-card text-muted-foreground">
+                      {uploadingMemberId === member._id ? (
+                        <SpinnerGap size={10} className="animate-spin" />
+                      ) : (
+                        <ImageSquare size={10} />
+                      )}
+                    </span>
+                  </button>
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="text-[13px] font-medium">
                         {member.name ?? member.email ?? "Unnamed member"}
                       </p>
                       <RoleBadge role={member.role} />
+                      {findMatchingAssignee(
+                        buildWorkspaceMemberAssignee({
+                          userId: member.userId,
+                          role: member.role,
+                          name: member.name,
+                          email: member.email,
+                          imageUrl: member.imageUrl,
+                        }),
+                        currentWorkspace.assignees ?? []
+                      )?.linearUserId ? (
+                        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-400">
+                          Linked
+                        </span>
+                      ) : null}
                     </div>
                     {member.email && (
                       <p className="text-[11px] text-muted-foreground">{member.email}</p>
