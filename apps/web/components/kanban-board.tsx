@@ -1366,6 +1366,7 @@ const SortableListRow = memo(function SortableListRow({
   isSelected,
   hasSelection,
   isDraggedAway,
+  isDropTarget,
   canManageTasks,
   assigneeOptions,
   onSelect,
@@ -1379,6 +1380,7 @@ const SortableListRow = memo(function SortableListRow({
   isSelected: boolean
   hasSelection: boolean
   isDraggedAway: boolean
+  isDropTarget: boolean
   canManageTasks: boolean
   assigneeOptions: TaskAssignee[]
   onSelect: (task: Task) => void
@@ -1401,9 +1403,14 @@ const SortableListRow = memo(function SortableListRow({
 
   const [hasAnimated, setHasAnimated] = useState(boardMounted)
   const rowDelay = groupDelay + Math.min(rowIndex, 8) * 0.02
+  const isHidden = isDragging || isDraggedAway
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
-    opacity: isDragging || isDraggedAway ? 0.3 : undefined,
+    opacity: isHidden ? 0 : undefined,
+    height: isHidden ? 0 : undefined,
+    padding: isHidden ? 0 : undefined,
+    border: isHidden ? "none" : undefined,
+    overflow: isHidden ? "hidden" : undefined,
     willChange: transform ? "transform" : undefined,
     ...(!hasAnimated
       ? { animation: `kanban-row-in 0.25s ease-out ${rowDelay}s both` }
@@ -1437,6 +1444,11 @@ const SortableListRow = memo(function SortableListRow({
 
   return (
     <>
+      {isDropTarget && !isHidden && (
+        <div className="relative z-10 flex h-0 items-center px-3">
+          <div className="h-0.5 w-full rounded-full bg-primary" />
+        </div>
+      )}
       <div
         ref={setNodeRef}
         style={style}
@@ -1445,7 +1457,7 @@ const SortableListRow = memo(function SortableListRow({
         onClick={handleClick}
         onContextMenu={handleContextMenu}
         onAnimationEnd={() => setHasAnimated(true)}
-        className={`group flex cursor-pointer touch-none items-center gap-3 border-b border-l-2 border-border px-3 py-2 transition-all duration-150 select-none hover:bg-accent/40 ${PRIORITY_ACCENT[task.priority]} ${isSelected ? "bg-primary/[0.06] hover:bg-primary/[0.10]" : "bg-background"}`}
+        className={`group flex cursor-pointer touch-none items-center gap-3 border-b border-l-2 border-border px-3 py-2 transition-all duration-150 select-none hover:bg-accent/40 ${PRIORITY_ACCENT[task.priority]} ${isSelected ? "bg-primary/[0.06] hover:bg-primary/[0.10]" : "bg-background"} ${isHidden ? "!m-0" : ""}`}
       >
         {/* Checkbox */}
         <div
@@ -1575,6 +1587,7 @@ function ListGroup({
   tasks,
   groupIndex,
   isDropTarget,
+  overItemId,
   collapsed,
   selectedTaskIds,
   draggedTaskIds,
@@ -1591,6 +1604,7 @@ function ListGroup({
   tasks: Task[]
   groupIndex: number
   isDropTarget?: boolean
+  overItemId?: string | null
   collapsed: boolean
   selectedTaskIds: Set<string>
   draggedTaskIds: Set<string>
@@ -1620,11 +1634,6 @@ function ListGroup({
       animate={{ opacity: 1 }}
       transition={{ duration: 0.25, delay: groupIndex * 0.04, ease: "easeOut" }}
       className="mb-1.5 overflow-hidden rounded-[4px] ring-1 ring-border"
-      style={
-        isDropTarget
-          ? { outline: "2px solid var(--primary)", outlineOffset: "-2px" }
-          : undefined
-      }
     >
       {/* Group header */}
       <div className="flex items-center bg-card transition-colors hover:bg-accent dark:bg-card dark:hover:bg-accent/50">
@@ -1671,8 +1680,15 @@ function ListGroup({
             strategy={verticalListSortingStrategy}
           >
             {tasks.length === 0 ? (
-              <div className="flex items-center justify-center py-6 text-[12px] text-muted-foreground/50">
-                {column.emptyLabel}
+              <div className="relative">
+                {isDropTarget && (
+                  <div className="flex h-0 items-center px-3">
+                    <div className="h-0.5 w-full rounded-full bg-primary" />
+                  </div>
+                )}
+                <div className="flex items-center justify-center py-6 text-[12px] text-muted-foreground/50">
+                  {column.emptyLabel}
+                </div>
               </div>
             ) : (
               tasks.map((task, rowIndex) => (
@@ -1684,6 +1700,7 @@ function ListGroup({
                   isSelected={selectedTaskIds.has(task.id)}
                   hasSelection={hasSelection}
                   isDraggedAway={draggedTaskIds.has(task.id)}
+                  isDropTarget={overItemId === task.id}
                   canManageTasks={canManageTasks}
                   assigneeOptions={assigneeOptions}
                   onSelect={onSelectTask}
@@ -3417,6 +3434,7 @@ function ListView({
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [draggedTaskIds, setDraggedTaskIds] = useState<Set<string>>(new Set())
   const [overColumn, setOverColumn] = useState<Status | null>(null)
+  const [overItemId, setOverItemId] = useState<string | null>(null)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
   const lastToggledTaskIdRef = useRef<string | null>(null)
@@ -3604,22 +3622,23 @@ function ListView({
     const { active, over } = event
     if (!over) {
       setOverColumn(null)
+      setOverItemId(null)
       return
     }
 
     const overId = over.id as string
-    const targetCol =
-      over.data.current?.type === "column"
-        ? (over.id as Status)
-        : findColumnOfTask(overId)
+    const isColumn = over.data.current?.type === "column"
+    const targetCol = isColumn ? (over.id as Status) : findColumnOfTask(overId)
 
     // Block dragging into requests
     if (targetCol === "requests") {
       setOverColumn(null)
+      setOverItemId(null)
       return
     }
 
     setOverColumn((current) => (current === targetCol ? current : targetCol))
+    setOverItemId(isColumn ? null : overId)
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -3629,6 +3648,7 @@ function ListView({
     setActiveTask(null)
     setDraggedTaskIds(new Set())
     setOverColumn(null)
+    setOverItemId(null)
 
     if (!over) return
 
@@ -3728,9 +3748,9 @@ function ListView({
                 groupIndex={showRequests ? groupIndex + 1 : groupIndex}
                 isDropTarget={
                   overColumn === column.id &&
-                  activeTaskSource !== null &&
-                  activeTaskSource !== column.id
+                  activeTask !== null
                 }
+                overItemId={overColumn === column.id ? overItemId : null}
                 collapsed={collapsedColumns.includes(column.id)}
                 selectedTaskIds={selectedTaskIds}
                 draggedTaskIds={draggedTaskIds}
