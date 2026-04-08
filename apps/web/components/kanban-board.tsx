@@ -41,12 +41,14 @@ import {
   SortAscending,
   SortDescending,
   Plus,
+  Paperclip,
 } from "@phosphor-icons/react"
 import { NewTaskModal } from "@/components/new-task-modal"
 import { AssigneeAvatar } from "@/components/assignee-avatar"
 import { AssigneeSelector } from "@/components/assignee-selector"
 import {
   TaskAttachmentGallery,
+  getDefaultAttachmentDisplayWidth,
   type TaskAttachment,
 } from "@/components/task-attachments"
 import {
@@ -1403,14 +1405,10 @@ const SortableListRow = memo(function SortableListRow({
 
   const [hasAnimated, setHasAnimated] = useState(boardMounted)
   const rowDelay = groupDelay + Math.min(rowIndex, 8) * 0.02
-  const isHidden = isDragging || isDraggedAway
+  const isBeingDragged = isDragging || isDraggedAway
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
-    opacity: isHidden ? 0 : undefined,
-    height: isHidden ? 0 : undefined,
-    padding: isHidden ? 0 : undefined,
-    border: isHidden ? "none" : undefined,
-    overflow: isHidden ? "hidden" : undefined,
+    opacity: isBeingDragged ? 0.25 : undefined,
     willChange: transform ? "transform" : undefined,
     ...(!hasAnimated
       ? { animation: `kanban-row-in 0.25s ease-out ${rowDelay}s both` }
@@ -1444,7 +1442,7 @@ const SortableListRow = memo(function SortableListRow({
 
   return (
     <>
-      {isDropTarget && !isHidden && (
+      {isDropTarget && !isBeingDragged && (
         <div className="relative z-10 flex h-0 items-center px-3">
           <div className="h-0.5 w-full rounded-full bg-primary" />
         </div>
@@ -1457,7 +1455,7 @@ const SortableListRow = memo(function SortableListRow({
         onClick={handleClick}
         onContextMenu={handleContextMenu}
         onAnimationEnd={() => setHasAnimated(true)}
-        className={`group flex cursor-pointer touch-none items-center gap-3 border-b border-l-2 border-border px-3 py-2 transition-all duration-150 select-none hover:bg-accent/40 ${PRIORITY_ACCENT[task.priority]} ${isSelected ? "bg-primary/[0.06] hover:bg-primary/[0.10]" : "bg-background"} ${isHidden ? "!m-0" : ""}`}
+        className={`group flex cursor-pointer touch-none items-center gap-3 border-b border-l-2 border-border px-3 py-2 transition-all duration-150 select-none hover:bg-accent/40 ${PRIORITY_ACCENT[task.priority]} ${isSelected ? "bg-primary/[0.06] hover:bg-primary/[0.10]" : "bg-background"}`}
       >
         {/* Checkbox */}
         <div
@@ -1633,7 +1631,7 @@ function ListGroup({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.25, delay: groupIndex * 0.04, ease: "easeOut" }}
-      className="mb-1.5 overflow-hidden rounded-[4px] ring-1 ring-border"
+      className={`mb-1.5 overflow-hidden rounded-[4px] ring-1 transition-shadow ${isDropTarget ? "ring-2 ring-primary" : "ring-border"}`}
     >
       {/* Group header */}
       <div className="flex items-center bg-card transition-colors hover:bg-accent dark:bg-card dark:hover:bg-accent/50">
@@ -1762,6 +1760,93 @@ function TaskDetailModal({
   const [titleValue, setTitleValue] = useState("")
   const [editingDesc, setEditingDesc] = useState(false)
   const [descValue, setDescValue] = useState("")
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const generateUploadUrl = useMutation(api.workspaces.generateUploadUrl)
+
+  const handleFileSelect = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!task || !canManageTasks) return
+      const files = e.target.files
+      if (!files || files.length === 0) return
+
+      setUploading(true)
+      try {
+        const newAttachments: TaskAttachment[] = []
+
+        for (const file of Array.from(files)) {
+          if (file.size > 10 * 1024 * 1024) {
+            toast.error(`File "${file.name}" exceeds 10MB limit.`)
+            continue
+          }
+
+          // Read image metadata
+          let imageMetadata: {
+            width: number
+            height: number
+            displayWidth: number
+          } | null = null
+          if (file.type.startsWith("image/")) {
+            imageMetadata = await new Promise((resolve) => {
+              const objectUrl = URL.createObjectURL(file)
+              const image = new Image()
+              image.onload = () => {
+                const w = image.naturalWidth
+                const h = image.naturalHeight
+                URL.revokeObjectURL(objectUrl)
+                resolve({
+                  width: w,
+                  height: h,
+                  displayWidth: getDefaultAttachmentDisplayWidth(w),
+                })
+              }
+              image.onerror = () => {
+                URL.revokeObjectURL(objectUrl)
+                resolve(null)
+              }
+              image.src = objectUrl
+            })
+          }
+
+          const uploadUrl = await generateUploadUrl()
+          const result = await fetch(uploadUrl, {
+            method: "POST",
+            headers: { "Content-Type": file.type },
+            body: file,
+          })
+
+          if (!result.ok) {
+            toast.error(`Failed to upload "${file.name}".`)
+            continue
+          }
+
+          const { storageId } = await result.json()
+          newAttachments.push({
+            storageId,
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            width: imageMetadata?.width,
+            height: imageMetadata?.height,
+            displayWidth: imageMetadata?.displayWidth,
+          })
+        }
+
+        if (newAttachments.length > 0) {
+          const existing = task.attachments ?? []
+          onUpdate(task.id, {
+            attachments: [...existing, ...newAttachments],
+          })
+        }
+      } catch {
+        toast.error("Upload failed. Try again.")
+      } finally {
+        setUploading(false)
+        if (fileInputRef.current) fileInputRef.current.value = ""
+      }
+    },
+    [task, canManageTasks, generateUploadUrl, onUpdate]
+  )
 
   function handleTitleSave() {
     if (task && titleValue.trim() && titleValue !== task.title) {
@@ -2087,19 +2172,41 @@ function TaskDetailModal({
                 )}
               </div>
 
-              {task.attachments && task.attachments.length > 0 ? (
-                <>
-                  <div className="h-px bg-border" />
-                  <TaskAttachmentGallery
-                    attachments={task.attachments}
-                    workspaceId={task.workspaceId}
-                    canManageAttachments={canManageTasks}
-                    onAttachmentsChange={(attachments) =>
-                      onUpdate(task.id, { attachments })
-                    }
+              {/* Attachments */}
+              <div className="h-px bg-border" />
+              {task.attachments && task.attachments.length > 0 && (
+                <TaskAttachmentGallery
+                  attachments={task.attachments}
+                  workspaceId={task.workspaceId}
+                  canManageAttachments={canManageTasks}
+                  onAttachmentsChange={(attachments) =>
+                    onUpdate(task.id, { attachments })
+                  }
+                />
+              )}
+              {canManageTasks && (
+                <div className="flex items-center">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    onChange={handleFileSelect}
+                    className="hidden"
                   />
-                </>
-              ) : null}
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="flex items-center gap-1.5 rounded-[4px] px-2 py-1 text-[11px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+                  >
+                    {uploading ? (
+                      <SpinnerGap size={14} className="animate-spin" />
+                    ) : (
+                      <Paperclip size={14} />
+                    )}
+                    {uploading ? "Uploading..." : "Attach"}
+                  </button>
+                </div>
+              )}
 
               {/* Accept / Deny for request tasks */}
               {task.status === "requests" && onAccept && onDeny && (
