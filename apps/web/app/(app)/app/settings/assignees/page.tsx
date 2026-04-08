@@ -21,9 +21,8 @@ import { useWorkspace } from "@/components/workspace-provider"
 import {
   buildTaskAssignee,
   buildWorkspaceMemberAssignee,
-  doAssigneesMatch,
+  findMatchingAssignee,
   formatAssigneeRole,
-  normalizeWorkspaceAssignees,
 } from "@/lib/task-board"
 import { hasWorkspaceAdminPermission } from "@/lib/workspace-permissions"
 
@@ -38,15 +37,6 @@ const fadeUp = {
 
 type MemberAssigneeRecord = {
   memberId: Id<"workspaceMembers">
-  id: string
-  name: string
-  avatar: string
-  role: "owner" | "admin" | "member" | "guest"
-  email?: string
-  linearUserId?: string
-}
-
-type ExternalAssigneeRecord = {
   id: string
   name: string
   avatar: string
@@ -113,43 +103,17 @@ function MemberAssigneeCard({
             <span className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground">
               {formatAssigneeRole(assignee.role)}
             </span>
+            {assignee.linearUserId ? (
+              <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-400">
+                Linked
+              </span>
+            ) : null}
           </div>
           <p className="mt-0.5 truncate text-[12px] text-muted-foreground">
             {assignee.email ?? "No email on file"}
           </p>
           <p className="mt-1 text-[11px] text-muted-foreground">
             Assignable by default
-          </p>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function ExternalAssigneeCard({
-  assignee,
-}: {
-  assignee: ExternalAssigneeRecord
-}) {
-  return (
-    <div className="rounded-[4px] border border-border/80 bg-background/40 p-3">
-      <div className="flex items-start gap-3">
-        <AssigneeAvatar
-          assignee={buildTaskAssignee(assignee)}
-          className="size-10"
-          emptyClassName="size-10"
-        />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <p className="truncate text-[13px] font-medium text-foreground">
-              {assignee.name}
-            </p>
-            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-400">
-              Synced from Linear
-            </span>
-          </div>
-          <p className="mt-0.5 truncate text-[12px] text-muted-foreground">
-            {assignee.email ?? "No email available"}
           </p>
         </div>
       </div>
@@ -188,25 +152,29 @@ export default function AssigneesSettingsPage() {
   const linearIntegration = integrationState?.integration ?? null
   const isLinearLinked = Boolean(linearIntegration)
   const memberAssignees: MemberAssigneeRecord[] = (workspaceData?.members ?? []).map(
-    (member) => ({
-      memberId: member._id,
-      ...buildWorkspaceMemberAssignee({
+    (member) => {
+      const memberAssignee = buildWorkspaceMemberAssignee({
         userId: member.userId,
         role: member.role,
         name: member.name,
         email: member.email,
         imageUrl: member.imageUrl,
-      }),
-    })
+      })
+      const linkedAssignee = findMatchingAssignee(
+        memberAssignee,
+        currentWorkspace?.assignees ?? []
+      )
+
+      return {
+        memberId: member._id,
+        ...memberAssignee,
+        linearUserId: linkedAssignee?.linearUserId,
+      }
+    }
   )
-  const externalAssignees: ExternalAssigneeRecord[] = normalizeWorkspaceAssignees(
-    (currentWorkspace?.assignees ?? []).filter(
-      (assignee) =>
-        !memberAssignees.some((memberAssignee) =>
-          doAssigneesMatch(memberAssignee, assignee)
-        )
-    )
-  )
+  const linkedMemberCount = memberAssignees.filter(
+    (assignee) => assignee.linearUserId
+  ).length
 
   useEffect(() => {
     if (!currentWorkspace || !isLinearLinked) {
@@ -337,7 +305,9 @@ export default function AssigneesSettingsPage() {
       >
         <div>
           <h2 className="text-[14px] font-semibold">Assignees</h2>
-          <p className="mt-0.5 text-[12px] text-muted-foreground">Add, assign, and remove assignees.</p>
+          <p className="mt-0.5 text-[12px] text-muted-foreground">
+            Members are your assignees.
+          </p>
         </div>
         {isLinearLinked ? (
           <div className="flex items-center gap-2">
@@ -374,12 +344,19 @@ export default function AssigneesSettingsPage() {
       <motion.div variants={fadeUp} className="space-y-4">
         <div className="rounded-[4px] bg-card ring-1 ring-border">
           <div className="border-b border-border px-5 py-4">
-            <div className="flex items-center gap-2">
-              <UsersThree size={16} className="text-muted-foreground" />
-              <h3 className="text-[13px] font-semibold">Members</h3>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <UsersThree size={16} className="text-muted-foreground" />
+                <h3 className="text-[13px] font-semibold">Members</h3>
+              </div>
+              {isLinearLinked ? (
+                <span className="text-[11px] text-muted-foreground">
+                  {linkedMemberCount}/{memberAssignees.length} linked
+                </span>
+              ) : null}
             </div>
             <p className="mt-1 text-[11px] text-muted-foreground">
-              Assignable in every issue.
+              Assign people from your workspace.
             </p>
           </div>
           <div className="space-y-3 p-5">
@@ -400,47 +377,6 @@ export default function AssigneesSettingsPage() {
             ) : (
               <p className="text-[12px] text-muted-foreground">
                 No members found for this workspace yet.
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div className="rounded-[4px] bg-card ring-1 ring-border">
-          <div className="border-b border-border px-5 py-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h3 className="text-[13px] font-semibold">Synced from Linear</h3>
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  Extra synced assignees.
-                </p>
-              </div>
-              {isLinearLinked ? (
-                <button
-                  type="button"
-                  onClick={handleRefreshLinearAssignees}
-                  disabled={syncingLinear}
-                  className="inline-flex h-8 items-center gap-2 rounded-[4px] border border-border bg-background px-2.5 text-[11px] font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-60"
-                >
-                  {syncingLinear ? (
-                    <SpinnerGap size={12} className="animate-spin" />
-                  ) : (
-                    <ArrowClockwise size={12} />
-                  )}
-                  Refresh
-                </button>
-              ) : null}
-            </div>
-          </div>
-          <div className="space-y-3 p-5">
-            {externalAssignees.length > 0 ? (
-              externalAssignees.map((assignee) => (
-                <ExternalAssigneeCard key={assignee.id} assignee={assignee} />
-              ))
-            ) : (
-              <p className="text-[12px] text-muted-foreground">
-                {isLinearLinked
-                  ? "No extra Linear-only assignees are synced into this workspace right now."
-                  : "Connect Linear to import extra synced assignees."}
               </p>
             )}
           </div>

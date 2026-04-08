@@ -18,7 +18,6 @@ import {
   buildWorkspaceMemberAssignee,
   doAssigneesMatch,
   findMatchingAssignee,
-  mergeWorkspaceAssignableAssignees,
   normalizeWorkspaceAssignees,
 } from "../lib/task-board"
 import { internal } from "./_generated/api"
@@ -99,16 +98,28 @@ function buildWorkspaceAssignableAssignees(args: {
   members: Doc<"workspaceMembers">[]
   storedAssignees: Doc<"workspaces">["assignees"]
 }) {
-  return mergeWorkspaceAssignableAssignees({
-    members: args.members.map((member) => ({
+  const memberAssignees = args.members.map((member) =>
+    buildWorkspaceMemberAssignee({
       userId: member.userId,
       role: member.role,
       name: member.name,
       email: member.email,
       imageUrl: member.imageUrl,
-    })),
-    storedAssignees: args.storedAssignees ?? [],
-  })
+    })
+  )
+
+  const linkedMemberAssignees = normalizeWorkspaceAssignees(
+    (args.storedAssignees ?? []).filter((assignee) =>
+      memberAssignees.some((memberAssignee) =>
+        doAssigneesMatch(memberAssignee, assignee)
+      )
+    )
+  )
+
+  return normalizeWorkspaceAssignees([
+    ...linkedMemberAssignees,
+    ...memberAssignees,
+  ])
 }
 
 export const getUserWorkspaces = query({

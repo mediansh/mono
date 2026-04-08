@@ -16,7 +16,7 @@ import {
 } from "./permissions"
 import {
   buildTaskAssignee,
-  mergeWorkspaceAssignableAssignees,
+  findMatchingAssignee,
   normalizeAssigneeRole,
   normalizeAssigneeEmail,
   type AssigneeRole,
@@ -2309,16 +2309,35 @@ export const getWorkspaceAssigneeConfig = internalQuery({
       return undefined
     }
 
-    return mergeWorkspaceAssignableAssignees({
-      members: members.map((member) => ({
-        userId: member.userId,
+    const memberAssignees = members.map((member) =>
+      buildTaskAssignee({
+        id: member.userId,
+        name: member.name ?? undefined,
+        email: member.email ?? undefined,
+        avatar: member.imageUrl ?? "",
         role: member.role,
-        name: member.name,
-        email: member.email,
-        imageUrl: member.imageUrl,
-      })),
-      storedAssignees: workspace.assignees ?? [],
-    })
+      })
+    )
+
+    return memberAssignees
+      .map((memberAssignee) => {
+        if (!memberAssignee) {
+          return null
+        }
+
+        const linkedAssignee = findMatchingAssignee(
+          memberAssignee,
+          workspace.assignees ?? []
+        )
+
+        return buildTaskAssignee({
+          ...linkedAssignee,
+          ...memberAssignee,
+          avatar: memberAssignee.avatar || linkedAssignee?.avatar || "",
+          linearUserId: linkedAssignee?.linearUserId,
+        })
+      })
+      .filter((assignee): assignee is WorkspaceAssignee => Boolean(assignee))
   },
 })
 
@@ -2404,7 +2423,7 @@ export const upsertTaskFromLinearIssue = internalMutation({
     statusMappings: linearStatusMappingsValidator,
     issue: linearIssueValidator,
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<Id<"tasks"> | null> => {
     const issue: LinearIssue = {
       id: args.issue.id,
       identifier: args.issue.identifier,
@@ -2480,7 +2499,19 @@ export const upsertTaskFromLinearIssue = internalMutation({
       })
     }
 
-    const issueAssignee = mapLinearUserToTaskAssignee(issue.assignee)
+    const workspaceAssigneeConfig: WorkspaceAssignee[] =
+      (await ctx.runQuery(internal.linear.getWorkspaceAssigneeConfig, {
+        workspaceId: args.workspaceId,
+      })) ?? []
+    const issueAssignee: Doc<"tasks">["assignee"] | undefined =
+      issue.assignee
+        ? buildTaskAssignee(
+            findMatchingAssignee(
+              mapLinearUserToWorkspaceAssignee(issue.assignee),
+              workspaceAssigneeConfig
+            )
+          )
+        : undefined
     if (issue.assignee) {
       await ctx.runMutation(internal.linear.mergeWorkspaceAssigneesFromLinear, {
         workspaceId: args.workspaceId,
@@ -2644,7 +2675,7 @@ export const upsertTaskFromLinearIssue = internalMutation({
         workspace.taskCounter ?? 0,
         ...workspaceTasks.map((task) => task.taskNumber)
       ) + 1
-    const createdTaskId = await ctx.db.insert("tasks", {
+    const createdTaskId: Id<"tasks"> = await ctx.db.insert("tasks", {
       workspaceId: args.workspaceId,
       taskCode: `${workspace.prefix || "MED"}-${nextTaskNumber}`,
       taskNumber: nextTaskNumber,
