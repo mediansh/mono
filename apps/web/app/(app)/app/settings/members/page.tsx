@@ -269,27 +269,11 @@ export default function MembersSettingsPage() {
     hasSynced.current = true
     syncMyProfile({ workspaceId: currentWorkspace._id }).catch(() => {})
   }, [currentWorkspace, syncMyProfile])
-
-  if (!currentWorkspace) return null
-  if (!hasWorkspaceAdminPermission(currentWorkspace.role)) {
-    return (
-      <div className="mx-auto w-full max-w-lg px-6 py-6">
-        <SettingsAccessState />
-      </div>
-    )
-  }
-
-  // Show skeleton while data is loading
-  if (workspaceData === undefined) {
-    return <MembersSkeleton />
-  }
-
-  const workspaceId = currentWorkspace._id
-  const canManageMembers = workspaceData.canManageMembers
-  const members = workspaceData.members
-  const invites = workspaceData.invites
   const linearIntegration = integrationState?.integration ?? null
   const isLinearLinked = Boolean(linearIntegration)
+  const canManageMembers = workspaceData?.canManageMembers ?? false
+  const members = workspaceData?.members ?? []
+  const invites = workspaceData?.invites ?? []
   const linkedMemberCount = members.filter((member) =>
     findMatchingAssignee(
       buildWorkspaceMemberAssignee({
@@ -299,7 +283,7 @@ export default function MembersSettingsPage() {
         email: member.email,
         imageUrl: member.imageUrl,
       }),
-      currentWorkspace.assignees ?? []
+      currentWorkspace?.assignees ?? []
     )?.linearUserId
   ).length
 
@@ -333,6 +317,21 @@ export default function MembersSettingsPage() {
     linearIntegration?.teamId,
     refreshWorkspaceLinearAssignees,
   ])
+
+  if (!currentWorkspace) return null
+  if (!hasWorkspaceAdminPermission(currentWorkspace.role)) {
+    return (
+      <div className="mx-auto w-full max-w-lg px-6 py-6">
+        <SettingsAccessState />
+      </div>
+    )
+  }
+
+  if (workspaceData === undefined) {
+    return <MembersSkeleton />
+  }
+
+  const workspaceId = currentWorkspace._id
 
   function handleSelectMemberAvatar(memberId: string) {
     pendingMemberIdRef.current = memberId

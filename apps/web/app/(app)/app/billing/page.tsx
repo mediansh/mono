@@ -198,6 +198,23 @@ function BillingSkeleton() {
   )
 }
 
+function BillingEmptyState({
+  title,
+  message,
+}: {
+  title: string
+  message: string
+}) {
+  return (
+    <div className="mx-auto flex w-full max-w-lg flex-col items-center justify-center px-6 py-16 text-center">
+      <div className="rounded-[4px] border border-border bg-card px-8 py-10">
+        <h2 className="text-[14px] font-semibold text-foreground">{title}</h2>
+        <p className="mt-2 text-[12px] text-muted-foreground">{message}</p>
+      </div>
+    </div>
+  )
+}
+
 export default function BillingPage() {
   const { currentWorkspace } = useWorkspace()
   const loadBillingDashboard = useAction(api.billing.getWorkspaceBillingDashboard)
@@ -318,8 +335,26 @@ export default function BillingPage() {
     }
   }
 
-  if (loading || !dashboard) {
+  if (loading) {
     return <BillingSkeleton />
+  }
+
+  if (!currentWorkspace) {
+    return (
+      <BillingEmptyState
+        title="No workspace selected"
+        message="Choose a workspace to view billing."
+      />
+    )
+  }
+
+  if (!dashboard) {
+    return (
+      <BillingEmptyState
+        title="Billing data is unavailable"
+        message={error ?? "We couldn't load billing data for this workspace."}
+      />
+    )
   }
 
   const currentPlan =

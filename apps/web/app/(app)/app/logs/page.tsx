@@ -74,6 +74,7 @@ type EventType =
   | "member_joined"
   | "member_removed"
   | "labels_saved"
+  | "assignees_saved"
   | "feedback_processed"
 
 interface LogEvent {
@@ -103,6 +104,7 @@ const EVENT_CONFIG: Record<
   member_joined: { icon: UserPlus, label: "Member Joined", color: "text-emerald-500" },
   member_removed: { icon: Users, label: "Member Removed", color: "text-muted-foreground" },
   labels_saved: { icon: Tag, label: "Labels Updated", color: "text-yellow-500" },
+  assignees_saved: { icon: Users, label: "Assignees Updated", color: "text-blue-500" },
   feedback_processed: { icon: ChatCircleDots, label: "Feedback", color: "text-purple-500" },
 }
 
@@ -398,7 +400,11 @@ export default function LogsPage() {
             ) : (
               <div className="divide-y divide-border">
                 {events.map((event) => {
-                  const config = EVENT_CONFIG[event.type]
+                  const config = EVENT_CONFIG[event.type] ?? {
+                    icon: ClockCounterClockwise,
+                    label: "Event",
+                    color: "text-muted-foreground",
+                  }
                   const Icon = config.icon
                   const SourceIcon = event.source ? SOURCE_ICONS[event.source] : null
 
