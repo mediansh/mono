@@ -3,6 +3,10 @@
 import { User } from "@phosphor-icons/react"
 import { cn } from "@workspace/ui/lib/utils"
 import {
+  resolveAssigneeWithCurrentUserProfile,
+  useCurrentUserProfile,
+} from "@/hooks/use-current-user-profile"
+import {
   getAssigneeInitials,
   type TaskAssignee,
 } from "@/lib/task-board"
@@ -16,7 +20,13 @@ export function AssigneeAvatar({
   className?: string
   emptyClassName?: string
 }) {
-  if (!assignee) {
+  const currentUserProfile = useCurrentUserProfile()
+  const resolvedAssignee = resolveAssigneeWithCurrentUserProfile(
+    assignee ?? null,
+    currentUserProfile
+  )
+
+  if (!resolvedAssignee) {
     return (
       <span
         className={cn(
@@ -29,11 +39,11 @@ export function AssigneeAvatar({
     )
   }
 
-  if (assignee.avatar) {
+  if (resolvedAssignee.avatar) {
     return (
       <img
-        src={assignee.avatar}
-        alt={assignee.name}
+        src={resolvedAssignee.avatar}
+        alt={resolvedAssignee.name}
         className={cn("size-5 shrink-0 rounded-full object-cover", className)}
       />
     )
@@ -46,7 +56,7 @@ export function AssigneeAvatar({
         className
       )}
     >
-      {getAssigneeInitials(assignee)}
+      {getAssigneeInitials(resolvedAssignee)}
     </span>
   )
 }

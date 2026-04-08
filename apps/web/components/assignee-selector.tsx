@@ -10,6 +10,10 @@ import {
 import { cn } from "@workspace/ui/lib/utils"
 import { AssigneeAvatar } from "@/components/assignee-avatar"
 import {
+  resolveAssigneeWithCurrentUserProfile,
+  useCurrentUserProfile,
+} from "@/hooks/use-current-user-profile"
+import {
   findMatchingAssignee,
   formatAssigneeRole,
   type TaskAssignee,
@@ -36,8 +40,17 @@ export function AssigneeSelector({
   variant = "default",
   placeholder = "Assignee",
 }: AssigneeSelectorProps) {
+  const currentUserProfile = useCurrentUserProfile()
   const isCompact = variant === "compact"
-  const resolvedValue = findMatchingAssignee(value, assignees) ?? value
+  const resolvedAssignees = assignees.map(
+    (assignee) =>
+      resolveAssigneeWithCurrentUserProfile(assignee, currentUserProfile) ??
+      assignee
+  )
+  const resolvedValue =
+    findMatchingAssignee(value, resolvedAssignees) ??
+    resolveAssigneeWithCurrentUserProfile(value ?? null, currentUserProfile) ??
+    value
 
   return (
     <DropdownMenu>
@@ -77,7 +90,7 @@ export function AssigneeSelector({
             {!resolvedValue ? <Check size={14} weight="bold" className="text-primary" /> : null}
           </div>
         </DropdownMenuItem>
-        {assignees.map((assignee) => {
+        {resolvedAssignees.map((assignee) => {
           const isSelected = resolvedValue?.id === assignee.id
           return (
             <DropdownMenuItem key={assignee.id} onClick={() => onChange(assignee)}>

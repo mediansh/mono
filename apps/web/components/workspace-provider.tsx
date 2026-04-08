@@ -1,14 +1,16 @@
 "use client"
 
+import { useUser } from "@clerk/nextjs"
 import {
   createContext,
   useContext,
   useEffect,
   useCallback,
+  useRef,
   useState,
   type ReactNode,
 } from "react"
-import { useConvex, useConvexAuth } from "convex/react"
+import { useConvex, useConvexAuth, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
 import {
@@ -33,8 +35,11 @@ const HAS_WORKSPACE_COOKIE = "median_has_workspace"
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const convex = useConvex()
   const { isLoading: isAuthLoading, isAuthenticated } = useConvexAuth()
+  const { user } = useUser()
+  const syncMyProfile = useMutation(api.workspaces.syncMyProfile)
   const { workspaces, currentWorkspaceId } = useLocalFirstStore()
   const [hasFetchedWorkspaces, setHasFetchedWorkspaces] = useState(false)
+  const lastProfileSyncKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (isAuthLoading) {
@@ -76,6 +81,52 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
     document.cookie = `${HAS_WORKSPACE_COOKIE}=${workspaces.length > 0 ? "1" : "0"}; Path=/; Max-Age=31536000; SameSite=Lax`
   }, [isAuthLoading, isAuthenticated, workspaces.length])
+
+  useEffect(() => {
+    if (!isAuthenticated || !user || workspaces.length === 0) {
+      lastProfileSyncKeyRef.current = null
+      return
+    }
+
+    const nextSyncKey = [
+      user.id,
+      user.fullName ?? user.username ?? "",
+      user.primaryEmailAddress?.emailAddress ?? "",
+      user.imageUrl ?? "",
+      workspaces.map((workspace) => workspace._id).sort().join(","),
+    ].join("::")
+
+    if (lastProfileSyncKeyRef.current === nextSyncKey) {
+      return
+    }
+
+    lastProfileSyncKeyRef.current = nextSyncKey
+
+    let cancelled = false
+
+    async function syncProfileAcrossWorkspaces() {
+      await Promise.allSettled(
+        workspaces.map((workspace) =>
+          syncMyProfile({ workspaceId: workspace._id })
+        )
+      )
+
+      const nextWorkspaces = (await convex.query(
+        api.workspaces.getUserWorkspaces,
+        {}
+      )) as Workspace[]
+
+      if (!cancelled) {
+        setCachedWorkspaces(nextWorkspaces)
+      }
+    }
+
+    void syncProfileAcrossWorkspaces()
+
+    return () => {
+      cancelled = true
+    }
+  }, [convex, isAuthenticated, syncMyProfile, user, workspaces])
 
   const switchWorkspace = useCallback(
     (id: Id<"workspaces">) => {
