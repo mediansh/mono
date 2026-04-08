@@ -460,17 +460,7 @@ async function isDeletedLinearTaskSource(
     return true
   }
 
-  const draftSuppression = await ctx.db
-    .query("draftSuppressedTaskSources")
-    .withIndex("by_workspace_source", (q: any) =>
-      q
-        .eq("workspaceId", workspaceId)
-        .eq("platform", "linear")
-        .eq("sourceUrl", sourceUrl)
-    )
-    .first()
-
-  return Boolean(draftSuppression)
+  return false
 }
 
 function normalizeStatusMappings(

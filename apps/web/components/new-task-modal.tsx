@@ -21,7 +21,6 @@ import {
   Paperclip,
   PencilSimple,
   Sparkle,
-  NotePencil,
   ListBullets,
 } from "@phosphor-icons/react"
 import {
@@ -121,18 +120,6 @@ interface NewTaskModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   defaultStatus?: Status
-  draft?: {
-    _id: string
-    title: string
-    description?: string
-    status: Status
-    priority: Priority
-    labels: Label[]
-    assignee?: TaskAssignee
-    attachments?: TaskAttachment[]
-    updatedAt?: number
-  }
-  onDraftSaved?: () => void
 }
 
 type TaskDraftPayload = {
@@ -157,14 +144,12 @@ export function NewTaskModal({
   open,
   onOpenChange,
   defaultStatus = "todo",
-  draft,
-  onDraftSaved,
 }: NewTaskModalProps) {
   const { currentWorkspace } = useWorkspace()
   const canManageTasks = hasTaskWritePermission(currentWorkspace?.role)
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
-  const [status, setStatus] = useState<Status>(draft?.status ?? defaultStatus)
+  const [status, setStatus] = useState<Status>(defaultStatus)
   const [priority, setPriority] = useState<Priority>("none")
   const [labels, setLabels] = useState<Label[]>([])
   const [assignee, setAssignee] = useState<TaskAssignee | null>(null)
@@ -177,48 +162,13 @@ export function NewTaskModal({
   const [activeTab, setActiveTab] = useState<"manual" | "ai">("manual")
   const [aiPrompt, setAiPrompt] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
-  const [savingDraft, setSavingDraft] = useState(false)
-  const [isPublishingDraft, setIsPublishingDraft] = useState(false)
-
-  const saveDraftMutation = useMutation(api.drafts.saveDraft)
-  const updateDraftMutation = useMutation(api.drafts.updateDraft)
-  const publishDraftWithUpdatesMutation = useMutation(
-    api.drafts.publishDraftWithUpdates
-  )
-
-  // Keep draft population and default status initialization in one place so
-  // editing a draft never gets overwritten by the fallback default status.
-  const draftRevisionRef = useRef<string | null>(null)
   useEffect(() => {
     if (!open) {
-      draftRevisionRef.current = null
       return
     }
-
-    if (draft) {
-      const draftRevision = `${draft._id}:${draft.updatedAt ?? 0}`
-      if (draftRevision !== draftRevisionRef.current) {
-        draftRevisionRef.current = draftRevision
-        setTitle(draft.title)
-        setDescription(draft.description ?? "")
-        setStatus(draft.status)
-        setPriority(draft.priority)
-        setLabels(draft.labels)
-        setAssignee(draft.assignee ?? null)
-        setAttachments(
-          (draft.attachments ?? []).map((a) => ({
-            ...a,
-            previewUrl: undefined,
-          }))
-        )
-      }
-      return
-    }
-
-    draftRevisionRef.current = null
     setStatus(defaultStatus)
     setAssignee(null)
-  }, [defaultStatus, open, draft])
+  }, [defaultStatus, open])
 
   const labelOptions = useMemo(() => {
     const wsLabels = currentWorkspace?.labels
@@ -532,97 +482,8 @@ export function NewTaskModal({
     [createTaskWithFallback, currentWorkspace]
   )
 
-  const publishDraftOptimistically = useCallback(
-    async (payload: TaskDraftPayload) => {
-      if (!currentWorkspace || !draft) {
-        throw new Error("Draft not found")
-      }
-
-      const existingTasks =
-        getLocalFirstStoreSnapshot().tasksByWorkspace[currentWorkspace._id] ??
-        []
-      const nextTaskNumber =
-        Math.max(
-          0,
-          ...existingTasks.map(
-            (task) => task.taskNumber ?? getTaskNumber(task.taskCode ?? "")
-          )
-        ) + 1
-      const optimisticId = `optimistic:${nextTaskNumber}`
-      const optimisticTask: LocalTaskDoc = {
-        _id: optimisticId,
-        _creationTime: Date.now(),
-        workspaceId: currentWorkspace._id,
-        taskCode: `${currentWorkspace.prefix || "MED"}-${nextTaskNumber}`,
-        taskNumber: nextTaskNumber,
-        title: payload.title.trim(),
-        description: payload.description?.trim() || undefined,
-        status: payload.status,
-        priority: payload.priority,
-        labels: payload.labels,
-        order: existingTasks.filter((task) => task.status === payload.status)
-          .length,
-        project: currentWorkspace.name,
-        assignee: payload.assignee ?? undefined,
-        attachments: payload.attachments?.length
-          ? (payload.attachments as any)
-          : undefined,
-        _syncStatus: "pending",
-      }
-
-      setWorkspaceTasks(
-        currentWorkspace._id,
-        normalizeTaskOrdersByStatus([...existingTasks, optimisticTask])
-      )
-
-      try {
-        const draftAttachments = attachments.map(
-          ({ previewUrl, url, ...rest }) => rest
-        )
-        const createdTask = (await publishDraftWithUpdatesMutation({
-          draftId: draft._id as any,
-          title: payload.title,
-          description: payload.description,
-          status: payload.status === "requests" ? "backlog" : payload.status,
-          priority: payload.priority,
-          labels: payload.labels,
-          assignee: payload.assignee ?? null,
-          attachments:
-            draftAttachments.length > 0 ? (draftAttachments as any) : undefined,
-        })) as Doc<"tasks">
-
-        const hydratedTask = {
-          ...createdTask,
-          attachments: payload.attachments?.length
-            ? payload.attachments.map(({ previewUrl, ...attachment }) => ({
-                ...attachment,
-                url: attachment.url ?? previewUrl ?? null,
-              }))
-            : createdTask.attachments,
-        } as LocalTaskDoc
-
-        updateWorkspaceTasks(currentWorkspace._id, (tasks) =>
-          tasks.map((task) => (task._id === optimisticId ? hydratedTask : task))
-        )
-
-        return hydratedTask
-      } catch {
-        updateWorkspaceTasks(currentWorkspace._id, (tasks) =>
-          tasks.filter((task) => task._id !== optimisticId)
-        )
-        throw new Error("Failed to publish draft.")
-      }
-    },
-    [attachments, currentWorkspace, draft, publishDraftWithUpdatesMutation]
-  )
-
   async function handleCreate() {
-    if (
-      !title.trim() ||
-      !currentWorkspace ||
-      savingDraft ||
-      isPublishingDraft
-    ) {
+    if (!title.trim() || !currentWorkspace) {
       return
     }
     if (!canManageTasks) {
@@ -631,34 +492,6 @@ export function NewTaskModal({
     }
 
     setError("")
-
-    // If editing a draft, save latest changes then publish
-    if (draft) {
-      setIsPublishingDraft(true)
-      const payload = {
-        title,
-        description,
-        status,
-        priority,
-        labels,
-        assignee,
-        attachments,
-      }
-      preserveAttachmentPreviews(payload.attachments)
-      onOpenChange(false)
-      resetForm()
-
-      try {
-        await publishDraftOptimistically(payload)
-        toast.success("Draft published as task")
-        onDraftSaved?.()
-      } catch {
-        toast.error("Failed to publish draft.")
-      } finally {
-        setIsPublishingDraft(false)
-      }
-      return
-    }
 
     const payload = {
       title,
@@ -694,68 +527,6 @@ export function NewTaskModal({
     createSingleTask(payload).catch(() => {
       toast.error("Task creation failed. Try again.")
     })
-  }
-
-  async function handleSaveDraft() {
-    if (!currentWorkspace || savingDraft || isPublishingDraft) return
-    if (!canManageTasks) {
-      setError("Guests can only view tasks.")
-      return
-    }
-
-    setSavingDraft(true)
-    setError("")
-
-    try {
-      const draftAttachments = attachments.map(
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        ({ previewUrl, url, ...rest }) => rest
-      ) as {
-        storageId: string
-        name: string
-        type: string
-        size: number
-        width?: number
-        height?: number
-        displayWidth?: number
-      }[]
-
-      if (draft) {
-        await updateDraftMutation({
-          draftId: draft._id as any,
-          title: title || "Untitled draft",
-          description,
-          status: status === "requests" ? "backlog" : status,
-          priority,
-          labels,
-          assignee: assignee ?? null,
-          attachments:
-            draftAttachments.length > 0 ? (draftAttachments as any) : undefined,
-        })
-        toast.success("Draft updated")
-      } else {
-        await saveDraftMutation({
-          workspaceId: currentWorkspace._id,
-          title: title || "Untitled draft",
-          description,
-          status: status === "requests" ? "backlog" : status,
-          priority,
-          labels,
-          assignee: assignee ?? null,
-          attachments:
-            draftAttachments.length > 0 ? (draftAttachments as any) : undefined,
-        })
-        toast.success("Saved as draft")
-      }
-
-      onOpenChange(false)
-      resetForm()
-      onDraftSaved?.()
-    } catch {
-      setError("Failed to save draft.")
-    } finally {
-      setSavingDraft(false)
-    }
   }
 
   async function handleGenerateTasks() {
@@ -1215,49 +986,16 @@ export function NewTaskModal({
                               Create more
                             </button>
 
-                            {/* Draft button */}
-                            <button
-                              onClick={handleSaveDraft}
-                              disabled={
-                                !currentWorkspace ||
-                                savingDraft ||
-                                isPublishingDraft
-                              }
-                              className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[12px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
-                            >
-                              {savingDraft ? (
-                                <SpinnerGap
-                                  size={13}
-                                  className="animate-spin"
-                                />
-                              ) : (
-                                <NotePencil size={13} />
-                              )}
-                              {draft ? "Update draft" : "Draft"}
-                            </button>
-
                             {/* Create button */}
                             <button
                               onClick={handleCreate}
                               disabled={
                                 !title.trim() ||
-                                !currentWorkspace ||
-                                savingDraft ||
-                                isPublishingDraft
+                                !currentWorkspace
                               }
                               className="flex items-center gap-2 rounded-[4px] bg-primary px-3 py-1.5 text-[12px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                             >
-                              {draft
-                                ? isPublishingDraft
-                                  ? "Publishing..."
-                                  : "Publish"
-                                : "Create task"}
-                              {draft && isPublishingDraft ? (
-                                <SpinnerGap
-                                  size={16}
-                                  className="animate-spin"
-                                />
-                              ) : null}
+                              Create task
                               <kbd className="hidden rounded bg-primary-foreground/20 px-1.5 py-0.5 text-[10px] font-normal text-primary-foreground/70 sm:inline-block">
                                 {typeof navigator !== "undefined" &&
                                 /Mac|iPhone|iPad/.test(navigator.userAgent)

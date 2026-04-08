@@ -21,7 +21,6 @@ import {
   Plugs,
   ClockCounterClockwise,
   CreditCard,
-  NotePencil,
 } from "@phosphor-icons/react"
 import { Facehash } from "facehash"
 import { NewTaskModal } from "@/components/new-task-modal"
@@ -67,7 +66,6 @@ import {
 
 const mainNav = [
   { label: "Home", href: "/app", icon: House },
-  { label: "Drafts", href: "/app/drafts", icon: NotePencil },
   { label: "Logs", href: "/app/logs", icon: ClockCounterClockwise },
   { label: "Billing", href: "/app/billing", icon: CreditCard },
 ]

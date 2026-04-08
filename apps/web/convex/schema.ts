@@ -22,7 +22,6 @@ export default defineSchema({
     iconId: v.optional(v.id("_storage")),
     ownerId: v.string(),
     taskCounter: v.optional(v.number()),
-    draftCount: v.optional(v.number()),
     labels: v.optional(
       v.array(
         v.object({
@@ -550,111 +549,6 @@ export default defineSchema({
       )
     ),
   }).index("by_workspace", ["workspaceId"]),
-
-  drafts: defineTable({
-    workspaceId: v.id("workspaces"),
-    title: v.string(),
-    description: v.optional(v.string()),
-    status: v.union(
-      v.literal("backlog"),
-      v.literal("todo"),
-      v.literal("in_progress"),
-      v.literal("ready"),
-      v.literal("shipped"),
-      v.literal("archive")
-    ),
-    priority: v.union(
-      v.literal("urgent"),
-      v.literal("high"),
-      v.literal("medium"),
-      v.literal("low"),
-      v.literal("none")
-    ),
-    labels: v.array(v.string()),
-    assignee: v.optional(workspaceAssigneeValidator),
-    source: v.optional(
-      v.object({
-        platform: v.union(
-          v.literal("discord"),
-          v.literal("slack"),
-          v.literal("x"),
-          v.literal("linear"),
-          v.literal("github"),
-          v.literal("cli")
-        ),
-        url: v.string(),
-        author: v.string(),
-      })
-    ),
-    sources: v.optional(
-      v.array(
-        v.object({
-          platform: v.union(
-            v.literal("discord"),
-            v.literal("slack"),
-            v.literal("x"),
-            v.literal("linear"),
-            v.literal("github"),
-            v.literal("cli")
-          ),
-          url: v.string(),
-          author: v.string(),
-        })
-      )
-    ),
-    linearLink: v.optional(
-      v.object({
-        linearIssueId: v.string(),
-        linearIssueIdentifier: v.string(),
-        linearIssueUrl: v.optional(v.string()),
-        lastLinearUpdatedAt: v.optional(v.string()),
-      })
-    ),
-    githubLink: v.optional(
-      v.object({
-        installationId: v.string(),
-        githubRepositoryId: v.string(),
-        githubRepositoryName: v.string(),
-        githubRepositoryFullName: v.string(),
-        githubIssueId: v.string(),
-        githubIssueNumber: v.number(),
-        githubIssueUrl: v.string(),
-        lastGithubUpdatedAt: v.optional(v.string()),
-      })
-    ),
-    updatedAt: v.number(),
-    attachments: v.optional(
-      v.array(
-        v.object({
-          storageId: v.id("_storage"),
-          name: v.string(),
-          type: v.string(),
-          size: v.number(),
-          width: v.optional(v.number()),
-          height: v.optional(v.number()),
-          displayWidth: v.optional(v.number()),
-        })
-      )
-    ),
-  }).index("by_workspace", ["workspaceId"]),
-
-  draftSuppressedTaskSources: defineTable({
-    draftId: v.id("drafts"),
-    workspaceId: v.id("workspaces"),
-    platform: v.union(
-      v.literal("discord"),
-      v.literal("slack"),
-      v.literal("x"),
-      v.literal("linear"),
-      v.literal("github"),
-      v.literal("cli")
-    ),
-    sourceUrl: v.string(),
-    titleFingerprint: v.string(),
-    suppressedAt: v.number(),
-  })
-    .index("by_draft", ["draftId"])
-    .index("by_workspace_source", ["workspaceId", "platform", "sourceUrl"]),
 
   waitlistEntries: defineTable({
     email: v.string(),

@@ -431,16 +431,11 @@ export const applyWorkspaceAssigneeDirectory = internalMutation({
       storedAssignees: nextAssignees,
     })
 
-    const [tasks, drafts] = await Promise.all([
-      ctx.db
-        .query("tasks")
-        .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
-        .collect(),
-      ctx.db
-        .query("drafts")
-        .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
-        .collect(),
-    ])
+    const tasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .collect()
+    
 
     for (const task of tasks) {
       if (!task.assignee) {
@@ -457,27 +452,6 @@ export const applyWorkspaceAssigneeDirectory = internalMutation({
 
       if (JSON.stringify(task.assignee) !== JSON.stringify(nextAssignee)) {
         await ctx.db.patch(task._id, {
-          assignee: nextAssignee,
-          updatedAt: Date.now(),
-        })
-      }
-    }
-
-    for (const draft of drafts) {
-      if (!draft.assignee) {
-        continue
-      }
-
-      const matchedAssignee = findMatchingAssignee(
-        draft.assignee,
-        assignableAssignees
-      )
-      const nextAssignee = matchedAssignee
-        ? buildTaskAssignee(matchedAssignee)
-        : undefined
-
-      if (JSON.stringify(draft.assignee) !== JSON.stringify(nextAssignee)) {
-        await ctx.db.patch(draft._id, {
           assignee: nextAssignee,
           updatedAt: Date.now(),
         })
@@ -610,8 +584,6 @@ export const deleteWorkspace = mutation({
       members,
       invites,
       tasks,
-      drafts,
-      draftSuppressedTaskSources,
       discordIntegrations,
       linearIntegrations,
       linearTaskLinks,
@@ -635,16 +607,6 @@ export const deleteWorkspace = mutation({
       ctx.db
         .query("tasks")
         .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
-        .collect(),
-      ctx.db
-        .query("drafts")
-        .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
-        .collect(),
-      ctx.db
-        .query("draftSuppressedTaskSources")
-        .withIndex("by_workspace_source", (q) =>
-          q.eq("workspaceId", args.workspaceId)
-        )
         .collect(),
       ctx.db
         .query("discordWorkspaceIntegrations")
@@ -704,14 +666,6 @@ export const deleteWorkspace = mutation({
 
     for (const task of tasks) {
       await ctx.db.delete(task._id)
-    }
-
-    for (const draft of drafts) {
-      await ctx.db.delete(draft._id)
-    }
-
-    for (const suppression of draftSuppressedTaskSources) {
-      await ctx.db.delete(suppression._id)
     }
 
     for (const invite of invites) {

@@ -37,7 +37,6 @@ import {
   Minus,
   ListBullets,
   SquaresFour,
-  NotePencil,
 } from "@phosphor-icons/react"
 import { NewTaskModal } from "@/components/new-task-modal"
 import { AssigneeAvatar } from "@/components/assignee-avatar"
@@ -1085,7 +1084,6 @@ function TaskContextMenu({
   onClose,
   onUpdate,
   onDelete,
-  onMoveToDraft,
   canManageTasks,
 }: {
   task: Task
@@ -1094,7 +1092,6 @@ function TaskContextMenu({
   onClose: () => void
   onUpdate: (taskId: string, updates: Partial<Task>) => void
   onDelete: (taskId: string) => void
-  onMoveToDraft: (taskId: string) => void
   canManageTasks: boolean
 }) {
   const labelConfig = useLabelConfig()
@@ -1242,20 +1239,6 @@ function TaskContextMenu({
       </ContextSubmenu>
 
       <div className="-mx-1 my-1 h-px bg-border" />
-
-      {/* Move to drafts */}
-      <button
-        disabled={!canManageTasks}
-        onClick={() => {
-          onClose()
-          onMoveToDraft(task.id)
-        }}
-        className="flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-accent"
-      >
-        <NotePencil size={14} />
-        <span>Move to drafts</span>
-      </button>
-
       {/* Delete */}
       <button
         disabled={!canManageTasks}
@@ -1381,7 +1364,6 @@ const SortableListRow = memo(function SortableListRow({
   onToggleSelect,
   onUpdate,
   onDelete,
-  onMoveToDraft,
 }: {
   task: Task
   rowIndex: number
@@ -1395,7 +1377,6 @@ const SortableListRow = memo(function SortableListRow({
   onToggleSelect: (taskId: string, shiftKey: boolean) => void
   onUpdate: (taskId: string, updates: Partial<Task>) => void
   onDelete: (taskId: string) => void
-  onMoveToDraft: (taskId: string) => void
 }) {
   const [contextMenu, setContextMenu] = useState<{
     x: number
@@ -1484,7 +1465,6 @@ const SortableListRow = memo(function SortableListRow({
           onClose={() => setContextMenu(null)}
           onUpdate={onUpdate}
           onDelete={onDelete}
-          onMoveToDraft={onMoveToDraft}
           canManageTasks={canManageTasks}
         />
       )}
@@ -1597,7 +1577,6 @@ function ListGroup({
   onToggleSelectTask,
   onUpdateTask,
   onDeleteTask,
-  onMoveToDraft,
 }: {
   column: (typeof COLUMNS)[number]
   tasks: Task[]
@@ -1613,7 +1592,6 @@ function ListGroup({
   onToggleSelectTask: (taskId: string, shiftKey: boolean) => void
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void
   onDeleteTask: (taskId: string) => void
-  onMoveToDraft: (taskId: string) => void
 }) {
   const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks])
   const hasSelection = selectedTaskIds.size > 0
@@ -1688,7 +1666,6 @@ function ListGroup({
                   onToggleSelect={onToggleSelectTask}
                   onUpdate={onUpdateTask}
                   onDelete={onDeleteTask}
-                  onMoveToDraft={onMoveToDraft}
                 />
               ))
             )}
@@ -1725,7 +1702,6 @@ function TaskDetailModal({
   onClose,
   onUpdate,
   onDelete,
-  onMoveToDraft,
   onAccept,
   onDeny,
   canManageTasks,
@@ -1735,7 +1711,6 @@ function TaskDetailModal({
   onClose: () => void
   onUpdate: (taskId: string, updates: Partial<Task>) => void
   onDelete: (taskId: string) => void
-  onMoveToDraft: (taskId: string) => void
   onAccept?: (task: Task) => void
   onDeny?: (task: Task) => void
   canManageTasks: boolean
@@ -1839,17 +1814,6 @@ function TaskDetailModal({
                 })()}
               </div>
               <div className="flex items-center gap-1">
-                <button
-                  disabled={!canManageTasks}
-                  onClick={() => {
-                    onClose()
-                    onMoveToDraft(task.id)
-                  }}
-                  className="rounded-[4px] p-1 text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
-                  title="Move to drafts"
-                >
-                  <NotePencil size={14} />
-                </button>
                 <button
                   disabled={!canManageTasks}
                   onClick={() => onDelete(task.id)}
@@ -2269,7 +2233,6 @@ const KanbanCard = memo(function KanbanCard({
   onToggleSelect,
   onUpdate,
   onDelete,
-  onMoveToDraft,
 }: {
   task: Task
   cardIndex: number
@@ -2283,7 +2246,6 @@ const KanbanCard = memo(function KanbanCard({
   onToggleSelect: (taskId: string, shiftKey: boolean) => void
   onUpdate: (taskId: string, updates: Partial<Task>) => void
   onDelete: (taskId: string) => void
-  onMoveToDraft: (taskId: string) => void
 }) {
   const { colors: labelColors } = useLabelConfig()
   const boardMounted = useBoardMounted()
@@ -2423,7 +2385,6 @@ const KanbanCard = memo(function KanbanCard({
           onClose={() => setContextMenu(null)}
           onUpdate={onUpdate}
           onDelete={onDelete}
-          onMoveToDraft={onMoveToDraft}
           canManageTasks={canManageTasks}
         />
       )}
@@ -2446,7 +2407,6 @@ function KanbanColumn({
   onToggleSelectTask,
   onUpdateTask,
   onDeleteTask,
-  onMoveToDraft,
 }: {
   column: (typeof COLUMNS)[number]
   columnIndex: number
@@ -2460,7 +2420,6 @@ function KanbanColumn({
   onToggleSelectTask: (taskId: string, shiftKey: boolean) => void
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void
   onDeleteTask: (taskId: string) => void
-  onMoveToDraft: (taskId: string) => void
 }) {
   const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks])
   const hasSelection = selectedTaskIds.size > 0
@@ -2528,7 +2487,6 @@ function KanbanColumn({
                   onToggleSelect={onToggleSelectTask}
                   onUpdate={onUpdateTask}
                   onDelete={onDeleteTask}
-                  onMoveToDraft={onMoveToDraft}
                 />
               ))
             )}
@@ -2550,7 +2508,6 @@ function ColumnBoardView({
   onMoveMultipleTasks,
   onUpdateTask,
   onDeleteTask,
-  onMoveToDraft,
   onBulkUpdateTasks,
   onBulkDeleteTasks,
   onAcceptRequest,
@@ -2568,7 +2525,6 @@ function ColumnBoardView({
   ) => void
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void
   onDeleteTask: (taskId: string) => void
-  onMoveToDraft: (taskId: string) => void
   onBulkUpdateTasks: (
     taskIds: string[],
     updates: Partial<Pick<Task, "status" | "priority" | "labels">>
@@ -3035,7 +2991,6 @@ function ColumnBoardView({
                   onToggleSelectTask={handleToggleSelectTask}
                   onUpdateTask={onUpdateTask}
                   onDeleteTask={onDeleteTask}
-                  onMoveToDraft={onMoveToDraft}
                 />
               </div>
             )
@@ -3057,10 +3012,6 @@ function ColumnBoardView({
         onUpdate={onUpdateTask}
         onDelete={(taskId) => {
           onDeleteTask(taskId)
-          setSelectedTaskId(null)
-        }}
-        onMoveToDraft={(taskId) => {
-          onMoveToDraft(taskId)
           setSelectedTaskId(null)
         }}
         onAccept={(task) => {
@@ -3145,7 +3096,6 @@ function ListView({
   onMoveMultipleTasks,
   onUpdateTask,
   onDeleteTask,
-  onMoveToDraft,
   onBulkUpdateTasks,
   onBulkDeleteTasks,
   onAcceptRequest,
@@ -3165,7 +3115,6 @@ function ListView({
   ) => void
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void
   onDeleteTask: (taskId: string) => void
-  onMoveToDraft: (taskId: string) => void
   onBulkUpdateTasks: (
     taskIds: string[],
     updates: Partial<Pick<Task, "status" | "priority" | "labels">>
@@ -3506,7 +3455,6 @@ function ListView({
                 onToggleSelectTask={handleToggleSelectTask}
                 onUpdateTask={onUpdateTask}
                 onDeleteTask={onDeleteTask}
-                onMoveToDraft={onMoveToDraft}
               />
             )
           })}
@@ -3527,10 +3475,6 @@ function ListView({
         onUpdate={onUpdateTask}
         onDelete={(taskId) => {
           onDeleteTask(taskId)
-          setSelectedTaskId(null)
-        }}
-        onMoveToDraft={(taskId) => {
-          onMoveToDraft(taskId)
           setSelectedTaskId(null)
         }}
         onAccept={(task) => {
@@ -3613,8 +3557,6 @@ export function KanbanBoard() {
   const clearDemoTasks = useMutation(api.tasks.clearDemoTasks)
   const updateTask = useMutation(api.tasks.updateTask)
   const deleteTask = useMutation(api.tasks.deleteTask)
-  const moveTaskToDraft = useMutation(api.drafts.moveTaskToDraft)
-  const saveDraft = useMutation(api.drafts.saveDraft)
   const reorderTasks = useMutation(api.tasks.reorderTasks)
   const bulkUpdateTasks = useMutation(api.tasks.bulkUpdateTasks)
   const bulkDeleteTasks = useMutation(api.tasks.bulkDeleteTasks)
@@ -3963,63 +3905,6 @@ export function KanbanBoard() {
       })
   }
 
-  function handleMoveTaskToDraft(taskId: string) {
-    if (
-      !workspaceId ||
-      !taskDocs ||
-      !canManageTasks ||
-      taskId.startsWith("optimistic:")
-    ) {
-      return
-    }
-
-    const task = taskDocs.find((item) => item._id === taskId)
-    if (!task) {
-      return
-    }
-
-    lastLocalChangeRef.current = Date.now()
-    updateWorkspaceTasks(workspaceId, (tasks) =>
-      tasks.filter((item) => item._id !== taskId)
-    )
-
-    if (isDevTask(taskId)) {
-      const draftAttachments = task.attachments ?? []
-
-      void saveDraft({
-        workspaceId,
-        title: task.title,
-        description: task.description,
-        status: task.status === "requests" ? "backlog" : task.status,
-        priority: task.priority,
-        labels: task.labels,
-        assignee: task.assignee ?? null,
-        attachments: draftAttachments.length > 0 ? draftAttachments : undefined,
-      })
-        .then(() => {
-          toast.success(`Moved "${task.title}" to drafts`)
-        })
-        .catch(() => {
-          updateWorkspaceTasks(workspaceId, (tasks) =>
-            sortTaskDocs([...tasks, task])
-          )
-          toast.error("Failed to move task to drafts")
-        })
-      return
-    }
-
-    void moveTaskToDraft({ taskId: taskId as Id<"tasks"> })
-      .then(() => {
-        toast.success(`Moved "${task.title}" to drafts`)
-      })
-      .catch(() => {
-        updateWorkspaceTasks(workspaceId, (tasks) =>
-          sortTaskDocs([...tasks, task])
-        )
-        toast.error("Failed to move task to drafts")
-      })
-  }
-
   function handleMoveTask(taskId: string, toStatus: Status, toIndex: number) {
     if (!workspaceId || !canManageTasks || taskId.startsWith("optimistic:"))
       return
@@ -4267,7 +4152,6 @@ export function KanbanBoard() {
                 onMoveMultipleTasks={handleMoveMultipleTasks}
                 onUpdateTask={handleUpdateTask}
                 onDeleteTask={handleDeleteTask}
-                onMoveToDraft={handleMoveTaskToDraft}
                 onBulkUpdateTasks={handleBulkUpdateTasks}
                 onBulkDeleteTasks={handleBulkDeleteTasks}
                 onAcceptRequest={handleAcceptRequest}
@@ -4285,7 +4169,6 @@ export function KanbanBoard() {
                 onMoveMultipleTasks={handleMoveMultipleTasks}
                 onUpdateTask={handleUpdateTask}
                 onDeleteTask={handleDeleteTask}
-                onMoveToDraft={handleMoveTaskToDraft}
                 onBulkUpdateTasks={handleBulkUpdateTasks}
                 onBulkDeleteTasks={handleBulkDeleteTasks}
                 onAcceptRequest={handleAcceptRequest}
