@@ -49,6 +49,7 @@ import { AssigneeSelector } from "@/components/assignee-selector"
 import {
   TaskAttachmentGallery,
   getDefaultAttachmentDisplayWidth,
+  cacheAttachmentPreview,
   type TaskAttachment,
 } from "@/components/task-attachments"
 import {
@@ -1802,31 +1803,28 @@ function TaskDetailModal({
             continue
           }
 
-          // Read image metadata
+          // Read image metadata and create preview URL
           let imageMetadata: {
             width: number
             height: number
             displayWidth: number
           } | null = null
+          let previewUrl: string | undefined
           if (file.type.startsWith("image/")) {
+            previewUrl = URL.createObjectURL(file)
             imageMetadata = await new Promise((resolve) => {
-              const objectUrl = URL.createObjectURL(file)
               const image = new Image()
               image.onload = () => {
                 const w = image.naturalWidth
                 const h = image.naturalHeight
-                URL.revokeObjectURL(objectUrl)
                 resolve({
                   width: w,
                   height: h,
                   displayWidth: getDefaultAttachmentDisplayWidth(w),
                 })
               }
-              image.onerror = () => {
-                URL.revokeObjectURL(objectUrl)
-                resolve(null)
-              }
-              image.src = objectUrl
+              image.onerror = () => resolve(null)
+              image.src = previewUrl!
             })
           }
 
@@ -1838,11 +1836,13 @@ function TaskDetailModal({
           })
 
           if (!result.ok) {
+            if (previewUrl) URL.revokeObjectURL(previewUrl)
             toast.error(`Failed to upload "${file.name}".`)
             continue
           }
 
           const { storageId } = await result.json()
+          if (previewUrl) cacheAttachmentPreview(storageId, previewUrl)
           newAttachments.push({
             storageId,
             name: file.name,
@@ -1851,6 +1851,7 @@ function TaskDetailModal({
             width: imageMetadata?.width,
             height: imageMetadata?.height,
             displayWidth: imageMetadata?.displayWidth,
+            url: previewUrl,
           })
         }
 
