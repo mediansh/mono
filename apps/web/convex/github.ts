@@ -15,7 +15,11 @@ import {
   requireWorkspaceAccess,
   requireWorkspaceAdminAccess,
 } from "./permissions"
-import { STATUS_ORDER, type TaskStatus } from "../lib/task-board"
+import {
+  buildTaskAssignee,
+  STATUS_ORDER,
+  type TaskStatus,
+} from "../lib/task-board"
 
 const GITHUB_API_URL = "https://api.github.com"
 const GITHUB_INSTALL_STATE_TTL_MS = 1000 * 60 * 15
@@ -270,7 +274,11 @@ async function isDeletedGitHubTaskSource(
     )
     .first()
 
-  return Boolean(suppression)
+  if (suppression) {
+    return true
+  }
+
+  return false
 }
 
 function normalizeTitle(value: string) {
@@ -322,7 +330,9 @@ function base64DecodeToBytes(value: string) {
 }
 
 function bytesToHex(bytes: Uint8Array) {
-  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(
+    ""
+  )
 }
 
 function base64UrlEncodeString(value: string) {
@@ -353,12 +363,32 @@ function pkcs1ToPkcs8(pkcs1Der: ArrayBuffer): ArrayBuffer {
   // ASN.1 PKCS#8 header for RSA:
   // SEQUENCE { version INTEGER 0, algorithm AlgorithmIdentifier { OID rsaEncryption, NULL }, privateKey OCTET STRING }
   const pkcs8Header = new Uint8Array([
-    0x30, 0x82, 0x00, 0x00, // SEQUENCE (length placeholder)
-    0x02, 0x01, 0x00, // INTEGER 0 (version)
-    0x30, 0x0d, // SEQUENCE (AlgorithmIdentifier)
-    0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01, // OID rsaEncryption
-    0x05, 0x00, // NULL
-    0x04, 0x82, 0x00, 0x00, // OCTET STRING (length placeholder)
+    0x30,
+    0x82,
+    0x00,
+    0x00, // SEQUENCE (length placeholder)
+    0x02,
+    0x01,
+    0x00, // INTEGER 0 (version)
+    0x30,
+    0x0d, // SEQUENCE (AlgorithmIdentifier)
+    0x06,
+    0x09,
+    0x2a,
+    0x86,
+    0x48,
+    0x86,
+    0xf7,
+    0x0d,
+    0x01,
+    0x01,
+    0x01, // OID rsaEncryption
+    0x05,
+    0x00, // NULL
+    0x04,
+    0x82,
+    0x00,
+    0x00, // OCTET STRING (length placeholder)
   ])
 
   const totalLength = pkcs8Header.length + pkcs1Bytes.length
@@ -481,7 +511,9 @@ async function createInstallationAccessToken(installationId: string) {
   return response.token
 }
 
-function normalizeRepository(repository: GitHubRestRepository): GitHubRepository | null {
+function normalizeRepository(
+  repository: GitHubRestRepository
+): GitHubRepository | null {
   const id =
     repository.id !== undefined && repository.id !== null
       ? String(repository.id)
@@ -806,7 +838,9 @@ function normalizeRepositorySelection(
 ): RepositorySelection {
   const validRepoIds = new Set(repositories.map((repository) => repository.id))
   const uniqueSelectedRepoIds = Array.from(
-    new Set((selectedRepoIds ?? []).filter((repoId) => validRepoIds.has(repoId)))
+    new Set(
+      (selectedRepoIds ?? []).filter((repoId) => validRepoIds.has(repoId))
+    )
   )
   const nextSelectedRepoIds =
     uniqueSelectedRepoIds.length > 0
@@ -828,12 +862,9 @@ async function refreshRepositoriesForWorkspace(
   workspaceId: Id<"workspaces">
 ): Promise<RefreshRepositoriesResult> {
   const integration: Doc<"githubWorkspaceIntegrations"> | null =
-    await ctx.runQuery(
-    internal.github.getGitHubIntegrationForWorkspace,
-    {
+    await ctx.runQuery(internal.github.getGitHubIntegrationForWorkspace, {
       workspaceId,
-    }
-  )
+    })
 
   if (!integration) {
     throw new Error("No GitHub integration found for this workspace")
@@ -868,7 +899,9 @@ export const getWorkspaceGitHubIntegration = query({
     const links = integration
       ? await ctx.db
           .query("githubTaskLinks")
-          .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+          .withIndex("by_workspace", (q) =>
+            q.eq("workspaceId", args.workspaceId)
+          )
           .collect()
       : []
 
@@ -887,7 +920,8 @@ export const getWorkspaceGitHubIntegration = query({
             defaultRepoId: integration.defaultRepoId ?? null,
             issueSyncEnabled: integration.issueSyncEnabled ?? true,
             prAutomationEnabled: integration.prAutomationEnabled ?? true,
-            commitAutomationEnabled: integration.commitAutomationEnabled ?? true,
+            commitAutomationEnabled:
+              integration.commitAutomationEnabled ?? true,
             connectedAt: integration.connectedAt,
             lastSyncedAt: integration.lastSyncedAt ?? null,
             issueLinkCount: links.length,
@@ -911,7 +945,10 @@ export const getWorkspaceMembershipUserId = internalQuery({
     workspaceId: v.id("workspaces"),
   },
   handler: async (ctx, args) => {
-    const { identity } = await requireWorkspaceAdminAccess(ctx, args.workspaceId)
+    const { identity } = await requireWorkspaceAdminAccess(
+      ctx,
+      args.workspaceId
+    )
     return {
       userId: identity.subject,
     }
@@ -1149,7 +1186,9 @@ export const saveGitHubTaskLink = internalMutation({
       .unique()
     const existingByIssue = await ctx.db
       .query("githubTaskLinks")
-      .withIndex("by_github_issue", (q) => q.eq("githubIssueId", args.githubIssueId))
+      .withIndex("by_github_issue", (q) =>
+        q.eq("githubIssueId", args.githubIssueId)
+      )
       .unique()
     const payload = {
       workspaceId: args.workspaceId,
@@ -1365,7 +1404,9 @@ export const listTasksByCodes = internalQuery({
     taskCodes: v.array(v.string()),
   },
   handler: async (ctx, args) => {
-    const taskCodes = new Set(args.taskCodes.map((taskCode) => taskCode.toUpperCase()))
+    const taskCodes = new Set(
+      args.taskCodes.map((taskCode) => taskCode.toUpperCase())
+    )
     const tasks = await ctx.db
       .query("tasks")
       .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
@@ -1487,6 +1528,7 @@ export const upsertTaskFromGitHubIssue = internalMutation({
     }
     const nextTitle = stripLeadingTaskCode(issue.title) || issue.title.trim()
     const nextDescription = normalizeOptionalText(issue.body)
+    const githubCreatedAt = parseTimestamp(issue.createdAt)
     const githubUpdatedAt = parseTimestamp(issue.updatedAt)
     const existingLink = await ctx.db
       .query("githubTaskLinks")
@@ -1513,12 +1555,17 @@ export const upsertTaskFromGitHubIssue = internalMutation({
         if (shouldApplyGithubIssueContent || shouldApplyGithubIssueStatus) {
           const updates: Partial<Doc<"tasks">> = shouldApplyGithubIssueContent
             ? {
-            title: nextTitle,
-            description: nextDescription,
-            updatedAt: githubUpdatedAt,
-          }
+                title: nextTitle,
+                description: nextDescription,
+                sourceCreatedAt: githubCreatedAt,
+                createdAtLabel: formatCreatedAtLabel(issue.createdAt),
+                updatedAt: githubUpdatedAt,
+              }
             : {
-                updatedAt: Math.max(getTaskUpdatedAt(linkedTask), githubUpdatedAt),
+                updatedAt: Math.max(
+                  getTaskUpdatedAt(linkedTask),
+                  githubUpdatedAt
+                ),
               }
 
           if (shouldApplyGithubIssueStatus) {
@@ -1531,7 +1578,8 @@ export const upsertTaskFromGitHubIssue = internalMutation({
 
             updates.status = nextStatus
             updates.order = workspaceTasks.filter(
-              (task) => task._id !== linkedTask._id && task.status === nextStatus
+              (task) =>
+                task._id !== linkedTask._id && task.status === nextStatus
             ).length
           }
 
@@ -1580,11 +1628,15 @@ export const upsertTaskFromGitHubIssue = internalMutation({
 
     const workspaceTasks = await ctx.db
       .query("tasks")
-      .withIndex("by_workspace", (q) => q.eq("workspaceId", integration.workspaceId))
+      .withIndex("by_workspace", (q) =>
+        q.eq("workspaceId", integration.workspaceId)
+      )
       .collect()
     const workspaceLinks = await ctx.db
       .query("githubTaskLinks")
-      .withIndex("by_workspace", (q) => q.eq("workspaceId", integration.workspaceId))
+      .withIndex("by_workspace", (q) =>
+        q.eq("workspaceId", integration.workspaceId)
+      )
       .collect()
     const linkedTaskIds = new Set(workspaceLinks.map((link) => link.taskId))
     const mentionedCodes = new Set(
@@ -1613,6 +1665,8 @@ export const upsertTaskFromGitHubIssue = internalMutation({
       const updates: Partial<Doc<"tasks">> = {
         title: nextTitle,
         description: nextDescription,
+        sourceCreatedAt: githubCreatedAt,
+        createdAtLabel: formatCreatedAtLabel(issue.createdAt),
         updatedAt: githubUpdatedAt,
       }
 
@@ -1681,11 +1735,9 @@ export const upsertTaskFromGitHubIssue = internalMutation({
       labels: [],
       order: workspaceTasks.filter((task) => task.status === taskStatus).length,
       project: workspace.name,
+      sourceCreatedAt: githubCreatedAt,
       updatedAt: githubUpdatedAt,
-      assignee: {
-        name: "Abdul",
-        avatar: "",
-      },
+      assignee: buildTaskAssignee(null),
       source: nextSource,
       createdAtLabel: formatCreatedAtLabel(issue.createdAt),
       attachments: undefined,
@@ -1795,12 +1847,11 @@ export const syncTaskToGitHubIssue = internalAction({
       state: mapTaskStatusToIssueState(snapshot.task.status),
     }
 
-    let repository: GitHubRepository | null =
-      link
-        ? integration.repositories.find(
-            (item: GitHubRepository) => item.id === link.githubRepositoryId
-          ) ?? null
-        : null
+    let repository: GitHubRepository | null = link
+      ? (integration.repositories.find(
+          (item: GitHubRepository) => item.id === link.githubRepositoryId
+        ) ?? null)
+      : null
 
     if (!repository) {
       repository =
@@ -1878,10 +1929,7 @@ export const performWorkspaceGitHubSync = internalAction({
   },
   handler: async (ctx, args): Promise<WorkspaceGitHubSyncResult> => {
     const { repositories }: RefreshRepositoriesResult =
-      await refreshRepositoriesForWorkspace(
-      ctx,
-      args.workspaceId
-    )
+      await refreshRepositoriesForWorkspace(ctx, args.workspaceId)
     const integration = await ctx.runQuery(
       internal.github.getGitHubIntegrationForWorkspace,
       {
@@ -1925,10 +1973,13 @@ export const performWorkspaceGitHubSync = internalAction({
       const issues = await listRepositoryIssues(installationToken, repository)
       for (const issue of issues) {
         importedIssueStates.set(issue.id, issue.state)
-        const taskId = await ctx.runMutation(internal.github.upsertTaskFromGitHubIssue, {
-          integrationId: integration._id,
-          issue,
-        })
+        const taskId = await ctx.runMutation(
+          internal.github.upsertTaskFromGitHubIssue,
+          {
+            integrationId: integration._id,
+            issue,
+          }
+        )
         if (taskId) {
           importedCount += 1
         }
@@ -1959,9 +2010,12 @@ export const performWorkspaceGitHubSync = internalAction({
 
       if (!needsPush) continue
 
-      const result = await ctx.runAction(internal.github.syncTaskToGitHubIssue, {
-        taskId: item.task._id,
-      })
+      const result = await ctx.runAction(
+        internal.github.syncTaskToGitHubIssue,
+        {
+          taskId: item.task._id,
+        }
+      )
       if (!result.skipped) {
         pushedCount += 1
       }
@@ -2074,11 +2128,16 @@ export const updateWorkspaceGitHubRepositories = action({
 
     for (const repoId of args.selectedRepoIds) {
       if (!repositoryIds.has(repoId)) {
-        throw new Error("One or more selected repositories are no longer installed")
+        throw new Error(
+          "One or more selected repositories are no longer installed"
+        )
       }
     }
 
-    if (args.defaultRepoId && !args.selectedRepoIds.includes(args.defaultRepoId)) {
+    if (
+      args.defaultRepoId &&
+      !args.selectedRepoIds.includes(args.defaultRepoId)
+    ) {
       throw new Error("Default repository must also be selected")
     }
 
@@ -2151,12 +2210,9 @@ export const processPullRequestWebhook = internalAction({
   },
   handler: async (ctx, args): Promise<{ matchedTaskCount: number }> => {
     const linkedIntegration: Doc<"githubWorkspaceIntegrations"> | null =
-      await ctx.runQuery(
-      internal.github.getGitHubIntegrationById,
-      {
+      await ctx.runQuery(internal.github.getGitHubIntegrationById, {
         integrationId: args.integrationId,
-      }
-    )
+      })
     if (!linkedIntegration) {
       throw new Error("GitHub integration not found")
     }
@@ -2170,17 +2226,20 @@ export const processPullRequestWebhook = internalAction({
       return { matchedTaskCount: 0 }
     }
 
-    const tasks: Doc<"tasks">[] = await ctx.runQuery(internal.github.listTasksByCodes, {
-      workspaceId: linkedIntegration.workspaceId,
-      taskCodes,
-    })
+    const tasks: Doc<"tasks">[] = await ctx.runQuery(
+      internal.github.listTasksByCodes,
+      {
+        workspaceId: linkedIntegration.workspaceId,
+        taskCodes,
+      }
+    )
     const nextStatus = args.merged
       ? "shipped"
       : args.state === "open" && args.draft
         ? "in_progress"
         : args.state === "open"
-        ? "ready"
-        : null
+          ? "ready"
+          : null
 
     for (const task of tasks) {
       await ctx.runMutation(internal.github.recordGitHubDevelopmentRef, {
@@ -2296,9 +2355,12 @@ export const githubInstallCallback = httpAction(async (ctx, request) => {
     return new Response("Missing installation state", { status: 400 })
   }
 
-  const state = await ctx.runQuery(internal.github.getGitHubInstallStateByState, {
-    state: stateToken,
-  })
+  const state = await ctx.runQuery(
+    internal.github.getGitHubInstallStateByState,
+    {
+      state: stateToken,
+    }
+  )
 
   if (!state) {
     return new Response("Unknown installation state", { status: 404 })
@@ -2339,7 +2401,8 @@ export const githubInstallCallback = httpAction(async (ctx, request) => {
 
   try {
     const installation = await fetchInstallation(installationId)
-    const installationToken = await createInstallationAccessToken(installationId)
+    const installationToken =
+      await createInstallationAccessToken(installationId)
     const repositories = await listInstallationRepositories(installationToken)
     const issueSyncEnabledByDefault = false
 
@@ -2370,9 +2433,12 @@ export const githubInstallCallback = httpAction(async (ctx, request) => {
 
     let syncResult: WorkspaceGitHubSyncResult | null = null
     if (issueSyncEnabledByDefault && repositories.length > 0) {
-      syncResult = await ctx.runAction(internal.github.performWorkspaceGitHubSync, {
-        workspaceId: state.workspaceId,
-      })
+      syncResult = await ctx.runAction(
+        internal.github.performWorkspaceGitHubSync,
+        {
+          workspaceId: state.workspaceId,
+        }
+      )
     }
 
     logInfo("Completed GitHub installation callback", {
@@ -2397,11 +2463,7 @@ export const githubInstallCallback = httpAction(async (ctx, request) => {
         : `Connected ${installation.accountLogin} and synced ${syncResult.importedCount} GitHub issue${syncResult.importedCount === 1 ? "" : "s"}.`
 
     return Response.redirect(
-      formatStatusRedirect(
-        state.redirectUrl,
-        "connected",
-        message
-      ),
+      formatStatusRedirect(state.redirectUrl, "connected", message),
       302
     )
   } catch (error) {
@@ -2451,8 +2513,7 @@ export const githubWebhook = httpAction(async (ctx, request) => {
     | GitHubInstallationRepositoriesPayload
     | GitHubInstallationPayload
   const installationId =
-    payload.installation?.id !== undefined &&
-    payload.installation.id !== null
+    payload.installation?.id !== undefined && payload.installation.id !== null
       ? String(payload.installation.id)
       : null
 

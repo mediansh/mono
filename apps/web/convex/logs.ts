@@ -26,6 +26,7 @@ export const workspaceLogTypeValidator = v.union(
   v.literal("member_joined"),
   v.literal("member_removed"),
   v.literal("labels_saved"),
+  v.literal("assignees_saved"),
   v.literal("feedback_processed")
 )
 
@@ -72,6 +73,7 @@ type WorkspaceLogInput = {
     | "member_joined"
     | "member_removed"
     | "labels_saved"
+    | "assignees_saved"
     | "feedback_processed"
   message: string
   source?: "discord" | "github" | "linear" | "x" | "cli" | "manual" | "ai"

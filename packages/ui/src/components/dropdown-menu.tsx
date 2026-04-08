@@ -34,6 +34,7 @@ function DropdownMenuContent({
   return (
     <MenuPrimitive.Portal>
       <MenuPrimitive.Positioner
+        data-base-ui-portal=""
         className="isolate z-50 outline-none"
         align={align}
         alignOffset={alignOffset}

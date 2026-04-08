@@ -1,9 +1,18 @@
 "use client"
 
 import { useEffect, useRef, useState, type ReactNode } from "react"
+import { useRouter } from "next/navigation"
 import type { OptimisticLocalStore } from "convex/browser"
-import { useMutation, useQuery } from "convex/react"
-import { Trash, Link as LinkIcon, Envelope } from "@phosphor-icons/react"
+import { useAction, useMutation, useQuery } from "convex/react"
+import {
+  Trash,
+  Link as LinkIcon,
+  Envelope,
+  ArrowClockwise,
+  CheckCircle,
+  LinkSimple,
+  SpinnerGap,
+} from "@phosphor-icons/react"
 import { motion } from "motion/react"
 import { toast } from "sonner"
 import type { Id } from "@/convex/_generated/dataModel"
@@ -17,6 +26,11 @@ import {
   type WorkspaceInviteRole,
 } from "@/lib/workspace-permissions"
 import { SettingsAccessState } from "@/components/settings-access-state"
+import { resolveMemberWithCurrentUserProfile, useCurrentUserProfile } from "@/hooks/use-current-user-profile"
+import {
+  buildWorkspaceMemberAssignee,
+  findMatchingAssignee,
+} from "@/lib/task-board"
 import {
   trackInviteLinkCreated,
   trackInviteEmailSent,
@@ -112,11 +126,19 @@ function updateWorkspaceMembersQueries(
 
 export default function MembersSettingsPage() {
   const { currentWorkspace } = useWorkspace()
+  const currentUserProfile = useCurrentUserProfile()
+  const router = useRouter()
   const workspaceData = useQuery(
     api.workspaces.getWorkspaceMembers,
     currentWorkspace ? { workspaceId: currentWorkspace._id } : "skip"
   )
-  const syncMyProfile = useMutation(api.workspaces.syncMyProfile)
+  const integrationState = useQuery(
+    api.linear.getWorkspaceLinearIntegration,
+    currentWorkspace ? { workspaceId: currentWorkspace._id } : "skip"
+  )
+  const refreshWorkspaceLinearAssignees = useAction(
+    api.linear.refreshWorkspaceLinearAssignees
+  )
   const createInviteLink = useMutation(
     api.workspaces.createInviteLink
   ).withOptimisticUpdate((localStore, args) => {
@@ -207,15 +229,58 @@ export default function MembersSettingsPage() {
   const [sendingInvite, setSendingInvite] = useState(false)
   const [busyMemberId, setBusyMemberId] = useState<string | null>(null)
   const [busyInviteId, setBusyInviteId] = useState<string | null>(null)
+  const [syncingLinear, setSyncingLinear] = useState(false)
+  const autoRefreshKeyRef = useRef<string | null>(null)
+  const linearIntegration = integrationState?.integration ?? null
+  const isLinearLinked = Boolean(linearIntegration)
+  const canManageMembers = workspaceData?.canManageMembers ?? false
+  const members = (workspaceData?.members ?? []).map((member) =>
+    resolveMemberWithCurrentUserProfile(member, currentUserProfile)
+  )
+  const invites = workspaceData?.invites ?? []
+  const linkedMemberCount = members.filter((member) =>
+    findMatchingAssignee(
+      buildWorkspaceMemberAssignee({
+        userId: member.userId,
+        role: member.role,
+        name: member.name,
+        email: member.email,
+        imageUrl: member.imageUrl,
+      }),
+      currentWorkspace?.assignees ?? []
+    )?.linearUserId
+  ).length
 
-  const hasSynced = useRef(false)
-
-  // Sync the current user's profile data from Clerk on mount
   useEffect(() => {
-    if (!currentWorkspace || hasSynced.current) return
-    hasSynced.current = true
-    syncMyProfile({ workspaceId: currentWorkspace._id }).catch(() => {})
-  }, [currentWorkspace, syncMyProfile])
+    if (!currentWorkspace || !isLinearLinked) {
+      autoRefreshKeyRef.current = null
+      return
+    }
+
+    const nextKey = `${currentWorkspace._id}:${linearIntegration?.teamId ?? "linear"}`
+    if (autoRefreshKeyRef.current === nextKey) {
+      return
+    }
+
+    autoRefreshKeyRef.current = nextKey
+    setSyncingLinear(true)
+    void refreshWorkspaceLinearAssignees({ workspaceId: currentWorkspace._id })
+      .catch((error) => {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to refresh members from Linear."
+        )
+      })
+      .finally(() => {
+        setSyncingLinear(false)
+      })
+  }, [
+    currentWorkspace,
+    isLinearLinked,
+    linearIntegration?.teamId,
+    refreshWorkspaceLinearAssignees,
+  ])
 
   if (!currentWorkspace) return null
   if (!hasWorkspaceAdminPermission(currentWorkspace.role)) {
@@ -226,15 +291,28 @@ export default function MembersSettingsPage() {
     )
   }
 
-  // Show skeleton while data is loading
   if (workspaceData === undefined) {
     return <MembersSkeleton />
   }
 
   const workspaceId = currentWorkspace._id
-  const canManageMembers = workspaceData.canManageMembers
-  const members = workspaceData.members
-  const invites = workspaceData.invites
+
+  async function handleRefreshLinearAssignees() {
+    if (!currentWorkspace) return
+    setSyncingLinear(true)
+    try {
+      await refreshWorkspaceLinearAssignees({ workspaceId: currentWorkspace._id })
+      toast.success("Members refreshed from Linear.")
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to refresh members from Linear."
+      )
+    } finally {
+      setSyncingLinear(false)
+    }
+  }
 
   async function handleCreateInviteLink() {
     setCreatingLink(true)
@@ -329,11 +407,46 @@ export default function MembersSettingsPage() {
   return (
     <Stagger className="mx-auto w-full max-w-lg px-6 py-6">
       {/* Header */}
-      <motion.div variants={fadeUp} className="mb-4">
-        <h2 className="text-[14px] font-semibold">Members</h2>
-        <p className="mt-0.5 text-[12px] text-muted-foreground">
-          Invite teammates and manage who has access to this workspace.
-        </p>
+      <motion.div
+        variants={fadeUp}
+        className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+      >
+        <div>
+          <h2 className="text-[14px] font-semibold">Members</h2>
+          <p className="mt-0.5 text-[12px] text-muted-foreground">
+            Invite teammates. Members are assignable on issues.
+          </p>
+        </div>
+        {isLinearLinked ? (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleRefreshLinearAssignees}
+              disabled={syncingLinear}
+              className="inline-flex h-9 items-center gap-2 rounded-[4px] border border-border bg-card px-3 text-[11px] font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-60"
+            >
+              {syncingLinear ? (
+                <SpinnerGap size={13} className="animate-spin" />
+              ) : (
+                <ArrowClockwise size={13} />
+              )}
+              Refresh
+            </button>
+            <div className="inline-flex h-9 items-center gap-2 rounded-[4px] border border-emerald-500/30 bg-emerald-500/10 px-3 text-[11px] font-medium text-emerald-400">
+              <CheckCircle size={13} weight="fill" />
+              {linkedMemberCount}/{members.length} linked
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => router.push("/app/integrations/linear")}
+            className="inline-flex h-9 items-center gap-2 rounded-[4px] border border-border bg-card px-3 text-[11px] font-medium text-foreground transition-colors hover:bg-accent"
+          >
+            <LinkSimple size={13} />
+            Sync with Linear
+          </button>
+        )}
       </motion.div>
 
       {/* Invite card */}
@@ -524,6 +637,20 @@ export default function MembersSettingsPage() {
                         {member.name ?? member.email ?? "Unnamed member"}
                       </p>
                       <RoleBadge role={member.role} />
+                      {findMatchingAssignee(
+                        buildWorkspaceMemberAssignee({
+                          userId: member.userId,
+                          role: member.role,
+                          name: member.name,
+                          email: member.email,
+                          imageUrl: member.imageUrl,
+                        }),
+                        currentWorkspace.assignees ?? []
+                      )?.linearUserId ? (
+                        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-400">
+                          Linked
+                        </span>
+                      ) : null}
                     </div>
                     {member.email && (
                       <p className="text-[11px] text-muted-foreground">{member.email}</p>

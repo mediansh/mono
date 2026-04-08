@@ -51,6 +51,7 @@ import {
   type SimulatedNetworkState,
 } from "@/lib/dev-debug-store"
 import {
+  buildTaskAssignee,
   TASK_STATUSES,
   TASK_PRIORITIES,
   TASK_STATUS_LABELS,
@@ -373,9 +374,9 @@ function generateMockTask(overrides: Partial<{
       : [])
 
   const assignee = overrides.assigneeName
-    ? { name: overrides.assigneeName, avatar: "" }
+    ? buildTaskAssignee({ name: overrides.assigneeName, avatar: "" })
     : status !== "requests" && Math.random() > 0.3
-      ? randomFrom(MOCK_ASSIGNEES)
+      ? buildTaskAssignee(randomFrom(MOCK_ASSIGNEES))
       : undefined
 
   const sourcePlatform = overrides.sourcePlatform ?? (status === "requests" ? randomFrom(REQUEST_SOURCES) : "none")

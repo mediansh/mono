@@ -15,6 +15,7 @@ import {
   SealCheck,
   Rocket,
   Archive,
+  ListBullets,
   WarningCircle,
   CellSignalFull,
   CellSignalMedium,
@@ -25,6 +26,8 @@ import {
 import { useWorkspace } from "@/components/workspace-provider"
 import { useLocalFirstStore } from "@/lib/local-first-store"
 import {
+  getTaskSortTimestamp,
+  sortTasksByStatusAndRecency,
   TASK_STATUS_LABELS,
   formatTaskDate,
   type TaskStatus,
@@ -56,6 +59,8 @@ function getStatusIcon(status: TaskStatus, size = 13) {
   switch (status) {
     case "requests":
       return <SpinnerGap size={size} className="text-muted-foreground" />
+    case "backlog":
+      return <ListBullets size={size} className="text-muted-foreground" />
     case "todo":
       return <Circle size={size} className="text-muted-foreground" />
     case "in_progress":
@@ -174,7 +179,9 @@ export function SearchPalette({
             )
           })
         : // When no query, show recent tasks (by creation time, limited)
-          [...taskDocs].sort((a, b) => b._creationTime - a._creationTime).slice(0, 8)
+          sortTasksByStatusAndRecency(taskDocs)
+            .sort((a, b) => getTaskSortTimestamp(b) - getTaskSortTimestamp(a))
+            .slice(0, 8)
 
       for (const doc of docs.slice(0, 20)) {
         taskResults.push({
@@ -185,7 +192,10 @@ export function SearchPalette({
           status: doc.status,
           priority: doc.priority,
           labels: doc.labels ?? [],
-          createdAt: formatTaskDate(doc._creationTime, doc.createdAtLabel),
+          createdAt: formatTaskDate(
+            getTaskSortTimestamp(doc),
+            doc.createdAtLabel
+          ),
         })
       }
     }

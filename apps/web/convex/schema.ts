@@ -1,6 +1,20 @@
 import { defineSchema, defineTable } from "convex/server"
 import { v } from "convex/values"
 
+const workspaceAssigneeValidator = v.object({
+  id: v.string(),
+  name: v.string(),
+  avatar: v.string(),
+  role: v.union(
+    v.literal("owner"),
+    v.literal("admin"),
+    v.literal("member"),
+    v.literal("guest")
+  ),
+  email: v.optional(v.string()),
+  linearUserId: v.optional(v.string()),
+})
+
 export default defineSchema({
   workspaces: defineTable({
     name: v.string(),
@@ -16,6 +30,8 @@ export default defineSchema({
         })
       )
     ),
+    assignees: v.optional(v.array(workspaceAssigneeValidator)),
+    assigneesUpdatedAt: v.optional(v.number()),
   }).index("by_owner", ["ownerId"]),
 
   workspaceMembers: defineTable({
@@ -128,6 +144,7 @@ export default defineSchema({
     statusMappings: v.optional(
       v.object({
         requests: v.optional(v.string()),
+        backlog: v.optional(v.string()),
         todo: v.optional(v.string()),
         in_progress: v.optional(v.string()),
         ready: v.optional(v.string()),
@@ -425,6 +442,7 @@ export default defineSchema({
       v.literal("member_joined"),
       v.literal("member_removed"),
       v.literal("labels_saved"),
+      v.literal("assignees_saved"),
       v.literal("feedback_processed")
     ),
     message: v.string(),
@@ -466,6 +484,7 @@ export default defineSchema({
     description: v.optional(v.string()),
     status: v.union(
       v.literal("requests"),
+      v.literal("backlog"),
       v.literal("todo"),
       v.literal("in_progress"),
       v.literal("ready"),
@@ -483,12 +502,7 @@ export default defineSchema({
     order: v.number(),
     project: v.string(),
     updatedAt: v.optional(v.number()),
-    assignee: v.optional(
-      v.object({
-        name: v.string(),
-        avatar: v.string(),
-      })
-    ),
+    assignee: v.optional(workspaceAssigneeValidator),
     source: v.optional(
       v.object({
         platform: v.union(
@@ -519,6 +533,7 @@ export default defineSchema({
         })
       )
     ),
+    sourceCreatedAt: v.optional(v.number()),
     createdAtLabel: v.optional(v.string()),
     attachments: v.optional(
       v.array(

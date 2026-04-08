@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import { createPortal } from "react-dom"
 import { AnimatePresence, motion } from "motion/react"
 import { useMutation } from "convex/react"
-import { useUser } from "@clerk/nextjs"
 import { toast } from "sonner"
 import {
   X,
@@ -22,7 +21,7 @@ import {
   Paperclip,
   PencilSimple,
   Sparkle,
-  ArrowRight,
+  ListBullets,
 } from "@phosphor-icons/react"
 import {
   DropdownMenu,
@@ -44,6 +43,7 @@ import { hasTaskWritePermission } from "@/lib/workspace-permissions"
 import {
   getTaskNumber,
   DEFAULT_WORKSPACE_LABELS,
+  type TaskAssignee,
   type TaskLabel as Label,
   type TaskPriority as Priority,
   type TaskStatus as Status,
@@ -60,8 +60,10 @@ import {
   TaskAttachmentGallery,
   type TaskAttachment,
 } from "@/components/task-attachments"
+import { AssigneeSelector } from "@/components/assignee-selector"
 
 const STATUS_OPTIONS: { id: Status; label: string }[] = [
+  { id: "backlog", label: "Backlog" },
   { id: "todo", label: "Todo" },
   { id: "in_progress", label: "In Progress" },
   { id: "ready", label: "Ready" },
@@ -83,6 +85,8 @@ function getStatusIcon(status: Status) {
   switch (status) {
     case "requests":
       return <SpinnerGap size={14} className="text-muted-foreground" />
+    case "backlog":
+      return <ListBullets size={14} className="text-muted-foreground" />
     case "todo":
       return <Circle size={14} className="text-muted-foreground" />
     case "in_progress":
@@ -123,6 +127,7 @@ type TaskDraftPayload = {
   status: Status
   priority: Priority
   labels: Label[]
+  assignee?: TaskAssignee | null
   attachments?: (TaskAttachment & { previewUrl?: string })[]
 }
 
@@ -139,7 +144,6 @@ export function NewTaskModal({
   onOpenChange,
   defaultStatus = "todo",
 }: NewTaskModalProps) {
-  const { user } = useUser()
   const { currentWorkspace } = useWorkspace()
   const canManageTasks = hasTaskWritePermission(currentWorkspace?.role)
   const [title, setTitle] = useState("")
@@ -147,6 +151,7 @@ export function NewTaskModal({
   const [status, setStatus] = useState<Status>(defaultStatus)
   const [priority, setPriority] = useState<Priority>("none")
   const [labels, setLabels] = useState<Label[]>([])
+  const [assignee, setAssignee] = useState<TaskAssignee | null>(null)
   const [createMore, setCreateMore] = useState(false)
   const [error, setError] = useState("")
   const [attachments, setAttachments] = useState<
@@ -156,6 +161,13 @@ export function NewTaskModal({
   const [activeTab, setActiveTab] = useState<"manual" | "ai">("manual")
   const [aiPrompt, setAiPrompt] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+    setStatus(defaultStatus)
+    setAssignee(null)
+  }, [defaultStatus, open])
 
   const labelOptions = useMemo(() => {
     const wsLabels = currentWorkspace?.labels
@@ -167,6 +179,11 @@ export function NewTaskModal({
       color: l.color,
     }))
   }, [currentWorkspace?.labels])
+
+  const assigneeOptions = useMemo(
+    () => currentWorkspace?.assignees ?? [],
+    [currentWorkspace?.assignees]
+  )
 
   const titleRef = useRef<HTMLTextAreaElement>(null)
   const descriptionRef = useRef<HTMLTextAreaElement>(null)
@@ -278,12 +295,6 @@ export function NewTaskModal({
     [canManageTasks, generateUploadUrl, readImageMetadata]
   )
 
-  useEffect(() => {
-    if (open) {
-      setStatus(defaultStatus)
-    }
-  }, [defaultStatus, open])
-
   // Auto-resize title textarea to fit content
   useEffect(() => {
     const el = titleRef.current
@@ -362,6 +373,7 @@ export function NewTaskModal({
         status: payload.status,
         priority: payload.priority,
         labels: payload.labels,
+        ...(payload.assignee ? { assignee: payload.assignee } : {}),
       }
 
       if (!attachmentsWithMetadata?.length) {
@@ -427,20 +439,17 @@ export function NewTaskModal({
         order: existingTasks.filter((task) => task.status === payload.status)
           .length,
         project: currentWorkspace.name,
-        assignee: {
-          name: user?.fullName ?? user?.firstName ?? "You",
-          avatar: user?.imageUrl ?? "",
-        },
+        assignee: payload.assignee ?? undefined,
         attachments: payload.attachments?.length
           ? (payload.attachments as any)
           : undefined,
         _syncStatus: "pending",
       }
 
-      setWorkspaceTasks(currentWorkspace._id, [
-        ...existingTasks,
-        optimisticTask,
-      ])
+      setWorkspaceTasks(
+        currentWorkspace._id,
+        [...existingTasks, optimisticTask]
+      )
 
       try {
         const createdTask = (await createTaskWithFallback(
@@ -469,17 +478,13 @@ export function NewTaskModal({
         throw new Error("Task creation failed. Try again.")
       }
     },
-    [
-      createTaskWithFallback,
-      currentWorkspace,
-      user?.firstName,
-      user?.fullName,
-      user?.imageUrl,
-    ]
+    [createTaskWithFallback, currentWorkspace]
   )
 
-  function handleCreate() {
-    if (!title.trim() || !currentWorkspace) return
+  async function handleCreate() {
+    if (!title.trim() || !currentWorkspace) {
+      return
+    }
     if (!canManageTasks) {
       setError("Guests can only view tasks.")
       return
@@ -493,6 +498,7 @@ export function NewTaskModal({
       status,
       priority,
       labels,
+      assignee,
       attachments,
     }
 
@@ -630,6 +636,7 @@ export function NewTaskModal({
     setStatus(options?.nextStatus ?? defaultStatus)
     setPriority("none")
     setLabels([])
+    setAssignee(null)
     setAttachments([])
     setAiPrompt("")
     if (!options?.keepOpen) {
@@ -920,6 +927,13 @@ export function NewTaskModal({
                         {/* Actions row */}
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
+                            <AssigneeSelector
+                              assignees={assigneeOptions}
+                              value={assignee}
+                              onChange={setAssignee}
+                              placeholder="None"
+                              className="h-7"
+                            />
                             <input
                               ref={fileInputRef}
                               type="file"
@@ -974,7 +988,10 @@ export function NewTaskModal({
                             {/* Create button */}
                             <button
                               onClick={handleCreate}
-                              disabled={!title.trim() || !currentWorkspace}
+                              disabled={
+                                !title.trim() ||
+                                !currentWorkspace
+                              }
                               className="flex items-center gap-2 rounded-[4px] bg-primary px-3 py-1.5 text-[12px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                             >
                               Create task

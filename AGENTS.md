@@ -52,15 +52,15 @@ linear issue create --title "Fix auth bug" --team MED
 
 **Start / complete an issue:**
 ```bash
-linear issue start MED-42    # marks In Progress
-linear issue close MED-42    # marks Done
+linear issue start MED-42                    # marks In Progress
+linear issue update MED-42 --state "Done"    # marks Done
 ```
 
 **Workflow:**
 1. Create a Linear issue (or pick up an existing one)
 2. Run `linear issue start MED-42` when beginning
 3. Include the issue ID in every commit: `MED-42 fix: ...`
-4. Run `linear issue close MED-42` after merging
+4. Run `linear issue update MED-42 --state "Done"` after merging
 
 ## Commit Messages & Pull Requests
 

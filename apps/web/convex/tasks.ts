@@ -8,12 +8,18 @@ import {
 import type { MutationCtx, QueryCtx } from "./_generated/server"
 import type { Doc, Id } from "./_generated/dataModel"
 import { internal } from "./_generated/api"
-import { STATUS_ORDER, isDemoTaskSet } from "../lib/task-board"
+import {
+  STATUS_ORDER,
+  buildTaskAssignee,
+  compareTasksByStatusAndRecency,
+  isDemoTaskSet,
+} from "../lib/task-board"
 import { insertWorkspaceLog, insertWorkspaceLogs } from "./logs"
 import { requireTaskWriteAccess, requireWorkspaceAccess } from "./permissions"
 
 const taskStatusValidator = v.union(
   v.literal("requests"),
+  v.literal("backlog"),
   v.literal("todo"),
   v.literal("in_progress"),
   v.literal("ready"),
@@ -52,13 +58,29 @@ const taskSourceValidator = v.object({
   author: v.string(),
 })
 
+const taskAssigneeValidator = v.object({
+  id: v.string(),
+  name: v.string(),
+  avatar: v.string(),
+  role: v.union(
+    v.literal("owner"),
+    v.literal("admin"),
+    v.literal("member"),
+    v.literal("guest")
+  ),
+  email: v.optional(v.string()),
+  linearUserId: v.optional(v.string()),
+})
+
 const taskInputValidator = v.object({
   title: v.string(),
   description: v.optional(v.string()),
   status: taskStatusValidator,
   priority: taskPriorityValidator,
   labels: v.array(v.string()),
+  assignee: v.optional(taskAssigneeValidator),
   source: v.optional(taskSourceValidator),
+  sourceCreatedAt: v.optional(v.number()),
   createdAtLabel: v.optional(v.string()),
   attachments: v.optional(v.array(attachmentValidator)),
 })
@@ -66,14 +88,30 @@ const taskInputValidator = v.object({
 type CreateTaskInput = {
   title: string
   description?: string
-  status: "requests" | "todo" | "in_progress" | "ready" | "shipped" | "archive"
+  status:
+    | "requests"
+    | "backlog"
+    | "todo"
+    | "in_progress"
+    | "ready"
+    | "shipped"
+    | "archive"
   priority: "urgent" | "high" | "medium" | "low" | "none"
   labels: string[]
+  assignee?: {
+    id: string
+    name: string
+    avatar: string
+    role: "owner" | "admin" | "member" | "guest"
+    email?: string
+    linearUserId?: string
+  }
   source?: {
     platform: "discord" | "slack" | "x" | "linear" | "github" | "cli"
     url: string
     author: string
   }
+  sourceCreatedAt?: number
   createdAtLabel?: string
   attachments?: {
     storageId: Id<"_storage">
@@ -113,6 +151,7 @@ type WorkspaceTaskLog = {
 
 const TASK_STATUS_LABELS = {
   requests: "Requests",
+  backlog: "Backlog",
   todo: "Todo",
   in_progress: "In Progress",
   ready: "Ready",
@@ -208,13 +247,16 @@ function normalizeTitleFingerprint(value: string) {
 }
 
 function sortTasks<
-  T extends { status: keyof typeof STATUS_ORDER; order: number },
+  T extends {
+    status: keyof typeof STATUS_ORDER
+    createdAtLabel?: string
+    sourceCreatedAt?: number
+    _creationTime?: number
+    taskNumber?: number
+    order: number
+  },
 >(tasks: T[]) {
-  return tasks.sort((a, b) => {
-    const statusDiff = STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
-    if (statusDiff !== 0) return statusDiff
-    return a.order - b.order
-  })
+  return tasks.sort(compareTasksByStatusAndRecency)
 }
 
 async function getWorkspaceTasks(
@@ -356,12 +398,10 @@ async function insertTasksForWorkspace(
       order: nextOrder,
       project: workspace.name,
       updatedAt: now,
-      assignee: {
-        name: "Abdul",
-        avatar: "",
-      },
+      assignee: buildTaskAssignee(taskInput.assignee),
       source: taskInput.source,
       sources: taskInput.source ? [taskInput.source] : undefined,
+      sourceCreatedAt: taskInput.sourceCreatedAt,
       createdAtLabel: taskInput.createdAtLabel,
       attachments: taskInput.attachments ?? undefined,
     })
@@ -387,7 +427,7 @@ async function createTasksForWorkspace(
   return await insertTasksForWorkspace(ctx, workspaceId, taskInputs)
 }
 
-async function recordDeletedTaskSource(ctx: MutationCtx, task: Doc<"tasks">) {
+export async function recordDeletedTaskSource(ctx: MutationCtx, task: Doc<"tasks">) {
   const source = task.source
   if (!source?.url) {
     return
@@ -421,7 +461,7 @@ async function recordDeletedTaskSource(ctx: MutationCtx, task: Doc<"tasks">) {
   })
 }
 
-async function recordLinkedPlatformDeletions(
+export async function recordLinkedPlatformDeletions(
   ctx: MutationCtx,
   task: Doc<"tasks">
 ) {
@@ -665,7 +705,7 @@ async function applyFeedbackTaskOperations(
   }
 }
 
-async function queueGitHubIssueClosure(
+export async function queueGitHubIssueClosure(
   ctx: MutationCtx,
   workspaceId: Id<"workspaces">,
   taskId: Id<"tasks">
@@ -684,7 +724,7 @@ async function queueGitHubIssueClosure(
   })
 }
 
-async function queueLinearIssueDeletion(
+export async function queueLinearIssueDeletion(
   ctx: MutationCtx,
   workspaceId: Id<"workspaces">,
   taskId: Id<"tasks">
@@ -702,7 +742,7 @@ async function queueLinearIssueDeletion(
   })
 }
 
-async function clearLinearTaskLink(ctx: MutationCtx, taskId: Id<"tasks">) {
+export async function clearLinearTaskLink(ctx: MutationCtx, taskId: Id<"tasks">) {
   const link = await ctx.db
     .query("linearTaskLinks")
     .withIndex("by_task", (q) => q.eq("taskId", taskId))
@@ -713,7 +753,7 @@ async function clearLinearTaskLink(ctx: MutationCtx, taskId: Id<"tasks">) {
   }
 }
 
-async function clearGitHubTaskLink(ctx: MutationCtx, taskId: Id<"tasks">) {
+export async function clearGitHubTaskLink(ctx: MutationCtx, taskId: Id<"tasks">) {
   await ctx.runMutation(internal.github.deleteGitHubTaskLinkByTaskId, {
     taskId,
   })
@@ -1136,7 +1176,8 @@ async function queueDiscordNotificationForStatusChange(
 
   if (
     task.status === "requests" &&
-    (nextStatus === "todo" ||
+    (nextStatus === "backlog" ||
+      nextStatus === "todo" ||
       nextStatus === "in_progress" ||
       nextStatus === "ready")
   ) {
@@ -1163,6 +1204,7 @@ export const updateTask = mutation({
     status: v.optional(
       v.union(
         v.literal("requests"),
+        v.literal("backlog"),
         v.literal("todo"),
         v.literal("in_progress"),
         v.literal("ready"),
@@ -1180,6 +1222,7 @@ export const updateTask = mutation({
       )
     ),
     labels: v.optional(v.array(v.string())),
+    assignee: v.optional(v.union(taskAssigneeValidator, v.null())),
     attachments: v.optional(v.array(attachmentValidator)),
   },
   handler: async (ctx, args) => {
@@ -1195,6 +1238,9 @@ export const updateTask = mutation({
     if (args.status !== undefined) updates.status = args.status
     if (args.priority !== undefined) updates.priority = args.priority
     if (args.labels !== undefined) updates.labels = args.labels
+    if (args.assignee !== undefined) {
+      updates.assignee = buildTaskAssignee(args.assignee)
+    }
     if (args.attachments !== undefined) {
       updates.attachments =
         args.attachments.length > 0 ? args.attachments : undefined
@@ -1205,6 +1251,7 @@ export const updateTask = mutation({
       args.status !== undefined ||
       args.priority !== undefined ||
       args.labels !== undefined ||
+      args.assignee !== undefined ||
       args.attachments !== undefined
     ) {
       updates.updatedAt = Date.now()
@@ -1215,7 +1262,9 @@ export const updateTask = mutation({
       args.title !== undefined ||
       args.description !== undefined ||
       args.status !== undefined ||
-      args.priority !== undefined
+      args.priority !== undefined ||
+      args.labels !== undefined ||
+      args.assignee !== undefined
     ) {
       await queueLinearSync(ctx, args.taskId)
       await queueGitHubSync(ctx, args.taskId)
@@ -1235,6 +1284,7 @@ export const updateTask = mutation({
       args.description !== undefined ||
       args.priority !== undefined ||
       args.labels !== undefined ||
+      args.assignee !== undefined ||
       args.attachments !== undefined
     ) {
       await logTaskUpdated(ctx, task)
@@ -1250,6 +1300,7 @@ export const reorderTasks = mutation({
         taskId: v.id("tasks"),
         status: v.union(
           v.literal("requests"),
+          v.literal("backlog"),
           v.literal("todo"),
           v.literal("in_progress"),
           v.literal("ready"),
@@ -1263,32 +1314,51 @@ export const reorderTasks = mutation({
   handler: async (ctx, args) => {
     await requireTaskWriteAccess(ctx, args.workspaceId)
 
-    // Read all tasks first for validation and to detect status transitions
     const tasksBeforeUpdate = new Map<string, Doc<"tasks">>()
     const taskMoveLogs: WorkspaceTaskLog[] = []
+    const changesByTaskId = new Map(
+      args.changes.map((change) => [String(change.taskId), change] as const)
+    )
+
+    const workspaceTasks = await getWorkspaceTasks(ctx, args.workspaceId)
     for (const change of args.changes) {
-      const task = await ctx.db.get(change.taskId)
+      const task = workspaceTasks.find((item) => item._id === change.taskId)
       if (!task || task.workspaceId !== args.workspaceId) {
         throw new Error("Task not found")
       }
-      tasksBeforeUpdate.set(change.taskId, task)
+      tasksBeforeUpdate.set(String(change.taskId), task)
     }
 
+    const now = Date.now()
     for (const change of args.changes) {
-      await ctx.db.patch(change.taskId, {
-        status: change.status,
-        order: change.order,
-        updatedAt: Date.now(),
-      })
+      const previousTask = tasksBeforeUpdate.get(String(change.taskId))
+      const nextPatch: Partial<Doc<"tasks">> = {}
 
-      const taskBeforeUpdate = tasksBeforeUpdate.get(change.taskId)
-      if (taskBeforeUpdate && change.status !== taskBeforeUpdate.status) {
+      if (!previousTask) {
+        continue
+      }
+
+      if (previousTask.status !== change.status) {
+        nextPatch.status = change.status
+        nextPatch.updatedAt = now
+      }
+      if (previousTask.order !== change.order) {
+        nextPatch.order = change.order
+      }
+
+      if (Object.keys(nextPatch).length === 0) {
+        continue
+      }
+
+      await ctx.db.patch(change.taskId, nextPatch)
+
+      if (change.status !== previousTask.status) {
         taskMoveLogs.push({
-          workspaceId: taskBeforeUpdate.workspaceId,
+          workspaceId: previousTask.workspaceId,
           category: "tasks",
           type: "task_moved",
-          message: `${taskBeforeUpdate.taskCode} moved from "${TASK_STATUS_LABELS[taskBeforeUpdate.status]}" to "${TASK_STATUS_LABELS[change.status]}"`,
-          source: getWorkspaceLogSource(taskBeforeUpdate.source?.platform),
+          message: `${previousTask.taskCode} moved from "${TASK_STATUS_LABELS[previousTask.status]}" to "${TASK_STATUS_LABELS[change.status]}"`,
+          source: getWorkspaceLogSource(previousTask.source?.platform),
         })
         await queueLinearSync(ctx, change.taskId)
         await queueGitHubSync(ctx, change.taskId)
@@ -1299,14 +1369,14 @@ export const reorderTasks = mutation({
 
     // Queue Discord notifications for status transitions
     for (const change of args.changes) {
-      const task = tasksBeforeUpdate.get(change.taskId)
-      if (!task || change.status === task.status) {
+      const previousTask = tasksBeforeUpdate.get(String(change.taskId))
+      if (!previousTask || change.status === previousTask.status) {
         continue
       }
 
       await queueDiscordNotificationForStatusChange(
         ctx,
-        task,
+        previousTask,
         change.taskId,
         change.status
       )
@@ -1364,7 +1434,11 @@ export const bulkUpdateTasks = mutation({
         throw new Error("Task not found")
       }
       await ctx.db.patch(taskId, updates)
-      if (args.status !== undefined || args.priority !== undefined) {
+      if (
+        args.status !== undefined ||
+        args.priority !== undefined ||
+        args.labels !== undefined
+      ) {
         await queueLinearSync(ctx, taskId)
         await queueGitHubSync(ctx, taskId)
       }

@@ -63,7 +63,14 @@ type TaskSnapshot = {
   taskCode: string
   title: string
   description: string | null
-  status: "requests" | "todo" | "in_progress" | "ready" | "shipped" | "archive"
+  status:
+    | "requests"
+    | "backlog"
+    | "todo"
+    | "in_progress"
+    | "ready"
+    | "shipped"
+    | "archive"
   priority: "urgent" | "high" | "medium" | "low" | "none"
   labels: string[]
   sourceUrl: string | null
@@ -72,7 +79,14 @@ type TaskSnapshot = {
 type DiscordFeedbackCreateTaskInput = {
   title: string
   description?: string
-  status: "requests" | "todo" | "in_progress" | "ready" | "shipped" | "archive"
+  status:
+    | "requests"
+    | "backlog"
+    | "todo"
+    | "in_progress"
+    | "ready"
+    | "shipped"
+    | "archive"
   priority: "urgent" | "high" | "medium" | "low" | "none"
   labels: string[]
   source?: {
