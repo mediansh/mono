@@ -1,7 +1,7 @@
 export const TASK_STATUSES = [
   "requests",
-  "backlog",
   "todo",
+  "backlog",
   "in_progress",
   "ready",
   "shipped",

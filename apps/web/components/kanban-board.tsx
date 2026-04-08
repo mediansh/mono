@@ -130,8 +130,8 @@ interface Task extends Omit<TaskDoc, "attachments"> {
 // Column config
 const COLUMNS: { id: Status; label: string; emptyLabel: string }[] = [
   { id: "requests", label: "Requests", emptyLabel: "No requests yet" },
-  { id: "backlog", label: "Backlog", emptyLabel: "No issues in backlog yet" },
   { id: "todo", label: "Todo", emptyLabel: "No issues yet" },
+  { id: "backlog", label: "Backlog", emptyLabel: "No issues in backlog yet" },
   {
     id: "in_progress",
     label: "In Progress",
