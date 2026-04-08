@@ -10,6 +10,7 @@ import type { Doc, Id } from "./_generated/dataModel"
 import { internal } from "./_generated/api"
 import {
   STATUS_ORDER,
+  buildTaskAssignee,
   compareTasksByStatusAndRecency,
   normalizeTaskOrdersByStatus,
   isDemoTaskSet,
@@ -58,12 +59,21 @@ const taskSourceValidator = v.object({
   author: v.string(),
 })
 
+const taskAssigneeValidator = v.object({
+  id: v.string(),
+  name: v.string(),
+  avatar: v.string(),
+  email: v.optional(v.string()),
+  linearUserId: v.optional(v.string()),
+})
+
 const taskInputValidator = v.object({
   title: v.string(),
   description: v.optional(v.string()),
   status: taskStatusValidator,
   priority: taskPriorityValidator,
   labels: v.array(v.string()),
+  assignee: v.optional(taskAssigneeValidator),
   source: v.optional(taskSourceValidator),
   sourceCreatedAt: v.optional(v.number()),
   createdAtLabel: v.optional(v.string()),
@@ -83,6 +93,13 @@ type CreateTaskInput = {
     | "archive"
   priority: "urgent" | "high" | "medium" | "low" | "none"
   labels: string[]
+  assignee?: {
+    id: string
+    name: string
+    avatar: string
+    email?: string
+    linearUserId?: string
+  }
   source?: {
     platform: "discord" | "slack" | "x" | "linear" | "github" | "cli"
     url: string
@@ -375,10 +392,7 @@ async function insertTasksForWorkspace(
       order: nextOrder,
       project: workspace.name,
       updatedAt: now,
-      assignee: {
-        name: "Abdul",
-        avatar: "",
-      },
+      assignee: buildTaskAssignee(taskInput.assignee),
       source: taskInput.source,
       sources: taskInput.source ? [taskInput.source] : undefined,
       sourceCreatedAt: taskInput.sourceCreatedAt,
@@ -1258,6 +1272,7 @@ export const updateTask = mutation({
       )
     ),
     labels: v.optional(v.array(v.string())),
+    assignee: v.optional(v.union(taskAssigneeValidator, v.null())),
     attachments: v.optional(v.array(attachmentValidator)),
   },
   handler: async (ctx, args) => {
@@ -1273,6 +1288,9 @@ export const updateTask = mutation({
     if (args.status !== undefined) updates.status = args.status
     if (args.priority !== undefined) updates.priority = args.priority
     if (args.labels !== undefined) updates.labels = args.labels
+    if (args.assignee !== undefined) {
+      updates.assignee = buildTaskAssignee(args.assignee)
+    }
     if (args.attachments !== undefined) {
       updates.attachments =
         args.attachments.length > 0 ? args.attachments : undefined
@@ -1283,6 +1301,7 @@ export const updateTask = mutation({
       args.status !== undefined ||
       args.priority !== undefined ||
       args.labels !== undefined ||
+      args.assignee !== undefined ||
       args.attachments !== undefined
     ) {
       updates.updatedAt = Date.now()
@@ -1294,7 +1313,8 @@ export const updateTask = mutation({
       args.description !== undefined ||
       args.status !== undefined ||
       args.priority !== undefined ||
-      args.labels !== undefined
+      args.labels !== undefined ||
+      args.assignee !== undefined
     ) {
       await queueLinearSync(ctx, args.taskId)
       await queueGitHubSync(ctx, args.taskId)
@@ -1314,6 +1334,7 @@ export const updateTask = mutation({
       args.description !== undefined ||
       args.priority !== undefined ||
       args.labels !== undefined ||
+      args.assignee !== undefined ||
       args.attachments !== undefined
     ) {
       await logTaskUpdated(ctx, task)

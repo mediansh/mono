@@ -48,6 +48,126 @@ export type TaskSource = {
   author: string
 }
 
+export type WorkspaceAssignee = {
+  id: string
+  name: string
+  avatar: string
+  email?: string
+  linearUserId?: string
+}
+
+export type TaskAssignee = WorkspaceAssignee
+
+function normalizeWhitespace(value: string) {
+  return value.trim().replace(/\s+/g, " ")
+}
+
+export function normalizeAssigneeName(value: string) {
+  return normalizeWhitespace(value)
+}
+
+export function normalizeAssigneeEmail(value?: string | null) {
+  const normalized = value?.trim().toLowerCase()
+  return normalized ? normalized : undefined
+}
+
+function getAssigneeIdentityKey(assignee: Partial<WorkspaceAssignee>) {
+  if (assignee.linearUserId?.trim()) {
+    return `linear:${assignee.linearUserId.trim()}`
+  }
+
+  const normalizedEmail = normalizeAssigneeEmail(assignee.email)
+  if (normalizedEmail) {
+    return `email:${normalizedEmail}`
+  }
+
+  return `name:${normalizeAssigneeName(assignee.name ?? "").toLowerCase()}`
+}
+
+export function buildTaskAssignee(
+  assignee?: Partial<WorkspaceAssignee> | null
+): TaskAssignee | undefined {
+  if (!assignee) {
+    return undefined
+  }
+
+  const name = normalizeAssigneeName(assignee.name ?? "")
+  if (!name) {
+    return undefined
+  }
+
+  const linearUserId = assignee.linearUserId?.trim() || undefined
+  const email = normalizeAssigneeEmail(assignee.email)
+
+  return {
+    id:
+      assignee.id?.trim() ||
+      linearUserId ||
+      email ||
+      name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+    name,
+    avatar: assignee.avatar?.trim() ?? "",
+    email,
+    linearUserId,
+  }
+}
+
+export function normalizeWorkspaceAssignees(
+  assignees: Array<Partial<WorkspaceAssignee>> | undefined
+) {
+  if (!assignees?.length) {
+    return []
+  }
+
+  const deduped = new Map<string, WorkspaceAssignee>()
+
+  for (const assignee of assignees) {
+    const normalized = buildTaskAssignee(assignee)
+    if (!normalized) {
+      continue
+    }
+
+    const existing = deduped.get(getAssigneeIdentityKey(normalized))
+    deduped.set(getAssigneeIdentityKey(normalized), {
+      ...existing,
+      ...normalized,
+      id: normalized.id || existing?.id || crypto.randomUUID(),
+      avatar: normalized.avatar || existing?.avatar || "",
+      email: normalized.email ?? existing?.email,
+      linearUserId: normalized.linearUserId ?? existing?.linearUserId,
+    })
+  }
+
+  return Array.from(deduped.values()).sort((a, b) => {
+    const aName = a.name.toLowerCase()
+    const bName = b.name.toLowerCase()
+    if (aName !== bName) {
+      return aName.localeCompare(bName)
+    }
+
+    return (a.email ?? "").localeCompare(b.email ?? "")
+  })
+}
+
+export function getAssigneeInitials(assignee?: {
+  name?: string
+  email?: string
+}) {
+  const source = normalizeAssigneeName(
+    assignee?.name || assignee?.email?.split("@")[0] || ""
+  )
+  if (!source) {
+    return "?"
+  }
+
+  const parts = source.split(" ").filter(Boolean)
+  if (parts.length === 1) {
+    return parts[0]!.slice(0, 2).toUpperCase()
+  }
+
+  return `${parts[0]![0] ?? ""}${parts[1]![0] ?? ""}`.toUpperCase()
+}
+
 export type TaskSeed = {
   taskCode: string
   title: string

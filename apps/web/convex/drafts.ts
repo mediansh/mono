@@ -3,13 +3,10 @@ import { mutation, query } from "./_generated/server"
 import type { Id, Doc } from "./_generated/dataModel"
 import type { MutationCtx } from "./_generated/server"
 import { internal } from "./_generated/api"
-import {
-  getIdentityProfile,
-  requireTaskWriteAccess,
-  requireWorkspaceAccess,
-} from "./permissions"
+import { requireTaskWriteAccess, requireWorkspaceAccess } from "./permissions"
 import { insertWorkspaceLog } from "./logs"
 import { clearLinearTaskLink, clearGitHubTaskLink } from "./tasks"
+import { buildTaskAssignee } from "../lib/task-board"
 
 const draftStatusValidator = v.union(
   v.literal("backlog"),
@@ -36,6 +33,14 @@ const attachmentValidator = v.object({
   width: v.optional(v.number()),
   height: v.optional(v.number()),
   displayWidth: v.optional(v.number()),
+})
+
+const draftAssigneeValidator = v.object({
+  id: v.string(),
+  name: v.string(),
+  avatar: v.string(),
+  email: v.optional(v.string()),
+  linearUserId: v.optional(v.string()),
 })
 
 function normalizeTitleFingerprint(value: string) {
@@ -287,25 +292,9 @@ async function adjustWorkspaceDraftCount(
   })
 }
 
-function getDraftAssignee(
-  access: Awaited<ReturnType<typeof requireTaskWriteAccess>>
-) {
-  const profile = getIdentityProfile(access.identity)
-
-  return {
-    name:
-      profile.name ??
-      access.membership.name ??
-      access.membership.email ??
-      access.membership.userId,
-    avatar: profile.imageUrl ?? access.membership.imageUrl ?? "",
-  }
-}
-
 async function publishDraftRecord(
   ctx: MutationCtx,
-  draft: Doc<"drafts">,
-  assignee: { name: string; avatar: string }
+  draft: Doc<"drafts">
 ) {
   const workspace = await ctx.db.get(draft.workspaceId)
   if (!workspace) throw new Error("Workspace not found")
@@ -341,7 +330,7 @@ async function publishDraftRecord(
     order: maxOrder,
     project: workspace.name,
     updatedAt: now,
-    assignee,
+    assignee: buildTaskAssignee(draft.assignee),
     source: draft.source,
     sources:
       draft.sources && draft.sources.length > 0
@@ -448,6 +437,7 @@ export const saveDraft = mutation({
     status: draftStatusValidator,
     priority: draftPriorityValidator,
     labels: v.array(v.string()),
+    assignee: v.optional(v.union(draftAssigneeValidator, v.null())),
     attachments: v.optional(v.array(attachmentValidator)),
   },
   handler: async (ctx, args) => {
@@ -460,6 +450,7 @@ export const saveDraft = mutation({
       status: args.status,
       priority: args.priority,
       labels: args.labels,
+      assignee: buildTaskAssignee(args.assignee),
       updatedAt: now,
       attachments: args.attachments ?? undefined,
     })
@@ -476,6 +467,7 @@ export const updateDraft = mutation({
     status: v.optional(draftStatusValidator),
     priority: v.optional(draftPriorityValidator),
     labels: v.optional(v.array(v.string())),
+    assignee: v.optional(v.union(draftAssigneeValidator, v.null())),
     attachments: v.optional(v.array(attachmentValidator)),
   },
   handler: async (ctx, args) => {
@@ -490,6 +482,9 @@ export const updateDraft = mutation({
     if (args.status !== undefined) updates.status = args.status
     if (args.priority !== undefined) updates.priority = args.priority
     if (args.labels !== undefined) updates.labels = args.labels
+    if (args.assignee !== undefined) {
+      updates.assignee = buildTaskAssignee(args.assignee)
+    }
     if (args.attachments !== undefined) updates.attachments = args.attachments
 
     await ctx.db.patch(args.draftId, updates)
@@ -529,9 +524,9 @@ export const publishDraft = mutation({
   handler: async (ctx, args) => {
     const draft = await ctx.db.get(args.draftId)
     if (!draft) throw new Error("Draft not found")
-    const access = await requireTaskWriteAccess(ctx, draft.workspaceId)
+    await requireTaskWriteAccess(ctx, draft.workspaceId)
 
-    return await publishDraftRecord(ctx, draft, getDraftAssignee(access))
+    return await publishDraftRecord(ctx, draft)
   },
 })
 
@@ -543,12 +538,13 @@ export const publishDraftWithUpdates = mutation({
     status: draftStatusValidator,
     priority: draftPriorityValidator,
     labels: v.array(v.string()),
+    assignee: v.optional(v.union(draftAssigneeValidator, v.null())),
     attachments: v.optional(v.array(attachmentValidator)),
   },
   handler: async (ctx, args) => {
     const draft = await ctx.db.get(args.draftId)
     if (!draft) throw new Error("Draft not found")
-    const access = await requireTaskWriteAccess(ctx, draft.workspaceId)
+    await requireTaskWriteAccess(ctx, draft.workspaceId)
 
     const updatedDraft = {
       ...draft,
@@ -557,6 +553,7 @@ export const publishDraftWithUpdates = mutation({
       status: args.status,
       priority: args.priority,
       labels: args.labels,
+      assignee: buildTaskAssignee(args.assignee),
       attachments: args.attachments,
       updatedAt: Date.now(),
     }
@@ -567,11 +564,12 @@ export const publishDraftWithUpdates = mutation({
       status: updatedDraft.status,
       priority: updatedDraft.priority,
       labels: updatedDraft.labels,
+      assignee: updatedDraft.assignee,
       attachments: updatedDraft.attachments,
       updatedAt: updatedDraft.updatedAt,
     })
 
-    return await publishDraftRecord(ctx, updatedDraft, getDraftAssignee(access))
+    return await publishDraftRecord(ctx, updatedDraft)
   },
 })
 
@@ -602,6 +600,7 @@ export const moveTaskToDraft = mutation({
       status: task.status === "requests" ? "backlog" : task.status,
       priority: task.priority,
       labels: task.labels,
+      assignee: task.assignee,
       source: task.source,
       sources: task.sources,
       linearLink: linearLink

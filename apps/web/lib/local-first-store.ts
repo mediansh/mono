@@ -13,6 +13,13 @@ export type WorkspaceRecord = {
   role: string
   taskCounter?: number
   labels?: { name: string; color: string }[]
+  assignees?: {
+    id: string
+    name: string
+    avatar: string
+    email?: string
+    linearUserId?: string
+  }[]
 }
 
 export type LocalTaskDoc = Omit<Doc<"tasks">, "_id"> & {

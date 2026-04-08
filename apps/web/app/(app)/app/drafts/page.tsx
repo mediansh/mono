@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react"
 import { useMutation, useQuery } from "convex/react"
-import { useUser } from "@clerk/nextjs"
 import { motion, AnimatePresence } from "motion/react"
 import { toast } from "sonner"
 import {
@@ -100,7 +99,6 @@ function formatRelativeTime(timestamp: number): string {
 }
 
 export default function DraftsPage() {
-  const { user } = useUser()
   const { currentWorkspace } = useWorkspace()
   const canManageTasks = hasTaskWritePermission(currentWorkspace?.role)
   const drafts = useQuery(
@@ -148,10 +146,7 @@ export default function DraftsPage() {
       order: existingTasks.filter((task) => task.status === draft.status)
         .length,
       project: currentWorkspace.name,
-      assignee: {
-        name: user?.fullName ?? user?.firstName ?? "You",
-        avatar: user?.imageUrl ?? "",
-      },
+      assignee: draft.assignee,
       attachments: draft.attachments?.length
         ? (draft.attachments as any)
         : undefined,
@@ -331,6 +326,7 @@ export default function DraftsPage() {
             status: editingDraft.status,
             priority: editingDraft.priority,
             labels: editingDraft.labels,
+            assignee: editingDraft.assignee,
             attachments: editingDraft.attachments as any,
             updatedAt: editingDraft.updatedAt,
           }}

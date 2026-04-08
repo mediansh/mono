@@ -49,6 +49,9 @@ export function useWorkspaceOptimisticMutations() {
   const updateWorkspace = useMutation(api.workspaces.updateWorkspace)
   const deleteWorkspace = useMutation(api.workspaces.deleteWorkspace)
   const updateWorkspaceLabels = useMutation(api.workspaces.updateWorkspaceLabels)
+  const updateWorkspaceAssignees = useMutation(
+    api.workspaces.updateWorkspaceAssignees
+  )
 
   async function createWorkspaceOptimistic({
     name,
@@ -76,6 +79,7 @@ export function useWorkspaceOptimisticMutations() {
       role: "owner",
       taskCounter: 0,
       labels: [],
+      assignees: [],
     }
 
     insertWorkspaceRecord(optimisticWorkspace, { setCurrent: true })
@@ -182,10 +186,42 @@ export function useWorkspaceOptimisticMutations() {
     }
   }
 
+  async function updateWorkspaceAssigneesOptimistic({
+    workspaceId,
+    assignees,
+    previousWorkspace,
+  }: {
+    workspaceId: Id<"workspaces">
+    assignees: {
+      id: string
+      name: string
+      avatar: string
+      email?: string
+      linearUserId?: string
+    }[]
+    previousWorkspace: WorkspaceRecord
+  }) {
+    updateWorkspaceRecord(workspaceId, (workspace) => ({
+      ...workspace,
+      assignees,
+    }))
+
+    try {
+      await updateWorkspaceAssignees({
+        workspaceId,
+        assignees,
+      })
+    } catch (error) {
+      replaceWorkspaceRecord(workspaceId, previousWorkspace)
+      throw error
+    }
+  }
+
   return {
     createWorkspaceOptimistic,
     updateWorkspaceOptimistic,
     deleteWorkspaceOptimistic,
     updateWorkspaceLabelsOptimistic,
+    updateWorkspaceAssigneesOptimistic,
   }
 }

@@ -1,6 +1,14 @@
 import { defineSchema, defineTable } from "convex/server"
 import { v } from "convex/values"
 
+const workspaceAssigneeValidator = v.object({
+  id: v.string(),
+  name: v.string(),
+  avatar: v.string(),
+  email: v.optional(v.string()),
+  linearUserId: v.optional(v.string()),
+})
+
 export default defineSchema({
   workspaces: defineTable({
     name: v.string(),
@@ -17,6 +25,8 @@ export default defineSchema({
         })
       )
     ),
+    assignees: v.optional(v.array(workspaceAssigneeValidator)),
+    assigneesUpdatedAt: v.optional(v.number()),
   }).index("by_owner", ["ownerId"]),
 
   workspaceMembers: defineTable({
@@ -427,6 +437,7 @@ export default defineSchema({
       v.literal("member_joined"),
       v.literal("member_removed"),
       v.literal("labels_saved"),
+      v.literal("assignees_saved"),
       v.literal("feedback_processed")
     ),
     message: v.string(),
@@ -486,12 +497,7 @@ export default defineSchema({
     order: v.number(),
     project: v.string(),
     updatedAt: v.optional(v.number()),
-    assignee: v.optional(
-      v.object({
-        name: v.string(),
-        avatar: v.string(),
-      })
-    ),
+    assignee: v.optional(workspaceAssigneeValidator),
     source: v.optional(
       v.object({
         platform: v.union(
@@ -559,6 +565,7 @@ export default defineSchema({
       v.literal("none")
     ),
     labels: v.array(v.string()),
+    assignee: v.optional(workspaceAssigneeValidator),
     source: v.optional(
       v.object({
         platform: v.union(

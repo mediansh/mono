@@ -72,6 +72,7 @@ type WorkspaceLogInput = {
     | "member_joined"
     | "member_removed"
     | "labels_saved"
+    | "assignees_saved"
     | "feedback_processed"
   message: string
   source?: "discord" | "github" | "linear" | "x" | "cli" | "manual" | "ai"

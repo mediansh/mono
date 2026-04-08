@@ -32,6 +32,7 @@ import {
   Link as LinkIcon,
   Trash,
   Tag,
+  UserCircle,
   Check,
   Minus,
   ListBullets,
@@ -39,6 +40,8 @@ import {
   NotePencil,
 } from "@phosphor-icons/react"
 import { NewTaskModal } from "@/components/new-task-modal"
+import { AssigneeAvatar } from "@/components/assignee-avatar"
+import { AssigneeSelector } from "@/components/assignee-selector"
 import {
   TaskAttachmentGallery,
   type TaskAttachment,
@@ -93,6 +96,7 @@ import {
   isDemoTaskSet,
   normalizeTaskOrdersByStatus,
   type RequestSource,
+  type TaskAssignee,
   type TaskLabel as Label,
   type TaskPriority as Priority,
   type TaskStatus as Status,
@@ -276,6 +280,7 @@ function patchTaskDocs(
       | "description"
       | "priority"
       | "labels"
+      | "assignee"
       | "attachments"
       | "_syncStatus"
     >
@@ -529,10 +534,14 @@ function HiddenColumnsToolbar({
   hiddenColumns,
   onShow,
   tasks,
+  assigneeOptions,
+  canManageTasks,
 }: {
   hiddenColumns: Status[]
   onShow: (status: Status) => void
   tasks: Task[]
+  assigneeOptions: TaskAssignee[]
+  canManageTasks: boolean
 }) {
   const [selectedColumn, setSelectedColumn] = useState<Status | null>(null)
 
@@ -611,7 +620,12 @@ function HiddenColumnsToolbar({
                     key={task.id}
                     className={`flex items-center gap-3 border-b border-l-2 border-border px-3 py-2 transition-colors last:border-b-0 hover:bg-accent/40 ${PRIORITY_ACCENT[task.priority]}`}
                   >
-                    <ListRowContent task={task} />
+                    <ListRowContent
+                      task={task}
+                      assigneeOptions={assigneeOptions}
+                      canManageTasks={canManageTasks}
+                      onUpdate={() => {}}
+                    />
                   </div>
                 ))}
               </div>
@@ -1067,6 +1081,7 @@ function ContextSubmenu({
 function TaskContextMenu({
   task,
   position,
+  assigneeOptions,
   onClose,
   onUpdate,
   onDelete,
@@ -1075,6 +1090,7 @@ function TaskContextMenu({
 }: {
   task: Task
   position: { x: number; y: number }
+  assigneeOptions: TaskAssignee[]
   onClose: () => void
   onUpdate: (taskId: string, updates: Partial<Task>) => void
   onDelete: (taskId: string) => void
@@ -1186,6 +1202,45 @@ function TaskContextMenu({
         ))}
       </ContextSubmenu>
 
+      <ContextSubmenu
+        label="Assignee"
+        icon={<AssigneeAvatar assignee={task.assignee ?? null} />}
+      >
+        <button
+          disabled={!canManageTasks}
+          onClick={() => {
+            onUpdate(task.id, { assignee: undefined })
+            onClose()
+          }}
+          className="flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-accent"
+        >
+          <span className="flex size-5 shrink-0 items-center justify-center rounded-full border border-dashed border-border bg-background text-muted-foreground">
+            <UserCircle size={12} />
+          </span>
+          <span>No assignee</span>
+          {!task.assignee ? (
+            <Check size={14} weight="bold" className="ml-auto text-primary" />
+          ) : null}
+        </button>
+        {assigneeOptions.map((assignee) => (
+          <button
+            key={assignee.id}
+            disabled={!canManageTasks}
+            onClick={() => {
+              onUpdate(task.id, { assignee })
+              onClose()
+            }}
+            className="flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-accent"
+          >
+            <AssigneeAvatar assignee={assignee} />
+            <span className="truncate">{assignee.name}</span>
+            {task.assignee?.id === assignee.id ? (
+              <Check size={14} weight="bold" className="ml-auto text-primary" />
+            ) : null}
+          </button>
+        ))}
+      </ContextSubmenu>
+
       <div className="-mx-1 my-1 h-px bg-border" />
 
       {/* Move to drafts */}
@@ -1234,7 +1289,39 @@ const AgentBadge = memo(function AgentBadge({
   )
 })
 
-const ListRowContent = memo(function ListRowContent({ task }: { task: Task }) {
+const TaskAssigneeBadge = memo(function TaskAssigneeBadge({
+  assignee,
+}: {
+  assignee?: TaskAssignee | null
+}) {
+  if (!assignee) {
+    return (
+      <span className="flex items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-[10px] text-muted-foreground ring-1 ring-border">
+        <UserCircle size={11} />
+        <span>No assignee</span>
+      </span>
+    )
+  }
+
+  return (
+    <span className="flex items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-[10px] font-medium text-foreground ring-1 ring-border">
+      <AssigneeAvatar assignee={assignee} />
+      <span className="max-w-[72px] truncate">{assignee.name}</span>
+    </span>
+  )
+})
+
+const ListRowContent = memo(function ListRowContent({
+  task,
+  assigneeOptions,
+  canManageTasks,
+  onUpdate,
+}: {
+  task: Task
+  assigneeOptions: TaskAssignee[]
+  canManageTasks: boolean
+  onUpdate: (taskId: string, updates: Partial<Task>) => void
+}) {
   const { colors: labelColors } = useLabelConfig()
   const activeAgent = getActiveAgent(task)
   return (
@@ -1249,6 +1336,18 @@ const ListRowContent = memo(function ListRowContent({ task }: { task: Task }) {
       </span>
       <div className="hidden shrink-0 items-center gap-1.5 sm:flex">
         {activeAgent && <AgentBadge agentName={activeAgent} />}
+        <div
+          onClick={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <AssigneeSelector
+            assignees={assigneeOptions}
+            value={task.assignee ?? null}
+            onChange={(assignee) => onUpdate(task.id, { assignee: assignee ?? undefined })}
+            disabled={!canManageTasks}
+            variant="compact"
+          />
+        </div>
         {(task.labels ?? []).map((label) => (
           <span
             key={label}
@@ -1277,6 +1376,7 @@ const SortableListRow = memo(function SortableListRow({
   hasSelection,
   isDraggedAway,
   canManageTasks,
+  assigneeOptions,
   onSelect,
   onToggleSelect,
   onUpdate,
@@ -1290,6 +1390,7 @@ const SortableListRow = memo(function SortableListRow({
   hasSelection: boolean
   isDraggedAway: boolean
   canManageTasks: boolean
+  assigneeOptions: TaskAssignee[]
   onSelect: (task: Task) => void
   onToggleSelect: (taskId: string, shiftKey: boolean) => void
   onUpdate: (taskId: string, updates: Partial<Task>) => void
@@ -1368,12 +1469,18 @@ const SortableListRow = memo(function SortableListRow({
         >
           {isSelected && <Check size={10} weight="bold" />}
         </div>
-        <ListRowContent task={task} />
+        <ListRowContent
+          task={task}
+          assigneeOptions={assigneeOptions}
+          canManageTasks={canManageTasks}
+          onUpdate={onUpdate}
+        />
       </div>
       {contextMenu && (
         <TaskContextMenu
           task={task}
           position={contextMenu}
+          assigneeOptions={assigneeOptions}
           onClose={() => setContextMenu(null)}
           onUpdate={onUpdate}
           onDelete={onDelete}
@@ -1421,6 +1528,7 @@ function DragOverlayCard({
         <div className="flex flex-wrap items-center gap-1.5">
           <div className="shrink-0">{getPriorityIcon(task.priority, 12)}</div>
           {activeAgent && <AgentBadge agentName={activeAgent} />}
+          <TaskAssigneeBadge assignee={task.assignee ?? null} />
           {(task.labels ?? []).map((label) => (
             <span
               key={label}
@@ -1463,6 +1571,7 @@ function DragOverlayListRow({
       <div className="relative flex w-fit max-w-sm items-center gap-2.5 border-2 border-border bg-background px-3.5 py-2 shadow-none">
         <div className="shrink-0">{getStatusIcon(task.status, 13)}</div>
         <span className="truncate text-[13px] font-medium">{task.title}</span>
+        <TaskAssigneeBadge assignee={task.assignee ?? null} />
         {dragCount > 1 && (
           <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
             {dragCount}
@@ -1482,6 +1591,7 @@ function ListGroup({
   selectedTaskIds,
   draggedTaskIds,
   canManageTasks,
+  assigneeOptions,
   onToggleCollapsed,
   onSelectTask,
   onToggleSelectTask,
@@ -1497,6 +1607,7 @@ function ListGroup({
   selectedTaskIds: Set<string>
   draggedTaskIds: Set<string>
   canManageTasks: boolean
+  assigneeOptions: TaskAssignee[]
   onToggleCollapsed: () => void
   onSelectTask: (task: Task) => void
   onToggleSelectTask: (taskId: string, shiftKey: boolean) => void
@@ -1572,6 +1683,7 @@ function ListGroup({
                   hasSelection={hasSelection}
                   isDraggedAway={draggedTaskIds.has(task.id)}
                   canManageTasks={canManageTasks}
+                  assigneeOptions={assigneeOptions}
                   onSelect={onSelectTask}
                   onToggleSelect={onToggleSelectTask}
                   onUpdate={onUpdateTask}
@@ -1617,6 +1729,7 @@ function TaskDetailModal({
   onAccept,
   onDeny,
   canManageTasks,
+  assigneeOptions,
 }: {
   task: Task | null
   onClose: () => void
@@ -1626,6 +1739,7 @@ function TaskDetailModal({
   onAccept?: (task: Task) => void
   onDeny?: (task: Task) => void
   canManageTasks: boolean
+  assigneeOptions: TaskAssignee[]
 }) {
   const labelConfig = useLabelConfig()
   const [editingTitle, setEditingTitle] = useState(false)
@@ -1813,6 +1927,17 @@ function TaskDetailModal({
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
+
+                <AssigneeSelector
+                  assignees={assigneeOptions}
+                  value={task.assignee ?? null}
+                  onChange={(assignee) =>
+                    onUpdate(task.id, { assignee: assignee ?? undefined })
+                  }
+                  disabled={!canManageTasks}
+                  placeholder="No assignee"
+                  className="bg-background px-2.5 py-1.5 text-[12px] font-medium"
+                />
 
                 {/* Priority */}
                 <DropdownMenu>
@@ -2139,6 +2264,7 @@ const KanbanCard = memo(function KanbanCard({
   hasSelection,
   isDraggedAway,
   canManageTasks,
+  assigneeOptions,
   onSelect,
   onToggleSelect,
   onUpdate,
@@ -2152,6 +2278,7 @@ const KanbanCard = memo(function KanbanCard({
   hasSelection: boolean
   isDraggedAway: boolean
   canManageTasks: boolean
+  assigneeOptions: TaskAssignee[]
   onSelect: (task: Task) => void
   onToggleSelect: (taskId: string, shiftKey: boolean) => void
   onUpdate: (taskId: string, updates: Partial<Task>) => void
@@ -2257,6 +2384,20 @@ const KanbanCard = memo(function KanbanCard({
         <div className="flex flex-wrap items-center gap-1.5">
           <div className="shrink-0">{getPriorityIcon(task.priority, 12)}</div>
           {activeAgent && <AgentBadge agentName={activeAgent} />}
+          <div
+            onClick={(event) => event.stopPropagation()}
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <AssigneeSelector
+              assignees={assigneeOptions}
+              value={task.assignee ?? null}
+              onChange={(assignee) =>
+                onUpdate(task.id, { assignee: assignee ?? undefined })
+              }
+              disabled={!canManageTasks}
+              variant="compact"
+            />
+          </div>
           {(task.labels ?? []).map((label) => (
             <span
               key={label}
@@ -2278,6 +2419,7 @@ const KanbanCard = memo(function KanbanCard({
         <TaskContextMenu
           task={task}
           position={contextMenu}
+          assigneeOptions={assigneeOptions}
           onClose={() => setContextMenu(null)}
           onUpdate={onUpdate}
           onDelete={onDelete}
@@ -2299,6 +2441,7 @@ function KanbanColumn({
   selectedTaskIds,
   draggedTaskIds,
   canManageTasks,
+  assigneeOptions,
   onSelectTask,
   onToggleSelectTask,
   onUpdateTask,
@@ -2312,6 +2455,7 @@ function KanbanColumn({
   selectedTaskIds: Set<string>
   draggedTaskIds: Set<string>
   canManageTasks: boolean
+  assigneeOptions: TaskAssignee[]
   onSelectTask: (task: Task) => void
   onToggleSelectTask: (taskId: string, shiftKey: boolean) => void
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void
@@ -2379,6 +2523,7 @@ function KanbanColumn({
                   hasSelection={hasSelection}
                   isDraggedAway={draggedTaskIds.has(task.id)}
                   canManageTasks={canManageTasks}
+                  assigneeOptions={assigneeOptions}
                   onSelect={onSelectTask}
                   onToggleSelect={onToggleSelectTask}
                   onUpdate={onUpdateTask}
@@ -2400,6 +2545,7 @@ function ColumnBoardView({
   tasks,
   hiddenColumns,
   canManageTasks,
+  assigneeOptions,
   onMoveTask,
   onMoveMultipleTasks,
   onUpdateTask,
@@ -2413,6 +2559,7 @@ function ColumnBoardView({
   tasks: Task[]
   hiddenColumns: Status[]
   canManageTasks: boolean
+  assigneeOptions: TaskAssignee[]
   onMoveTask: (taskId: string, toStatus: Status, toIndex: number) => void
   onMoveMultipleTasks: (
     taskIds: string[],
@@ -2883,6 +3030,7 @@ function ColumnBoardView({
                   selectedTaskIds={selectedTaskIds}
                   draggedTaskIds={draggedTaskIds}
                   canManageTasks={canManageTasks}
+                  assigneeOptions={assigneeOptions}
                   onSelectTask={handleSelectTask}
                   onToggleSelectTask={handleToggleSelectTask}
                   onUpdateTask={onUpdateTask}
@@ -2924,6 +3072,7 @@ function ColumnBoardView({
           setSelectedTaskId(null)
         }}
         canManageTasks={canManageTasks}
+        assigneeOptions={assigneeOptions}
       />
 
       {canManageTasks && selectedTaskIds.size > 0 && (
@@ -2990,6 +3139,7 @@ function ListView({
   hiddenColumns,
   collapsedColumns,
   canManageTasks,
+  assigneeOptions,
   onToggleCollapsedColumn,
   onMoveTask,
   onMoveMultipleTasks,
@@ -3005,6 +3155,7 @@ function ListView({
   hiddenColumns: Status[]
   collapsedColumns: Status[]
   canManageTasks: boolean
+  assigneeOptions: TaskAssignee[]
   onToggleCollapsedColumn: (status: Status) => void
   onMoveTask: (taskId: string, toStatus: Status, toIndex: number) => void
   onMoveMultipleTasks: (
@@ -3349,6 +3500,7 @@ function ListView({
                 selectedTaskIds={selectedTaskIds}
                 draggedTaskIds={draggedTaskIds}
                 canManageTasks={canManageTasks}
+                assigneeOptions={assigneeOptions}
                 onToggleCollapsed={() => onToggleCollapsedColumn(column.id)}
                 onSelectTask={handleSelectTask}
                 onToggleSelectTask={handleToggleSelectTask}
@@ -3390,6 +3542,7 @@ function ListView({
           setSelectedTaskId(null)
         }}
         canManageTasks={canManageTasks}
+        assigneeOptions={assigneeOptions}
       />
 
       {/* Bulk action toolbar */}
@@ -3435,6 +3588,7 @@ export function KanbanBoard() {
 
   const workspaceId = currentWorkspace?._id
   const canManageTasks = hasTaskWritePermission(currentWorkspace?.role)
+  const assigneeOptions = currentWorkspace?.assignees ?? []
   const taskDocs = workspaceId ? tasksByWorkspace[workspaceId] : undefined
   const liveTaskDocs = useQuery(
     api.tasks.listByWorkspace,
@@ -3472,6 +3626,7 @@ export function KanbanBoard() {
       description,
       priority,
       labels,
+      assignee,
       attachments,
     }: {
       taskId: Id<"tasks">
@@ -3479,6 +3634,7 @@ export function KanbanBoard() {
       description?: string
       priority?: Priority
       labels?: Label[]
+      assignee?: TaskAssignee | null
       attachments?:
         | {
             storageId: Id<"_storage">
@@ -3498,6 +3654,7 @@ export function KanbanBoard() {
           description,
           priority,
           labels,
+          assignee: assignee ?? null,
           attachments,
         })
       } catch (error) {
@@ -3517,6 +3674,7 @@ export function KanbanBoard() {
           description,
           priority,
           labels,
+          assignee: assignee ?? null,
           attachments: attachments.map(
             ({ width, height, displayWidth, ...attachment }) => attachment
           ) as {
@@ -3706,6 +3864,7 @@ export function KanbanBoard() {
         description: updates.description,
         priority: updates.priority,
         labels: updates.labels,
+        assignee: updates.assignee as TaskDoc["assignee"],
         attachments: updates.attachments as TaskDoc["attachments"],
         ...(updates.attachments !== undefined
           ? { _syncStatus: undefined }
@@ -3735,6 +3894,7 @@ export function KanbanBoard() {
       description: updates.description,
       priority: updates.priority,
       labels: updates.labels,
+      assignee: updates.assignee ?? null,
       attachments: nextAttachments,
     }).catch((error) => {
       const isAttachmentUpdate = updates.attachments !== undefined
@@ -3833,6 +3993,7 @@ export function KanbanBoard() {
         status: task.status === "requests" ? "backlog" : task.status,
         priority: task.priority,
         labels: task.labels,
+        assignee: task.assignee ?? null,
         attachments: draftAttachments.length > 0 ? draftAttachments : undefined,
       })
         .then(() => {
@@ -4088,6 +4249,8 @@ export function KanbanBoard() {
                 hiddenColumns={hiddenColumns}
                 onShow={handleShowColumn}
                 tasks={tasks}
+                assigneeOptions={assigneeOptions}
+                canManageTasks={canManageTasks}
               />
             )}
           </div>
@@ -4099,6 +4262,7 @@ export function KanbanBoard() {
                 tasks={tasks}
                 hiddenColumns={hiddenColumns}
                 canManageTasks={canManageTasks}
+                assigneeOptions={assigneeOptions}
                 onMoveTask={handleMoveTask}
                 onMoveMultipleTasks={handleMoveMultipleTasks}
                 onUpdateTask={handleUpdateTask}
@@ -4115,6 +4279,7 @@ export function KanbanBoard() {
                 hiddenColumns={hiddenColumns}
                 collapsedColumns={collapsedColumns}
                 canManageTasks={canManageTasks}
+                assigneeOptions={assigneeOptions}
                 onToggleCollapsedColumn={handleToggleCollapsedColumn}
                 onMoveTask={handleMoveTask}
                 onMoveMultipleTasks={handleMoveMultipleTasks}

@@ -13,6 +13,8 @@ import {
   type WorkspaceInviteRole,
   type WorkspaceRole,
 } from "../lib/workspace-permissions"
+import { normalizeWorkspaceAssignees } from "../lib/task-board"
+import { internal } from "./_generated/api"
 
 const workspaceInviteRoleValidator = v.union(
   v.literal("guest"),
@@ -254,6 +256,49 @@ export const updateWorkspaceLabels = mutation({
   },
 })
 
+export const updateWorkspaceAssignees = mutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    assignees: v.array(
+      v.object({
+        id: v.string(),
+        name: v.string(),
+        avatar: v.string(),
+        email: v.optional(v.string()),
+        linearUserId: v.optional(v.string()),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    await requireWorkspaceAdminAccess(ctx, args.workspaceId)
+
+    const workspace = await ctx.db.get(args.workspaceId)
+    if (!workspace) throw new Error("Workspace not found")
+
+    const normalizedAssignees = normalizeWorkspaceAssignees(args.assignees)
+    const updatedAt = Date.now()
+
+    await ctx.db.patch(args.workspaceId, {
+      assignees: normalizedAssignees,
+      assigneesUpdatedAt: updatedAt,
+    })
+    await insertWorkspaceLog(ctx, {
+      workspaceId: args.workspaceId,
+      category: "members",
+      type: "assignees_saved",
+      message:
+        normalizedAssignees.length === 1
+          ? "Assignees updated: 1 assignee saved"
+          : `Assignees updated: ${normalizedAssignees.length} assignees saved`,
+      source: "manual",
+    })
+
+    await ctx.scheduler.runAfter(0, internal.linear.syncWorkspaceAssigneesToLinear, {
+      workspaceId: args.workspaceId,
+    })
+  },
+})
+
 export const updateWorkspace = mutation({
   args: {
     workspaceId: v.id("workspaces"),
@@ -476,6 +521,7 @@ export const createWorkspace = mutation({
       iconId: args.iconId,
       ownerId: identity.subject,
       taskCounter: 0,
+      assignees: [],
     })
 
     await ctx.db.insert("workspaceMembers", {

@@ -14,7 +14,14 @@ import {
   requireWorkspaceAccess,
   requireWorkspaceAdminAccess,
 } from "./permissions"
-import { type TaskPriority, type TaskStatus } from "../lib/task-board"
+import {
+  buildTaskAssignee,
+  normalizeAssigneeEmail,
+  normalizeWorkspaceAssignees,
+  type TaskPriority,
+  type TaskStatus,
+  type WorkspaceAssignee,
+} from "../lib/task-board"
 
 const LINEAR_GRAPHQL_URL = "https://api.linear.app/graphql"
 const LINEAR_MEDIAN_TITLE_PREFIX = "[MDN]"
@@ -55,6 +62,15 @@ type LinearLabel = {
   retiredAt?: string | null
 }
 
+type LinearUser = {
+  id: string
+  name: string | null
+  displayName?: string | null
+  email: string | null
+  avatarUrl: string | null
+  active?: boolean | null
+}
+
 type LinearIssue = {
   id: string
   identifier: string
@@ -66,6 +82,7 @@ type LinearIssue = {
   createdAt: string
   updatedAt: string
   labels: LinearLabel[]
+  assignee: LinearUser | null
   state: {
     id: string
     name: string
@@ -113,6 +130,15 @@ const linearIssueValidator = v.object({
       })
     )
   ),
+  assignee: v.optional(
+    v.object({
+      id: v.string(),
+      name: v.optional(v.string()),
+      displayName: v.optional(v.string()),
+      email: v.optional(v.string()),
+      avatarUrl: v.optional(v.string()),
+    })
+  ),
   state: v.optional(
     v.object({
       id: v.string(),
@@ -130,6 +156,14 @@ const linearStatusMappingsValidator = v.object({
   ready: v.optional(v.string()),
   shipped: v.optional(v.string()),
   archive: v.optional(v.string()),
+})
+
+const workspaceAssigneeValidator = v.object({
+  id: v.string(),
+  name: v.string(),
+  avatar: v.string(),
+  email: v.optional(v.string()),
+  linearUserId: v.optional(v.string()),
 })
 
 function getCanonicalTaskSourceKey(source: {
@@ -271,6 +305,29 @@ function dedupeLabelNames(labels: string[]) {
   }
 
   return deduped
+}
+
+function getLinearUserDisplayName(user: LinearUser) {
+  return (
+    normalizeOptionalText(user.displayName) ??
+    normalizeOptionalText(user.name) ??
+    normalizeOptionalText(user.email) ??
+    "Linear user"
+  )
+}
+
+function mapLinearUserToWorkspaceAssignee(user: LinearUser): WorkspaceAssignee {
+  return {
+    id: user.id,
+    name: getLinearUserDisplayName(user),
+    avatar: user.avatarUrl ?? "",
+    email: normalizeAssigneeEmail(user.email),
+    linearUserId: user.id,
+  }
+}
+
+function mapLinearUserToTaskAssignee(user: LinearUser | null | undefined) {
+  return buildTaskAssignee(user ? mapLinearUserToWorkspaceAssignee(user) : null)
 }
 
 function logLinearInfo(message: string, details?: Record<string, unknown>) {
@@ -645,6 +702,14 @@ async function fetchIssueById(apiKey: string, issueId: string) {
           archivedAt
           createdAt
           updatedAt
+          assignee {
+            id
+            name
+            displayName
+            email
+            avatarUrl
+            active
+          }
           labels(first: 100, includeArchived: true) {
             nodes {
               id
@@ -734,6 +799,14 @@ async function fetchTeamIssues(apiKey: string, teamId: string) {
                 priority
                 createdAt
                 updatedAt
+                assignee {
+                  id
+                  name
+                  displayName
+                  email
+                  avatarUrl
+                  active
+                }
                 labels(first: 100, includeArchived: true) {
                   nodes {
                     id
@@ -778,6 +851,94 @@ async function fetchTeamIssues(apiKey: string, teamId: string) {
   } while (after)
 
   return issues
+}
+
+async function fetchTeamMembers(apiKey: string, teamId: string) {
+  const members: LinearUser[] = []
+  let after: string | null = null
+
+  do {
+    const data: {
+      team: {
+        members: {
+          nodes: LinearUser[]
+          pageInfo: {
+            hasNextPage: boolean
+            endCursor: string | null
+          }
+        }
+      } | null
+    } = await linearGraphql(
+      apiKey,
+      `
+        query TeamMembers($teamId: String!, $after: String) {
+          team(id: $teamId) {
+            members(first: 100, after: $after) {
+              nodes {
+                id
+                name
+                displayName
+                email
+                avatarUrl
+                active
+              }
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
+            }
+          }
+        }
+      `,
+      {
+        teamId,
+        after,
+      }
+    )
+
+    if (!data.team) {
+      throw new Error("Linear team not found while loading members")
+    }
+
+    members.push(...data.team.members.nodes)
+    after = data.team.members.pageInfo.hasNextPage
+      ? data.team.members.pageInfo.endCursor
+      : null
+  } while (after)
+
+  return members
+}
+
+async function findLinearUserByEmail(apiKey: string, email: string) {
+  const normalizedEmail = normalizeAssigneeEmail(email)
+  if (!normalizedEmail) {
+    return null
+  }
+
+  const data = await linearGraphql<{
+    users: {
+      nodes: LinearUser[]
+    }
+  }>(
+    apiKey,
+    `
+      query FindLinearUserByEmail($email: String!) {
+        users(first: 10, filter: { email: { eq: $email } }) {
+          nodes {
+            id
+            name
+            displayName
+            email
+            avatarUrl
+            active
+          }
+        }
+      }
+    `,
+    { email: normalizedEmail }
+  )
+
+  return data.users.nodes[0] ?? null
 }
 
 async function fetchTeamLabels(apiKey: string, teamId: string) {
@@ -890,6 +1051,7 @@ async function issueCreate(
     priority: number
     stateId?: string
     labelIds?: string[]
+    assigneeId?: string | null
   }
 ) {
   const data = await linearGraphql<{
@@ -938,6 +1100,7 @@ async function issueUpdate(
     priority: number
     stateId?: string
     labelIds?: string[]
+    assigneeId?: string | null
   }
 ) {
   const data = await linearGraphql<{
@@ -976,6 +1139,67 @@ async function issueUpdate(
   }
 
   return data.issueUpdate.issue
+}
+
+async function createTeamMembership(
+  apiKey: string,
+  input: {
+    teamId: string
+    userId: string
+  }
+) {
+  const data = await linearGraphql<{
+    teamMembershipCreate: {
+      success: boolean
+    }
+  }>(
+    apiKey,
+    `
+      mutation CreateTeamMembership($input: TeamMembershipCreateInput!) {
+        teamMembershipCreate(input: $input) {
+          success
+        }
+      }
+    `,
+    { input }
+  )
+
+  if (!data.teamMembershipCreate.success) {
+    throw new Error("Failed to add the assignee to the Linear team")
+  }
+}
+
+async function createOrganizationInvite(
+  apiKey: string,
+  input: {
+    email: string
+    teamId: string
+  }
+) {
+  const data = await linearGraphql<{
+    organizationInviteCreate: {
+      success: boolean
+    }
+  }>(
+    apiKey,
+    `
+      mutation CreateOrganizationInvite($input: OrganizationInviteCreateInput!) {
+        organizationInviteCreate(input: $input) {
+          success
+        }
+      }
+    `,
+    {
+      input: {
+        email: input.email,
+        teamIds: [input.teamId],
+      },
+    }
+  )
+
+  if (!data.organizationInviteCreate.success) {
+    throw new Error("Failed to invite the assignee into Linear")
+  }
 }
 
 async function createIssueLabel(
@@ -1111,6 +1335,106 @@ async function issueDelete(apiKey: string, issueId: string) {
   }
 }
 
+function isLinearAlreadyExistsError(error: unknown) {
+  return error instanceof Error && /already|exists|duplicate/i.test(error.message)
+}
+
+async function resolveTaskAssigneeForLinear(
+  integration: {
+    apiKey: string
+    teamId: string
+    workspaceId: Id<"workspaces">
+  },
+  task: {
+    assignee?: Doc<"tasks">["assignee"]
+  },
+  teamMembers: LinearUser[]
+) {
+  const assignee = task.assignee
+  if (!assignee) {
+    return {
+      assigneeId: null,
+      syncedAssignees: [] as LinearUser[],
+    }
+  }
+
+  const teamMembersById = new Map(teamMembers.map((member) => [member.id, member]))
+  const teamMembersByEmail = new Map(
+    teamMembers
+      .map((member) => [normalizeAssigneeEmail(member.email), member] as const)
+      .filter((entry): entry is [string, LinearUser] => Boolean(entry[0]))
+  )
+
+  if (assignee.linearUserId && teamMembersById.has(assignee.linearUserId)) {
+    return {
+      assigneeId: assignee.linearUserId,
+      syncedAssignees: [teamMembersById.get(assignee.linearUserId)!],
+    }
+  }
+
+  const normalizedEmail = normalizeAssigneeEmail(assignee.email)
+  if (normalizedEmail) {
+    const existingTeamMember = teamMembersByEmail.get(normalizedEmail)
+    if (existingTeamMember) {
+      return {
+        assigneeId: existingTeamMember.id,
+        syncedAssignees: [existingTeamMember],
+      }
+    }
+
+    const existingUser = await findLinearUserByEmail(
+      integration.apiKey,
+      normalizedEmail
+    )
+    if (existingUser) {
+      if (!teamMembersById.has(existingUser.id)) {
+        try {
+          await createTeamMembership(integration.apiKey, {
+            teamId: integration.teamId,
+            userId: existingUser.id,
+          })
+        } catch (error) {
+          if (!isLinearAlreadyExistsError(error)) {
+            throw error
+          }
+        }
+      }
+
+      return {
+        assigneeId: existingUser.id,
+        syncedAssignees: [existingUser],
+      }
+    }
+
+    try {
+      await createOrganizationInvite(integration.apiKey, {
+        email: normalizedEmail,
+        teamId: integration.teamId,
+      })
+    } catch (error) {
+      if (!isLinearAlreadyExistsError(error)) {
+        throw error
+      }
+    }
+  }
+
+  const matchedByName = teamMembers.find(
+    (member) =>
+      getLinearUserDisplayName(member).toLowerCase() === assignee.name.toLowerCase()
+  )
+  if (matchedByName) {
+    return {
+      assigneeId: matchedByName.id,
+      syncedAssignees: [matchedByName],
+    }
+  }
+
+  return {
+    assigneeId: null,
+    syncedAssignees: [] as LinearUser[],
+  }
+}
+
 function buildLinearWebhookUrl(webhookToken: string) {
   const baseUrl =
     process.env.CONVEX_SITE_URL ?? process.env.NEXT_PUBLIC_CONVEX_SITE_URL
@@ -1134,6 +1458,7 @@ async function syncTaskToLinear(
   link: Doc<"linearTaskLinks"> | null,
   workflowStates: LinearWorkflowState[],
   workspaceLabels: { name: string; color: string }[] | undefined,
+  teamMembers: LinearUser[],
   teamLabelsByKey?: Map<string, LinearLabel>
 ) {
   const stateId = pickWorkflowStateId(
@@ -1216,6 +1541,21 @@ async function syncTaskToLinear(
     priority: mapTaskPriorityToLinear(task.priority),
     stateId,
     labelIds,
+    assigneeId: null as string | null,
+  }
+
+  const { assigneeId, syncedAssignees } = await resolveTaskAssigneeForLinear(
+    integration,
+    task,
+    teamMembers
+  )
+  input.assigneeId = assigneeId
+
+  if (syncedAssignees.length > 0) {
+    await ctx.runMutation(internal.linear.mergeWorkspaceAssigneesFromLinear, {
+      workspaceId: integration.workspaceId,
+      assignees: syncedAssignees.map(mapLinearUserToWorkspaceAssignee),
+    })
   }
 
   if (link) {
@@ -1688,6 +2028,47 @@ export const getWorkspaceLabelConfig = internalQuery({
   },
 })
 
+export const getWorkspaceAssigneeConfig = internalQuery({
+  args: {
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args) => {
+    const workspace = await ctx.db.get(args.workspaceId)
+    return workspace?.assignees
+  },
+})
+
+export const mergeWorkspaceAssigneesFromLinear = internalMutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    assignees: v.array(workspaceAssigneeValidator),
+  },
+  handler: async (ctx, args) => {
+    const workspace = await ctx.db.get(args.workspaceId)
+    if (!workspace) {
+      throw new Error("Workspace not found")
+    }
+
+    const mergedAssignees = normalizeWorkspaceAssignees([
+      ...(workspace.assignees ?? []),
+      ...args.assignees,
+    ])
+
+    const previousSerialized = JSON.stringify(workspace.assignees ?? [])
+    const nextSerialized = JSON.stringify(mergedAssignees)
+    if (previousSerialized === nextSerialized) {
+      return mergedAssignees
+    }
+
+    await ctx.db.patch(args.workspaceId, {
+      assignees: mergedAssignees,
+      assigneesUpdatedAt: Date.now(),
+    })
+
+    return mergedAssignees
+  },
+})
+
 export const listUnsyncedWorkspaceTasks = internalQuery({
   args: {
     workspaceId: v.id("workspaces"),
@@ -1750,6 +2131,15 @@ export const upsertTaskFromLinearIssue = internalMutation({
         name: label.name,
         color: label.color,
       })),
+      assignee: args.issue.assignee
+        ? {
+            id: args.issue.assignee.id,
+            name: args.issue.assignee.name ?? null,
+            displayName: args.issue.assignee.displayName ?? null,
+            email: args.issue.assignee.email ?? null,
+            avatarUrl: args.issue.assignee.avatarUrl ?? null,
+          }
+        : null,
       state: args.issue.state
         ? {
             id: args.issue.state.id,
@@ -1798,6 +2188,14 @@ export const upsertTaskFromLinearIssue = internalMutation({
       })
     }
 
+    const issueAssignee = mapLinearUserToTaskAssignee(issue.assignee)
+    if (issue.assignee) {
+      await ctx.runMutation(internal.linear.mergeWorkspaceAssigneesFromLinear, {
+        workspaceId: args.workspaceId,
+        assignees: [mapLinearUserToWorkspaceAssignee(issue.assignee)],
+      })
+    }
+
     const existingLink = await ctx.db
       .query("linearTaskLinks")
       .withIndex("by_linear_issue", (q) => q.eq("linearIssueId", issue.id))
@@ -1830,6 +2228,7 @@ export const upsertTaskFromLinearIssue = internalMutation({
           description: nextDescription,
           priority: taskPriority,
           labels: nextLabels,
+          assignee: issueAssignee,
           sourceCreatedAt: Number.isFinite(linearCreatedAt)
             ? linearCreatedAt
             : undefined,
@@ -1900,6 +2299,7 @@ export const upsertTaskFromLinearIssue = internalMutation({
           description: nextDescription,
           priority: taskPriority,
           labels: nextLabels,
+          assignee: issueAssignee,
           sourceCreatedAt: Number.isFinite(linearCreatedAt)
             ? linearCreatedAt
             : undefined,
@@ -1969,10 +2369,7 @@ export const upsertTaskFromLinearIssue = internalMutation({
       updatedAt: Number.isFinite(linearUpdatedAt)
         ? linearUpdatedAt
         : Date.now(),
-      assignee: {
-        name: "Abdul",
-        avatar: "",
-      },
+      assignee: issueAssignee,
       source: nextSource,
       createdAtLabel: formatCreatedAtLabel(issue.createdAt),
       attachments: undefined,
@@ -2145,12 +2542,18 @@ export const connectWorkspaceLinearIntegration = action({
       }
     )
 
-    const syncResult = await ctx.runAction(
-      internal.linear.performWorkspaceLinearSync,
+    const assigneeSyncResult = await ctx.runAction(
+      internal.linear.syncWorkspaceAssigneesToLinear,
       {
         workspaceId: args.workspaceId,
       }
     )
+    const syncResult =
+      "syncResult" in assigneeSyncResult
+        ? assigneeSyncResult.syncResult
+        : await ctx.runAction(internal.linear.performWorkspaceLinearSync, {
+            workspaceId: args.workspaceId,
+          })
 
     await ctx.runMutation(internal.logs.recordWorkspaceLog, {
       workspaceId: args.workspaceId,
@@ -2280,6 +2683,12 @@ export const performWorkspaceLinearSync = internalAction({
       throw new Error("No Linear integration found for this workspace")
     }
 
+    const teamMembers = await fetchTeamMembers(integration.apiKey, integration.teamId)
+    await ctx.runMutation(internal.linear.mergeWorkspaceAssigneesFromLinear, {
+      workspaceId: args.workspaceId,
+      assignees: teamMembers.map(mapLinearUserToWorkspaceAssignee),
+    })
+
     const teamIssues = await fetchTeamIssues(
       integration.apiKey,
       integration.teamId
@@ -2303,6 +2712,15 @@ export const performWorkspaceLinearSync = internalAction({
             name: label.name,
             color: label.color,
           })),
+          assignee: issue.assignee
+            ? {
+                id: issue.assignee.id,
+                name: issue.assignee.name ?? undefined,
+                displayName: issue.assignee.displayName ?? undefined,
+                email: issue.assignee.email ?? undefined,
+                avatarUrl: issue.assignee.avatarUrl ?? undefined,
+              }
+            : undefined,
           state: issue.state
             ? {
                 id: issue.state.id,
@@ -2332,7 +2750,7 @@ export const performWorkspaceLinearSync = internalAction({
       }
     )
     const shouldLoadTeamLabels = taskSyncStates.some(
-      (item) => (item.task.labels ?? []).length > 0
+      (item: (typeof taskSyncStates)[number]) => (item.task.labels ?? []).length > 0
     )
     const teamLabelsByKey = shouldLoadTeamLabels
       ? new Map(
@@ -2370,6 +2788,7 @@ export const performWorkspaceLinearSync = internalAction({
         item.link,
         workflowStates,
         workspaceLabelConfig ?? undefined,
+        teamMembers,
         teamLabelsByKey
       )
       pushedCount += 1
@@ -2407,6 +2826,85 @@ export const syncWorkspaceLinearIntegration = action({
   },
 })
 
+export const syncWorkspaceAssigneesToLinear = internalAction({
+  args: {
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (
+    ctx,
+    args
+  ): Promise<
+    | { skipped: true }
+    | {
+        skipped: false
+        syncedCount: number
+        syncResult: {
+          importedCount: number
+          pushedCount: number
+        }
+      }
+  > => {
+    const integration = await ctx.runQuery(
+      internal.linear.getLinearIntegrationForWorkspace,
+      {
+        workspaceId: args.workspaceId,
+      }
+    )
+
+    if (!integration) {
+      return { skipped: true }
+    }
+
+    const workspaceAssignees =
+      (await ctx.runQuery(internal.linear.getWorkspaceAssigneeConfig, {
+        workspaceId: args.workspaceId,
+      })) ?? []
+
+    let teamMembers = await fetchTeamMembers(integration.apiKey, integration.teamId)
+    await ctx.runMutation(internal.linear.mergeWorkspaceAssigneesFromLinear, {
+      workspaceId: args.workspaceId,
+      assignees: teamMembers.map(mapLinearUserToWorkspaceAssignee),
+    })
+
+    for (const assignee of workspaceAssignees) {
+      const result = await resolveTaskAssigneeForLinear(
+        integration,
+        { assignee },
+        teamMembers
+      )
+
+      if (result.syncedAssignees.length > 0) {
+        const nextMembers = [...teamMembers]
+        for (const syncedAssignee of result.syncedAssignees) {
+          if (!nextMembers.some((member) => member.id === syncedAssignee.id)) {
+            nextMembers.push(syncedAssignee)
+          }
+        }
+        teamMembers = nextMembers
+      }
+    }
+
+    const refreshedMembers = await fetchTeamMembers(
+      integration.apiKey,
+      integration.teamId
+    )
+    await ctx.runMutation(internal.linear.mergeWorkspaceAssigneesFromLinear, {
+      workspaceId: args.workspaceId,
+      assignees: refreshedMembers.map(mapLinearUserToWorkspaceAssignee),
+    })
+
+    const syncResult = await ctx.runAction(internal.linear.performWorkspaceLinearSync, {
+      workspaceId: args.workspaceId,
+    })
+
+    return {
+      skipped: false,
+      syncedCount: refreshedMembers.length,
+      syncResult,
+    }
+  },
+})
+
 export const syncTaskToLinearIssue = internalAction({
   args: {
     taskId: v.id("tasks"),
@@ -2434,6 +2932,14 @@ export const syncTaskToLinearIssue = internalAction({
       snapshot.integration.apiKey,
       snapshot.integration.teamId
     )
+    const teamMembers = await fetchTeamMembers(
+      snapshot.integration.apiKey,
+      snapshot.integration.teamId
+    )
+    await ctx.runMutation(internal.linear.mergeWorkspaceAssigneesFromLinear, {
+      workspaceId: snapshot.task.workspaceId,
+      assignees: teamMembers.map(mapLinearUserToWorkspaceAssignee),
+    })
     const workspaceLabelConfig = await ctx.runQuery(
       internal.linear.getWorkspaceLabelConfig,
       {
@@ -2448,6 +2954,8 @@ export const syncTaskToLinearIssue = internalAction({
       snapshot.link,
       workflowStates,
       workspaceLabelConfig ?? undefined
+      ,
+      teamMembers
     )
 
     await ctx.runMutation(internal.linear.markLinearIntegrationSyncedAt, {
@@ -2533,6 +3041,15 @@ export const syncLinearIssueFromWebhook = internalAction({
           name: label.name,
           color: label.color,
         })),
+        assignee: issue.assignee
+          ? {
+              id: issue.assignee.id,
+              name: issue.assignee.name ?? undefined,
+              displayName: issue.assignee.displayName ?? undefined,
+              email: issue.assignee.email ?? undefined,
+              avatarUrl: issue.assignee.avatarUrl ?? undefined,
+            }
+          : undefined,
         state: issue.state
           ? {
               id: issue.state.id,

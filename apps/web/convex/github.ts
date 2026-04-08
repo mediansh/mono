@@ -15,7 +15,11 @@ import {
   requireWorkspaceAccess,
   requireWorkspaceAdminAccess,
 } from "./permissions"
-import { STATUS_ORDER, type TaskStatus } from "../lib/task-board"
+import {
+  buildTaskAssignee,
+  STATUS_ORDER,
+  type TaskStatus,
+} from "../lib/task-board"
 
 const GITHUB_API_URL = "https://api.github.com"
 const GITHUB_INSTALL_STATE_TTL_MS = 1000 * 60 * 15
@@ -1726,10 +1730,7 @@ export const upsertTaskFromGitHubIssue = internalMutation({
       project: workspace.name,
       sourceCreatedAt: githubCreatedAt,
       updatedAt: githubUpdatedAt,
-      assignee: {
-        name: "Abdul",
-        avatar: "",
-      },
+      assignee: buildTaskAssignee(null),
       source: nextSource,
       createdAtLabel: formatCreatedAtLabel(issue.createdAt),
       attachments: undefined,

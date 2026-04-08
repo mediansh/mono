@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import { createPortal } from "react-dom"
 import { AnimatePresence, motion } from "motion/react"
 import { useMutation } from "convex/react"
-import { useUser } from "@clerk/nextjs"
 import { toast } from "sonner"
 import {
   X,
@@ -22,7 +21,6 @@ import {
   Paperclip,
   PencilSimple,
   Sparkle,
-  ArrowRight,
   NotePencil,
   ListBullets,
 } from "@phosphor-icons/react"
@@ -47,6 +45,7 @@ import {
   getTaskNumber,
   DEFAULT_WORKSPACE_LABELS,
   normalizeTaskOrdersByStatus,
+  type TaskAssignee,
   type TaskLabel as Label,
   type TaskPriority as Priority,
   type TaskStatus as Status,
@@ -63,6 +62,7 @@ import {
   TaskAttachmentGallery,
   type TaskAttachment,
 } from "@/components/task-attachments"
+import { AssigneeSelector } from "@/components/assignee-selector"
 
 const STATUS_OPTIONS: { id: Status; label: string }[] = [
   { id: "backlog", label: "Backlog" },
@@ -128,6 +128,7 @@ interface NewTaskModalProps {
     status: Status
     priority: Priority
     labels: Label[]
+    assignee?: TaskAssignee
     attachments?: TaskAttachment[]
     updatedAt?: number
   }
@@ -140,6 +141,7 @@ type TaskDraftPayload = {
   status: Status
   priority: Priority
   labels: Label[]
+  assignee?: TaskAssignee | null
   attachments?: (TaskAttachment & { previewUrl?: string })[]
 }
 
@@ -158,7 +160,6 @@ export function NewTaskModal({
   draft,
   onDraftSaved,
 }: NewTaskModalProps) {
-  const { user } = useUser()
   const { currentWorkspace } = useWorkspace()
   const canManageTasks = hasTaskWritePermission(currentWorkspace?.role)
   const [title, setTitle] = useState("")
@@ -166,6 +167,7 @@ export function NewTaskModal({
   const [status, setStatus] = useState<Status>(draft?.status ?? defaultStatus)
   const [priority, setPriority] = useState<Priority>("none")
   const [labels, setLabels] = useState<Label[]>([])
+  const [assignee, setAssignee] = useState<TaskAssignee | null>(null)
   const [createMore, setCreateMore] = useState(false)
   const [error, setError] = useState("")
   const [attachments, setAttachments] = useState<
@@ -202,6 +204,7 @@ export function NewTaskModal({
         setStatus(draft.status)
         setPriority(draft.priority)
         setLabels(draft.labels)
+        setAssignee(draft.assignee ?? null)
         setAttachments(
           (draft.attachments ?? []).map((a) => ({
             ...a,
@@ -214,6 +217,7 @@ export function NewTaskModal({
 
     draftRevisionRef.current = null
     setStatus(defaultStatus)
+    setAssignee(null)
   }, [defaultStatus, open, draft])
 
   const labelOptions = useMemo(() => {
@@ -226,6 +230,11 @@ export function NewTaskModal({
       color: l.color,
     }))
   }, [currentWorkspace?.labels])
+
+  const assigneeOptions = useMemo(
+    () => currentWorkspace?.assignees ?? [],
+    [currentWorkspace?.assignees]
+  )
 
   const titleRef = useRef<HTMLTextAreaElement>(null)
   const descriptionRef = useRef<HTMLTextAreaElement>(null)
@@ -415,6 +424,7 @@ export function NewTaskModal({
         status: payload.status,
         priority: payload.priority,
         labels: payload.labels,
+        ...(payload.assignee ? { assignee: payload.assignee } : {}),
       }
 
       if (!attachmentsWithMetadata?.length) {
@@ -480,10 +490,7 @@ export function NewTaskModal({
         order: existingTasks.filter((task) => task.status === payload.status)
           .length,
         project: currentWorkspace.name,
-        assignee: {
-          name: user?.fullName ?? user?.firstName ?? "You",
-          avatar: user?.imageUrl ?? "",
-        },
+        assignee: payload.assignee ?? undefined,
         attachments: payload.attachments?.length
           ? (payload.attachments as any)
           : undefined,
@@ -522,13 +529,7 @@ export function NewTaskModal({
         throw new Error("Task creation failed. Try again.")
       }
     },
-    [
-      createTaskWithFallback,
-      currentWorkspace,
-      user?.firstName,
-      user?.fullName,
-      user?.imageUrl,
-    ]
+    [createTaskWithFallback, currentWorkspace]
   )
 
   const publishDraftOptimistically = useCallback(
@@ -562,10 +563,7 @@ export function NewTaskModal({
         order: existingTasks.filter((task) => task.status === payload.status)
           .length,
         project: currentWorkspace.name,
-        assignee: {
-          name: user?.fullName ?? user?.firstName ?? "You",
-          avatar: user?.imageUrl ?? "",
-        },
+        assignee: payload.assignee ?? undefined,
         attachments: payload.attachments?.length
           ? (payload.attachments as any)
           : undefined,
@@ -588,6 +586,7 @@ export function NewTaskModal({
           status: payload.status === "requests" ? "backlog" : payload.status,
           priority: payload.priority,
           labels: payload.labels,
+          assignee: payload.assignee ?? null,
           attachments:
             draftAttachments.length > 0 ? (draftAttachments as any) : undefined,
         })) as Doc<"tasks">
@@ -614,15 +613,7 @@ export function NewTaskModal({
         throw new Error("Failed to publish draft.")
       }
     },
-    [
-      attachments,
-      currentWorkspace,
-      draft,
-      publishDraftWithUpdatesMutation,
-      user?.firstName,
-      user?.fullName,
-      user?.imageUrl,
-    ]
+    [attachments, currentWorkspace, draft, publishDraftWithUpdatesMutation]
   )
 
   async function handleCreate() {
@@ -650,6 +641,7 @@ export function NewTaskModal({
         status,
         priority,
         labels,
+        assignee,
         attachments,
       }
       preserveAttachmentPreviews(payload.attachments)
@@ -674,6 +666,7 @@ export function NewTaskModal({
       status,
       priority,
       labels,
+      assignee,
       attachments,
     }
 
@@ -735,6 +728,7 @@ export function NewTaskModal({
           status: status === "requests" ? "backlog" : status,
           priority,
           labels,
+          assignee: assignee ?? null,
           attachments:
             draftAttachments.length > 0 ? (draftAttachments as any) : undefined,
         })
@@ -747,6 +741,7 @@ export function NewTaskModal({
           status: status === "requests" ? "backlog" : status,
           priority,
           labels,
+          assignee: assignee ?? null,
           attachments:
             draftAttachments.length > 0 ? (draftAttachments as any) : undefined,
         })
@@ -871,6 +866,7 @@ export function NewTaskModal({
     setStatus(options?.nextStatus ?? defaultStatus)
     setPriority("none")
     setLabels([])
+    setAssignee(null)
     setAttachments([])
     setAiPrompt("")
     if (!options?.keepOpen) {
@@ -1161,6 +1157,13 @@ export function NewTaskModal({
                         {/* Actions row */}
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
+                            <AssigneeSelector
+                              assignees={assigneeOptions}
+                              value={assignee}
+                              onChange={setAssignee}
+                              placeholder="None"
+                              className="h-7"
+                            />
                             <input
                               ref={fileInputRef}
                               type="file"
