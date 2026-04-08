@@ -1163,17 +1163,36 @@ export const saveGitHubTaskLink = internalMutation({
       await ctx.db.delete(existingByIssue._id)
     }
 
+    let linkId
     if (existingByTask) {
       await ctx.db.patch(existingByTask._id, payload)
-      return existingByTask._id
-    }
-
-    if (existingByIssue) {
+      linkId = existingByTask._id
+    } else if (existingByIssue) {
       await ctx.db.patch(existingByIssue._id, payload)
-      return existingByIssue._id
+      linkId = existingByIssue._id
+    } else {
+      linkId = await ctx.db.insert("githubTaskLinks", payload)
     }
 
-    return await ctx.db.insert("githubTaskLinks", payload)
+    // Denormalize: keep task.sources in sync so listByWorkspace
+    // doesn't need to read the githubTaskLinks table at all.
+    const task = await ctx.db.get(args.taskId)
+    if (task) {
+      const canonicalSource = {
+        platform: "github" as const,
+        url: args.githubIssueUrl,
+        author: `${args.githubRepositoryFullName}#${args.githubIssueNumber}`,
+      }
+      const existing = task.sources ?? (task.source ? [task.source] : [])
+      const filtered = existing.filter(
+        (s) =>
+          !(s.platform === "github" && s.url === canonicalSource.url)
+      )
+      const next = [...filtered, canonicalSource]
+      await ctx.db.patch(task._id, { sources: next.length > 0 ? next : undefined })
+    }
+
+    return linkId
   },
 })
 

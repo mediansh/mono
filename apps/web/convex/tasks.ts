@@ -721,80 +721,24 @@ export const listByWorkspace = query({
     await requireWorkspaceAccess(ctx, args.workspaceId)
     const tasks = await getWorkspaceTasks(ctx, args.workspaceId)
 
-    const [linearLinks, githubLinks] = await Promise.all([
-      ctx.db
-        .query("linearTaskLinks")
-        .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
-        .collect(),
-      ctx.db
-        .query("githubTaskLinks")
-        .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
-        .collect(),
-    ])
-
-    const linearByTask = new Map(linearLinks.map((l) => [l.taskId, l]))
-    const githubByTask = new Map(githubLinks.map((l) => [l.taskId, l]))
+    // Source data is denormalized onto task.sources at write time by
+    // saveLinearTaskLink, saveGitHubTaskLink, upsertTaskFromLinearIssue,
+    // and upsertTaskFromGitHubIssue — so we no longer need to read the
+    // linearTaskLinks / githubTaskLinks tables here.  This eliminates two
+    // full table scans AND removes the reactive subscription to those
+    // tables, dramatically reducing database bandwidth.
 
     return tasks.map((task) => {
-      let base =
+      const sources =
         dedupeTaskSources(
           task.sources?.length
             ? [...task.sources]
             : task.source
               ? [task.source]
               : []
-        ) ?? []
-
-      const linearLink = linearByTask.get(task._id)
-      if (linearLink) {
-        const canonicalLinearUrl = linearLink.linearIssueUrl?.trim()
-        const canonicalLinearSource = {
-          platform: "linear" as const,
-          url: canonicalLinearUrl ?? "",
-          author: linearLink.linearIssueIdentifier,
-        }
-
-        if (canonicalLinearUrl) {
-          base = base.filter(
-            (source) =>
-              !(
-                source.platform === "linear" &&
-                source.url.trim() === canonicalLinearUrl
-              )
-          )
-          base.push(canonicalLinearSource)
-        } else if (
-          !base.some(
-            (source) =>
-              source.platform === "linear" &&
-              source.author === linearLink.linearIssueIdentifier
-          )
-        ) {
-          base.push(canonicalLinearSource)
-        }
-      }
-
-      const githubLink = githubByTask.get(task._id)
-      if (
-        githubLink &&
-        !base.some(
-          (s) =>
-            s.platform === "github" &&
-            s.url === githubLink.githubIssueUrl &&
-            s.author ===
-              `${githubLink.githubRepositoryFullName}#${githubLink.githubIssueNumber}`
         )
-      ) {
-        base.push({
-          platform: "github" as const,
-          url: githubLink.githubIssueUrl,
-          author: `${githubLink.githubRepositoryFullName}#${githubLink.githubIssueNumber}`,
-        })
-      }
 
-      const sources = dedupeTaskSources(base)
       const hasLinearSource = Boolean(
-        linearLink ||
         sources?.some((source) => source.platform === "linear") ||
         task.source?.platform === "linear"
       )

@@ -1098,17 +1098,34 @@ export const saveLinearTaskLink = internalMutation({
       await ctx.db.delete(existingByIssue._id)
     }
 
+    let linkId
     if (existingByTask) {
       await ctx.db.patch(existingByTask._id, payload)
-      return existingByTask._id
-    }
-
-    if (existingByIssue) {
+      linkId = existingByTask._id
+    } else if (existingByIssue) {
       await ctx.db.patch(existingByIssue._id, payload)
-      return existingByIssue._id
+      linkId = existingByIssue._id
+    } else {
+      linkId = await ctx.db.insert("linearTaskLinks", payload)
     }
 
-    return await ctx.db.insert("linearTaskLinks", payload)
+    // Denormalize: keep task.sources in sync so listByWorkspace
+    // doesn't need to read the linearTaskLinks table at all.
+    const task = await ctx.db.get(args.taskId)
+    if (task) {
+      const canonicalSource = {
+        platform: "linear" as const,
+        url: args.linearIssueUrl?.trim() ?? "",
+        author: args.linearIssueIdentifier,
+      }
+      const sources = mergeTaskSources(
+        task.sources ?? (task.source ? [task.source] : []),
+        canonicalSource
+      )
+      await ctx.db.patch(task._id, { sources })
+    }
+
+    return linkId
   },
 })
 
