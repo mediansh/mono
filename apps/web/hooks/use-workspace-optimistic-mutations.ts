@@ -196,6 +196,7 @@ export function useWorkspaceOptimisticMutations() {
       id: string
       name: string
       avatar: string
+      role: "owner" | "admin" | "member" | "guest"
       email?: string
       linearUserId?: string
     }[]

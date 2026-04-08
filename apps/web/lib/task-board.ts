@@ -22,6 +22,13 @@ export const TASK_LABELS = [
   "improvement",
 ] as const
 
+export const ASSIGNEE_ROLES = [
+  "owner",
+  "admin",
+  "member",
+  "guest",
+] as const
+
 export const DEFAULT_WORKSPACE_LABELS: { name: string; color: string }[] = [
   { name: "feature", color: "#a855f7" },
   { name: "bug", color: "#ef4444" },
@@ -41,6 +48,7 @@ export type TaskStatus = (typeof TASK_STATUSES)[number]
 export type TaskPriority = (typeof TASK_PRIORITIES)[number]
 export type TaskLabel = string
 export type RequestSource = (typeof REQUEST_SOURCES)[number]
+export type AssigneeRole = (typeof ASSIGNEE_ROLES)[number]
 
 export type TaskSource = {
   platform: RequestSource
@@ -52,6 +60,7 @@ export type WorkspaceAssignee = {
   id: string
   name: string
   avatar: string
+  role: AssigneeRole
   email?: string
   linearUserId?: string
 }
@@ -66,22 +75,84 @@ export function normalizeAssigneeName(value: string) {
   return normalizeWhitespace(value)
 }
 
+export function normalizeAssigneeRole(
+  value?: AssigneeRole | string | null
+): AssigneeRole {
+  if (value === "owner" || value === "admin" || value === "guest") {
+    return value
+  }
+
+  return "member"
+}
+
 export function normalizeAssigneeEmail(value?: string | null) {
   const normalized = value?.trim().toLowerCase()
   return normalized ? normalized : undefined
 }
 
-function getAssigneeIdentityKey(assignee: Partial<WorkspaceAssignee>) {
+function getAssigneeIdentityKeys(assignee: Partial<WorkspaceAssignee>) {
+  const keys: string[] = []
+
   if (assignee.linearUserId?.trim()) {
-    return `linear:${assignee.linearUserId.trim()}`
+    keys.push(`linear:${assignee.linearUserId.trim()}`)
   }
 
   const normalizedEmail = normalizeAssigneeEmail(assignee.email)
   if (normalizedEmail) {
-    return `email:${normalizedEmail}`
+    keys.push(`email:${normalizedEmail}`)
   }
 
-  return `name:${normalizeAssigneeName(assignee.name ?? "").toLowerCase()}`
+  const normalizedId = assignee.id?.trim()
+  if (normalizedId) {
+    keys.push(`id:${normalizedId}`)
+  }
+
+  const normalizedName = normalizeAssigneeName(assignee.name ?? "").toLowerCase()
+  if (normalizedName) {
+    keys.push(`name:${normalizedName}`)
+  }
+
+  return keys
+}
+
+export function doAssigneesMatch(
+  left?: Partial<WorkspaceAssignee> | null,
+  right?: Partial<WorkspaceAssignee> | null
+) {
+  if (!left || !right) {
+    return false
+  }
+
+  const leftKeys = new Set(getAssigneeIdentityKeys(left))
+  if (leftKeys.size === 0) {
+    return false
+  }
+
+  return getAssigneeIdentityKeys(right).some((key) => leftKeys.has(key))
+}
+
+export function findMatchingAssignee<T extends Partial<WorkspaceAssignee>>(
+  assignee: Partial<WorkspaceAssignee> | null | undefined,
+  assignees: T[] | undefined
+) {
+  if (!assignee || !assignees?.length) {
+    return undefined
+  }
+
+  return assignees.find((candidate) => doAssigneesMatch(assignee, candidate))
+}
+
+export function formatAssigneeRole(role?: AssigneeRole | string | null) {
+  switch (normalizeAssigneeRole(role)) {
+    case "owner":
+      return "Owner"
+    case "admin":
+      return "Admin"
+    case "guest":
+      return "Guest"
+    case "member":
+      return "Member"
+  }
 }
 
 export function buildTaskAssignee(
@@ -107,6 +178,7 @@ export function buildTaskAssignee(
       name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
     name,
     avatar: assignee.avatar?.trim() ?? "",
+    role: normalizeAssigneeRole(assignee.role),
     email,
     linearUserId,
   }
@@ -119,7 +191,7 @@ export function normalizeWorkspaceAssignees(
     return []
   }
 
-  const deduped = new Map<string, WorkspaceAssignee>()
+  const deduped: WorkspaceAssignee[] = []
 
   for (const assignee of assignees) {
     const normalized = buildTaskAssignee(assignee)
@@ -127,22 +199,41 @@ export function normalizeWorkspaceAssignees(
       continue
     }
 
-    const existing = deduped.get(getAssigneeIdentityKey(normalized))
-    deduped.set(getAssigneeIdentityKey(normalized), {
+    const matchIndex = deduped.findIndex((existing) =>
+      doAssigneesMatch(existing, normalized)
+    )
+
+    if (matchIndex === -1) {
+      deduped.push({
+        ...normalized,
+        id: normalized.id || crypto.randomUUID(),
+      })
+      continue
+    }
+
+    const existing = deduped[matchIndex]!
+    deduped[matchIndex] = {
       ...existing,
       ...normalized,
-      id: normalized.id || existing?.id || crypto.randomUUID(),
-      avatar: normalized.avatar || existing?.avatar || "",
-      email: normalized.email ?? existing?.email,
-      linearUserId: normalized.linearUserId ?? existing?.linearUserId,
-    })
+      id: existing.id || normalized.id || crypto.randomUUID(),
+      avatar: normalized.avatar || existing.avatar || "",
+      role: normalizeAssigneeRole(normalized.role ?? existing.role),
+      email: normalized.email ?? existing.email,
+      linearUserId: normalized.linearUserId ?? existing.linearUserId,
+    }
   }
 
-  return Array.from(deduped.values()).sort((a, b) => {
+  return deduped.sort((a, b) => {
     const aName = a.name.toLowerCase()
     const bName = b.name.toLowerCase()
     if (aName !== bName) {
       return aName.localeCompare(bName)
+    }
+
+    const aRole = formatAssigneeRole(a.role)
+    const bRole = formatAssigneeRole(b.role)
+    if (aRole !== bRole) {
+      return aRole.localeCompare(bRole)
     }
 
     return (a.email ?? "").localeCompare(b.email ?? "")

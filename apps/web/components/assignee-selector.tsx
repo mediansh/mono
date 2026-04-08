@@ -9,7 +9,7 @@ import {
 } from "@workspace/ui/components/dropdown-menu"
 import { cn } from "@workspace/ui/lib/utils"
 import { AssigneeAvatar } from "@/components/assignee-avatar"
-import type { TaskAssignee } from "@/lib/task-board"
+import { formatAssigneeRole, type TaskAssignee } from "@/lib/task-board"
 
 type AssigneeSelectorProps = {
   assignees: TaskAssignee[]
@@ -80,9 +80,13 @@ export function AssigneeSelector({
                   <div className="truncate">{assignee.name}</div>
                   {assignee.email ? (
                     <div className="truncate text-[11px] text-muted-foreground">
-                      {assignee.email}
+                      {formatAssigneeRole(assignee.role)} · {assignee.email}
                     </div>
-                  ) : null}
+                  ) : (
+                    <div className="truncate text-[11px] text-muted-foreground">
+                      {formatAssigneeRole(assignee.role)}
+                    </div>
+                  )}
                 </div>
                 {isSelected ? (
                   <Check size={14} weight="bold" className="text-primary" />

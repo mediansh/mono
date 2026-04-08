@@ -1,5 +1,5 @@
 import { v } from "convex/values"
-import { mutation, query } from "./_generated/server"
+import { internalMutation, mutation, query } from "./_generated/server"
 import type { Doc } from "./_generated/dataModel"
 import {
   getIdentityProfile,
@@ -13,7 +13,11 @@ import {
   type WorkspaceInviteRole,
   type WorkspaceRole,
 } from "../lib/workspace-permissions"
-import { normalizeWorkspaceAssignees } from "../lib/task-board"
+import {
+  buildTaskAssignee,
+  findMatchingAssignee,
+  normalizeWorkspaceAssignees,
+} from "../lib/task-board"
 import { internal } from "./_generated/api"
 
 const workspaceInviteRoleValidator = v.union(
@@ -226,6 +230,98 @@ export const generateUploadUrl = mutation({
   },
 })
 
+export const applyWorkspaceAssigneeDirectory = internalMutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    assignees: v.array(
+      v.object({
+        id: v.string(),
+        name: v.string(),
+        avatar: v.string(),
+        role: v.union(
+          v.literal("owner"),
+          v.literal("admin"),
+          v.literal("member"),
+          v.literal("guest")
+        ),
+        email: v.optional(v.string()),
+        linearUserId: v.optional(v.string()),
+      })
+    ),
+    mode: v.union(v.literal("replace"), v.literal("merge")),
+  },
+  handler: async (ctx, args) => {
+    const workspace = await ctx.db.get(args.workspaceId)
+    if (!workspace) {
+      throw new Error("Workspace not found")
+    }
+
+    const nextAssignees = normalizeWorkspaceAssignees(
+      args.mode === "merge"
+        ? [...(workspace.assignees ?? []), ...args.assignees]
+        : args.assignees
+    )
+
+    if (
+      JSON.stringify(workspace.assignees ?? []) !== JSON.stringify(nextAssignees)
+    ) {
+      await ctx.db.patch(args.workspaceId, {
+        assignees: nextAssignees,
+        assigneesUpdatedAt: Date.now(),
+      })
+    }
+
+    const [tasks, drafts] = await Promise.all([
+      ctx.db
+        .query("tasks")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+        .collect(),
+      ctx.db
+        .query("drafts")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+        .collect(),
+    ])
+
+    for (const task of tasks) {
+      if (!task.assignee) {
+        continue
+      }
+
+      const matchedAssignee = findMatchingAssignee(task.assignee, nextAssignees)
+      const nextAssignee = matchedAssignee
+        ? buildTaskAssignee(matchedAssignee)
+        : undefined
+
+      if (JSON.stringify(task.assignee) !== JSON.stringify(nextAssignee)) {
+        await ctx.db.patch(task._id, {
+          assignee: nextAssignee,
+          updatedAt: Date.now(),
+        })
+      }
+    }
+
+    for (const draft of drafts) {
+      if (!draft.assignee) {
+        continue
+      }
+
+      const matchedAssignee = findMatchingAssignee(draft.assignee, nextAssignees)
+      const nextAssignee = matchedAssignee
+        ? buildTaskAssignee(matchedAssignee)
+        : undefined
+
+      if (JSON.stringify(draft.assignee) !== JSON.stringify(nextAssignee)) {
+        await ctx.db.patch(draft._id, {
+          assignee: nextAssignee,
+          updatedAt: Date.now(),
+        })
+      }
+    }
+
+    return nextAssignees
+  },
+})
+
 export const updateWorkspaceLabels = mutation({
   args: {
     workspaceId: v.id("workspaces"),
@@ -264,6 +360,12 @@ export const updateWorkspaceAssignees = mutation({
         id: v.string(),
         name: v.string(),
         avatar: v.string(),
+        role: v.union(
+          v.literal("owner"),
+          v.literal("admin"),
+          v.literal("member"),
+          v.literal("guest")
+        ),
         email: v.optional(v.string()),
         linearUserId: v.optional(v.string()),
       })
@@ -275,13 +377,14 @@ export const updateWorkspaceAssignees = mutation({
     const workspace = await ctx.db.get(args.workspaceId)
     if (!workspace) throw new Error("Workspace not found")
 
-    const normalizedAssignees = normalizeWorkspaceAssignees(args.assignees)
-    const updatedAt = Date.now()
-
-    await ctx.db.patch(args.workspaceId, {
-      assignees: normalizedAssignees,
-      assigneesUpdatedAt: updatedAt,
-    })
+    const normalizedAssignees = await ctx.runMutation(
+      internal.workspaces.applyWorkspaceAssigneeDirectory,
+      {
+        workspaceId: args.workspaceId,
+        assignees: args.assignees,
+        mode: "replace",
+      }
+    )
     await insertWorkspaceLog(ctx, {
       workspaceId: args.workspaceId,
       category: "members",

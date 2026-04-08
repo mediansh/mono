@@ -39,6 +39,12 @@ const draftAssigneeValidator = v.object({
   id: v.string(),
   name: v.string(),
   avatar: v.string(),
+  role: v.union(
+    v.literal("owner"),
+    v.literal("admin"),
+    v.literal("member"),
+    v.literal("guest")
+  ),
   email: v.optional(v.string()),
   linearUserId: v.optional(v.string()),
 })

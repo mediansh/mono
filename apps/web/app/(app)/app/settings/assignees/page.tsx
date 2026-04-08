@@ -1,13 +1,19 @@
 "use client"
 
-import { useEffect, useId, useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
+import { useAction, useQuery } from "convex/react"
 import { motion, AnimatePresence } from "motion/react"
-import { Plus, Trash } from "@phosphor-icons/react"
+import { CheckCircle, LinkSimple, Plus, SpinnerGap, Trash } from "@phosphor-icons/react"
+import { toast } from "sonner"
+import { api } from "@/convex/_generated/api"
 import { AssigneeAvatar } from "@/components/assignee-avatar"
 import { SettingsAccessState } from "@/components/settings-access-state"
 import { useWorkspace } from "@/components/workspace-provider"
 import { useWorkspaceOptimisticMutations } from "@/hooks/use-workspace-optimistic-mutations"
 import {
+  formatAssigneeRole,
+  type AssigneeRole,
   buildTaskAssignee,
   normalizeWorkspaceAssignees,
 } from "@/lib/task-board"
@@ -28,17 +34,38 @@ type EditableAssignee = {
   name: string
   email: string
   avatar: string
+  role: AssigneeRole
   linearUserId?: string
 }
 
+const ASSIGNEE_ROLE_OPTIONS: AssigneeRole[] = [
+  "owner",
+  "admin",
+  "member",
+  "guest",
+]
+
 export default function AssigneesSettingsPage() {
   const { currentWorkspace } = useWorkspace()
+  const router = useRouter()
   const { updateWorkspaceAssigneesOptimistic } = useWorkspaceOptimisticMutations()
   const baseId = useId()
   const [assignees, setAssignees] = useState<EditableAssignee[]>([])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [keyCounter, setKeyCounter] = useState(0)
+  const [syncingLinear, setSyncingLinear] = useState(false)
+  const autoSyncKeyRef = useRef<string | null>(null)
+
+  const integrationState = useQuery(
+    api.linear.getWorkspaceLinearIntegration,
+    currentWorkspace ? { workspaceId: currentWorkspace._id } : "skip"
+  )
+  const refreshWorkspaceLinearAssignees = useAction(
+    api.linear.refreshWorkspaceLinearAssignees
+  )
+  const linearIntegration = integrationState?.integration ?? null
+  const isLinearLinked = Boolean(linearIntegration)
 
   useEffect(() => {
     if (!currentWorkspace) {
@@ -52,10 +79,43 @@ export default function AssigneesSettingsPage() {
         name: assignee.name,
         email: assignee.email ?? "",
         avatar: assignee.avatar,
+        role: assignee.role ?? "member",
         linearUserId: assignee.linearUserId,
       }))
     )
   }, [baseId, currentWorkspace])
+
+  useEffect(() => {
+    if (!currentWorkspace || !isLinearLinked) {
+      autoSyncKeyRef.current = null
+      return
+    }
+
+    const autoSyncKey = `${currentWorkspace._id}:${linearIntegration?.teamId ?? "linear"}`
+    if (autoSyncKeyRef.current === autoSyncKey) {
+      return
+    }
+
+    autoSyncKeyRef.current = autoSyncKey
+    setSyncingLinear(true)
+
+    void refreshWorkspaceLinearAssignees({ workspaceId: currentWorkspace._id })
+      .catch((error) => {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to sync assignees from Linear."
+        )
+      })
+      .finally(() => {
+        setSyncingLinear(false)
+      })
+  }, [
+    currentWorkspace,
+    isLinearLinked,
+    linearIntegration?.teamId,
+    refreshWorkspaceLinearAssignees,
+  ])
 
   if (!currentWorkspace) return null
   if (!hasWorkspaceAdminPermission(currentWorkspace.role)) {
@@ -77,6 +137,7 @@ export default function AssigneesSettingsPage() {
         name: "",
         email: "",
         avatar: "",
+        role: "member",
       },
     ])
   }
@@ -109,6 +170,7 @@ export default function AssigneesSettingsPage() {
           name: assignee.name,
           email: assignee.email || undefined,
           avatar: assignee.avatar,
+          role: assignee.role,
           linearUserId: assignee.linearUserId,
         }))
       )
@@ -125,7 +187,11 @@ export default function AssigneesSettingsPage() {
     }
   }
 
-  const hasInvalidEntry = assignees.some((assignee) => !assignee.name.trim())
+  const hasInvalidEntry = assignees.some(
+    (assignee) =>
+      !assignee.name.trim() ||
+      (isLinearLinked && !assignee.linearUserId && !assignee.email.trim())
+  )
 
   return (
     <motion.div
@@ -134,15 +200,45 @@ export default function AssigneesSettingsPage() {
       variants={{ show: { transition: { staggerChildren: 0.06 } } }}
       className="mx-auto w-full max-w-2xl px-6 py-6"
     >
-      <motion.div variants={fadeUp} className="mb-4">
-        <h2 className="text-[14px] font-semibold">Assignees</h2>
-        <p className="mt-0.5 text-[12px] text-muted-foreground">
-          Manage the people you can assign to tasks in this workspace.
-        </p>
+      <motion.div
+        variants={fadeUp}
+        className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+      >
+        <div>
+          <h2 className="text-[14px] font-semibold">Assignees</h2>
+          <p className="mt-0.5 text-[12px] text-muted-foreground">
+            Manage the people you can assign to tasks in this workspace.
+          </p>
+        </div>
+        {isLinearLinked ? (
+          <div className="inline-flex h-9 items-center gap-2 rounded-[4px] border border-emerald-500/30 bg-emerald-500/10 px-3 text-[11px] font-medium text-emerald-400">
+            {syncingLinear ? (
+              <SpinnerGap size={13} className="animate-spin" />
+            ) : (
+              <CheckCircle size={13} weight="fill" />
+            )}
+            Linked
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => router.push("/app/integrations/linear")}
+            className="inline-flex h-9 items-center gap-2 rounded-[4px] border border-border bg-card px-3 text-[11px] font-medium text-foreground transition-colors hover:bg-accent"
+          >
+            <LinkSimple size={13} />
+            Sync with Linear
+          </button>
+        )}
       </motion.div>
 
       <motion.div variants={fadeUp} className="rounded-[4px] bg-card ring-1 ring-border">
         <div className="p-5">
+          <div className="mb-3 rounded-[4px] border border-border/70 bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
+            {isLinearLinked
+              ? `Linked to Linear${linearIntegration?.teamName ? ` (${linearIntegration.teamName})` : ""}. Existing Linear assignees stay synced automatically, and new assignees need an email so Median can create them in Linear.`
+              : "Linear is not connected. Assignees saved here stay local to Median until you link the Linear integration."}
+          </div>
+
           <div className="flex flex-col gap-2.5">
             <AnimatePresence initial={false}>
               {assignees.map((assignee, index) => (
@@ -175,17 +271,37 @@ export default function AssigneesSettingsPage() {
                         onChange={(event) =>
                           updateAssignee(index, { email: event.target.value })
                         }
-                        placeholder="Email"
-                        className="h-9 rounded-[4px] bg-background px-3 text-[13px] ring-1 ring-border outline-none transition-colors placeholder:text-muted-foreground focus:ring-foreground/30"
+                        placeholder={
+                          isLinearLinked && !assignee.linearUserId
+                            ? "Email required for Linear sync"
+                            : "Email"
+                        }
+                        readOnly={Boolean(isLinearLinked && assignee.linearUserId)}
+                        className="h-9 rounded-[4px] bg-background px-3 text-[13px] ring-1 ring-border outline-none transition-colors placeholder:text-muted-foreground focus:ring-foreground/30 read-only:cursor-not-allowed read-only:opacity-60"
                       />
+                      <select
+                        value={assignee.role}
+                        onChange={(event) =>
+                          updateAssignee(index, {
+                            role: event.target.value as AssigneeRole,
+                          })
+                        }
+                        className="h-9 rounded-[4px] bg-background px-3 text-[13px] ring-1 ring-border outline-none transition-colors focus:ring-foreground/30"
+                      >
+                        {ASSIGNEE_ROLE_OPTIONS.map((role) => (
+                          <option key={role} value={role}>
+                            {formatAssigneeRole(role)}
+                          </option>
+                        ))}
+                      </select>
                       <input
                         type="url"
                         value={assignee.avatar}
                         onChange={(event) =>
                           updateAssignee(index, { avatar: event.target.value })
                         }
-                        placeholder="Avatar URL"
-                        className="h-9 rounded-[4px] bg-background px-3 text-[13px] ring-1 ring-border outline-none transition-colors placeholder:text-muted-foreground focus:ring-foreground/30 sm:col-span-2"
+                        placeholder="Profile picture URL"
+                        className="h-9 rounded-[4px] bg-background px-3 text-[13px] ring-1 ring-border outline-none transition-colors placeholder:text-muted-foreground focus:ring-foreground/30"
                       />
                     </div>
                     <button
