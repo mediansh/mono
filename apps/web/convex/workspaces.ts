@@ -330,6 +330,9 @@ export const syncMyProfile = mutation({
       membership.imageUrl !== profile.imageUrl
 
     if (needsUpdate) {
+      const nameOrEmailChanged =
+        membership.name !== profile.name ||
+        membership.email !== profile.email
       await ctx.db.patch(membership._id, profile)
       const workspace = await ctx.db.get(args.workspaceId)
       if (workspace) {
@@ -338,9 +341,12 @@ export const syncMyProfile = mutation({
           assignees: workspace.assignees ?? [],
           mode: "replace",
         })
-        await ctx.scheduler.runAfter(0, internal.linear.syncWorkspaceAssigneesToLinear, {
-          workspaceId: args.workspaceId,
-        })
+        // Only sync to Linear when name or email changed (not just avatar)
+        if (nameOrEmailChanged) {
+          await ctx.scheduler.runAfter(0, internal.linear.syncWorkspaceAssigneesToLinear, {
+            workspaceId: args.workspaceId,
+          })
+        }
       }
     }
   },

@@ -626,13 +626,15 @@ export function compareTasksByStatusAndRecency(
   const statusDiff = STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
   if (statusDiff !== 0) return statusDiff
 
+  // Order is the primary within-column sort (manual drag-and-drop position)
+  const orderDiff = (a.order ?? 0) - (b.order ?? 0)
+  if (orderDiff !== 0) return orderDiff
+
+  // Fall back to recency for tasks with the same order (e.g. newly created)
   const createdDiff = getTaskSortTimestamp(b) - getTaskSortTimestamp(a)
   if (createdDiff !== 0) return createdDiff
 
-  const taskNumberDiff = (b.taskNumber ?? 0) - (a.taskNumber ?? 0)
-  if (taskNumberDiff !== 0) return taskNumberDiff
-
-  return (a.order ?? 0) - (b.order ?? 0)
+  return (b.taskNumber ?? 0) - (a.taskNumber ?? 0)
 }
 
 export function sortTasksByStatusAndRecency<T extends TaskSortFields>(

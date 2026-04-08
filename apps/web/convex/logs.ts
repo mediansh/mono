@@ -26,6 +26,7 @@ export const workspaceLogTypeValidator = v.union(
   v.literal("member_joined"),
   v.literal("member_removed"),
   v.literal("labels_saved"),
+  v.literal("assignees_saved"),
   v.literal("feedback_processed")
 )
 

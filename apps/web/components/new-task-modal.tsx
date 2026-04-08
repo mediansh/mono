@@ -43,7 +43,6 @@ import { hasTaskWritePermission } from "@/lib/workspace-permissions"
 import {
   getTaskNumber,
   DEFAULT_WORKSPACE_LABELS,
-  normalizeTaskOrdersByStatus,
   type TaskAssignee,
   type TaskLabel as Label,
   type TaskPriority as Priority,
@@ -449,7 +448,7 @@ export function NewTaskModal({
 
       setWorkspaceTasks(
         currentWorkspace._id,
-        normalizeTaskOrdersByStatus([...existingTasks, optimisticTask])
+        [...existingTasks, optimisticTask]
       )
 
       try {

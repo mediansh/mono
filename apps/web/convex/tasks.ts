@@ -1389,7 +1389,9 @@ export const reorderTasks = mutation({
     const normalizedTasks = normalizeTaskOrdersByStatus(
       workspaceTasks.map((task) => {
         const change = changesByTaskId.get(String(task._id))
-        return change ? { ...task, status: change.status } : task
+        return change
+          ? { ...task, status: change.status, order: change.order }
+          : task
       })
     )
 
