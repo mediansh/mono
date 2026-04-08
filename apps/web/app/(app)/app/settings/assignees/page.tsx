@@ -118,7 +118,7 @@ function MemberAssigneeCard({
             {assignee.email ?? "No email on file"}
           </p>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            Members are assignable by default. Clicking the avatar uploads a profile picture for this assignee.
+            Assignable by default
           </p>
         </div>
       </div>
@@ -150,9 +150,6 @@ function ExternalAssigneeCard({
           </div>
           <p className="mt-0.5 truncate text-[12px] text-muted-foreground">
             {assignee.email ?? "No email available"}
-          </p>
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            Linked assignees are managed by the Linear sync and stay available for issue assignment even if they are not Median members.
           </p>
         </div>
       </div>
@@ -340,9 +337,7 @@ export default function AssigneesSettingsPage() {
       >
         <div>
           <h2 className="text-[14px] font-semibold">Assignees</h2>
-          <p className="mt-0.5 text-[12px] text-muted-foreground">
-            Members are assignable by default. Linear can add extra synced assignees for issue assignment.
-          </p>
+          <p className="mt-0.5 text-[12px] text-muted-foreground">Add, assign, and remove assignees.</p>
         </div>
         {isLinearLinked ? (
           <div className="flex items-center gap-2">
@@ -381,10 +376,10 @@ export default function AssigneesSettingsPage() {
           <div className="border-b border-border px-5 py-4">
             <div className="flex items-center gap-2">
               <UsersThree size={16} className="text-muted-foreground" />
-              <h3 className="text-[13px] font-semibold">Member Assignees</h3>
+              <h3 className="text-[13px] font-semibold">Members</h3>
             </div>
             <p className="mt-1 text-[11px] text-muted-foreground">
-              Everyone in the Members section is assignable here automatically. Uploading an avatar here also updates the assignee used on tasks, and linked workspaces push that avatar to Linear when the user can be matched there.
+              Assignable in every issue.
             </p>
           </div>
           <div className="space-y-3 p-5">
@@ -412,10 +407,29 @@ export default function AssigneesSettingsPage() {
 
         <div className="rounded-[4px] bg-card ring-1 ring-border">
           <div className="border-b border-border px-5 py-4">
-            <h3 className="text-[13px] font-semibold">Synced from Linear</h3>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              These assignees come from Linear and stay available for issue assignment even if they are not Median members.
-            </p>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-[13px] font-semibold">Synced from Linear</h3>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Extra synced assignees.
+                </p>
+              </div>
+              {isLinearLinked ? (
+                <button
+                  type="button"
+                  onClick={handleRefreshLinearAssignees}
+                  disabled={syncingLinear}
+                  className="inline-flex h-8 items-center gap-2 rounded-[4px] border border-border bg-background px-2.5 text-[11px] font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-60"
+                >
+                  {syncingLinear ? (
+                    <SpinnerGap size={12} className="animate-spin" />
+                  ) : (
+                    <ArrowClockwise size={12} />
+                  )}
+                  Refresh
+                </button>
+              ) : null}
+            </div>
           </div>
           <div className="space-y-3 p-5">
             {externalAssignees.length > 0 ? (
