@@ -68,7 +68,7 @@ export function AssigneeSelector({
         {!isCompact ? <CaretDown size={12} className="text-muted-foreground" /> : null}
       </DropdownMenuTrigger>
       <DropdownMenuContent align={align} side="bottom" className="min-w-[220px]">
-        <DropdownMenuItem onSelect={() => onChange(null)}>
+        <DropdownMenuItem onClick={() => onChange(null)}>
           <div className="flex w-full items-center gap-2">
             <span className="flex size-5 shrink-0 items-center justify-center rounded-full border border-dashed border-border bg-background text-muted-foreground">
               <User size={10} />
@@ -80,7 +80,7 @@ export function AssigneeSelector({
         {assignees.map((assignee) => {
           const isSelected = resolvedValue?.id === assignee.id
           return (
-            <DropdownMenuItem key={assignee.id} onSelect={() => onChange(assignee)}>
+            <DropdownMenuItem key={assignee.id} onClick={() => onChange(assignee)}>
               <div className="flex w-full items-center gap-2">
                 <AssigneeAvatar assignee={assignee} />
                 <div className="min-w-0 flex-1">
