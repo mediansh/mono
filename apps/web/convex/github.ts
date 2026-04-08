@@ -1008,6 +1008,16 @@ export const clearWorkspaceGitHubIntegration = internalMutation({
       .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
       .collect()
     for (const link of links) {
+      // Strip the now-defunct github source from the surviving task.
+      const task = await ctx.db.get(link.taskId)
+      if (task) {
+        const cleaned = (task.sources ?? []).filter(
+          (s) => s.platform !== "github"
+        )
+        await ctx.db.patch(task._id, {
+          sources: cleaned.length > 0 ? cleaned : undefined,
+        })
+      }
       await ctx.db.delete(link._id)
     }
 
@@ -1533,9 +1543,10 @@ export const upsertTaskFromGitHubIssue = internalMutation({
           }
           {
             const existing = linkedTask.sources ?? (linkedTask.source ? [linkedTask.source] : [])
-            if (!existing.some((s) => s.platform === nextSource.platform && s.url === nextSource.url)) {
-              updates.sources = [...existing, nextSource]
-            }
+            const filtered = existing.filter(
+              (s) => !(s.platform === nextSource.platform && s.url === nextSource.url)
+            )
+            updates.sources = [...filtered, nextSource]
           }
 
           await ctx.db.patch(linkedTask._id, updates)
@@ -1617,9 +1628,10 @@ export const upsertTaskFromGitHubIssue = internalMutation({
       }
       {
         const existing = matchedTask.sources ?? (matchedTask.source ? [matchedTask.source] : [])
-        if (!existing.some((s) => s.platform === nextSource.platform && s.url === nextSource.url)) {
-          updates.sources = [...existing, nextSource]
-        }
+        const filtered = existing.filter(
+          (s) => !(s.platform === nextSource.platform && s.url === nextSource.url)
+        )
+        updates.sources = [...filtered, nextSource]
       }
 
       await ctx.db.patch(matchedTask._id, updates)
