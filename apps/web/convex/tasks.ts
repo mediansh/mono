@@ -12,7 +12,6 @@ import {
   STATUS_ORDER,
   buildTaskAssignee,
   compareTasksByStatusAndRecency,
-  normalizeTaskOrdersByStatus,
   isDemoTaskSet,
 } from "../lib/task-board"
 import { insertWorkspaceLog, insertWorkspaceLogs } from "./logs"
@@ -1386,69 +1385,56 @@ export const reorderTasks = mutation({
       tasksBeforeUpdate.set(String(change.taskId), task)
     }
 
-    const normalizedTasks = normalizeTaskOrdersByStatus(
-      workspaceTasks.map((task) => {
-        const change = changesByTaskId.get(String(task._id))
-        return change
-          ? { ...task, status: change.status, order: change.order }
-          : task
-      })
-    )
-
     const now = Date.now()
-    for (const task of normalizedTasks) {
-      const previousTask = tasksBeforeUpdate.get(String(task._id))
+    for (const change of args.changes) {
+      const previousTask = tasksBeforeUpdate.get(String(change.taskId))
       const nextPatch: Partial<Doc<"tasks">> = {}
 
-      if (previousTask) {
-        if (previousTask.status !== task.status) {
-          nextPatch.status = task.status
-          nextPatch.updatedAt = now
-        }
-        if (previousTask.order !== task.order) {
-          nextPatch.order = task.order
-        }
-      } else {
-        const currentTask = workspaceTasks.find((item) => item._id === task._id)
-        if (!currentTask) continue
-        if (currentTask.order !== task.order) {
-          nextPatch.order = task.order
-        }
+      if (!previousTask) {
+        continue
+      }
+
+      if (previousTask.status !== change.status) {
+        nextPatch.status = change.status
+        nextPatch.updatedAt = now
+      }
+      if (previousTask.order !== change.order) {
+        nextPatch.order = change.order
       }
 
       if (Object.keys(nextPatch).length === 0) {
         continue
       }
 
-      await ctx.db.patch(task._id, nextPatch)
+      await ctx.db.patch(change.taskId, nextPatch)
 
-      if (previousTask && task.status !== previousTask.status) {
+      if (change.status !== previousTask.status) {
         taskMoveLogs.push({
           workspaceId: previousTask.workspaceId,
           category: "tasks",
           type: "task_moved",
-          message: `${previousTask.taskCode} moved from "${TASK_STATUS_LABELS[previousTask.status]}" to "${TASK_STATUS_LABELS[task.status]}"`,
+          message: `${previousTask.taskCode} moved from "${TASK_STATUS_LABELS[previousTask.status]}" to "${TASK_STATUS_LABELS[change.status]}"`,
           source: getWorkspaceLogSource(previousTask.source?.platform),
         })
-        await queueLinearSync(ctx, task._id)
-        await queueGitHubSync(ctx, task._id)
+        await queueLinearSync(ctx, change.taskId)
+        await queueGitHubSync(ctx, change.taskId)
       }
     }
 
     await insertWorkspaceLogs(ctx, taskMoveLogs)
 
     // Queue Discord notifications for status transitions
-    for (const task of normalizedTasks) {
-      const previousTask = tasksBeforeUpdate.get(String(task._id))
-      if (!previousTask || task.status === previousTask.status) {
+    for (const change of args.changes) {
+      const previousTask = tasksBeforeUpdate.get(String(change.taskId))
+      if (!previousTask || change.status === previousTask.status) {
         continue
       }
 
       await queueDiscordNotificationForStatusChange(
         ctx,
         previousTask,
-        task._id,
-        task.status
+        change.taskId,
+        change.status
       )
     }
   },

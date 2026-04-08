@@ -1,7 +1,7 @@
 export const TASK_STATUSES = [
   "requests",
-  "todo",
   "backlog",
+  "todo",
   "in_progress",
   "ready",
   "shipped",
@@ -327,8 +327,8 @@ export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
 
 export const STATUS_ORDER: Record<TaskStatus, number> = {
   requests: 0,
-  todo: 1,
-  backlog: 2,
+  backlog: 1,
+  todo: 2,
   in_progress: 3,
   ready: 4,
   shipped: 5,
