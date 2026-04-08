@@ -1663,15 +1663,10 @@ function TaskDetailModal({
     >
       <DialogContent
         showCloseButton={false}
-        className="max-h-[85vh] w-[min(92vw,40rem)] max-w-2xl overflow-hidden rounded-[8px] p-0"
+        className="max-h-[85vh] w-[min(92vw,40rem)] max-w-2xl overflow-hidden rounded-[8px] p-0 duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] data-ending-style:translate-y-2 data-ending-style:scale-[0.96] data-starting-style:translate-y-2 data-starting-style:scale-[0.96]"
       >
         {task && (
-          <motion.div
-            className="flex max-h-[85vh] flex-col"
-            initial={{ opacity: 0, scale: 0.98, y: 6 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-          >
+          <div className="flex max-h-[85vh] flex-col">
             {/* ── Header: Title + Date + Close ── */}
             <div className="relative px-5 pt-5 pb-0">
               {/* Close button */}
@@ -1829,10 +1824,10 @@ function TaskDetailModal({
             </div>
 
             {/* ── Bottom toolbar ── */}
-            <div className="border-t border-border">
+            <div>
               {/* Row 1: Sources (Linear, Agent, Discord, etc.) */}
               {(taskSources.length > 0 || activeAgent) && (
-                <div className="flex flex-wrap items-center gap-2 px-4 pt-3 pb-1.5">
+                <div className="flex flex-wrap items-center gap-2 px-4 pt-2.5 pb-2.5">
                   {taskSources.map((src) => {
                     const cfg = SOURCE_CONFIG[src.platform]
                     return src.url ? (
@@ -1848,7 +1843,7 @@ function TaskDetailModal({
                         }}
                       >
                         <SourceIcon platform={src.platform} size={12} />
-                        <span>{cfg.label}</span>
+                        <span>{src.author}</span>
                         <LinkIcon size={10} className="opacity-50" />
                       </a>
                     ) : (
@@ -1861,7 +1856,7 @@ function TaskDetailModal({
                         }}
                       >
                         <SourceIcon platform={src.platform} size={12} />
-                        <span>{cfg.label}</span>
+                        <span>{src.author}</span>
                       </span>
                     )
                   })}
@@ -1877,7 +1872,7 @@ function TaskDetailModal({
               )}
 
               {/* Row 2: Status, Priority, Labels + Delete */}
-              <div className="flex items-center justify-between gap-2 px-4 pt-1.5 pb-3">
+              <div className="flex items-center justify-between gap-2 border-t border-border px-4 pt-2.5 pb-3">
                 <div className="flex flex-wrap items-center gap-2">
                   {/* Status */}
                   <DropdownMenu>
@@ -2002,7 +1997,7 @@ function TaskDetailModal({
                 </button>
               </div>
             </div>
-          </motion.div>
+          </div>
         )}
       </DialogContent>
     </Dialog>
