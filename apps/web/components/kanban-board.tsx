@@ -1893,6 +1893,9 @@ function TaskDetailModal({
     onUpdate(task.id, { labels: updated })
   }
 
+  const taskSources = task ? getTaskSources(task) : []
+  const activeAgent = task ? getActiveAgent(task) : null
+
   return (
     <Dialog
       open={task !== null}
@@ -1906,82 +1909,20 @@ function TaskDetailModal({
     >
       <DialogContent
         showCloseButton={false}
-        className="max-h-[88vh] w-[min(92vw,72rem)] max-w-4xl overflow-hidden p-0"
+        className="max-h-[85vh] w-[min(92vw,40rem)] max-w-2xl overflow-hidden rounded-[8px] p-0 duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] data-ending-style:translate-y-2 data-ending-style:scale-[0.96] data-starting-style:translate-y-2 data-starting-style:scale-[0.96]"
       >
         {task && (
-          <div className="flex max-h-[88vh] flex-col">
-            {/* Top bar */}
-            <div className="flex items-center justify-between gap-2 border-b border-border px-3.5 py-3">
-              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
-                <span className="font-mono text-[12px] font-medium text-muted-foreground">
-                  {task.taskCode}
-                </span>
-                <span className="text-muted-foreground/30">·</span>
-                <span className="text-[12px] text-muted-foreground/60">
-                  {task.createdAt}
-                </span>
-                {(() => {
-                  const taskSources = getTaskSources(task)
-                  return taskSources.map((src) => {
-                    const cfg = SOURCE_CONFIG[src.platform]
-                    return (
-                      <span
-                        key={`${src.platform}-${src.url}-${src.author}`}
-                        className="contents"
-                      >
-                        <span className="text-muted-foreground/30">·</span>
-                        {src.url ? (
-                          <a
-                            href={src.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1.5 rounded-[4px] py-0.5 pr-2.5 pl-1.5 text-[10px] font-medium transition-opacity hover:opacity-80"
-                            style={{
-                              backgroundColor: cfg.bg,
-                              color: cfg.color,
-                            }}
-                          >
-                            <SourceIcon platform={src.platform} size={11} />
-                            <span>{src.author}</span>
-                            <LinkIcon size={10} />
-                          </a>
-                        ) : (
-                          <span
-                            className="flex items-center gap-1.5 rounded-[4px] py-0.5 pr-2.5 pl-1.5 text-[10px] font-medium"
-                            style={{
-                              backgroundColor: cfg.bg,
-                              color: cfg.color,
-                            }}
-                          >
-                            <SourceIcon platform={src.platform} size={11} />
-                            <span>{src.author}</span>
-                          </span>
-                        )}
-                      </span>
-                    )
-                  })
-                })()}
-              </div>
-              <div className="flex items-center gap-1">
-                <button
-                  disabled={!canManageTasks}
-                  onClick={() => onDelete(task.id)}
-                  className="rounded-[4px] p-1 text-muted-foreground/60 transition-colors hover:bg-destructive/10 hover:text-destructive"
-                  title="Delete task"
-                >
-                  <Trash size={14} />
-                </button>
-                <button
-                  onClick={onClose}
-                  className="rounded-[4px] p-1 text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            </div>
+          <div className="flex max-h-[85vh] flex-col">
+            {/* ── Header: Title + Date + Close ── */}
+            <div className="relative px-5 pt-5 pb-0">
+              {/* Close button */}
+              <button
+                onClick={onClose}
+                className="absolute top-4 right-4 rounded-[4px] p-1.5 text-muted-foreground/50 ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <X size={14} weight="bold" />
+              </button>
 
-            {/* Content */}
-            <div className="flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto px-3.5 pt-5 pb-6">
               {/* Title */}
               <DialogHeader>
                 <DialogTitle className="sr-only">{task.title}</DialogTitle>
@@ -1998,7 +1939,7 @@ function TaskDetailModal({
                         setEditingTitle(false)
                       }
                     }}
-                    className="w-full rounded-[4px] bg-transparent px-1 py-0.5 text-[14px] leading-snug font-semibold tracking-tight ring-1 ring-border outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full rounded-[4px] bg-transparent pr-8 text-[16px] leading-snug font-semibold tracking-tight ring-1 ring-border outline-none focus:ring-1 focus:ring-primary"
                   />
                 ) : (
                   <h2
@@ -2007,7 +1948,7 @@ function TaskDetailModal({
                       setTitleValue(task.title)
                       setEditingTitle(true)
                     }}
-                    className={`-mx-1 rounded-[4px] px-1 py-0.5 text-[14px] leading-snug font-semibold tracking-tight break-words transition-colors ${canManageTasks ? "cursor-text hover:bg-accent/50" : ""}`}
+                    className={`pr-8 text-[16px] leading-snug font-semibold tracking-tight break-words transition-colors ${canManageTasks ? "cursor-text" : ""}`}
                   >
                     {task.title}
                   </h2>
@@ -2136,8 +2077,26 @@ function TaskDetailModal({
                 </DropdownMenu>
               </div>
 
+              {/* Date + task code */}
+              <div className="mt-1.5 flex items-center gap-2">
+                <span className="font-mono text-[11px] text-muted-foreground/50">
+                  {task.taskCode}
+                </span>
+                <span className="text-muted-foreground/20">·</span>
+                <span className="text-[11px] text-muted-foreground/50">
+                  {task.createdAt}
+                </span>
+              </div>
+            </div>
+
+            {/* ── Body: Description (scrollable) ── */}
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-4 pb-4">
               {task._syncStatus === "error" ? (
-                <div className="flex items-start gap-2 rounded-[8px] border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-200">
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-4 flex items-start gap-2 rounded-[6px] border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-200"
+                >
                   <WarningCircle
                     size={14}
                     weight="fill"
@@ -2147,17 +2106,11 @@ function TaskDetailModal({
                     Attachment changes are visible locally, but they have not
                     synced to the server yet.
                   </span>
-                </div>
+                </motion.div>
               ) : null}
 
-              {/* Divider */}
-              <div className="h-px bg-border" />
-
               {/* Description */}
-              <div>
-                <span className="mb-2 block text-[11px] font-medium tracking-wider text-muted-foreground/70 uppercase">
-                  Description
-                </span>
+              <div className="flex-1">
                 {editingDesc ? (
                   <textarea
                     autoFocus
@@ -2170,8 +2123,8 @@ function TaskDetailModal({
                         setEditingDesc(false)
                       }
                     }}
-                    placeholder="Write something..."
-                    className="min-h-[100px] w-full resize-none rounded-[4px] bg-transparent px-2 py-1.5 text-[13px] leading-relaxed ring-1 ring-border outline-none focus:ring-1 focus:ring-primary"
+                    placeholder="Add a description..."
+                    className="min-h-[180px] w-full resize-none rounded-[4px] bg-transparent text-[13px] leading-relaxed text-foreground/80 outline-none placeholder:text-muted-foreground/40"
                   />
                 ) : (
                   <div
@@ -2180,15 +2133,15 @@ function TaskDetailModal({
                       setDescValue(task.description ?? "")
                       setEditingDesc(true)
                     }}
-                    className={`-mx-2 rounded-[4px] px-2 py-1.5 text-[13px] leading-relaxed transition-colors ${canManageTasks ? "cursor-text hover:bg-accent/40" : ""}`}
+                    className={`min-h-[180px] text-[13px] leading-relaxed transition-colors ${canManageTasks ? "cursor-text" : ""}`}
                   >
                     {task.description ? (
                       <span className="block break-words whitespace-pre-wrap text-foreground/80">
                         {task.description}
                       </span>
                     ) : (
-                      <span className="text-muted-foreground/50">
-                        Write something...
+                      <span className="text-muted-foreground/40">
+                        Add a description...
                       </span>
                     )}
                   </div>
@@ -2197,16 +2150,18 @@ function TaskDetailModal({
 
               {/* Attachments */}
               <div className="h-px bg-border" />
-              {task.attachments && task.attachments.length > 0 && (
-                <TaskAttachmentGallery
-                  attachments={task.attachments}
-                  workspaceId={task.workspaceId}
-                  canManageAttachments={canManageTasks}
-                  onAttachmentsChange={(attachments) =>
-                    onUpdate(task.id, { attachments })
-                  }
-                />
-              )}
+              {task.attachments && task.attachments.length > 0 ? (
+                <div className="mt-4 border-t border-border pt-4">
+                  <TaskAttachmentGallery
+                    attachments={task.attachments}
+                    workspaceId={task.workspaceId}
+                    canManageAttachments={canManageTasks}
+                    onAttachmentsChange={(attachments) =>
+                      onUpdate(task.id, { attachments })
+                    }
+                  />
+                </div>
+              ) : null}
               {canManageTasks && (
                 <div className="flex items-center">
                   <input
@@ -2231,36 +2186,209 @@ function TaskDetailModal({
                 </div>
               )}
 
-              {/* Accept / Deny for request tasks */}
-              {task.status === "requests" && onAccept && onDeny && (
-                <>
-                  <div className="h-px bg-border" />
-                  <div className="flex items-center gap-2">
-                    <button
-                      disabled={!canManageTasks}
-                      onClick={() => {
-                        onAccept(task)
-                        onClose()
-                      }}
-                      className="flex items-center gap-1.5 rounded-[4px] border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[12px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
-                    >
-                      <CheckCircle size={14} weight="fill" />
-                      Accept request
-                    </button>
-                    <button
-                      disabled={!canManageTasks}
-                      onClick={() => {
-                        onDeny(task)
-                        onClose()
-                      }}
-                      className="flex items-center gap-1.5 rounded-[4px] border border-red-500/30 bg-red-500/10 px-3 py-2 text-[12px] font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
-                    >
-                      <XCircle size={14} />
-                      Deny request
-                    </button>
-                  </div>
-                </>
+            </div>
+
+            {/* ── Bottom toolbar ── */}
+            <div>
+              {/* Row 1: Sources (Linear, Agent, Discord, etc.) */}
+              {(taskSources.length > 0 || activeAgent) && (
+                <div className="flex flex-wrap items-center gap-2 px-4 pt-2.5 pb-2.5">
+                  {taskSources.map((src) => {
+                    const cfg = SOURCE_CONFIG[src.platform]
+                    return src.url ? (
+                      <a
+                        key={`${src.platform}-${src.url}-${src.author}`}
+                        href={src.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium transition-opacity hover:opacity-80"
+                        style={{
+                          backgroundColor: cfg.bg,
+                          color: cfg.color,
+                        }}
+                      >
+                        <SourceIcon platform={src.platform} size={12} />
+                        <span>{src.author}</span>
+                        <LinkIcon size={10} className="opacity-50" />
+                      </a>
+                    ) : (
+                      <span
+                        key={`${src.platform}-${src.url}-${src.author}`}
+                        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium"
+                        style={{
+                          backgroundColor: cfg.bg,
+                          color: cfg.color,
+                        }}
+                      >
+                        <SourceIcon platform={src.platform} size={12} />
+                        <span>{src.author}</span>
+                      </span>
+                    )
+                  })}
+                  {activeAgent && (
+                    <span className="flex items-center gap-1.5 rounded-[4px] bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                      <span className="text-[12px]">
+                        {getAgentIcon(activeAgent)}
+                      </span>
+                      <span className="capitalize">{activeAgent}</span>
+                    </span>
+                  )}
+                </div>
               )}
+
+              {/* Row 2: Status, Priority, Labels + Delete */}
+              <div className="flex items-center justify-between gap-2 border-t border-border px-4 pt-2.5 pb-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Status */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      disabled={!canManageTasks}
+                      className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {getStatusIcon(task.status, 12)}
+                      <span>{STATUS_LABELS[task.status]}</span>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent side="top" align="start">
+                      {ALL_STATUSES.map((s) => (
+                        <DropdownMenuItem
+                          key={s}
+                          className={task.status === s ? "font-medium" : ""}
+                          onClick={() => onUpdate(task.id, { status: s })}
+                        >
+                          <div className="flex items-center gap-2">
+                            {getStatusIcon(s, 14)}
+                            <span>{STATUS_LABELS[s]}</span>
+                          </div>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  {/* Priority */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      disabled={!canManageTasks}
+                      className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {getPriorityIcon(task.priority, 12)}
+                      <span>{PRIORITY_LABELS[task.priority]}</span>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent side="top" align="start">
+                      {ALL_PRIORITIES.map((p) => (
+                        <DropdownMenuItem
+                          key={p}
+                          className={task.priority === p ? "font-medium" : ""}
+                          onClick={() => onUpdate(task.id, { priority: p })}
+                        >
+                          <div className="flex items-center gap-2">
+                            {getPriorityIcon(p, 14)}
+                            <span>{PRIORITY_LABELS[p]}</span>
+                          </div>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  {/* Labels */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      disabled={!canManageTasks}
+                      className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {(task.labels ?? []).length > 0 ? (
+                        <div className="flex items-center gap-1.5">
+                          <div className="flex -space-x-0.5">
+                            {(task.labels ?? []).map((label) => (
+                              <div
+                                key={label}
+                                className="size-2 rounded-full ring-1 ring-background"
+                                style={{
+                                  backgroundColor:
+                                    labelConfig.colors[label] ?? "#888",
+                                }}
+                              />
+                            ))}
+                          </div>
+                          <span>
+                            {(task.labels ?? []).length === 1
+                              ? (task.labels ?? [])[0]
+                              : `${(task.labels ?? []).length} labels`}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <Tag size={12} className="text-muted-foreground" />
+                          <span className="text-muted-foreground">Labels</span>
+                        </div>
+                      )}
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent side="top" align="start">
+                      {labelConfig.names.map((label) => (
+                        <DropdownMenuItem
+                          key={label}
+                          onClick={() => toggleLabel(label)}
+                        >
+                          <div className="flex w-full items-center gap-2 capitalize">
+                            <div
+                              className="size-2.5 rounded-full"
+                              style={{
+                                backgroundColor:
+                                  labelConfig.colors[label] ?? "#888",
+                              }}
+                            />
+                            <span>{label}</span>
+                            {(task.labels ?? []).includes(label) && (
+                              <Check
+                                size={12}
+                                weight="bold"
+                                className="ml-auto text-primary"
+                              />
+                            )}
+                          </div>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                {/* Accept / Deny for request tasks, or Delete */}
+                <div className="flex items-center gap-1.5">
+                  {task.status === "requests" && onAccept && onDeny && (
+                    <>
+                      <button
+                        disabled={!canManageTasks}
+                        onClick={() => {
+                          onAccept(task)
+                          onClose()
+                        }}
+                        className="flex items-center gap-1.5 rounded-[4px] border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
+                      >
+                        <CheckCircle size={13} weight="fill" />
+                        Accept
+                      </button>
+                      <button
+                        disabled={!canManageTasks}
+                        onClick={() => {
+                          onDeny(task)
+                          onClose()
+                        }}
+                        className="flex items-center gap-1.5 rounded-[4px] border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-[11px] font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
+                      >
+                        <XCircle size={13} />
+                        Deny
+                      </button>
+                    </>
+                  )}
+                  <button
+                    disabled={!canManageTasks}
+                    onClick={() => onDelete(task.id)}
+                    className="rounded-[4px] p-1.5 text-muted-foreground/40 ring-1 ring-border transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-60"
+                    title="Delete task"
+                  >
+                    <Trash size={14} />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}

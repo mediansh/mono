@@ -1045,6 +1045,16 @@ export const clearWorkspaceGitHubIntegration = internalMutation({
       .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
       .collect()
     for (const link of links) {
+      // Strip the now-defunct github source from the surviving task.
+      const task = await ctx.db.get(link.taskId)
+      if (task) {
+        const cleaned = (task.sources ?? []).filter(
+          (s) => s.platform !== "github"
+        )
+        await ctx.db.patch(task._id, {
+          sources: cleaned.length > 0 ? cleaned : undefined,
+        })
+      }
       await ctx.db.delete(link._id)
     }
 
@@ -1202,17 +1212,36 @@ export const saveGitHubTaskLink = internalMutation({
       await ctx.db.delete(existingByIssue._id)
     }
 
+    let linkId
     if (existingByTask) {
       await ctx.db.patch(existingByTask._id, payload)
-      return existingByTask._id
-    }
-
-    if (existingByIssue) {
+      linkId = existingByTask._id
+    } else if (existingByIssue) {
       await ctx.db.patch(existingByIssue._id, payload)
-      return existingByIssue._id
+      linkId = existingByIssue._id
+    } else {
+      linkId = await ctx.db.insert("githubTaskLinks", payload)
     }
 
-    return await ctx.db.insert("githubTaskLinks", payload)
+    // Denormalize: keep task.sources in sync so listByWorkspace
+    // doesn't need to read the githubTaskLinks table at all.
+    const task = await ctx.db.get(args.taskId)
+    if (task) {
+      const canonicalSource = {
+        platform: "github" as const,
+        url: args.githubIssueUrl,
+        author: `${args.githubRepositoryFullName}#${args.githubIssueNumber}`,
+      }
+      const existing = task.sources ?? (task.source ? [task.source] : [])
+      const filtered = existing.filter(
+        (s) =>
+          !(s.platform === "github" && s.url === canonicalSource.url)
+      )
+      const next = [...filtered, canonicalSource]
+      await ctx.db.patch(task._id, { sources: next.length > 0 ? next : undefined })
+    }
+
+    return linkId
   },
 })
 
@@ -1561,17 +1590,11 @@ export const upsertTaskFromGitHubIssue = internalMutation({
             updates.source = nextSource
           }
           {
-            const existing =
-              linkedTask.sources ??
-              (linkedTask.source ? [linkedTask.source] : [])
-            if (
-              !existing.some(
-                (s) =>
-                  s.platform === nextSource.platform && s.url === nextSource.url
-              )
-            ) {
-              updates.sources = [...existing, nextSource]
-            }
+            const existing = linkedTask.sources ?? (linkedTask.source ? [linkedTask.source] : [])
+            const filtered = existing.filter(
+              (s) => !(s.platform === nextSource.platform && s.url === nextSource.url)
+            )
+            updates.sources = [...filtered, nextSource]
           }
 
           await ctx.db.patch(linkedTask._id, updates)
@@ -1658,17 +1681,11 @@ export const upsertTaskFromGitHubIssue = internalMutation({
         updates.source = nextSource
       }
       {
-        const existing =
-          matchedTask.sources ??
-          (matchedTask.source ? [matchedTask.source] : [])
-        if (
-          !existing.some(
-            (s) =>
-              s.platform === nextSource.platform && s.url === nextSource.url
-          )
-        ) {
-          updates.sources = [...existing, nextSource]
-        }
+        const existing = matchedTask.sources ?? (matchedTask.source ? [matchedTask.source] : [])
+        const filtered = existing.filter(
+          (s) => !(s.platform === nextSource.platform && s.url === nextSource.url)
+        )
+        updates.sources = [...filtered, nextSource]
       }
 
       await ctx.db.patch(matchedTask._id, updates)

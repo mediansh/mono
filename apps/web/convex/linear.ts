@@ -248,6 +248,11 @@ function mergeTaskSources(
       }
     | undefined
 ) {
+  // Compute the canonical key for the incoming source so we can replace
+  // any stale existing entry that shares the same key (e.g. same URL but
+  // outdated author after a Linear issue moves between projects).
+  const nextKey = nextSource ? getCanonicalTaskSourceKey(nextSource) : null
+
   const seen = new Set<string>()
   const merged: Array<{
     platform: "discord" | "slack" | "x" | "linear" | "github" | "cli"
@@ -255,14 +260,16 @@ function mergeTaskSources(
     author: string
   }> = []
 
-  for (const source of [
-    ...(existingSources ?? []),
-    ...(nextSource ? [nextSource] : []),
-  ]) {
+  for (const source of existingSources ?? []) {
     const key = getCanonicalTaskSourceKey(source)
-    if (seen.has(key)) continue
+    if (seen.has(key) || key === nextKey) continue
     seen.add(key)
     merged.push(source)
+  }
+
+  // Append the canonical source last so it always wins.
+  if (nextSource) {
+    merged.push(nextSource)
   }
 
   return merged.length > 0 ? merged : undefined
@@ -2005,6 +2012,16 @@ export const clearWorkspaceLinearIntegration = internalMutation({
       .collect()
 
     for (const link of links) {
+      // Strip the now-defunct linear source from the surviving task.
+      const task = await ctx.db.get(link.taskId)
+      if (task) {
+        const cleaned = (task.sources ?? []).filter(
+          (s) => s.platform !== "linear"
+        )
+        await ctx.db.patch(task._id, {
+          sources: cleaned.length > 0 ? cleaned : undefined,
+        })
+      }
       await ctx.db.delete(link._id)
     }
   },
@@ -2085,17 +2102,48 @@ export const saveLinearTaskLink = internalMutation({
       await ctx.db.delete(existingByIssue._id)
     }
 
+    let linkId
     if (existingByTask) {
       await ctx.db.patch(existingByTask._id, payload)
-      return existingByTask._id
-    }
-
-    if (existingByIssue) {
+      linkId = existingByTask._id
+    } else if (existingByIssue) {
       await ctx.db.patch(existingByIssue._id, payload)
-      return existingByIssue._id
+      linkId = existingByIssue._id
+    } else {
+      linkId = await ctx.db.insert("linearTaskLinks", payload)
     }
 
-    return await ctx.db.insert("linearTaskLinks", payload)
+    // Denormalize: keep task.sources in sync so listByWorkspace
+    // doesn't need to read the linearTaskLinks table at all.
+    // Use filter-and-append (not mergeTaskSources) so the fresh
+    // canonical data always replaces any stale entry with the same URL.
+    const task = await ctx.db.get(args.taskId)
+    if (task) {
+      const canonicalSource = {
+        platform: "linear" as const,
+        url: args.linearIssueUrl?.trim() ?? "",
+        author: args.linearIssueIdentifier,
+      }
+      const existing = task.sources ?? (task.source ? [task.source] : [])
+      const canonicalUrl = canonicalSource.url
+      const filtered = canonicalUrl
+        ? existing.filter(
+            (s) => !(s.platform === "linear" && s.url.trim() === canonicalUrl)
+          )
+        : existing.filter(
+            (s) =>
+              !(
+                s.platform === "linear" &&
+                s.author === canonicalSource.author
+              )
+          )
+      const next = [...filtered, canonicalSource]
+      await ctx.db.patch(task._id, {
+        sources: next.length > 0 ? next : undefined,
+      })
+    }
+
+    return linkId
   },
 })
 
@@ -2203,12 +2251,22 @@ export const reconcileMissingLinearIssues = internalMutation({
         continue
       }
 
+      // Strip the now-defunct linear source from the task so the
+      // denormalized task.sources stays consistent after unlinking.
+      const cleanedSources = (task.sources ?? []).filter(
+        (s) => s.platform !== "linear"
+      )
       if (task.status !== "archive") {
         await ctx.db.patch(task._id, {
           status: "archive",
           updatedAt: Date.now(),
+          sources: cleanedSources.length > 0 ? cleanedSources : undefined,
         })
         archivedCount += 1
+      } else if (cleanedSources.length !== (task.sources ?? []).length) {
+        await ctx.db.patch(task._id, {
+          sources: cleanedSources.length > 0 ? cleanedSources : undefined,
+        })
       }
 
       await ctx.db.delete(link._id)
