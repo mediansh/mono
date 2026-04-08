@@ -85,11 +85,13 @@ import { api } from "@/convex/_generated/api"
 import type { Doc, Id } from "@/convex/_generated/dataModel"
 import { useWorkspace } from "@/components/workspace-provider"
 import {
-  STATUS_ORDER,
   TASK_STATUS_LABELS,
   DEFAULT_WORKSPACE_LABELS,
+  compareTasksByStatusAndRecency,
   formatTaskDate,
+  getTaskSortTimestamp,
   isDemoTaskSet,
+  normalizeTaskOrdersByStatus,
   type RequestSource,
   type TaskLabel as Label,
   type TaskPriority as Priority,
@@ -128,6 +130,7 @@ interface Task extends Omit<TaskDoc, "attachments"> {
 // Column config
 const COLUMNS: { id: Status; label: string; emptyLabel: string }[] = [
   { id: "requests", label: "Requests", emptyLabel: "No requests yet" },
+  { id: "backlog", label: "Backlog", emptyLabel: "No issues in backlog yet" },
   { id: "todo", label: "Todo", emptyLabel: "No issues yet" },
   {
     id: "in_progress",
@@ -171,6 +174,8 @@ function getStatusIcon(status: Status, size = 14) {
   switch (status) {
     case "requests":
       return <SpinnerGap size={size} className="text-muted-foreground" />
+    case "backlog":
+      return <ListBullets size={size} className="text-muted-foreground" />
     case "todo":
       return <Circle size={size} className="text-muted-foreground" />
     case "in_progress":
@@ -238,62 +243,27 @@ function isDevTask(id: string) {
 }
 
 function sortTaskDocs(tasks: TaskDoc[]) {
-  return [...tasks].sort((a, b) => {
-    const statusDiff = STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
-    if (statusDiff !== 0) return statusDiff
-    return a.order - b.order
-  })
+  return [...tasks].sort(compareTasksByStatusAndRecency)
 }
 
 function normalizeTaskOrders(tasks: TaskDoc[]) {
-  const orderByStatus = new Map<Status, number>()
-  return sortTaskDocs(tasks).map((task) => {
-    const order = orderByStatus.get(task.status) ?? 0
-    orderByStatus.set(task.status, order + 1)
-    return task.order === order ? task : { ...task, order }
-  })
+  return normalizeTaskOrdersByStatus(tasks)
 }
 
 function moveTaskDocs(
   tasks: TaskDoc[],
   taskId: string,
   toStatus: Status,
-  toIndex: number
+  _toIndex: number
 ) {
   const task = tasks.find((item) => item._id === taskId)
   if (!task) return tasks
 
-  const withoutTask = tasks.filter((item) => item._id !== taskId)
-  const targetTasks = withoutTask.filter((item) => item.status === toStatus)
-  const clampedIndex = Math.min(toIndex, targetTasks.length)
-
-  const targetIds = targetTasks.map((item) => item._id)
-  targetIds.splice(clampedIndex, 0, task._id)
-
-  const updated = withoutTask.map((item) => item)
-  const insertedTask = { ...task, status: toStatus }
-
-  const result: TaskDoc[] = []
-  for (const column of COLUMNS) {
-    if (column.id === toStatus) {
-      for (const id of targetIds) {
-        result.push(
-          id === task._id
-            ? insertedTask
-            : updated.find((item) => item._id === id)!
-        )
-      }
-      continue
-    }
-
-    for (const item of updated) {
-      if (item.status === column.id) {
-        result.push(item)
-      }
-    }
-  }
-
-  return normalizeTaskOrders(result)
+  return normalizeTaskOrders(
+    tasks.map((item) =>
+      item._id === taskId ? { ...item, status: toStatus } : item
+    )
+  )
 }
 
 function patchTaskDocs(
@@ -420,6 +390,7 @@ function areTaskDocListsEqual(left: TaskDoc[] | undefined, right: TaskDoc[]) {
     if (
       current._id !== next._id ||
       current._creationTime !== next._creationTime ||
+      current.sourceCreatedAt !== next.sourceCreatedAt ||
       current.title !== next.title ||
       current.description !== next.description ||
       current.status !== next.status ||
@@ -451,11 +422,15 @@ function mapTaskDoc(task: TaskDoc): Task {
   return {
     ...task,
     id: task._id,
-    createdAt: formatTaskDate(task._creationTime, task.createdAtLabel),
+    createdAt: formatTaskDate(
+      getTaskSortTimestamp(task),
+      task.createdAtLabel
+    ),
   }
 }
 
 const SKELETON_GROUPS: { label: string; rows: number[] }[] = [
+  { label: "Backlog", rows: [210, 160] },
   { label: "Todo", rows: [180, 240, 150] },
   { label: "In Progress", rows: [200, 260] },
   { label: "Ready", rows: [170] },
@@ -2596,6 +2571,7 @@ function ColumnBoardView({
   const tasksByColumn = useMemo(() => {
     const map: Record<Status, Task[]> = {
       requests: [],
+      backlog: [],
       todo: [],
       in_progress: [],
       ready: [],
@@ -3200,6 +3176,7 @@ function ListView({
   const tasksByColumn = useMemo(() => {
     const map: Record<Status, Task[]> = {
       requests: [],
+      backlog: [],
       todo: [],
       in_progress: [],
       ready: [],
@@ -3641,9 +3618,9 @@ export function KanbanBoard() {
     let snapshotBefore: TaskDoc[] | undefined
     updateWorkspaceTasks(workspaceId, (current) => {
       snapshotBefore = current
-      return moveTaskDocs(current, task.id, "todo", 0)
+      return moveTaskDocs(current, task.id, "backlog", 0)
     })
-    toast.success(`Accepted "${task.title}" → Todo`)
+    toast.success(`Accepted "${task.title}" → Backlog`)
     trackRequestAccepted({ taskId: task.id })
     if (isDevTask(task.id)) return
     // Read the freshly-written state for the server call
@@ -3853,7 +3830,7 @@ export function KanbanBoard() {
         workspaceId,
         title: task.title,
         description: task.description,
-        status: task.status === "requests" ? "todo" : task.status,
+        status: task.status === "requests" ? "backlog" : task.status,
         priority: task.priority,
         labels: task.labels,
         attachments: draftAttachments.length > 0 ? draftAttachments : undefined,

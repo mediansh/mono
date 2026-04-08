@@ -1,5 +1,6 @@
 export const TASK_STATUSES = [
   "requests",
+  "backlog",
   "todo",
   "in_progress",
   "ready",
@@ -65,6 +66,7 @@ export type TaskSeed = {
 
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   requests: "Requests",
+  backlog: "Backlog",
   todo: "Todo",
   in_progress: "In Progress",
   ready: "Ready",
@@ -74,11 +76,12 @@ export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
 
 export const STATUS_ORDER: Record<TaskStatus, number> = {
   requests: 0,
-  todo: 1,
-  in_progress: 2,
-  ready: 3,
-  shipped: 4,
-  archive: 5,
+  backlog: 1,
+  todo: 2,
+  in_progress: 3,
+  ready: 4,
+  shipped: 5,
+  archive: 6,
 }
 
 export const INITIAL_TASKS: TaskSeed[] = [
@@ -309,4 +312,94 @@ export function formatTaskDate(createdAt: number, createdAtLabel?: string) {
     month: "short",
     day: "numeric",
   }).format(new Date(createdAt))
+}
+
+type TaskSortFields = {
+  status: TaskStatus
+  createdAtLabel?: string
+  sourceCreatedAt?: number
+  _creationTime?: number
+  taskNumber?: number
+  order?: number
+}
+
+function parseTaskCreatedAtLabel(
+  createdAtLabel: string | undefined,
+  referenceTimestamp = Date.now()
+) {
+  const trimmed = createdAtLabel?.trim()
+  if (!trimmed) return null
+
+  const referenceDate = new Date(referenceTimestamp)
+  const referenceYear = referenceDate.getFullYear()
+  const parsed = new Date(`${trimmed}, ${referenceYear}`)
+  if (Number.isNaN(parsed.getTime())) {
+    return null
+  }
+
+  // Handle labels like "Dec 31" while the current date is in early January.
+  if (parsed.getTime() - referenceTimestamp > 31 * 24 * 60 * 60 * 1000) {
+    parsed.setFullYear(referenceYear - 1)
+  }
+
+  return parsed.getTime()
+}
+
+export function getTaskSortTimestamp(
+  task: TaskSortFields,
+  referenceTimestamp = Date.now()
+) {
+  if (typeof task.sourceCreatedAt === "number" && Number.isFinite(task.sourceCreatedAt)) {
+    return task.sourceCreatedAt
+  }
+
+  const parsedLabel = parseTaskCreatedAtLabel(
+    task.createdAtLabel,
+    referenceTimestamp
+  )
+  if (parsedLabel !== null) {
+    return parsedLabel
+  }
+
+  if (typeof task._creationTime === "number" && Number.isFinite(task._creationTime)) {
+    return task._creationTime
+  }
+
+  return 0
+}
+
+export function compareTasksByStatusAndRecency(
+  a: TaskSortFields,
+  b: TaskSortFields
+) {
+  const statusDiff = STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
+  if (statusDiff !== 0) return statusDiff
+
+  const createdDiff = getTaskSortTimestamp(b) - getTaskSortTimestamp(a)
+  if (createdDiff !== 0) return createdDiff
+
+  const taskNumberDiff = (b.taskNumber ?? 0) - (a.taskNumber ?? 0)
+  if (taskNumberDiff !== 0) return taskNumberDiff
+
+  return (a.order ?? 0) - (b.order ?? 0)
+}
+
+export function sortTasksByStatusAndRecency<T extends TaskSortFields>(
+  tasks: T[]
+) {
+  return [...tasks].sort(compareTasksByStatusAndRecency)
+}
+
+export function normalizeTaskOrdersByStatus<T extends TaskSortFields & { order: number }>(
+  tasks: T[]
+) {
+  const orderByStatus = new Map<TaskStatus, number>()
+
+  return sortTasksByStatusAndRecency(tasks).map((task) => {
+    const nextOrder = orderByStatus.get(task.status) ?? 0
+    orderByStatus.set(task.status, nextOrder + 1)
+    return task.order === nextOrder
+      ? task
+      : ({ ...task, order: nextOrder } as T)
+  })
 }

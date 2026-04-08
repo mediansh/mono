@@ -1505,6 +1505,7 @@ export const upsertTaskFromGitHubIssue = internalMutation({
     }
     const nextTitle = stripLeadingTaskCode(issue.title) || issue.title.trim()
     const nextDescription = normalizeOptionalText(issue.body)
+    const githubCreatedAt = parseTimestamp(issue.createdAt)
     const githubUpdatedAt = parseTimestamp(issue.updatedAt)
     const existingLink = await ctx.db
       .query("githubTaskLinks")
@@ -1533,6 +1534,8 @@ export const upsertTaskFromGitHubIssue = internalMutation({
             ? {
                 title: nextTitle,
                 description: nextDescription,
+                sourceCreatedAt: githubCreatedAt,
+                createdAtLabel: formatCreatedAtLabel(issue.createdAt),
                 updatedAt: githubUpdatedAt,
               }
             : {
@@ -1645,6 +1648,8 @@ export const upsertTaskFromGitHubIssue = internalMutation({
       const updates: Partial<Doc<"tasks">> = {
         title: nextTitle,
         description: nextDescription,
+        sourceCreatedAt: githubCreatedAt,
+        createdAtLabel: formatCreatedAtLabel(issue.createdAt),
         updatedAt: githubUpdatedAt,
       }
 
@@ -1719,6 +1724,7 @@ export const upsertTaskFromGitHubIssue = internalMutation({
       labels: [],
       order: workspaceTasks.filter((task) => task.status === taskStatus).length,
       project: workspace.name,
+      sourceCreatedAt: githubCreatedAt,
       updatedAt: githubUpdatedAt,
       assignee: {
         name: "Abdul",

@@ -11,6 +11,7 @@ const s = style
 
 const STATUS_LABELS: Record<TaskStatus, string> = {
   requests: "Requests",
+  backlog: "Backlog",
   todo: "Todo",
   in_progress: "In Progress",
   ready: "Ready",

@@ -12,6 +12,7 @@ import { insertWorkspaceLog } from "./logs"
 import { clearLinearTaskLink, clearGitHubTaskLink } from "./tasks"
 
 const draftStatusValidator = v.union(
+  v.literal("backlog"),
   v.literal("todo"),
   v.literal("in_progress"),
   v.literal("ready"),
@@ -598,7 +599,7 @@ export const moveTaskToDraft = mutation({
       workspaceId: task.workspaceId,
       title: task.title,
       description: task.description,
-      status: task.status === "requests" ? "todo" : task.status,
+      status: task.status === "requests" ? "backlog" : task.status,
       priority: task.priority,
       labels: task.labels,
       source: task.source,

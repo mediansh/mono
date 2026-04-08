@@ -17,7 +17,7 @@ export function registerTasksCommand<T extends Crust<any, any, any>>(
     .flags({
       status: {
         type: "string",
-        description: "Filter by status (requests, todo, in_progress, ready, shipped, archive)",
+        description: "Filter by status (requests, backlog, todo, in_progress, ready, shipped, archive)",
         short: "s",
       },
       priority: {

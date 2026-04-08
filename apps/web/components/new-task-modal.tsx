@@ -24,6 +24,7 @@ import {
   Sparkle,
   ArrowRight,
   NotePencil,
+  ListBullets,
 } from "@phosphor-icons/react"
 import {
   DropdownMenu,
@@ -45,6 +46,7 @@ import { hasTaskWritePermission } from "@/lib/workspace-permissions"
 import {
   getTaskNumber,
   DEFAULT_WORKSPACE_LABELS,
+  normalizeTaskOrdersByStatus,
   type TaskLabel as Label,
   type TaskPriority as Priority,
   type TaskStatus as Status,
@@ -63,6 +65,7 @@ import {
 } from "@/components/task-attachments"
 
 const STATUS_OPTIONS: { id: Status; label: string }[] = [
+  { id: "backlog", label: "Backlog" },
   { id: "todo", label: "Todo" },
   { id: "in_progress", label: "In Progress" },
   { id: "ready", label: "Ready" },
@@ -84,6 +87,8 @@ function getStatusIcon(status: Status) {
   switch (status) {
     case "requests":
       return <SpinnerGap size={14} className="text-muted-foreground" />
+    case "backlog":
+      return <ListBullets size={14} className="text-muted-foreground" />
     case "todo":
       return <Circle size={14} className="text-muted-foreground" />
     case "in_progress":
@@ -485,10 +490,10 @@ export function NewTaskModal({
         _syncStatus: "pending",
       }
 
-      setWorkspaceTasks(currentWorkspace._id, [
-        ...existingTasks,
-        optimisticTask,
-      ])
+      setWorkspaceTasks(
+        currentWorkspace._id,
+        normalizeTaskOrdersByStatus([...existingTasks, optimisticTask])
+      )
 
       try {
         const createdTask = (await createTaskWithFallback(
@@ -567,10 +572,10 @@ export function NewTaskModal({
         _syncStatus: "pending",
       }
 
-      setWorkspaceTasks(currentWorkspace._id, [
-        ...existingTasks,
-        optimisticTask,
-      ])
+      setWorkspaceTasks(
+        currentWorkspace._id,
+        normalizeTaskOrdersByStatus([...existingTasks, optimisticTask])
+      )
 
       try {
         const draftAttachments = attachments.map(
@@ -580,7 +585,7 @@ export function NewTaskModal({
           draftId: draft._id as any,
           title: payload.title,
           description: payload.description,
-          status: payload.status === "requests" ? "todo" : payload.status,
+          status: payload.status === "requests" ? "backlog" : payload.status,
           priority: payload.priority,
           labels: payload.labels,
           attachments:
@@ -727,7 +732,7 @@ export function NewTaskModal({
           draftId: draft._id as any,
           title: title || "Untitled draft",
           description,
-          status: status === "requests" ? "todo" : status,
+          status: status === "requests" ? "backlog" : status,
           priority,
           labels,
           attachments:
@@ -739,7 +744,7 @@ export function NewTaskModal({
           workspaceId: currentWorkspace._id,
           title: title || "Untitled draft",
           description,
-          status: status === "requests" ? "todo" : status,
+          status: status === "requests" ? "backlog" : status,
           priority,
           labels,
           attachments:

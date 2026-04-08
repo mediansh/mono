@@ -21,6 +21,7 @@ const LINEAR_MEDIAN_TITLE_PREFIX = "[MDN]"
 const LINEAR_MEDIAN_TITLE_PREFIX_REGEX = /^\[MDN\]\s*/
 const LINEAR_MAPPABLE_STATUSES: TaskStatus[] = [
   "requests",
+  "backlog",
   "todo",
   "in_progress",
   "ready",
@@ -123,6 +124,7 @@ const linearIssueValidator = v.object({
 
 const linearStatusMappingsValidator = v.object({
   requests: v.optional(v.string()),
+  backlog: v.optional(v.string()),
   todo: v.optional(v.string()),
   in_progress: v.optional(v.string()),
   ready: v.optional(v.string()),
@@ -343,6 +345,7 @@ function normalizeStatusMappings(
 function buildDefaultStatusMappings(states: LinearWorkflowState[]) {
   return normalizeStatusMappings({
     requests: pickDefaultWorkflowStateId(states, "requests"),
+    backlog: pickDefaultWorkflowStateId(states, "backlog"),
     todo: pickDefaultWorkflowStateId(states, "todo"),
     in_progress: pickDefaultWorkflowStateId(states, "in_progress"),
     ready: pickDefaultWorkflowStateId(states, "ready"),
@@ -407,7 +410,8 @@ function mapLinearStateToDefaultTaskStatus(issue: LinearIssue): TaskStatus {
 
   if (stateType === "completed") return "shipped"
   if (stateType === "canceled") return "archive"
-  if (stateType === "backlog" || stateType === "triage") return "requests"
+  if (stateType === "triage") return "requests"
+  if (stateType === "backlog") return "backlog"
   if (stateType === "unstarted") return "todo"
   if (stateType === "started" && stateName.includes("review")) return "ready"
   if (stateType === "started") return "in_progress"
@@ -457,7 +461,11 @@ function pickDefaultWorkflowStateId(
   switch (status) {
     case "requests":
       return (
-        findByType("backlog") ?? findByType("triage") ?? findByType("unstarted")
+        findByType("triage") ?? findByType("backlog") ?? findByType("unstarted")
+      )
+    case "backlog":
+      return (
+        findByType("backlog") ?? findByType("unstarted") ?? findByType("triage")
       )
     case "todo":
       return (
@@ -1801,6 +1809,7 @@ export const upsertTaskFromLinearIssue = internalMutation({
     )
     const taskPriority = mapLinearPriorityToTask(issue.priority)
     const nextDescription = normalizeOptionalText(issue.description)
+    const linearCreatedAt = new Date(issue.createdAt).getTime()
     const linearUpdatedAt = new Date(issue.updatedAt).getTime()
     const nextSource = issue.url
       ? {
@@ -1821,6 +1830,10 @@ export const upsertTaskFromLinearIssue = internalMutation({
           description: nextDescription,
           priority: taskPriority,
           labels: nextLabels,
+          sourceCreatedAt: Number.isFinite(linearCreatedAt)
+            ? linearCreatedAt
+            : undefined,
+          createdAtLabel: formatCreatedAtLabel(issue.createdAt),
           updatedAt: Number.isFinite(linearUpdatedAt)
             ? linearUpdatedAt
             : Date.now(),
@@ -1882,14 +1895,18 @@ export const upsertTaskFromLinearIssue = internalMutation({
     )
 
     if (matchedTask) {
-      const updates: Partial<Doc<"tasks">> = {
-        title: getMedianTaskTitleFromLinearIssue(issue.title),
-        description: nextDescription,
-        priority: taskPriority,
-        labels: nextLabels,
-        updatedAt: Number.isFinite(linearUpdatedAt)
-          ? linearUpdatedAt
-          : Date.now(),
+        const updates: Partial<Doc<"tasks">> = {
+          title: getMedianTaskTitleFromLinearIssue(issue.title),
+          description: nextDescription,
+          priority: taskPriority,
+          labels: nextLabels,
+          sourceCreatedAt: Number.isFinite(linearCreatedAt)
+            ? linearCreatedAt
+            : undefined,
+          createdAtLabel: formatCreatedAtLabel(issue.createdAt),
+          updatedAt: Number.isFinite(linearUpdatedAt)
+            ? linearUpdatedAt
+            : Date.now(),
       }
 
       if (matchedTask.status !== taskStatus) {
@@ -1946,6 +1963,9 @@ export const upsertTaskFromLinearIssue = internalMutation({
       labels: nextLabels,
       order: workspaceTasks.filter((task) => task.status === taskStatus).length,
       project: workspace.name,
+      sourceCreatedAt: Number.isFinite(linearCreatedAt)
+        ? linearCreatedAt
+        : undefined,
       updatedAt: Number.isFinite(linearUpdatedAt)
         ? linearUpdatedAt
         : Date.now(),

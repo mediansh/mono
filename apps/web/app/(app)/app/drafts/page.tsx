@@ -18,6 +18,7 @@ import {
   CellSignalMedium,
   CellSignalLow,
   DotsThree,
+  ListBullets,
 } from "@phosphor-icons/react"
 import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
@@ -30,7 +31,7 @@ import {
   updateWorkspaceTasks,
   type LocalTaskDoc,
 } from "@/lib/local-first-store"
-import { getTaskNumber } from "@/lib/task-board"
+import { getTaskNumber, normalizeTaskOrdersByStatus } from "@/lib/task-board"
 
 type Draft = Doc<"drafts">
 
@@ -45,6 +46,8 @@ const fadeUp = {
 
 function getStatusIcon(status: string) {
   switch (status) {
+    case "backlog":
+      return <ListBullets size={14} className="text-muted-foreground" />
     case "todo":
       return <Circle size={14} className="text-muted-foreground" />
     case "in_progress":
@@ -76,6 +79,7 @@ function getPriorityIcon(priority: string) {
 }
 
 const STATUS_LABELS: Record<string, string> = {
+  backlog: "Backlog",
   todo: "Todo",
   in_progress: "In Progress",
   ready: "Ready",
@@ -154,7 +158,10 @@ export default function DraftsPage() {
       _syncStatus: "pending",
     }
 
-    setWorkspaceTasks(currentWorkspace._id, [...existingTasks, optimisticTask])
+    setWorkspaceTasks(
+      currentWorkspace._id,
+      normalizeTaskOrdersByStatus([...existingTasks, optimisticTask])
+    )
 
     try {
       const createdTask = (await publishDraft({

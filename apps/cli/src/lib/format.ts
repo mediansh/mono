@@ -6,6 +6,7 @@ const s = style
 
 const STATUS_COLORS: Record<TaskStatus, (text: string) => string> = {
   requests: (t) => s.magenta(t),
+  backlog: (t) => s.blue(t),
   todo: (t) => s.blue(t),
   in_progress: (t) => s.yellow(t),
   ready: (t) => s.cyan(t),
@@ -15,6 +16,7 @@ const STATUS_COLORS: Record<TaskStatus, (text: string) => string> = {
 
 const STATUS_LABELS: Record<TaskStatus, string> = {
   requests: "Requests",
+  backlog: "Backlog",
   todo: "Todo",
   in_progress: "In Progress",
   ready: "Ready",

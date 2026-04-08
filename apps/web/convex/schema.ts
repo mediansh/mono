@@ -129,6 +129,7 @@ export default defineSchema({
     statusMappings: v.optional(
       v.object({
         requests: v.optional(v.string()),
+        backlog: v.optional(v.string()),
         todo: v.optional(v.string()),
         in_progress: v.optional(v.string()),
         ready: v.optional(v.string()),
@@ -467,6 +468,7 @@ export default defineSchema({
     description: v.optional(v.string()),
     status: v.union(
       v.literal("requests"),
+      v.literal("backlog"),
       v.literal("todo"),
       v.literal("in_progress"),
       v.literal("ready"),
@@ -520,6 +522,7 @@ export default defineSchema({
         })
       )
     ),
+    sourceCreatedAt: v.optional(v.number()),
     createdAtLabel: v.optional(v.string()),
     attachments: v.optional(
       v.array(
@@ -541,6 +544,7 @@ export default defineSchema({
     title: v.string(),
     description: v.optional(v.string()),
     status: v.union(
+      v.literal("backlog"),
       v.literal("todo"),
       v.literal("in_progress"),
       v.literal("ready"),

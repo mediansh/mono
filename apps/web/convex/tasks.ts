@@ -8,12 +8,18 @@ import {
 import type { MutationCtx, QueryCtx } from "./_generated/server"
 import type { Doc, Id } from "./_generated/dataModel"
 import { internal } from "./_generated/api"
-import { STATUS_ORDER, isDemoTaskSet } from "../lib/task-board"
+import {
+  STATUS_ORDER,
+  compareTasksByStatusAndRecency,
+  normalizeTaskOrdersByStatus,
+  isDemoTaskSet,
+} from "../lib/task-board"
 import { insertWorkspaceLog, insertWorkspaceLogs } from "./logs"
 import { requireTaskWriteAccess, requireWorkspaceAccess } from "./permissions"
 
 const taskStatusValidator = v.union(
   v.literal("requests"),
+  v.literal("backlog"),
   v.literal("todo"),
   v.literal("in_progress"),
   v.literal("ready"),
@@ -59,6 +65,7 @@ const taskInputValidator = v.object({
   priority: taskPriorityValidator,
   labels: v.array(v.string()),
   source: v.optional(taskSourceValidator),
+  sourceCreatedAt: v.optional(v.number()),
   createdAtLabel: v.optional(v.string()),
   attachments: v.optional(v.array(attachmentValidator)),
 })
@@ -66,7 +73,14 @@ const taskInputValidator = v.object({
 type CreateTaskInput = {
   title: string
   description?: string
-  status: "requests" | "todo" | "in_progress" | "ready" | "shipped" | "archive"
+  status:
+    | "requests"
+    | "backlog"
+    | "todo"
+    | "in_progress"
+    | "ready"
+    | "shipped"
+    | "archive"
   priority: "urgent" | "high" | "medium" | "low" | "none"
   labels: string[]
   source?: {
@@ -74,6 +88,7 @@ type CreateTaskInput = {
     url: string
     author: string
   }
+  sourceCreatedAt?: number
   createdAtLabel?: string
   attachments?: {
     storageId: Id<"_storage">
@@ -113,6 +128,7 @@ type WorkspaceTaskLog = {
 
 const TASK_STATUS_LABELS = {
   requests: "Requests",
+  backlog: "Backlog",
   todo: "Todo",
   in_progress: "In Progress",
   ready: "Ready",
@@ -208,13 +224,16 @@ function normalizeTitleFingerprint(value: string) {
 }
 
 function sortTasks<
-  T extends { status: keyof typeof STATUS_ORDER; order: number },
+  T extends {
+    status: keyof typeof STATUS_ORDER
+    createdAtLabel?: string
+    sourceCreatedAt?: number
+    _creationTime?: number
+    taskNumber?: number
+    order: number
+  },
 >(tasks: T[]) {
-  return tasks.sort((a, b) => {
-    const statusDiff = STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
-    if (statusDiff !== 0) return statusDiff
-    return a.order - b.order
-  })
+  return tasks.sort(compareTasksByStatusAndRecency)
 }
 
 async function getWorkspaceTasks(
@@ -362,6 +381,7 @@ async function insertTasksForWorkspace(
       },
       source: taskInput.source,
       sources: taskInput.source ? [taskInput.source] : undefined,
+      sourceCreatedAt: taskInput.sourceCreatedAt,
       createdAtLabel: taskInput.createdAtLabel,
       attachments: taskInput.attachments ?? undefined,
     })
@@ -1192,7 +1212,8 @@ async function queueDiscordNotificationForStatusChange(
 
   if (
     task.status === "requests" &&
-    (nextStatus === "todo" ||
+    (nextStatus === "backlog" ||
+      nextStatus === "todo" ||
       nextStatus === "in_progress" ||
       nextStatus === "ready")
   ) {
@@ -1219,6 +1240,7 @@ export const updateTask = mutation({
     status: v.optional(
       v.union(
         v.literal("requests"),
+        v.literal("backlog"),
         v.literal("todo"),
         v.literal("in_progress"),
         v.literal("ready"),
@@ -1307,6 +1329,7 @@ export const reorderTasks = mutation({
         taskId: v.id("tasks"),
         status: v.union(
           v.literal("requests"),
+          v.literal("backlog"),
           v.literal("todo"),
           v.literal("in_progress"),
           v.literal("ready"),
@@ -1320,52 +1343,82 @@ export const reorderTasks = mutation({
   handler: async (ctx, args) => {
     await requireTaskWriteAccess(ctx, args.workspaceId)
 
-    // Read all tasks first for validation and to detect status transitions
     const tasksBeforeUpdate = new Map<string, Doc<"tasks">>()
     const taskMoveLogs: WorkspaceTaskLog[] = []
+    const changesByTaskId = new Map(
+      args.changes.map((change) => [String(change.taskId), change] as const)
+    )
+
+    const workspaceTasks = await getWorkspaceTasks(ctx, args.workspaceId)
     for (const change of args.changes) {
-      const task = await ctx.db.get(change.taskId)
+      const task = workspaceTasks.find((item) => item._id === change.taskId)
       if (!task || task.workspaceId !== args.workspaceId) {
         throw new Error("Task not found")
       }
-      tasksBeforeUpdate.set(change.taskId, task)
+      tasksBeforeUpdate.set(String(change.taskId), task)
     }
 
-    for (const change of args.changes) {
-      await ctx.db.patch(change.taskId, {
-        status: change.status,
-        order: change.order,
-        updatedAt: Date.now(),
+    const normalizedTasks = normalizeTaskOrdersByStatus(
+      workspaceTasks.map((task) => {
+        const change = changesByTaskId.get(String(task._id))
+        return change ? { ...task, status: change.status } : task
       })
+    )
 
-      const taskBeforeUpdate = tasksBeforeUpdate.get(change.taskId)
-      if (taskBeforeUpdate && change.status !== taskBeforeUpdate.status) {
+    const now = Date.now()
+    for (const task of normalizedTasks) {
+      const previousTask = tasksBeforeUpdate.get(String(task._id))
+      const nextPatch: Partial<Doc<"tasks">> = {}
+
+      if (previousTask) {
+        if (previousTask.status !== task.status) {
+          nextPatch.status = task.status
+          nextPatch.updatedAt = now
+        }
+        if (previousTask.order !== task.order) {
+          nextPatch.order = task.order
+        }
+      } else {
+        const currentTask = workspaceTasks.find((item) => item._id === task._id)
+        if (!currentTask) continue
+        if (currentTask.order !== task.order) {
+          nextPatch.order = task.order
+        }
+      }
+
+      if (Object.keys(nextPatch).length === 0) {
+        continue
+      }
+
+      await ctx.db.patch(task._id, nextPatch)
+
+      if (previousTask && task.status !== previousTask.status) {
         taskMoveLogs.push({
-          workspaceId: taskBeforeUpdate.workspaceId,
+          workspaceId: previousTask.workspaceId,
           category: "tasks",
           type: "task_moved",
-          message: `${taskBeforeUpdate.taskCode} moved from "${TASK_STATUS_LABELS[taskBeforeUpdate.status]}" to "${TASK_STATUS_LABELS[change.status]}"`,
-          source: getWorkspaceLogSource(taskBeforeUpdate.source?.platform),
+          message: `${previousTask.taskCode} moved from "${TASK_STATUS_LABELS[previousTask.status]}" to "${TASK_STATUS_LABELS[task.status]}"`,
+          source: getWorkspaceLogSource(previousTask.source?.platform),
         })
-        await queueLinearSync(ctx, change.taskId)
-        await queueGitHubSync(ctx, change.taskId)
+        await queueLinearSync(ctx, task._id)
+        await queueGitHubSync(ctx, task._id)
       }
     }
 
     await insertWorkspaceLogs(ctx, taskMoveLogs)
 
     // Queue Discord notifications for status transitions
-    for (const change of args.changes) {
-      const task = tasksBeforeUpdate.get(change.taskId)
-      if (!task || change.status === task.status) {
+    for (const task of normalizedTasks) {
+      const previousTask = tasksBeforeUpdate.get(String(task._id))
+      if (!previousTask || task.status === previousTask.status) {
         continue
       }
 
       await queueDiscordNotificationForStatusChange(
         ctx,
-        task,
-        change.taskId,
-        change.status
+        previousTask,
+        task._id,
+        task.status
       )
     }
   },

@@ -28,7 +28,7 @@ export function registerStatusCommand<T extends Crust<any, any, any>>(
       {
         name: "status",
         type: "string",
-        description: "New status (requests, todo, in_progress, ready, shipped, archive)",
+        description: "New status (requests, backlog, todo, in_progress, ready, shipped, archive)",
         required: true,
       },
     ])

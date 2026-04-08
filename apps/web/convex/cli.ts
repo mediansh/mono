@@ -3,7 +3,7 @@ import { mutation, query } from "./_generated/server"
 import type { MutationCtx, QueryCtx } from "./_generated/server"
 import type { Doc, Id } from "./_generated/dataModel"
 import { internal } from "./_generated/api"
-import { STATUS_ORDER } from "../lib/task-board"
+import { compareTasksByStatusAndRecency, STATUS_ORDER } from "../lib/task-board"
 import { insertWorkspaceLog } from "./logs"
 import {
   requireIdentity,
@@ -12,6 +12,7 @@ import {
 
 const taskStatusValidator = v.union(
   v.literal("requests"),
+  v.literal("backlog"),
   v.literal("todo"),
   v.literal("in_progress"),
   v.literal("ready"),
@@ -52,13 +53,16 @@ async function requireCliApiKey(
 }
 
 function sortTasks<
-  T extends { status: keyof typeof STATUS_ORDER; order: number },
+  T extends {
+    status: keyof typeof STATUS_ORDER
+    createdAtLabel?: string
+    sourceCreatedAt?: number
+    _creationTime?: number
+    taskNumber?: number
+    order: number
+  },
 >(tasks: T[]) {
-  return tasks.sort((a, b) => {
-    const statusDiff = STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
-    if (statusDiff !== 0) return statusDiff
-    return a.order - b.order
-  })
+  return tasks.sort(compareTasksByStatusAndRecency)
 }
 
 // ── Queries (called by CLI with API key) ─────────────────────────────
