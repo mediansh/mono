@@ -12,6 +12,7 @@ export type CurrentUserProfile = {
   email?: string
   name?: string
   imageUrl?: string
+  aliases?: string[]
 }
 
 type WorkspaceMemberLike = {
@@ -31,7 +32,32 @@ function normalizeProfile(profile: CurrentUserProfile | null): CurrentUserProfil
     email: normalizeAssigneeEmail(profile.email),
     name: profile.name?.trim() || undefined,
     imageUrl: profile.imageUrl?.trim() || undefined,
+    aliases: Array.from(
+      new Set(
+        (profile.aliases ?? [])
+          .map((alias) => normalizeAssigneeName(alias).toLowerCase())
+          .filter(Boolean)
+      )
+    ),
   }
+}
+
+function normalizeAliasValue(value?: string | null) {
+  const normalized = normalizeAssigneeName(value ?? "").toLowerCase()
+  return normalized || undefined
+}
+
+function matchesAlias(target: string | undefined, aliases: string[] | undefined) {
+  if (!target || !aliases?.length) {
+    return false
+  }
+
+  return aliases.some(
+    (alias) =>
+      alias === target ||
+      alias.startsWith(`${target} `) ||
+      target.startsWith(`${alias} `)
+  )
 }
 
 function isCurrentUserMatch(
@@ -55,9 +81,13 @@ function isCurrentUserMatch(
     return true
   }
 
-  const normalizedTargetName = normalizeAssigneeName(target.name ?? "").toLowerCase()
-  const normalizedProfileName = normalizeAssigneeName(profile.name ?? "").toLowerCase()
-  return Boolean(normalizedTargetName && normalizedProfileName && normalizedTargetName === normalizedProfileName)
+  const targetAliases = [
+    normalizeAliasValue(target.name),
+    normalizeAliasValue(target.email),
+    normalizeAliasValue(target.email?.split("@")[0]),
+  ].filter((alias): alias is string => Boolean(alias))
+
+  return targetAliases.some((alias) => matchesAlias(alias, profile.aliases))
 }
 
 export function useCurrentUserProfile() {
@@ -70,6 +100,14 @@ export function useCurrentUserProfile() {
           email: user.primaryEmailAddress?.emailAddress,
           name: user.fullName ?? user.username ?? undefined,
           imageUrl: user.imageUrl,
+          aliases: [
+            user.fullName ?? undefined,
+            user.username ?? undefined,
+            user.firstName ?? undefined,
+            user.lastName ?? undefined,
+            user.primaryEmailAddress?.emailAddress ?? undefined,
+            user.primaryEmailAddress?.emailAddress?.split("@")[0] ?? undefined,
+          ].filter((alias): alias is string => Boolean(alias)),
         }
       : null
   )
