@@ -1672,7 +1672,7 @@ function TaskDetailModal({
               {/* Close button */}
               <button
                 onClick={onClose}
-                className="absolute top-4 right-4 rounded-[4px] p-1.5 text-muted-foreground/50 transition-colors hover:bg-accent hover:text-foreground"
+                className="absolute top-4 right-4 rounded-[4px] p-1.5 text-muted-foreground/50 ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground"
               >
                 <X size={14} weight="bold" />
               </button>
@@ -1794,33 +1794,6 @@ function TaskDetailModal({
                 </div>
               ) : null}
 
-              {/* Accept / Deny for request tasks */}
-              {task.status === "requests" && onAccept && onDeny && (
-                <div className="mt-4 flex items-center gap-2 border-t border-border pt-4">
-                  <button
-                    disabled={!canManageTasks}
-                    onClick={() => {
-                      onAccept(task)
-                      onClose()
-                    }}
-                    className="flex items-center gap-1.5 rounded-[4px] border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[12px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
-                  >
-                    <CheckCircle size={14} weight="fill" />
-                    Accept request
-                  </button>
-                  <button
-                    disabled={!canManageTasks}
-                    onClick={() => {
-                      onDeny(task)
-                      onClose()
-                    }}
-                    className="flex items-center gap-1.5 rounded-[4px] border border-red-500/30 bg-red-500/10 px-3 py-2 text-[12px] font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
-                  >
-                    <XCircle size={14} />
-                    Deny request
-                  </button>
-                </div>
-              )}
             </div>
 
             {/* ── Bottom toolbar ── */}
@@ -1986,15 +1959,43 @@ function TaskDetailModal({
                   </DropdownMenu>
                 </div>
 
-                {/* Delete button */}
-                <button
-                  disabled={!canManageTasks}
-                  onClick={() => onDelete(task.id)}
-                  className="rounded-[4px] p-1.5 text-muted-foreground/40 transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-60"
-                  title="Delete task"
-                >
-                  <Trash size={14} />
-                </button>
+                {/* Accept / Deny for request tasks, or Delete */}
+                <div className="flex items-center gap-1.5">
+                  {task.status === "requests" && onAccept && onDeny && (
+                    <>
+                      <button
+                        disabled={!canManageTasks}
+                        onClick={() => {
+                          onAccept(task)
+                          onClose()
+                        }}
+                        className="flex items-center gap-1.5 rounded-[4px] border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
+                      >
+                        <CheckCircle size={13} weight="fill" />
+                        Accept
+                      </button>
+                      <button
+                        disabled={!canManageTasks}
+                        onClick={() => {
+                          onDeny(task)
+                          onClose()
+                        }}
+                        className="flex items-center gap-1.5 rounded-[4px] border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-[11px] font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
+                      >
+                        <XCircle size={13} />
+                        Deny
+                      </button>
+                    </>
+                  )}
+                  <button
+                    disabled={!canManageTasks}
+                    onClick={() => onDelete(task.id)}
+                    className="rounded-[4px] p-1.5 text-muted-foreground/40 ring-1 ring-border transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-60"
+                    title="Delete task"
+                  >
+                    <Trash size={14} />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
