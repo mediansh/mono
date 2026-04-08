@@ -16,7 +16,7 @@ import {
 } from "./permissions"
 import {
   buildTaskAssignee,
-  findMatchingAssignee,
+  mergeWorkspaceAssignableAssignees,
   normalizeAssigneeRole,
   normalizeAssigneeEmail,
   type AssigneeRole,
@@ -80,14 +80,6 @@ type LinearUser = {
 type LinearTeamMember = LinearUser & {
   membershipId: string
   membershipOwner: boolean
-}
-
-type LinearOrganizationInvite = {
-  id: string
-  email: string
-  role: "owner" | "admin" | "guest" | "user" | "app"
-  acceptedAt?: string | null
-  metadata?: Record<string, unknown> | null
 }
 
 type LinearIssue = {
@@ -380,18 +372,6 @@ function getMedianManagedInviteMetadata(workspaceId: Id<"workspaces">, teamId: s
     workspaceId,
     teamId,
   }
-}
-
-function isMedianManagedInvite(
-  invite: LinearOrganizationInvite,
-  workspaceId: Id<"workspaces">,
-  teamId: string
-) {
-  return (
-    invite.metadata?.source === "median" &&
-    invite.metadata?.workspaceId === workspaceId &&
-    invite.metadata?.teamId === teamId
-  )
 }
 
 function reconcileWorkspaceAssigneesFromLinearSnapshot(
@@ -1082,52 +1062,6 @@ async function findLinearUserByEmail(apiKey: string, email: string) {
   return data.users.nodes.find((user) => user.isAssignable !== false) ?? null
 }
 
-async function fetchOrganizationInvites(apiKey: string) {
-  const invites: LinearOrganizationInvite[] = []
-  let after: string | null = null
-
-  do {
-    const data: {
-      organizationInvites: {
-        nodes: LinearOrganizationInvite[]
-        pageInfo: {
-          hasNextPage: boolean
-          endCursor: string | null
-        }
-      }
-    } = await linearGraphql(
-      apiKey,
-      `
-        query OrganizationInvites($after: String) {
-          organizationInvites(first: 100, after: $after) {
-            nodes {
-              id
-              email
-              role
-              acceptedAt
-              metadata
-            }
-            pageInfo {
-              hasNextPage
-              endCursor
-            }
-          }
-        }
-      `,
-      {
-        after,
-      }
-    )
-
-    invites.push(...data.organizationInvites.nodes)
-    after = data.organizationInvites.pageInfo.hasNextPage
-      ? data.organizationInvites.pageInfo.endCursor
-      : null
-  } while (after)
-
-  return invites
-}
-
 async function fetchTeamLabels(apiKey: string, teamId: string) {
   const labels: LinearLabel[] = []
   let after: string | null = null
@@ -1356,30 +1290,6 @@ async function createTeamMembership(
   }
 }
 
-async function deleteTeamMembership(apiKey: string, membershipId: string) {
-  const data = await linearGraphql<{
-    teamMembershipDelete: {
-      success: boolean
-    }
-  }>(
-    apiKey,
-    `
-      mutation DeleteTeamMembership($id: String!) {
-        teamMembershipDelete(id: $id) {
-          success
-        }
-      }
-    `,
-    {
-      id: membershipId,
-    }
-  )
-
-  if (!data.teamMembershipDelete.success) {
-    throw new Error("Failed to remove the assignee from the Linear team")
-  }
-}
-
 async function createOrganizationInvite(
   apiKey: string,
   input: {
@@ -1414,30 +1324,6 @@ async function createOrganizationInvite(
 
   if (!data.organizationInviteCreate.success) {
     throw new Error("Failed to invite the assignee into Linear")
-  }
-}
-
-async function deleteOrganizationInvite(apiKey: string, inviteId: string) {
-  const data = await linearGraphql<{
-    organizationInviteDelete: {
-      success: boolean
-    }
-  }>(
-    apiKey,
-    `
-      mutation DeleteOrganizationInvite($id: String!) {
-        organizationInviteDelete(id: $id) {
-          success
-        }
-      }
-    `,
-    {
-      id: inviteId,
-    }
-  )
-
-  if (!data.organizationInviteDelete.success) {
-    throw new Error("Failed to delete the Linear organization invite")
   }
 }
 
@@ -2421,8 +2307,28 @@ export const getWorkspaceAssigneeConfig = internalQuery({
     workspaceId: v.id("workspaces"),
   },
   handler: async (ctx, args) => {
-    const workspace = await ctx.db.get(args.workspaceId)
-    return workspace?.assignees
+    const [workspace, members] = await Promise.all([
+      ctx.db.get(args.workspaceId),
+      ctx.db
+        .query("workspaceMembers")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+        .collect(),
+    ])
+
+    if (!workspace) {
+      return undefined
+    }
+
+    return mergeWorkspaceAssignableAssignees({
+      members: members.map((member) => ({
+        userId: member.userId,
+        role: member.role,
+        name: member.name,
+        email: member.email,
+        imageUrl: member.imageUrl,
+      })),
+      storedAssignees: workspace.assignees ?? [],
+    })
   },
 })
 
@@ -3348,7 +3254,6 @@ export const syncWorkspaceAssigneesToLinear = internalAction({
       })) ?? []
 
     let teamMembers = await fetchTeamMembers(integration.apiKey, integration.teamId)
-    const organizationInvites = await fetchOrganizationInvites(integration.apiKey)
 
     for (const assignee of workspaceAssignees) {
       const result = await resolveTaskAssigneeForLinear(
@@ -3369,41 +3274,6 @@ export const syncWorkspaceAssigneesToLinear = internalAction({
           }
         }
         teamMembers = nextMembers
-      }
-    }
-
-    const latestMemberships = await fetchTeamMembers(
-      integration.apiKey,
-      integration.teamId
-    )
-
-    for (const member of latestMemberships) {
-      const matchedAssignee = findMatchingAssignee(
-        mapLinearUserToWorkspaceAssignee(member),
-        workspaceAssignees
-      )
-
-      if (!matchedAssignee) {
-        await deleteTeamMembership(integration.apiKey, member.membershipId)
-      }
-    }
-
-    for (const invite of organizationInvites) {
-      if (
-        invite.acceptedAt ||
-        !isMedianManagedInvite(invite, args.workspaceId, integration.teamId)
-      ) {
-        continue
-      }
-
-      const matchedAssignee = workspaceAssignees.find(
-        (assignee) =>
-          normalizeAssigneeEmail(assignee.email) ===
-          normalizeAssigneeEmail(invite.email)
-      )
-
-      if (!matchedAssignee) {
-        await deleteOrganizationInvite(integration.apiKey, invite.id)
       }
     }
 

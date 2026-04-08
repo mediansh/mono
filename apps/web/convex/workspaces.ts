@@ -15,7 +15,10 @@ import {
 } from "../lib/workspace-permissions"
 import {
   buildTaskAssignee,
+  buildWorkspaceMemberAssignee,
+  doAssigneesMatch,
   findMatchingAssignee,
+  mergeWorkspaceAssignableAssignees,
   normalizeWorkspaceAssignees,
 } from "../lib/task-board"
 import { internal } from "./_generated/api"
@@ -82,6 +85,32 @@ function sortMembers(members: Doc<"workspaceMembers">[]) {
   })
 }
 
+async function getWorkspaceMemberRecords(
+  ctx: { db: any },
+  workspaceId: Doc<"workspaceMembers">["workspaceId"]
+) {
+  return (await ctx.db
+    .query("workspaceMembers")
+    .withIndex("by_workspace", (q: any) => q.eq("workspaceId", workspaceId))
+    .collect()) as Doc<"workspaceMembers">[]
+}
+
+function buildWorkspaceAssignableAssignees(args: {
+  members: Doc<"workspaceMembers">[]
+  storedAssignees: Doc<"workspaces">["assignees"]
+}) {
+  return mergeWorkspaceAssignableAssignees({
+    members: args.members.map((member) => ({
+      userId: member.userId,
+      role: member.role,
+      name: member.name,
+      email: member.email,
+      imageUrl: member.imageUrl,
+    })),
+    storedAssignees: args.storedAssignees ?? [],
+  })
+}
+
 export const getUserWorkspaces = query({
   args: {},
   handler: async (ctx) => {
@@ -97,10 +126,19 @@ export const getUserWorkspaces = query({
       memberships.map(async (membership) => {
         const workspace = await ctx.db.get(membership.workspaceId)
         if (!workspace) return null
+        const members = await getWorkspaceMemberRecords(ctx, membership.workspaceId)
         const iconUrl = workspace.iconId
           ? await ctx.storage.getUrl(workspace.iconId)
           : null
-        return { ...workspace, iconUrl, role: membership.role }
+        return {
+          ...workspace,
+          assignees: buildWorkspaceAssignableAssignees({
+            members,
+            storedAssignees: workspace.assignees,
+          }),
+          iconUrl,
+          role: membership.role,
+        }
       })
     )
 
@@ -161,6 +199,72 @@ export const getWorkspaceMembers = query({
   },
 })
 
+export const getWorkspaceAssignableAssignees = query({
+  args: {
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args) => {
+    await requireWorkspaceAccess(ctx, args.workspaceId)
+
+    const [workspace, members] = await Promise.all([
+      ctx.db.get(args.workspaceId),
+      getWorkspaceMemberRecords(ctx, args.workspaceId),
+    ])
+
+    if (!workspace) {
+      throw new Error("Workspace not found")
+    }
+
+    return buildWorkspaceAssignableAssignees({
+      members,
+      storedAssignees: workspace.assignees,
+    })
+  },
+})
+
+export const getWorkspaceAssigneeSettings = query({
+  args: {
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args) => {
+    await requireWorkspaceAccess(ctx, args.workspaceId)
+
+    const [workspace, members] = await Promise.all([
+      ctx.db.get(args.workspaceId),
+      getWorkspaceMemberRecords(ctx, args.workspaceId),
+    ])
+
+    if (!workspace) {
+      throw new Error("Workspace not found")
+    }
+
+    const memberAssignees = members.map((member) => ({
+      memberId: member._id,
+      ...buildWorkspaceMemberAssignee({
+        userId: member.userId,
+        role: member.role,
+        name: member.name,
+        email: member.email,
+        imageUrl: member.imageUrl,
+      }),
+    }))
+
+    const externalAssignees = normalizeWorkspaceAssignees(
+      (workspace.assignees ?? []).filter(
+        (assignee) =>
+          !memberAssignees.some((memberAssignee) =>
+            doAssigneesMatch(memberAssignee, assignee)
+          )
+      )
+    )
+
+    return {
+      memberAssignees,
+      externalAssignees,
+    }
+  },
+})
+
 export const syncMyProfile = mutation({
   args: {
     workspaceId: v.id("workspaces"),
@@ -184,7 +288,56 @@ export const syncMyProfile = mutation({
 
     if (needsUpdate) {
       await ctx.db.patch(membership._id, profile)
+      const workspace = await ctx.db.get(args.workspaceId)
+      if (workspace) {
+        await ctx.runMutation(internal.workspaces.applyWorkspaceAssigneeDirectory, {
+          workspaceId: args.workspaceId,
+          assignees: workspace.assignees ?? [],
+          mode: "replace",
+        })
+        await ctx.scheduler.runAfter(0, internal.linear.syncWorkspaceAssigneesToLinear, {
+          workspaceId: args.workspaceId,
+        })
+      }
     }
+  },
+})
+
+export const updateMemberAssigneeAvatar = mutation({
+  args: {
+    memberId: v.id("workspaceMembers"),
+    storageId: v.id("_storage"),
+  },
+  handler: async (ctx, args) => {
+    const member = await ctx.db.get(args.memberId)
+    if (!member) {
+      throw new Error("Member not found")
+    }
+
+    await requireWorkspaceAdminAccess(ctx, member.workspaceId)
+
+    const imageUrl = await ctx.storage.getUrl(args.storageId)
+    if (!imageUrl) {
+      throw new Error("Failed to resolve the uploaded image")
+    }
+
+    await ctx.db.patch(args.memberId, {
+      imageUrl,
+    })
+
+    const workspace = await ctx.db.get(member.workspaceId)
+    if (!workspace) {
+      throw new Error("Workspace not found")
+    }
+
+    await ctx.runMutation(internal.workspaces.applyWorkspaceAssigneeDirectory, {
+      workspaceId: member.workspaceId,
+      assignees: workspace.assignees ?? [],
+      mode: "replace",
+    })
+    await ctx.scheduler.runAfter(0, internal.linear.syncWorkspaceAssigneesToLinear, {
+      workspaceId: member.workspaceId,
+    })
   },
 })
 
@@ -256,6 +409,8 @@ export const applyWorkspaceAssigneeDirectory = internalMutation({
       throw new Error("Workspace not found")
     }
 
+    const members = await getWorkspaceMemberRecords(ctx, args.workspaceId)
+
     const nextAssignees = normalizeWorkspaceAssignees(
       args.mode === "merge"
         ? [...(workspace.assignees ?? []), ...args.assignees]
@@ -270,6 +425,11 @@ export const applyWorkspaceAssigneeDirectory = internalMutation({
         assigneesUpdatedAt: Date.now(),
       })
     }
+
+    const assignableAssignees = buildWorkspaceAssignableAssignees({
+      members,
+      storedAssignees: nextAssignees,
+    })
 
     const [tasks, drafts] = await Promise.all([
       ctx.db
@@ -287,7 +447,10 @@ export const applyWorkspaceAssigneeDirectory = internalMutation({
         continue
       }
 
-      const matchedAssignee = findMatchingAssignee(task.assignee, nextAssignees)
+      const matchedAssignee = findMatchingAssignee(
+        task.assignee,
+        assignableAssignees
+      )
       const nextAssignee = matchedAssignee
         ? buildTaskAssignee(matchedAssignee)
         : undefined
@@ -305,7 +468,10 @@ export const applyWorkspaceAssigneeDirectory = internalMutation({
         continue
       }
 
-      const matchedAssignee = findMatchingAssignee(draft.assignee, nextAssignees)
+      const matchedAssignee = findMatchingAssignee(
+        draft.assignee,
+        assignableAssignees
+      )
       const nextAssignee = matchedAssignee
         ? buildTaskAssignee(matchedAssignee)
         : undefined
@@ -798,6 +964,14 @@ export const updateMemberRole = mutation({
     }
 
     await ctx.db.patch(args.memberId, { role: args.role })
+    const workspace = await ctx.db.get(member.workspaceId)
+    if (workspace) {
+      await ctx.runMutation(internal.workspaces.applyWorkspaceAssigneeDirectory, {
+        workspaceId: member.workspaceId,
+        assignees: workspace.assignees ?? [],
+        mode: "replace",
+      })
+    }
   },
 })
 
@@ -823,6 +997,14 @@ export const removeMember = mutation({
     }
 
     await ctx.db.delete(args.memberId)
+    const workspace = await ctx.db.get(member.workspaceId)
+    if (workspace) {
+      await ctx.runMutation(internal.workspaces.applyWorkspaceAssigneeDirectory, {
+        workspaceId: member.workspaceId,
+        assignees: workspace.assignees ?? [],
+        mode: "replace",
+      })
+    }
     await insertWorkspaceLog(ctx, {
       workspaceId: member.workspaceId,
       category: "members",
@@ -893,6 +1075,15 @@ export const acceptInvite = mutation({
         userId: identity.subject,
         role: invite.role as WorkspaceInviteRole,
         ...profile,
+      })
+    }
+
+    const latestWorkspace = await ctx.db.get(invite.workspaceId)
+    if (latestWorkspace) {
+      await ctx.runMutation(internal.workspaces.applyWorkspaceAssigneeDirectory, {
+        workspaceId: invite.workspaceId,
+        assignees: latestWorkspace.assignees ?? [],
+        mode: "replace",
       })
     }
 

@@ -3588,7 +3588,11 @@ export function KanbanBoard() {
 
   const workspaceId = currentWorkspace?._id
   const canManageTasks = hasTaskWritePermission(currentWorkspace?.role)
-  const assigneeOptions = currentWorkspace?.assignees ?? []
+  const liveAssigneeOptions = useQuery(
+    api.workspaces.getWorkspaceAssignableAssignees,
+    workspaceId ? { workspaceId } : "skip"
+  )
+  const assigneeOptions = liveAssigneeOptions ?? currentWorkspace?.assignees ?? []
   const taskDocs = workspaceId ? tasksByWorkspace[workspaceId] : undefined
   const liveTaskDocs = useQuery(
     api.tasks.listByWorkspace,

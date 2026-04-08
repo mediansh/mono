@@ -67,6 +67,14 @@ export type WorkspaceAssignee = {
 
 export type TaskAssignee = WorkspaceAssignee
 
+export type WorkspaceMemberAssigneeSource = {
+  userId: string
+  role: AssigneeRole | "owner"
+  name?: string | null
+  email?: string | null
+  imageUrl?: string | null
+}
+
 function normalizeWhitespace(value: string) {
   return value.trim().replace(/\s+/g, " ")
 }
@@ -155,6 +163,24 @@ export function formatAssigneeRole(role?: AssigneeRole | string | null) {
   }
 }
 
+export function buildWorkspaceMemberAssignee(
+  member: WorkspaceMemberAssigneeSource
+): WorkspaceAssignee {
+  const email = normalizeAssigneeEmail(member.email)
+  const name =
+    normalizeAssigneeName(member.name ?? "") ||
+    email ||
+    member.userId
+
+  return {
+    id: member.userId,
+    name,
+    avatar: member.imageUrl?.trim() ?? "",
+    role: normalizeAssigneeRole(member.role),
+    email,
+  }
+}
+
 export function buildTaskAssignee(
   assignee?: Partial<WorkspaceAssignee> | null
 ): TaskAssignee | undefined {
@@ -238,6 +264,20 @@ export function normalizeWorkspaceAssignees(
 
     return (a.email ?? "").localeCompare(b.email ?? "")
   })
+}
+
+export function mergeWorkspaceAssignableAssignees(args: {
+  members?: WorkspaceMemberAssigneeSource[]
+  storedAssignees?: Array<Partial<WorkspaceAssignee>>
+}) {
+  const memberAssignees = (args.members ?? []).map(buildWorkspaceMemberAssignee)
+  const normalizedStoredAssignees = normalizeWorkspaceAssignees(
+    args.storedAssignees
+  )
+  return normalizeWorkspaceAssignees([
+    ...normalizedStoredAssignees,
+    ...memberAssignees,
+  ])
 }
 
 export function getAssigneeInitials(assignee?: {
