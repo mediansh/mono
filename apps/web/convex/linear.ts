@@ -2568,7 +2568,7 @@ export const upsertTaskFromLinearIssue = internalMutation({
               mapLinearUserToWorkspaceAssignee(issue.assignee),
               workspaceAssigneeConfig
             )
-          )
+          ) ?? mapLinearUserToTaskAssignee(issue.assignee)
         : undefined
     if (issue.assignee) {
       await ctx.runMutation(internal.linear.mergeWorkspaceAssigneesFromLinear, {
