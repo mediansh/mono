@@ -9,7 +9,11 @@ import {
 } from "@workspace/ui/components/dropdown-menu"
 import { cn } from "@workspace/ui/lib/utils"
 import { AssigneeAvatar } from "@/components/assignee-avatar"
-import { formatAssigneeRole, type TaskAssignee } from "@/lib/task-board"
+import {
+  findMatchingAssignee,
+  formatAssigneeRole,
+  type TaskAssignee,
+} from "@/lib/task-board"
 
 type AssigneeSelectorProps = {
   assignees: TaskAssignee[]
@@ -33,6 +37,7 @@ export function AssigneeSelector({
   placeholder = "Assignee",
 }: AssigneeSelectorProps) {
   const isCompact = variant === "compact"
+  const resolvedValue = findMatchingAssignee(value, assignees) ?? value
 
   return (
     <DropdownMenu>
@@ -46,14 +51,16 @@ export function AssigneeSelector({
           className
         )}
       >
-        <AssigneeAvatar assignee={value} />
+        <AssigneeAvatar assignee={resolvedValue} />
         {!isCompact ? (
-          <span className={cn("max-w-[140px] truncate", !value && "text-muted-foreground")}>
-            {value?.name ?? placeholder}
+          <span
+            className={cn("max-w-[140px] truncate", !resolvedValue && "text-muted-foreground")}
+          >
+            {resolvedValue?.name ?? placeholder}
           </span>
-        ) : value ? (
+        ) : resolvedValue ? (
           <span className="max-w-[80px] truncate text-[11px] text-foreground">
-            {value.name}
+            {resolvedValue.name}
           </span>
         ) : (
           <span className="text-[11px] text-muted-foreground">None</span>
@@ -61,19 +68,19 @@ export function AssigneeSelector({
         {!isCompact ? <CaretDown size={12} className="text-muted-foreground" /> : null}
       </DropdownMenuTrigger>
       <DropdownMenuContent align={align} side="bottom" className="min-w-[220px]">
-        <DropdownMenuItem onClick={() => onChange(null)}>
+        <DropdownMenuItem onSelect={() => onChange(null)}>
           <div className="flex w-full items-center gap-2">
             <span className="flex size-5 shrink-0 items-center justify-center rounded-full border border-dashed border-border bg-background text-muted-foreground">
               <User size={10} />
             </span>
             <span className="flex-1">No assignee</span>
-            {!value ? <Check size={14} weight="bold" className="text-primary" /> : null}
+            {!resolvedValue ? <Check size={14} weight="bold" className="text-primary" /> : null}
           </div>
         </DropdownMenuItem>
         {assignees.map((assignee) => {
-          const isSelected = value?.id === assignee.id
+          const isSelected = resolvedValue?.id === assignee.id
           return (
-            <DropdownMenuItem key={assignee.id} onClick={() => onChange(assignee)}>
+            <DropdownMenuItem key={assignee.id} onSelect={() => onChange(assignee)}>
               <div className="flex w-full items-center gap-2">
                 <AssigneeAvatar assignee={assignee} />
                 <div className="min-w-0 flex-1">

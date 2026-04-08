@@ -84,6 +84,31 @@ function sortMembers(members: Doc<"workspaceMembers">[]) {
   })
 }
 
+function applyIdentityProfileToMember<T extends Doc<"workspaceMembers">>(
+  member: T,
+  identity?: Awaited<ReturnType<typeof requireIdentity>> | null
+) {
+  if (!identity || member.userId !== identity.subject) {
+    return member
+  }
+
+  const profile = getIdentityProfile(identity)
+
+  return {
+    ...member,
+    name: profile.name ?? member.name,
+    email: profile.email ?? member.email,
+    imageUrl: profile.imageUrl ?? member.imageUrl,
+  }
+}
+
+function applyIdentityProfileToMembers(
+  members: Doc<"workspaceMembers">[],
+  identity?: Awaited<ReturnType<typeof requireIdentity>> | null
+) {
+  return members.map((member) => applyIdentityProfileToMember(member, identity))
+}
+
 async function getWorkspaceMemberRecords(
   ctx: { db: any },
   workspaceId: Doc<"workspaceMembers">["workspaceId"]
@@ -137,7 +162,10 @@ export const getUserWorkspaces = query({
       memberships.map(async (membership) => {
         const workspace = await ctx.db.get(membership.workspaceId)
         if (!workspace) return null
-        const members = await getWorkspaceMemberRecords(ctx, membership.workspaceId)
+        const members = applyIdentityProfileToMembers(
+          await getWorkspaceMemberRecords(ctx, membership.workspaceId),
+          identity
+        )
         const iconUrl = workspace.iconId
           ? await ctx.storage.getUrl(workspace.iconId)
           : null
@@ -162,7 +190,7 @@ export const getWorkspaceMembers = query({
     workspaceId: v.id("workspaces"),
   },
   handler: async (ctx, args) => {
-    const { membership } = await requireWorkspaceAccess(ctx, args.workspaceId)
+    const { membership, identity } = await requireWorkspaceAccess(ctx, args.workspaceId)
 
     const [workspace, members, invites] = await Promise.all([
       ctx.db.get(args.workspaceId),
@@ -182,12 +210,14 @@ export const getWorkspaceMembers = query({
       throw new Error("Workspace not found")
     }
 
+    const normalizedMembers = applyIdentityProfileToMembers(members, identity)
+
     return {
       currentUserRole: membership.role,
       canManageMembers:
         membership.role === "admin" || membership.role === "owner",
       workspaceName: workspace.name,
-      members: sortMembers(members).map((member) => ({
+      members: sortMembers(normalizedMembers).map((member) => ({
         _id: member._id,
         userId: member.userId,
         role: member.role,
@@ -215,7 +245,7 @@ export const getWorkspaceAssignableAssignees = query({
     workspaceId: v.id("workspaces"),
   },
   handler: async (ctx, args) => {
-    await requireWorkspaceAccess(ctx, args.workspaceId)
+    const { identity } = await requireWorkspaceAccess(ctx, args.workspaceId)
 
     const [workspace, members] = await Promise.all([
       ctx.db.get(args.workspaceId),
@@ -227,7 +257,7 @@ export const getWorkspaceAssignableAssignees = query({
     }
 
     return buildWorkspaceAssignableAssignees({
-      members,
+      members: applyIdentityProfileToMembers(members, identity),
       storedAssignees: workspace.assignees,
     })
   },
@@ -238,7 +268,7 @@ export const getWorkspaceAssigneeSettings = query({
     workspaceId: v.id("workspaces"),
   },
   handler: async (ctx, args) => {
-    await requireWorkspaceAccess(ctx, args.workspaceId)
+    const { identity } = await requireWorkspaceAccess(ctx, args.workspaceId)
 
     const [workspace, members] = await Promise.all([
       ctx.db.get(args.workspaceId),
@@ -249,7 +279,9 @@ export const getWorkspaceAssigneeSettings = query({
       throw new Error("Workspace not found")
     }
 
-    const memberAssignees = members.map((member) => ({
+    const normalizedMembers = applyIdentityProfileToMembers(members, identity)
+
+    const memberAssignees = normalizedMembers.map((member) => ({
       memberId: member._id,
       ...buildWorkspaceMemberAssignee({
         userId: member.userId,
