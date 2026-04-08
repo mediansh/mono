@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import { createPortal } from "react-dom"
 import { AnimatePresence, motion } from "motion/react"
-import { useMutation, useQuery } from "convex/react"
+import { useMutation } from "convex/react"
 import { toast } from "sonner"
 import {
   X,
@@ -231,13 +231,9 @@ export function NewTaskModal({
     }))
   }, [currentWorkspace?.labels])
 
-  const liveAssigneeOptions = useQuery(
-    api.workspaces.getWorkspaceAssignableAssignees,
-    currentWorkspace ? { workspaceId: currentWorkspace._id } : "skip"
-  )
   const assigneeOptions = useMemo(
-    () => liveAssigneeOptions ?? currentWorkspace?.assignees ?? [],
-    [currentWorkspace?.assignees, liveAssigneeOptions]
+    () => currentWorkspace?.assignees ?? [],
+    [currentWorkspace?.assignees]
   )
 
   const titleRef = useRef<HTMLTextAreaElement>(null)

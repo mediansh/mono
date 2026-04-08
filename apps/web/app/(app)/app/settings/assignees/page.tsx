@@ -18,7 +18,13 @@ import type { Id } from "@/convex/_generated/dataModel"
 import { AssigneeAvatar } from "@/components/assignee-avatar"
 import { SettingsAccessState } from "@/components/settings-access-state"
 import { useWorkspace } from "@/components/workspace-provider"
-import { buildTaskAssignee, formatAssigneeRole } from "@/lib/task-board"
+import {
+  buildTaskAssignee,
+  buildWorkspaceMemberAssignee,
+  doAssigneesMatch,
+  formatAssigneeRole,
+  normalizeWorkspaceAssignees,
+} from "@/lib/task-board"
 import { hasWorkspaceAdminPermission } from "@/lib/workspace-permissions"
 
 const fadeUp = {
@@ -170,8 +176,8 @@ export default function AssigneesSettingsPage() {
     api.linear.getWorkspaceLinearIntegration,
     currentWorkspace ? { workspaceId: currentWorkspace._id } : "skip"
   )
-  const assigneeSettings = useQuery(
-    api.workspaces.getWorkspaceAssigneeSettings,
+  const workspaceData = useQuery(
+    api.workspaces.getWorkspaceMembers,
     currentWorkspace ? { workspaceId: currentWorkspace._id } : "skip"
   )
   const generateUploadUrl = useMutation(api.workspaces.generateUploadUrl)
@@ -184,8 +190,26 @@ export default function AssigneesSettingsPage() {
 
   const linearIntegration = integrationState?.integration ?? null
   const isLinearLinked = Boolean(linearIntegration)
-  const memberAssignees = assigneeSettings?.memberAssignees ?? []
-  const externalAssignees = assigneeSettings?.externalAssignees ?? []
+  const memberAssignees: MemberAssigneeRecord[] = (workspaceData?.members ?? []).map(
+    (member) => ({
+      memberId: member._id,
+      ...buildWorkspaceMemberAssignee({
+        userId: member.userId,
+        role: member.role,
+        name: member.name,
+        email: member.email,
+        imageUrl: member.imageUrl,
+      }),
+    })
+  )
+  const externalAssignees: ExternalAssigneeRecord[] = normalizeWorkspaceAssignees(
+    (currentWorkspace?.assignees ?? []).filter(
+      (assignee) =>
+        !memberAssignees.some((memberAssignee) =>
+          doAssigneesMatch(memberAssignee, assignee)
+        )
+    )
+  )
 
   useEffect(() => {
     if (!currentWorkspace || !isLinearLinked) {
