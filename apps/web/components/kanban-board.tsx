@@ -267,16 +267,33 @@ function moveTaskDocs(
   tasks: TaskDoc[],
   taskId: string,
   toStatus: Status,
-  _toIndex: number
+  toIndex: number
 ) {
   const task = tasks.find((item) => item._id === taskId)
   if (!task) return tasks
 
-  return normalizeTaskOrders(
-    tasks.map((item) =>
-      item._id === taskId ? { ...item, status: toStatus } : item
-    )
-  )
+  // Group tasks by status, preserving current order within each group
+  const byStatus: Record<string, TaskDoc[]> = {}
+  for (const col of COLUMNS) byStatus[col.id] = []
+  for (const t of tasks) {
+    if (t._id !== taskId) byStatus[t.status]!.push(t)
+  }
+
+  // Insert the moved task at the target index in the destination column
+  const destCol = byStatus[toStatus]!
+  const clampedIndex = Math.min(toIndex, destCol.length)
+  destCol.splice(clampedIndex, 0, { ...task, status: toStatus })
+
+  // Flatten and reassign order values
+  const result: TaskDoc[] = []
+  for (const col of COLUMNS) {
+    const colTasks = byStatus[col.id]!
+    for (let i = 0; i < colTasks.length; i++) {
+      const t = colTasks[i]!
+      result.push(t.order === i ? t : { ...t, order: i })
+    }
+  }
+  return result
 }
 
 function patchTaskDocs(
@@ -1369,6 +1386,7 @@ const SortableListRow = memo(function SortableListRow({
   hasSelection,
   isDraggedAway,
   isDropTarget,
+  isDragDisabled,
   canManageTasks,
   assigneeOptions,
   onSelect,
@@ -1383,6 +1401,7 @@ const SortableListRow = memo(function SortableListRow({
   hasSelection: boolean
   isDraggedAway: boolean
   isDropTarget: boolean
+  isDragDisabled: boolean
   canManageTasks: boolean
   assigneeOptions: TaskAssignee[]
   onSelect: (task: Task) => void
@@ -1400,7 +1419,7 @@ const SortableListRow = memo(function SortableListRow({
       id: task.id,
       data: { type: "task", task },
       transition: SORTABLE_TRANSITION,
-      disabled: !canManageTasks,
+      disabled: !canManageTasks || isDragDisabled,
     })
 
   const [hasAnimated, setHasAnimated] = useState(boardMounted)
@@ -1586,6 +1605,7 @@ function ListGroup({
   groupIndex,
   isDropTarget,
   overItemId,
+  isDragDisabled,
   collapsed,
   selectedTaskIds,
   draggedTaskIds,
@@ -1603,6 +1623,7 @@ function ListGroup({
   groupIndex: number
   isDropTarget?: boolean
   overItemId?: string | null
+  isDragDisabled: boolean
   collapsed: boolean
   selectedTaskIds: Set<string>
   draggedTaskIds: Set<string>
@@ -1699,6 +1720,7 @@ function ListGroup({
                   hasSelection={hasSelection}
                   isDraggedAway={draggedTaskIds.has(task.id)}
                   isDropTarget={overItemId === task.id}
+                  isDragDisabled={isDragDisabled}
                   canManageTasks={canManageTasks}
                   assigneeOptions={assigneeOptions}
                   onSelect={onSelectTask}
@@ -3509,6 +3531,7 @@ function ListView({
   onAcceptRequest,
   onDenyRequest,
   onAddTask,
+  sortMode,
 }: {
   tasks: Task[]
   hiddenColumns: Status[]
@@ -3532,8 +3555,10 @@ function ListView({
   onAcceptRequest: (task: Task) => void
   onDenyRequest: (task: Task) => void
   onAddTask: (status: Status) => void
+  sortMode: SortOption
 }) {
   // Non-request columns only for DnD
+  const isDragDisabled = sortMode !== "manual"
   const visibleColumns = COLUMNS.filter(
     (c) => !hiddenColumns.includes(c.id) && c.id !== "requests"
   )
@@ -3855,9 +3880,11 @@ function ListView({
                 groupIndex={showRequests ? groupIndex + 1 : groupIndex}
                 isDropTarget={
                   overColumn === column.id &&
-                  activeTask !== null
+                  activeTask !== null &&
+                  activeTask.status !== column.id
                 }
                 overItemId={overColumn === column.id ? overItemId : null}
+                isDragDisabled={isDragDisabled}
                 collapsed={collapsedColumns.includes(column.id)}
                 selectedTaskIds={selectedTaskIds}
                 draggedTaskIds={draggedTaskIds}
@@ -4598,6 +4625,7 @@ export function KanbanBoard() {
                 onAcceptRequest={handleAcceptRequest}
                 onDenyRequest={handleDenyRequest}
                 onAddTask={handleAddTask}
+                sortMode={filter.sort}
               />
             )}
           </div>
