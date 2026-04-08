@@ -40,6 +40,7 @@ import {
   Funnel,
   SortAscending,
   SortDescending,
+  Plus,
 } from "@phosphor-icons/react"
 import { NewTaskModal } from "@/components/new-task-modal"
 import { AssigneeAvatar } from "@/components/assignee-avatar"
@@ -1584,6 +1585,7 @@ function ListGroup({
   onToggleSelectTask,
   onUpdateTask,
   onDeleteTask,
+  onAddTask,
 }: {
   column: (typeof COLUMNS)[number]
   tasks: Task[]
@@ -1599,6 +1601,7 @@ function ListGroup({
   onToggleSelectTask: (taskId: string, shiftKey: boolean) => void
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void
   onDeleteTask: (taskId: string) => void
+  onAddTask?: () => void
 }) {
   const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks])
   const hasSelection = selectedTaskIds.size > 0
@@ -1624,27 +1627,41 @@ function ListGroup({
       }
     >
       {/* Group header */}
-      <button
-        onClick={onToggleCollapsed}
-        className="flex w-full items-center gap-2.5 bg-card px-3 py-1.5 text-left transition-colors hover:bg-accent dark:bg-card dark:hover:bg-accent/50"
-      >
-        <span
-          className="text-[10px] text-muted-foreground/60"
-          style={{
-            display: "inline-block",
-            transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)",
-          }}
+      <div className="flex items-center bg-card transition-colors hover:bg-accent dark:bg-card dark:hover:bg-accent/50">
+        <button
+          onClick={onToggleCollapsed}
+          className="flex flex-1 items-center gap-2.5 px-3 py-1.5 text-left"
         >
-          ▼
-        </span>
-        {getColumnIcon(column.id)}
-        <span className="text-[13px] font-semibold tracking-tight">
-          {column.label}
-        </span>
-        <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
-          {tasks.length}
-        </span>
-      </button>
+          <span
+            className="text-[10px] text-muted-foreground/60"
+            style={{
+              display: "inline-block",
+              transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)",
+            }}
+          >
+            ▼
+          </span>
+          {getColumnIcon(column.id)}
+          <span className="text-[13px] font-semibold tracking-tight">
+            {column.label}
+          </span>
+          <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
+            {tasks.length}
+          </span>
+        </button>
+        {canManageTasks && onAddTask && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onAddTask()
+            }}
+            className="mr-2 flex h-5 w-5 items-center justify-center rounded-[4px] text-muted-foreground/50 opacity-0 transition-all hover:bg-muted hover:text-foreground group-hover/header:opacity-100 [div:hover>&]:opacity-100"
+            title={`Add task to ${column.label}`}
+          >
+            <Plus size={14} weight="bold" />
+          </button>
+        )}
+      </div>
 
       {/* Rows */}
       {!collapsed && (
@@ -3367,6 +3384,7 @@ function ListView({
   onBulkDeleteTasks,
   onAcceptRequest,
   onDenyRequest,
+  onAddTask,
 }: {
   tasks: Task[]
   hiddenColumns: Status[]
@@ -3389,6 +3407,7 @@ function ListView({
   onBulkDeleteTasks: (taskIds: string[]) => void
   onAcceptRequest: (task: Task) => void
   onDenyRequest: (task: Task) => void
+  onAddTask: (status: Status) => void
 }) {
   // Non-request columns only for DnD
   const visibleColumns = COLUMNS.filter(
@@ -3722,6 +3741,7 @@ function ListView({
                 onToggleSelectTask={handleToggleSelectTask}
                 onUpdateTask={onUpdateTask}
                 onDeleteTask={onDeleteTask}
+                onAddTask={() => onAddTask(column.id)}
               />
             )
           })}
@@ -4450,6 +4470,7 @@ export function KanbanBoard() {
                 onBulkDeleteTasks={handleBulkDeleteTasks}
                 onAcceptRequest={handleAcceptRequest}
                 onDenyRequest={handleDenyRequest}
+                onAddTask={handleAddTask}
               />
             )}
           </div>
