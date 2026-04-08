@@ -144,12 +144,18 @@
     background-color: var(--foreground);
     color: var(--background);
     }
+  /* Custom caret for native <select> — Phosphor CaretDown (Fill) SVG.
+     Color #9B9D9E matches --muted-foreground (same in both themes). If the
+     themes ever diverge, update the fill here to match — CSS data URIs
+     cannot reference custom properties. */
   select {
     appearance: none;
+    /* Fallback pr for future selects that omit an explicit pr-* class.
+       Current selects all use pr-7 which overrides this in the utilities layer. */
+    padding-right: 28px;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 256 256'%3E%3Cpath fill='%239B9D9E' d='M213.66 101.66l-80 80a8 8 0 0 1-11.32 0l-80-80A8 8 0 0 1 48 88h160a8 8 0 0 1 5.66 13.66z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 8px center;
-    padding-right: 28px;
     }
 }
 
