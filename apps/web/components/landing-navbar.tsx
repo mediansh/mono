@@ -9,7 +9,7 @@ import { Logo } from "@/components/logo"
 import { motion, AnimatePresence } from "motion/react"
 
 const navLinks = [
-  { label: "Features", href: "#" },
+  { label: "Features", href: "#features" },
   { label: "Integrations", href: "#" },
   { label: "Pricing", href: "#" },
 ]

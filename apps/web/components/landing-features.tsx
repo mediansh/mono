@@ -246,7 +246,7 @@ const features = [
 
 export function LandingFeatures() {
   return (
-    <section className="px-4 py-24">
+    <section id="features" className="scroll-mt-24 px-4 py-24">
       <div className="mx-auto max-w-6xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
