@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  Fragment,
   memo,
   useCallback,
   useContext,
@@ -1582,6 +1583,8 @@ function ListGroup({
   tasks,
   groupIndex,
   isDropTarget,
+  overItemId,
+  activeTaskId,
   collapsed,
   selectedTaskIds,
   draggedTaskIds,
@@ -1596,6 +1599,8 @@ function ListGroup({
   tasks: Task[]
   groupIndex: number
   isDropTarget?: boolean
+  overItemId: string | null
+  activeTaskId: string | null
   collapsed: boolean
   selectedTaskIds: Set<string>
   draggedTaskIds: Set<string>
@@ -1662,20 +1667,29 @@ function ListGroup({
             {tasks.length === 0
               ? null
               : tasks.map((task, rowIndex) => (
-                  <SortableListRow
-                    key={task.id}
-                    task={task}
-                    rowIndex={rowIndex}
-                    groupDelay={groupIndex * 0.04}
-                    isSelected={selectedTaskIds.has(task.id)}
-                    hasSelection={hasSelection}
-                    isDraggedAway={draggedTaskIds.has(task.id)}
-                    canManageTasks={canManageTasks}
-                    onSelect={onSelectTask}
-                    onToggleSelect={onToggleSelectTask}
-                    onUpdate={onUpdateTask}
-                    onDelete={onDeleteTask}
-                  />
+                  <Fragment key={task.id}>
+                    {overItemId === task.id &&
+                      activeTaskId &&
+                      activeTaskId !== task.id && (
+                        <div className="relative flex items-center">
+                          <div className="absolute -left-0.5 z-10 size-2 rounded-full bg-primary" />
+                          <div className="h-0.5 w-full bg-primary" />
+                        </div>
+                      )}
+                    <SortableListRow
+                      task={task}
+                      rowIndex={rowIndex}
+                      groupDelay={groupIndex * 0.04}
+                      isSelected={selectedTaskIds.has(task.id)}
+                      hasSelection={hasSelection}
+                      isDraggedAway={draggedTaskIds.has(task.id)}
+                      canManageTasks={canManageTasks}
+                      onSelect={onSelectTask}
+                      onToggleSelect={onToggleSelectTask}
+                      onUpdate={onUpdateTask}
+                      onDelete={onDeleteTask}
+                    />
+                  </Fragment>
                 ))}
           </SortableContext>
         </div>
@@ -2532,6 +2546,8 @@ function KanbanColumn({
   columnIndex,
   tasks,
   isDropTarget,
+  overItemId,
+  activeTaskId,
   selectedTaskIds,
   draggedTaskIds,
   canManageTasks,
@@ -2544,6 +2560,8 @@ function KanbanColumn({
   columnIndex: number
   tasks: Task[]
   isDropTarget?: boolean
+  overItemId: string | null
+  activeTaskId: string | null
   selectedTaskIds: Set<string>
   draggedTaskIds: Set<string>
   canManageTasks: boolean
@@ -2599,20 +2617,29 @@ function KanbanColumn({
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
           <div className="flex flex-col gap-2">
             {tasks.map((task, cardIndex) => (
-              <KanbanCard
-                key={task.id}
-                task={task}
-                cardIndex={cardIndex}
-                columnIndex={columnIndex}
-                isSelected={selectedTaskIds.has(task.id)}
-                hasSelection={hasSelection}
-                isDraggedAway={draggedTaskIds.has(task.id)}
-                canManageTasks={canManageTasks}
-                onSelect={onSelectTask}
-                onToggleSelect={onToggleSelectTask}
-                onUpdate={onUpdateTask}
-                onDelete={onDeleteTask}
-              />
+              <Fragment key={task.id}>
+                {overItemId === task.id &&
+                  activeTaskId &&
+                  activeTaskId !== task.id && (
+                    <div className="relative flex items-center">
+                      <div className="absolute -left-0.5 size-2 rounded-full bg-primary" />
+                      <div className="h-0.5 w-full rounded-full bg-primary" />
+                    </div>
+                  )}
+                <KanbanCard
+                  task={task}
+                  cardIndex={cardIndex}
+                  columnIndex={columnIndex}
+                  isSelected={selectedTaskIds.has(task.id)}
+                  hasSelection={hasSelection}
+                  isDraggedAway={draggedTaskIds.has(task.id)}
+                  canManageTasks={canManageTasks}
+                  onSelect={onSelectTask}
+                  onToggleSelect={onToggleSelectTask}
+                  onUpdate={onUpdateTask}
+                  onDelete={onDeleteTask}
+                />
+              </Fragment>
             ))}
           </div>
         </SortableContext>
@@ -2662,6 +2689,7 @@ function ColumnBoardView({
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [draggedTaskIds, setDraggedTaskIds] = useState<Set<string>>(new Set())
   const [overColumn, setOverColumn] = useState<Status | null>(null)
+  const [overItemId, setOverItemId] = useState<string | null>(null)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
   const lastToggledTaskIdRef = useRef<string | null>(null)
@@ -2834,6 +2862,7 @@ function ColumnBoardView({
     const { over } = event
     if (!over) {
       setOverColumn(null)
+      setOverItemId(null)
       return
     }
     const overId = over.id as string
@@ -2843,9 +2872,11 @@ function ColumnBoardView({
         : findColumnOfTask(overId)
     if (targetCol === "requests") {
       setOverColumn(null)
+      setOverItemId(null)
       return
     }
     setOverColumn((current) => (current === targetCol ? current : targetCol))
+    setOverItemId(over.data.current?.type === "column" ? null : overId)
   }
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -2968,6 +2999,7 @@ function ColumnBoardView({
     setActiveTask(null)
     setDraggedTaskIds(new Set())
     setOverColumn(null)
+    setOverItemId(null)
     if (!over) return
 
     const activeId = active.id as string
@@ -3107,6 +3139,8 @@ function ColumnBoardView({
                     activeTaskSource !== null &&
                     activeTaskSource !== column.id
                   }
+                  overItemId={overItemId}
+                  activeTaskId={activeTask?.id ?? null}
                   selectedTaskIds={selectedTaskIds}
                   draggedTaskIds={draggedTaskIds}
                   canManageTasks={canManageTasks}
@@ -3251,6 +3285,7 @@ function ListView({
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [draggedTaskIds, setDraggedTaskIds] = useState<Set<string>>(new Set())
   const [overColumn, setOverColumn] = useState<Status | null>(null)
+  const [overItemId, setOverItemId] = useState<string | null>(null)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
   const lastToggledTaskIdRef = useRef<string | null>(null)
@@ -3437,6 +3472,7 @@ function ListView({
     const { active, over } = event
     if (!over) {
       setOverColumn(null)
+      setOverItemId(null)
       return
     }
 
@@ -3449,10 +3485,12 @@ function ListView({
     // Block dragging into requests
     if (targetCol === "requests") {
       setOverColumn(null)
+      setOverItemId(null)
       return
     }
 
     setOverColumn((current) => (current === targetCol ? current : targetCol))
+    setOverItemId(over.data.current?.type === "column" ? null : overId)
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -3462,6 +3500,7 @@ function ListView({
     setActiveTask(null)
     setDraggedTaskIds(new Set())
     setOverColumn(null)
+    setOverItemId(null)
 
     if (!over) return
 
@@ -3567,6 +3606,8 @@ function ListView({
                   activeTaskSource !== null &&
                   activeTaskSource !== column.id
                 }
+                overItemId={overItemId}
+                activeTaskId={activeTask?.id ?? null}
                 collapsed={collapsedColumns.includes(column.id)}
                 selectedTaskIds={selectedTaskIds}
                 draggedTaskIds={draggedTaskIds}
