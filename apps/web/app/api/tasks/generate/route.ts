@@ -42,6 +42,29 @@ function extractJsonObject(text: string) {
   return text.slice(start, end + 1)
 }
 
+function shouldGenerateMultipleTasks(prompt: string): boolean {
+  const normalized = prompt.toLowerCase()
+
+  const explicitMultiIntentPatterns = [
+    /\b([2-9]|1[0-2])\s+tasks?\b/,
+    /\bmultiple\s+tasks?\b/,
+    /\bseveral\s+tasks?\b/,
+    /\blist\s+of\s+tasks?\b/,
+    /\bcreate\s+(?:a\s+)?(?:list|set)\b/,
+    /\bsplit\s+(?:this|it)\s+into\b/,
+    /\bbreak\s+(?:this|it)\s+down\s+into\b/,
+    /\bseparate\s+tasks?\b/,
+  ]
+
+  if (explicitMultiIntentPatterns.some((pattern) => pattern.test(normalized))) {
+    return true
+  }
+
+  // If user explicitly enumerates multiple independent deliverables, allow multiple tasks.
+  const numberedListItemMatches = normalized.match(/(?:^|\n)\s*(?:\d+[.)]|[-*])\s+/g)
+  return (numberedListItemMatches?.length ?? 0) >= 2
+}
+
 export const POST = withAxiom(async (request: Request) => {
   const { userId } = await auth()
 
@@ -83,6 +106,7 @@ export const POST = withAxiom(async (request: Request) => {
         : "No predefined labels available."
 
     const model = "anthropic/claude-haiku-4.5"
+    const allowMultipleTasks = shouldGenerateMultipleTasks(prompt)
     const result = await generateText({
       model,
       system: [
@@ -91,7 +115,9 @@ export const POST = withAxiom(async (request: Request) => {
         `Allowed statuses: ${TASK_STATUSES.join(", ")}.`,
         `Allowed priorities: ${TASK_PRIORITIES.join(", ")}.`,
         `Allowed labels: ${labelsText}`,
-        "Return between 1 and 12 tasks.",
+        allowMultipleTasks
+          ? "Return between 1 and 12 tasks only when the prompt clearly asks for multiple distinct tasks."
+          : "Return exactly 1 task by default. Do not split into multiple tasks unless the prompt explicitly asks for it.",
         "Every task must have a concise title.",
         "Every task object must include title, description, status, priority, and labels.",
         "Use null for description, status, or priority when not specified.",
@@ -115,13 +141,15 @@ export const POST = withAxiom(async (request: Request) => {
       priority: task.priority ?? undefined,
       labels: task.labels.filter((label) => availableLabels.includes(label)),
     }))
+    const finalTasks = allowMultipleTasks ? normalizedTasks : normalizedTasks.slice(0, 1)
 
     const durationMs = Date.now() - start
 
     logger.info("Tasks generated successfully", {
       userId,
-      taskCount: normalizedTasks.length,
+      taskCount: finalTasks.length,
       durationMs,
+      allowMultipleTasks,
     })
 
     const inputTokens = result.usage?.inputTokens ?? 0
@@ -149,9 +177,10 @@ export const POST = withAxiom(async (request: Request) => {
           output_tokens: outputTokens,
           total_tokens: inputTokens + outputTokens,
           duration_ms: durationMs,
-          task_count: normalizedTasks.length,
+          task_count: finalTasks.length,
           success: true,
           finish_reason: result.finishReason,
+          allow_multiple_tasks: allowMultipleTasks,
         },
       })
     }
@@ -174,7 +203,7 @@ export const POST = withAxiom(async (request: Request) => {
       outputTokens,
     })
 
-    return NextResponse.json({ tasks: normalizedTasks, cost: cost > 0 ? cost : undefined })
+    return NextResponse.json({ tasks: finalTasks, cost: cost > 0 ? cost : undefined })
   } catch (error) {
     const durationMs = Date.now() - start
 
