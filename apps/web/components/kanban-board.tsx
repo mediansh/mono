@@ -1425,9 +1425,16 @@ const SortableListRow = memo(function SortableListRow({
 
   const [hasAnimated, setHasAnimated] = useState(boardMounted)
   const rowDelay = groupDelay + Math.min(rowIndex, 8) * 0.02
+  const hidden = isDragging || isDraggedAway
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
-    opacity: isDragging || isDraggedAway ? 0.3 : undefined,
+    opacity: hidden ? 0 : undefined,
+    height: hidden ? 0 : undefined,
+    padding: hidden ? 0 : undefined,
+    margin: hidden ? 0 : undefined,
+    border: hidden ? "none" : undefined,
+    overflow: hidden ? "hidden" : undefined,
+    pointerEvents: hidden ? "none" : undefined,
     willChange: transform ? "transform" : undefined,
     ...(!hasAnimated
       ? { animation: `kanban-row-in 0.25s ease-out ${rowDelay}s both` }
@@ -2438,9 +2445,15 @@ const KanbanCard = memo(function KanbanCard({
       disabled: !canManageTasks,
     })
 
+  const hidden = isDragging || isDraggedAway
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
-    opacity: isDragging || isDraggedAway ? 0.3 : undefined,
+    opacity: hidden ? 0 : undefined,
+    height: hidden ? 0 : undefined,
+    padding: hidden ? 0 : undefined,
+    margin: hidden ? 0 : undefined,
+    overflow: hidden ? "hidden" : undefined,
+    pointerEvents: hidden ? "none" : undefined,
     willChange: transform ? "transform" : undefined,
   }
 
@@ -2492,7 +2505,7 @@ const KanbanCard = memo(function KanbanCard({
         {...listeners}
         onClick={handleClick}
         onContextMenu={handleContextMenu}
-        className={`group cursor-pointer touch-none rounded-[4px] bg-background p-2.5 ring-1 ring-border transition-[background-color,box-shadow,opacity] duration-150 select-none hover:bg-accent/20 dark:bg-card ${isSelected ? "bg-primary/[0.06] ring-2 ring-primary/40" : ""}`}
+        className={`group cursor-pointer touch-none rounded-[4px] bg-background p-2.5 ring-1 ring-border transition-[background-color,box-shadow,opacity] duration-150 select-none hover:bg-accent/20 dark:bg-card ${isSelected ? "bg-primary/[0.06] ring-2 ring-primary/40" : ""} ${hidden ? "!ring-0" : ""}`}
       >
         {/* Top: task code + checkbox */}
         <div className="mb-1.5 flex items-center justify-between">
