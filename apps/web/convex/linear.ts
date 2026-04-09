@@ -14,7 +14,11 @@ import {
   requireWorkspaceAccess,
   requireWorkspaceAdminAccess,
 } from "./permissions"
-import { type TaskPriority, type TaskStatus } from "../lib/task-board"
+import {
+  DEFAULT_WORKSPACE_LABELS,
+  type TaskPriority,
+  type TaskStatus,
+} from "../lib/task-board"
 
 const LINEAR_GRAPHQL_URL = "https://api.linear.app/graphql"
 const LINEAR_MEDIAN_TITLE_PREFIX = "[MDN]"
@@ -47,6 +51,12 @@ type LinearWorkflowState = {
   position: number | null
 }
 
+type LinearIssueLabel = {
+  id: string
+  name: string
+  color: string | null
+}
+
 type LinearIssue = {
   id: string
   identifier: string
@@ -54,6 +64,7 @@ type LinearIssue = {
   description: string | null
   url: string | null
   priority: number | null
+  labels: LinearIssueLabel[]
   archivedAt?: string | null
   createdAt: string
   updatedAt: string
@@ -81,6 +92,15 @@ const linearIssueValidator = v.object({
   description: v.optional(v.string()),
   url: v.optional(v.string()),
   priority: v.optional(v.number()),
+  labels: v.optional(
+    v.array(
+      v.object({
+        id: v.string(),
+        name: v.string(),
+        color: v.optional(v.string()),
+      })
+    )
+  ),
   createdAt: v.string(),
   updatedAt: v.string(),
   state: v.optional(
@@ -204,6 +224,47 @@ function formatCreatedAtLabel(createdAt: string) {
 function normalizeOptionalText(value: string | null | undefined) {
   const trimmed = value?.trim()
   return trimmed ? trimmed : undefined
+}
+
+function normalizeTaskLabelName(value: string) {
+  return value.trim().toLowerCase()
+}
+
+function normalizeTaskLabels(labels: string[] | undefined) {
+  const seen = new Set<string>()
+  const normalized: string[] = []
+
+  for (const label of labels ?? []) {
+    const next = normalizeTaskLabelName(label)
+    if (!next || seen.has(next)) continue
+    seen.add(next)
+    normalized.push(next)
+  }
+
+  return normalized
+}
+
+function buildWorkspaceLabelColorMap(
+  workspaceLabels:
+    | {
+        name: string
+        color: string
+      }[]
+    | undefined
+) {
+  const colorMap = new Map<string, string>()
+
+  for (const label of workspaceLabels ?? DEFAULT_WORKSPACE_LABELS) {
+    const key = normalizeTaskLabelName(label.name)
+    if (!key || colorMap.has(key)) continue
+    colorMap.set(key, label.color)
+  }
+
+  return colorMap
+}
+
+function mapLinearLabelsToTaskLabels(labels: LinearIssueLabel[]) {
+  return normalizeTaskLabels(labels.map((label) => label.name))
 }
 
 async function isDeletedLinearTaskSource(
@@ -515,7 +576,13 @@ async function fetchWorkflowStates(apiKey: string, teamId: string) {
 
 async function fetchIssueById(apiKey: string, issueId: string) {
   const data = await linearGraphql<{
-    issue: LinearIssue | null
+    issue:
+      | (Omit<LinearIssue, "labels"> & {
+          labels?: {
+            nodes: LinearIssueLabel[]
+          }
+        })
+      | null
   }>(
     apiKey,
     `
@@ -527,6 +594,13 @@ async function fetchIssueById(apiKey: string, issueId: string) {
           description
           url
           priority
+          labels {
+            nodes {
+              id
+              name
+              color
+            }
+          }
           archivedAt
           createdAt
           updatedAt
@@ -542,6 +616,11 @@ async function fetchIssueById(apiKey: string, issueId: string) {
   )
 
   return data.issue
+    ? {
+        ...data.issue,
+        labels: data.issue.labels?.nodes ?? [],
+      }
+    : null
 }
 
 async function issueUnarchive(apiKey: string, issueId: string) {
@@ -576,7 +655,13 @@ async function fetchTeamIssues(apiKey: string, teamId: string) {
     const result: {
       team: {
         issues: {
-          nodes: LinearIssue[]
+          nodes: Array<
+            Omit<LinearIssue, "labels"> & {
+              labels?: {
+                nodes: LinearIssueLabel[]
+              }
+            }
+          >
           pageInfo: {
             hasNextPage: boolean
             endCursor: string | null
@@ -596,6 +681,13 @@ async function fetchTeamIssues(apiKey: string, teamId: string) {
                 description
                 url
                 priority
+                labels {
+                  nodes {
+                    id
+                    name
+                    color
+                  }
+                }
                 createdAt
                 updatedAt
                 state {
@@ -622,13 +714,87 @@ async function fetchTeamIssues(apiKey: string, teamId: string) {
       throw new Error("Linear team not found")
     }
 
-    issues.push(...result.team.issues.nodes)
+    issues.push(
+      ...result.team.issues.nodes.map((issue) => ({
+        ...issue,
+        labels: issue.labels?.nodes ?? [],
+      }))
+    )
     after = result.team.issues.pageInfo.hasNextPage
       ? result.team.issues.pageInfo.endCursor
       : null
   } while (after)
 
   return issues
+}
+
+async function fetchTeamLabels(apiKey: string, teamId: string) {
+  const data = await linearGraphql<{
+    team: {
+      labels: {
+        nodes: LinearIssueLabel[]
+      }
+    } | null
+  }>(
+    apiKey,
+    `
+      query TeamLabels($teamId: String!) {
+        team(id: $teamId) {
+          labels(first: 250) {
+            nodes {
+              id
+              name
+              color
+            }
+          }
+        }
+      }
+    `,
+    { teamId }
+  )
+
+  if (!data.team) {
+    throw new Error("Linear team not found while loading labels")
+  }
+
+  return data.team.labels.nodes
+}
+
+async function issueLabelCreate(
+  apiKey: string,
+  input: {
+    teamId: string
+    name: string
+    color?: string
+  }
+) {
+  const data = await linearGraphql<{
+    issueLabelCreate: {
+      success: boolean
+      issueLabel: LinearIssueLabel | null
+    }
+  }>(
+    apiKey,
+    `
+      mutation CreateIssueLabel($input: IssueLabelCreateInput!) {
+        issueLabelCreate(input: $input) {
+          success
+          issueLabel {
+            id
+            name
+            color
+          }
+        }
+      }
+    `,
+    { input }
+  )
+
+  if (!data.issueLabelCreate.success || !data.issueLabelCreate.issueLabel) {
+    throw new Error("Failed to create the Linear issue label")
+  }
+
+  return data.issueLabelCreate.issueLabel
 }
 
 async function createWebhook(apiKey: string, teamId: string, url: string) {
@@ -695,6 +861,7 @@ async function issueCreate(
     title: string
     description?: string
     priority: number
+    labelIds: string[]
     stateId?: string
   }
 ) {
@@ -742,6 +909,7 @@ async function issueUpdate(
     title: string
     description?: string
     priority: number
+    labelIds: string[]
     stateId?: string
   }
 ) {
@@ -830,6 +998,24 @@ async function syncTaskToLinear(
   link: Doc<"linearTaskLinks"> | null,
   workflowStates: LinearWorkflowState[]
 ) {
+  const taskLabels = normalizeTaskLabels(task.labels)
+  let labelIds: string[] = []
+
+  if (taskLabels.length > 0) {
+    const workspaceLabels = await ctx.runQuery(
+      internal.linear.getWorkspaceLinearLabelDefinitions,
+      {
+        workspaceId: integration.workspaceId,
+      }
+    )
+    labelIds = await resolveLinearLabelIds(
+      integration.apiKey,
+      integration.teamId,
+      taskLabels,
+      workspaceLabels
+    )
+  }
+
   const stateId = pickWorkflowStateId(
     workflowStates,
     task.status,
@@ -839,6 +1025,7 @@ async function syncTaskToLinear(
     title: formatMedianTaskTitleForLinear(task.title),
     description: normalizeOptionalText(task.description),
     priority: mapTaskPriorityToLinear(task.priority),
+    labelIds,
     stateId,
   }
 
@@ -880,6 +1067,57 @@ async function syncTaskToLinear(
     lastLinearUpdatedAt: createdIssue.updatedAt,
   })
   return "created" as const
+}
+
+async function resolveLinearLabelIds(
+  apiKey: string,
+  teamId: string,
+  taskLabels: string[],
+  workspaceLabels:
+    | {
+        name: string
+        color: string
+      }[]
+    | undefined
+) {
+  if (taskLabels.length === 0) {
+    return []
+  }
+
+  const colorMap = buildWorkspaceLabelColorMap(workspaceLabels)
+  const knownLabels = new Map<string, LinearIssueLabel>()
+
+  for (const label of await fetchTeamLabels(apiKey, teamId)) {
+    knownLabels.set(normalizeTaskLabelName(label.name), label)
+  }
+
+  const labelIds: string[] = []
+  for (const taskLabel of taskLabels) {
+    let linearLabel = knownLabels.get(taskLabel)
+
+    if (!linearLabel) {
+      try {
+        linearLabel = await issueLabelCreate(apiKey, {
+          teamId,
+          name: taskLabel,
+          color: colorMap.get(taskLabel),
+        })
+      } catch {
+        linearLabel = (await fetchTeamLabels(apiKey, teamId)).find(
+          (label) => normalizeTaskLabelName(label.name) === taskLabel
+        )
+        if (!linearLabel) {
+          throw new Error(`Failed to resolve Linear label "${taskLabel}"`)
+        }
+      }
+
+      knownLabels.set(taskLabel, linearLabel)
+    }
+
+    labelIds.push(linearLabel.id)
+  }
+
+  return labelIds
 }
 
 export const getWorkspaceLinearIntegration = query({
@@ -931,6 +1169,16 @@ export const getLinearIntegrationForWorkspace = internalQuery({
       .query("linearWorkspaceIntegrations")
       .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
       .unique()
+  },
+})
+
+export const getWorkspaceLinearLabelDefinitions = internalQuery({
+  args: {
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args) => {
+    const workspace = await ctx.db.get(args.workspaceId)
+    return workspace?.labels ?? DEFAULT_WORKSPACE_LABELS
   },
 })
 
@@ -1408,6 +1656,11 @@ export const upsertTaskFromLinearIssue = internalMutation({
       description: args.issue.description ?? null,
       url: args.issue.url ?? null,
       priority: args.issue.priority ?? null,
+      labels: (args.issue.labels ?? []).map((label) => ({
+        id: label.id,
+        name: label.name,
+        color: label.color ?? null,
+      })),
       createdAt: args.issue.createdAt,
       updatedAt: args.issue.updatedAt,
       state: args.issue.state
@@ -1434,6 +1687,7 @@ export const upsertTaskFromLinearIssue = internalMutation({
       normalizeStatusMappings(args.statusMappings)
     )
     const taskPriority = mapLinearPriorityToTask(issue.priority)
+    const taskLabels = mapLinearLabelsToTaskLabels(issue.labels)
     const nextDescription = normalizeOptionalText(issue.description)
     const linearUpdatedAt = new Date(issue.updatedAt).getTime()
     const nextSource = issue.url
@@ -1454,6 +1708,7 @@ export const upsertTaskFromLinearIssue = internalMutation({
           title: getMedianTaskTitleFromLinearIssue(issue.title),
           description: nextDescription,
           priority: taskPriority,
+          labels: taskLabels,
           updatedAt: Number.isFinite(linearUpdatedAt)
             ? linearUpdatedAt
             : Date.now(),
@@ -1519,6 +1774,7 @@ export const upsertTaskFromLinearIssue = internalMutation({
         title: getMedianTaskTitleFromLinearIssue(issue.title),
         description: nextDescription,
         priority: taskPriority,
+        labels: taskLabels,
         updatedAt: Number.isFinite(linearUpdatedAt)
           ? linearUpdatedAt
           : Date.now(),
@@ -1575,7 +1831,7 @@ export const upsertTaskFromLinearIssue = internalMutation({
       description: nextDescription,
       status: taskStatus,
       priority: taskPriority,
-      labels: [],
+      labels: taskLabels,
       order: workspaceTasks.filter((task) => task.status === taskStatus).length,
       project: workspace.name,
       updatedAt: Number.isFinite(linearUpdatedAt)
@@ -1908,6 +2164,11 @@ export const performWorkspaceLinearSync = internalAction({
           description: issue.description ?? undefined,
           url: issue.url ?? undefined,
           priority: issue.priority ?? undefined,
+          labels: issue.labels.map((label) => ({
+            id: label.id,
+            name: label.name,
+            color: label.color ?? undefined,
+          })),
           createdAt: issue.createdAt,
           updatedAt: issue.updatedAt,
           state: issue.state
@@ -2108,6 +2369,11 @@ export const syncLinearIssueFromWebhook = internalAction({
         description: issue.description ?? undefined,
         url: issue.url ?? undefined,
         priority: issue.priority ?? undefined,
+        labels: issue.labels.map((label) => ({
+          id: label.id,
+          name: label.name,
+          color: label.color ?? undefined,
+        })),
         createdAt: issue.createdAt,
         updatedAt: issue.updatedAt,
         state: issue.state
