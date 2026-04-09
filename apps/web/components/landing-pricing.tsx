@@ -75,7 +75,7 @@ function PlanCard({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-60px" }}
       transition={{ duration: 0.5, delay: index * 0.1, ease }}
-      className="relative overflow-hidden rounded-2xl"
+      className="relative rounded-2xl"
     >
       {/* Gradient background */}
       <div
@@ -105,15 +105,6 @@ function PlanCard({
         className="pointer-events-none absolute inset-0 rounded-2xl"
         style={{ boxShadow: "0 4px 24px -4px rgba(0,0,0,0.3)" }}
       />
-
-      {/* Popular badge */}
-      {isPopular && (
-        <div className="relative flex justify-center pt-4">
-          <span className="rounded-full bg-foreground/10 px-3 py-0.5 text-xs font-medium text-foreground/70">
-            Most popular
-          </span>
-        </div>
-      )}
 
       <div className="relative flex flex-col p-6">
         {/* Plan name */}
