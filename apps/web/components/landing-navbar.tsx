@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from "motion/react"
 
 const navLinks = [
   { label: "Features", href: "#features" },
-  { label: "Integrations", href: "#" },
+  { label: "Integrations", href: "#integrations" },
   { label: "Pricing", href: "#" },
 ]
 

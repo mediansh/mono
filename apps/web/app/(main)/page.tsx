@@ -5,6 +5,7 @@ import { LandingNavbar } from "@/components/landing-navbar"
 import { LandingHero } from "@/components/landing-hero"
 import { LandingDemo } from "@/components/landing-demo"
 import { LandingFeatures } from "@/components/landing-features"
+import { LandingIntegrations } from "@/components/landing-integrations"
 
 export default function Page() {
   return (
@@ -26,6 +27,7 @@ export default function Page() {
       <LandingHero />
       <LandingDemo />
       <LandingFeatures />
+      <LandingIntegrations />
     </motion.main>
   )
 }
