@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useTheme } from "next-themes"
 import { motion } from "motion/react"
@@ -60,7 +61,9 @@ function InlineIcon({
 
 export function LandingHero() {
   const { resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === "dark"
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+  const isDark = !mounted || resolvedTheme === "dark"
   const cta = isDark ? ctaStyles.dark : ctaStyles.light
   const outline = isDark ? outlineStyles.dark : outlineStyles.light
 

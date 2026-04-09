@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useAuth } from "@clerk/nextjs"
 import { useTheme } from "next-themes"
 import Link from "next/link"
@@ -55,10 +55,13 @@ const ctaStyles = {
 export function LandingNavbar() {
   const { isSignedIn, isLoaded } = useAuth()
   const { resolvedTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
   const [resourcesOpen, setResourcesOpen] = useState(false)
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const isDark = resolvedTheme === "dark"
+  useEffect(() => setMounted(true), [])
+
+  const isDark = !mounted || resolvedTheme === "dark"
   const glass = isDark ? glassStyles.dark : glassStyles.light
   const cta = isDark ? ctaStyles.dark : ctaStyles.light
 
