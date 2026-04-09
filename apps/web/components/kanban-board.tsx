@@ -41,6 +41,7 @@ import {
   Paperclip,
   CaretRight,
   X,
+  Plus,
 } from "@phosphor-icons/react"
 import { NewTaskModal } from "@/components/new-task-modal"
 import {
@@ -1594,6 +1595,7 @@ function ListGroup({
   onToggleSelectTask,
   onUpdateTask,
   onDeleteTask,
+  onAddTask,
 }: {
   column: (typeof COLUMNS)[number]
   tasks: Task[]
@@ -1610,6 +1612,7 @@ function ListGroup({
   onToggleSelectTask: (taskId: string, shiftKey: boolean) => void
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void
   onDeleteTask: (taskId: string) => void
+  onAddTask: (status: Status) => void
 }) {
   const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks])
   const hasSelection = selectedTaskIds.size > 0
@@ -1655,6 +1658,19 @@ function ListGroup({
         <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
           {tasks.length}
         </span>
+        {canManageTasks && (
+          <span
+            role="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onAddTask(column.id)
+            }}
+            className="ml-auto rounded-[4px] p-0.5 text-muted-foreground/50 transition-colors hover:bg-accent hover:text-foreground"
+            title={`Add task to ${column.label}`}
+          >
+            <Plus size={14} />
+          </span>
+        )}
       </button>
 
       {/* Rows */}
@@ -2632,6 +2648,7 @@ function KanbanColumn({
   onToggleSelectTask,
   onUpdateTask,
   onDeleteTask,
+  onAddTask,
 }: {
   column: (typeof COLUMNS)[number]
   columnIndex: number
@@ -2646,6 +2663,7 @@ function KanbanColumn({
   onToggleSelectTask: (taskId: string, shiftKey: boolean) => void
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void
   onDeleteTask: (taskId: string) => void
+  onAddTask: (status: Status) => void
 }) {
   const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks])
   const hasSelection = selectedTaskIds.size > 0
@@ -2684,6 +2702,15 @@ function KanbanColumn({
         >
           {tasks.length}
         </motion.span>
+        {canManageTasks && (
+          <button
+            onClick={() => onAddTask(column.id)}
+            className="ml-auto rounded-[4px] p-0.5 text-muted-foreground/50 transition-colors hover:bg-accent hover:text-foreground"
+            title={`Add task to ${column.label}`}
+          >
+            <Plus size={14} />
+          </button>
+        )}
       </div>
 
       {/* Cards */}
@@ -2745,6 +2772,7 @@ function ColumnBoardView({
   onBulkDeleteTasks,
   onAcceptRequest,
   onDenyRequest,
+  onAddTask,
 }: {
   tasks: Task[]
   hiddenColumns: Status[]
@@ -2764,6 +2792,7 @@ function ColumnBoardView({
   onBulkDeleteTasks: (taskIds: string[]) => void
   onAcceptRequest: (task: Task) => void
   onDenyRequest: (task: Task) => void
+  onAddTask: (status: Status) => void
 }) {
   const visibleColumns = COLUMNS.filter(
     (c) => !hiddenColumns.includes(c.id) && c.id !== "requests"
@@ -3231,6 +3260,7 @@ function ColumnBoardView({
                   onToggleSelectTask={handleToggleSelectTask}
                   onUpdateTask={onUpdateTask}
                   onDeleteTask={onDeleteTask}
+                  onAddTask={onAddTask}
                 />
               </div>
             )
@@ -3338,6 +3368,7 @@ function ListView({
   onBulkDeleteTasks,
   onAcceptRequest,
   onDenyRequest,
+  onAddTask,
 }: {
   tasks: Task[]
   hiddenColumns: Status[]
@@ -3359,6 +3390,7 @@ function ListView({
   onBulkDeleteTasks: (taskIds: string[]) => void
   onAcceptRequest: (task: Task) => void
   onDenyRequest: (task: Task) => void
+  onAddTask: (status: Status) => void
 }) {
   // Non-request columns only for DnD
   const visibleColumns = COLUMNS.filter(
@@ -3700,6 +3732,7 @@ function ListView({
                 onToggleSelectTask={handleToggleSelectTask}
                 onUpdateTask={onUpdateTask}
                 onDeleteTask={onDeleteTask}
+                onAddTask={onAddTask}
               />
             )
           })}
@@ -4390,6 +4423,7 @@ export function KanbanBoard() {
                 onBulkDeleteTasks={handleBulkDeleteTasks}
                 onAcceptRequest={handleAcceptRequest}
                 onDenyRequest={handleDenyRequest}
+                onAddTask={handleAddTask}
               />
             ) : (
               <ListView
@@ -4406,6 +4440,7 @@ export function KanbanBoard() {
                 onBulkDeleteTasks={handleBulkDeleteTasks}
                 onAcceptRequest={handleAcceptRequest}
                 onDenyRequest={handleDenyRequest}
+                onAddTask={handleAddTask}
               />
             )}
           </div>
