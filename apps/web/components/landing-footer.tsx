@@ -56,10 +56,18 @@ export function LandingFooter() {
         </div>
 
         {/* Bottom bar */}
-        <div className="mt-12 border-t border-foreground/[0.06] pt-6">
+        <div className="mt-12 flex items-center justify-between border-t border-foreground/[0.06] pt-6">
           <p className="text-xs text-muted-foreground/50">
-            &copy; {new Date().getFullYear()} Median. All rights reserved.
+            &copy; {new Date().getFullYear()} Clovr Labs Pty Ltd. All rights reserved.
           </p>
+          <div className="flex gap-4">
+            <Link href="/terms" className="text-xs text-muted-foreground/50 transition-colors hover:text-muted-foreground">
+              Terms of Service
+            </Link>
+            <Link href="/privacy" className="text-xs text-muted-foreground/50 transition-colors hover:text-muted-foreground">
+              Privacy Policy
+            </Link>
+          </div>
         </div>
       </div>
     </footer>
