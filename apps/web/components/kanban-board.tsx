@@ -166,7 +166,15 @@ function useBoardMounted() {
 
 const STATUS_LABELS = TASK_STATUS_LABELS
 
-const SORTABLE_TRANSITION = null
+const SORTABLE_TRANSITION = {
+  duration: 200,
+  easing: "cubic-bezier(0.25, 1, 0.5, 1)",
+}
+
+const DROP_ANIMATION = {
+  duration: 200,
+  easing: "cubic-bezier(0.25, 1, 0.5, 1)",
+}
 
 function getStatusIcon(status: Status, size = 14) {
   switch (status) {
@@ -1461,7 +1469,7 @@ const SortableListRow = memo(function SortableListRow({
         onClick={handleClick}
         onContextMenu={handleContextMenu}
         onAnimationEnd={() => setHasAnimated(true)}
-        className={`group flex cursor-pointer touch-none items-center gap-3 border-b border-l-2 border-border px-3 py-2 transition-all duration-150 select-none hover:bg-accent/40 ${PRIORITY_ACCENT[task.priority]} ${isSelected ? "bg-primary/[0.06] hover:bg-primary/[0.10]" : "bg-background"}`}
+        className={`group flex cursor-pointer touch-none items-center gap-3 border-b border-l-2 border-border px-3 py-2 transition-[background-color,box-shadow,opacity] duration-150 select-none hover:bg-accent/40 ${PRIORITY_ACCENT[task.priority]} ${isSelected ? "bg-primary/[0.06] hover:bg-primary/[0.10]" : "bg-background"}`}
       >
         {/* Checkbox */}
         <div
@@ -1671,10 +1679,16 @@ function ListGroup({
                     {overItemId === task.id &&
                       activeTaskId &&
                       activeTaskId !== task.id && (
-                        <div className="relative flex items-center">
+                        <motion.div
+                          initial={{ opacity: 0, scaleX: 0.5 }}
+                          animate={{ opacity: 1, scaleX: 1 }}
+                          transition={{ duration: 0.15, ease: "easeOut" }}
+                          style={{ originX: 0 }}
+                          className="relative flex items-center"
+                        >
                           <div className="absolute -left-0.5 z-10 size-2 rounded-full bg-primary" />
                           <div className="h-0.5 w-full bg-primary" />
-                        </div>
+                        </motion.div>
                       )}
                     <SortableListRow
                       task={task}
@@ -2474,13 +2488,11 @@ const KanbanCard = memo(function KanbanCard({
                 ease: [0.25, 0.1, 0.25, 1],
               }
         }
-        layout
-        layoutId={`kanban-card-${task.id}`}
         {...attributes}
         {...listeners}
         onClick={handleClick}
         onContextMenu={handleContextMenu}
-        className={`group cursor-pointer touch-none rounded-[4px] bg-background p-2.5 ring-1 ring-border transition-colors duration-150 select-none hover:bg-accent/20 dark:bg-card ${isSelected ? "bg-primary/[0.06] ring-2 ring-primary/40" : ""}`}
+        className={`group cursor-pointer touch-none rounded-[4px] bg-background p-2.5 ring-1 ring-border transition-[background-color,box-shadow,opacity] duration-150 select-none hover:bg-accent/20 dark:bg-card ${isSelected ? "bg-primary/[0.06] ring-2 ring-primary/40" : ""}`}
       >
         {/* Top: task code + checkbox */}
         <div className="mb-1.5 flex items-center justify-between">
@@ -2621,10 +2633,16 @@ function KanbanColumn({
                 {overItemId === task.id &&
                   activeTaskId &&
                   activeTaskId !== task.id && (
-                    <div className="relative flex items-center">
+                    <motion.div
+                      initial={{ opacity: 0, scaleX: 0.5 }}
+                      animate={{ opacity: 1, scaleX: 1 }}
+                      transition={{ duration: 0.15, ease: "easeOut" }}
+                      style={{ originX: 0 }}
+                      className="relative flex items-center"
+                    >
                       <div className="absolute -left-0.5 size-2 rounded-full bg-primary" />
                       <div className="h-0.5 w-full rounded-full bg-primary" />
-                    </div>
+                    </motion.div>
                   )}
                 <KanbanCard
                   task={task}
@@ -3153,7 +3171,7 @@ function ColumnBoardView({
             )
           })}
         </div>
-        <DragOverlay dropAnimation={null}>
+        <DragOverlay dropAnimation={DROP_ANIMATION}>
           {activeTask ? (
             <DragOverlayCard
               task={activeTask}
@@ -3621,7 +3639,7 @@ function ListView({
             )
           })}
         </div>
-        <DragOverlay dropAnimation={null}>
+        <DragOverlay dropAnimation={DROP_ANIMATION}>
           {activeTask ? (
             <DragOverlayListRow
               task={activeTask}
