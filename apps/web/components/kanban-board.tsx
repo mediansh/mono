@@ -6,6 +6,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -36,6 +37,8 @@ import {
   Minus,
   ListBullets,
   SquaresFour,
+  CaretRight,
+  X,
 } from "@phosphor-icons/react"
 import { NewTaskModal } from "@/components/new-task-modal"
 import {
@@ -59,7 +62,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuCheckboxItem,
 } from "@workspace/ui/components/dropdown-menu"
-import { X } from "@phosphor-icons/react"
 import {
   DndContext,
   DragOverlay,
@@ -1031,6 +1033,37 @@ function RequestsGroup({
 
 // ── Context Menu ──
 
+const CONTEXT_MENU_VIEWPORT_PADDING = 8
+const CONTEXT_SUBMENU_GAP = 4
+
+function clampContextMenuPosition(
+  x: number,
+  y: number,
+  width: number,
+  height: number
+) {
+  if (typeof window === "undefined") {
+    return { x, y }
+  }
+
+  return {
+    x: Math.max(
+      CONTEXT_MENU_VIEWPORT_PADDING,
+      Math.min(
+        x,
+        window.innerWidth - width - CONTEXT_MENU_VIEWPORT_PADDING
+      )
+    ),
+    y: Math.max(
+      CONTEXT_MENU_VIEWPORT_PADDING,
+      Math.min(
+        y,
+        window.innerHeight - height - CONTEXT_MENU_VIEWPORT_PADDING
+      )
+    ),
+  }
+}
+
 function ContextSubmenu({
   label,
   icon,
@@ -1041,6 +1074,9 @@ function ContextSubmenu({
   children: React.ReactNode
 }) {
   const [open, setOpen] = useState(false)
+  const [openLeft, setOpenLeft] = useState(false)
+  const [alignBottom, setAlignBottom] = useState(false)
+  const triggerRef = useRef<HTMLDivElement>(null)
   const submenuRef = useRef<HTMLDivElement>(null)
 
   const handleEnter = () => {
@@ -1050,8 +1086,32 @@ function ContextSubmenu({
     setOpen(false)
   }
 
+  useLayoutEffect(() => {
+    if (!open || !triggerRef.current || !submenuRef.current) {
+      return
+    }
+
+    const triggerRect = triggerRef.current.getBoundingClientRect()
+    const submenuRect = submenuRef.current.getBoundingClientRect()
+
+    setOpenLeft(
+      triggerRect.right +
+        CONTEXT_SUBMENU_GAP +
+        submenuRect.width +
+        CONTEXT_MENU_VIEWPORT_PADDING >
+        window.innerWidth
+    )
+    setAlignBottom(
+      triggerRect.top +
+        submenuRect.height +
+        CONTEXT_MENU_VIEWPORT_PADDING >
+        window.innerHeight
+    )
+  }, [open, children])
+
   return (
     <div
+      ref={triggerRef}
       className="relative"
       onMouseEnter={handleEnter}
       onMouseLeave={handleLeave}
@@ -1059,22 +1119,24 @@ function ContextSubmenu({
       <button className="flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-accent">
         {icon}
         <span>{label}</span>
-        <svg
-          className="ml-auto size-3.5 text-muted-foreground"
-          viewBox="0 0 16 16"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M6 4l4 4-4 4" />
-        </svg>
+        <CaretRight
+          size={14}
+          weight="bold"
+          className="ml-auto text-muted-foreground"
+        />
       </button>
       {open && (
         <div
           ref={submenuRef}
-          className="absolute top-0 left-full z-[101] ml-1 min-w-[180px] rounded-[4px] bg-popover p-1 text-popover-foreground shadow-none ring-1 ring-border"
+          className={`absolute z-[101] min-w-[180px] rounded-[4px] bg-popover p-1 text-popover-foreground shadow-none ring-1 ring-border ${
+            openLeft
+              ? "right-full mr-1"
+              : "left-full ml-1"
+          } ${
+            alignBottom
+              ? "bottom-0"
+              : "top-0"
+          }`}
         >
           {children}
         </div>
@@ -1100,6 +1162,29 @@ function TaskContextMenu({
 }) {
   const labelConfig = useLabelConfig()
   const menuRef = useRef<HTMLDivElement>(null)
+  const [menuPosition, setMenuPosition] = useState(position)
+
+  useEffect(() => {
+    setMenuPosition(position)
+  }, [position])
+
+  useLayoutEffect(() => {
+    if (!menuRef.current) {
+      return
+    }
+
+    const rect = menuRef.current.getBoundingClientRect()
+    const clamped = clampContextMenuPosition(
+      position.x,
+      position.y,
+      rect.width,
+      rect.height
+    )
+
+    setMenuPosition((current) =>
+      current.x === clamped.x && current.y === clamped.y ? current : clamped
+    )
+  }, [position])
 
   useEffect(() => {
     function handleClick(e: globalThis.MouseEvent) {
@@ -1118,6 +1203,24 @@ function TaskContextMenu({
     }
   }, [onClose])
 
+  useEffect(() => {
+    function handleResize() {
+      if (!menuRef.current) {
+        return
+      }
+
+      const rect = menuRef.current.getBoundingClientRect()
+      setMenuPosition((current) =>
+        clampContextMenuPosition(current.x, current.y, rect.width, rect.height)
+      )
+    }
+
+    window.addEventListener("resize", handleResize)
+    return () => {
+      window.removeEventListener("resize", handleResize)
+    }
+  }, [])
+
   function toggleLabel(label: Label) {
     const labels = task.labels ?? []
     const has = labels.includes(label)
@@ -1129,7 +1232,7 @@ function TaskContextMenu({
     <div
       ref={menuRef}
       className="fixed z-[100] min-w-[200px] rounded-[4px] bg-popover p-1 text-popover-foreground shadow-none ring-1 ring-border"
-      style={{ top: position.y, left: position.x }}
+      style={{ top: menuPosition.y, left: menuPosition.x }}
     >
       {!canManageTasks ? (
         <div className="px-2 py-1.5 text-[12px] text-muted-foreground">
