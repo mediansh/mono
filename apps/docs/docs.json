@@ -17,6 +17,10 @@
             "group": "Overview",
             "pages": [
               "index",
+              "overview",
+              "concepts",
+              "integrations",
+              "codebase",
               "agents"
             ]
           }

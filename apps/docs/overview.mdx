@@ -1,0 +1,91 @@
+---
+title: "Product Overview"
+description: "What Median is and how the product fits together."
+---
+
+Median is a task workspace built for teams that work across chat, issue trackers, and AI tools.
+
+Instead of treating task creation, triage, execution, and sync as separate systems, Median keeps them in one place:
+
+- A web app for workspace setup, board management, integrations, logs, billing, and settings
+- A CLI for terminal-native workflows and agent automation
+- Shared task records that can be created by people, external integrations, or AI
+
+## The Product In One Sentence
+
+Median turns scattered feedback and execution into a shared task pipeline for humans and agents.
+
+## Main Product Surfaces
+
+### Web app
+
+The web app is the main workspace experience. It includes:
+
+- Workspace creation and switching
+- A kanban-style task board
+- Integration settings for Discord, Linear, GitHub, X, and CLI
+- Workspace logs and analytics
+- Settings for labels, members, and API keys
+
+### Task board
+
+The board is the center of the product. Tasks move through:
+
+`requests` → `todo` → `in_progress` → `ready` → `shipped` → `archive`
+
+Each task can include:
+
+- Title and description
+- Priority
+- Labels
+- Assignee
+- Attachments
+- Source metadata and source links
+
+### CLI
+
+The `mdn` CLI lets developers and coding agents work without leaving the terminal. The current command set focuses on:
+
+- `mdn setup`
+- `mdn tasks`
+- `mdn create`
+- `mdn status`
+
+The CLI authenticates with workspace API keys and writes agent attribution when an agent name is provided.
+
+### Integrations
+
+Median already models integrations for:
+
+- Discord
+- Linear
+- GitHub
+- X
+- CLI
+
+These integrations are not just decorative connections. They feed tasks into the same task system and log activity in the same workspace.
+
+### Logs and audit trail
+
+Median keeps workspace activity logs for:
+
+- Task creation, moves, edits, and deletion
+- AI-generated task batches
+- Integration connect and disconnect events
+- Webhook activity
+- Member and label changes
+
+## Who Median Is For
+
+Median is built for teams that:
+
+- Receive product feedback in multiple places
+- Want a single queue for humans and AI agents
+- Need a lightweight way to move from request to shipped work
+- Want CLI-native task management without giving up a shared dashboard
+
+## What Makes Median Different
+
+Median is more than a CLI and more than a kanban board.
+
+It is designed around one shared task model that can be used from the dashboard, from integrations, and from coding agents. That makes it useful both for product intake and for day-to-day engineering execution.

@@ -1,0 +1,123 @@
+---
+title: "Core Concepts"
+description: "The building blocks you need to understand before using Median day to day."
+---
+
+## Workspace
+
+A workspace is the top-level container in Median. It owns:
+
+- Tasks
+- Members
+- Labels
+- API keys
+- Integrations
+- Logs
+
+Most product actions happen inside the current workspace.
+
+## Roles
+
+Median supports four workspace roles:
+
+- `guest`
+- `member`
+- `admin`
+- `owner`
+
+In practice:
+
+- Guests can view workspace content but do not have normal task write access.
+- Members can work with tasks.
+- Admins can manage workspace settings.
+- Owners can manage everything, including destructive workspace actions.
+
+## Tasks
+
+A task is the shared unit of work across the whole product.
+
+Every task belongs to a workspace and includes a generated task code such as `MED-42` or another workspace-specific prefix.
+
+Tasks can store:
+
+- Title
+- Description
+- Status
+- Priority
+- Labels
+- Attachments
+- Assignee
+- Source metadata
+- Timestamps and ordering data
+
+## Task Statuses
+
+Median uses a fixed workflow:
+
+| Status | Meaning |
+| --- | --- |
+| `requests` | Raw incoming work or feedback that still needs triage |
+| `todo` | Accepted work that is ready to be picked up |
+| `in_progress` | Actively being worked on by a person or agent |
+| `ready` | Finished and ready for review, QA, or handoff |
+| `shipped` | Completed and delivered |
+| `archive` | Hidden historical work |
+
+## Priorities
+
+Available priorities are:
+
+- `urgent`
+- `high`
+- `medium`
+- `low`
+- `none`
+
+## Sources And Attribution
+
+Tasks can come from multiple places. Median currently models sources such as:
+
+- Discord
+- GitHub
+- Linear
+- X
+- CLI
+
+When a task is updated from the CLI with `--agent`, Median can attribute that activity to the named agent. That is how the dashboard can reflect active agent work instead of treating everything as anonymous automation.
+
+## Labels
+
+Labels are workspace-level configuration. Teams can define their own label set and reuse it across all tasks.
+
+## API Keys
+
+API keys connect the CLI to a specific workspace. They are generated in the web app and then used during `mdn setup`.
+
+## Logs
+
+Logs are the system history for a workspace. They help answer questions like:
+
+- What changed?
+- Which integration created this task?
+- Did a webhook fail?
+- Was this task generated or processed by AI?
+
+## Recommended Day-To-Day Flow
+
+<Steps>
+  <Step title="Collect">
+    Let requests arrive from integrations or create tasks manually.
+  </Step>
+  <Step title="Triage">
+    Move promising work from `requests` into `todo`, add labels, and set priority.
+  </Step>
+  <Step title="Execute">
+    Pick up tasks from the board or from the CLI. Use `--agent` when work is performed by an AI agent.
+  </Step>
+  <Step title="Review">
+    Move finished work to `ready`, then `shipped` when it is out the door.
+  </Step>
+  <Step title="Trace">
+    Use source links, development references, and logs to understand the full history.
+  </Step>
+</Steps>

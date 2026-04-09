@@ -1,0 +1,104 @@
+---
+title: "Codebase Tour"
+description: "A quick map of the Median monorepo and where the main logic lives."
+---
+
+Median is a `pnpm` + Turbo monorepo.
+
+## Top-Level Layout
+
+| Path | Purpose |
+| --- | --- |
+| `apps/web` | Main product web app and Convex backend |
+| `apps/cli` | `mdn` command-line client |
+| `apps/docs` | Mintlify documentation site |
+| `apps/discord-bot` | Discord bot deployment target |
+| `packages/ui` | Shared UI components and styles |
+| `packages/eslint-config` | Shared ESLint config |
+| `packages/typescript-config` | Shared TypeScript config |
+
+## The Most Important App: `apps/web`
+
+`apps/web` is both the frontend and the main backend surface for the product.
+
+### Frontend
+
+Key areas:
+
+- `app/`: Next.js App Router pages
+- `components/`: product UI like the board, sidebars, integration panels, and settings pages
+- `lib/`: shared client and server helpers
+- `hooks/`: frontend hooks
+
+Representative files:
+
+- `components/kanban-board.tsx`: primary task board experience
+- `components/app-page-client.tsx`: app entry that mounts the board
+- `app/(app)/app/integrations/*`: integration settings pages
+- `app/(app)/app/settings/*`: workspace settings and API key management
+- `app/(app)/app/logs/page.tsx`: workspace activity and analytics view
+
+### Backend
+
+Convex lives inside `apps/web/convex`.
+
+Representative files:
+
+- `schema.ts`: core data model for workspaces, tasks, integrations, logs, invites, and API keys
+- `tasks.ts`: task creation, updates, ordering, and logging
+- `cli.ts`: API-key-backed CLI queries and mutations
+- `permissions.ts`: workspace access control
+- `linear.ts`, `github.ts`, `discord.ts`, `x.ts`: integration-specific backend logic
+- `logs.ts`: audit trail and dashboard metrics
+
+## `apps/cli`
+
+This package contains the `mdn` CLI.
+
+Key areas:
+
+- `src/cli.ts`: command registration
+- `src/commands/setup.ts`: workspace connection flow and instruction generation
+- `src/commands/tasks.ts`: list tasks
+- `src/commands/create.ts`: create tasks
+- `src/commands/status.ts`: update task status
+- `src/lib/`: local config, formatting, API helpers, and agent-name helpers
+
+The CLI talks to Median through Convex and workspace API keys instead of maintaining a separate backend.
+
+## `apps/docs`
+
+This is the documentation site you are reading.
+
+Key files:
+
+- `docs.json`: navigation, theme, and site configuration
+- `index.mdx`: landing page
+- `cli/*.mdx`: command documentation
+
+## `apps/discord-bot`
+
+This app is a dedicated Discord bot deployment target. It is separate from the main web app so Discord-specific runtime concerns can be deployed independently.
+
+## `packages/ui`
+
+This package holds shared UI primitives, styles, and helpers used by the web app.
+
+It is where reusable components should live when they need to be shared or standardized across the product.
+
+## How The Pieces Connect
+
+1. The web app owns the main user experience and data model.
+2. Convex stores tasks, workspace state, and integration records.
+3. The CLI authenticates with workspace API keys and reads or mutates the same task data.
+4. External integrations write into the same workspace model instead of creating separate queues.
+5. Logs and analytics summarize activity across all of those paths.
+
+## If You Are New To The Repo
+
+Start here:
+
+1. Read `apps/web/convex/schema.ts` to understand the data model.
+2. Read `apps/web/components/kanban-board.tsx` to understand the main user experience.
+3. Read `apps/web/convex/cli.ts` and `apps/cli/src/commands/*` to understand terminal workflows.
+4. Read the integration files in `apps/web/convex` for product-specific sync behavior.

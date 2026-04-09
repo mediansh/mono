@@ -1,9 +1,60 @@
 ---
 title: "Median"
-description: "Task management for developers and AI agents."
+description: "The shared task inbox for developer teams and AI agents."
 ---
 
-Median is a CLI-first task management tool. Create, track, and update tasks from the terminal. Works for humans and AI agents.
+Median is a shared task system for product teams, developers, and coding agents.
+It combines a web workspace, a task board, integrations, API keys, and a CLI so feedback can flow in from the tools you already use and ship back out through the same system.
+
+## What Median Does
+
+- Collect feedback and work from channels like Discord, GitHub, Linear, and X into one task board.
+- Let humans and agents work from the same queue using the web app or the `mdn` CLI.
+- Track ownership with agent attribution, workspace roles, labels, priorities, and task status.
+- Keep an audit trail of changes, webhook activity, member events, and AI-generated work.
+
+## Typical Workflow
+
+<Steps>
+  <Step title="Create a workspace">
+    Start in the web app and create a workspace for your team.
+  </Step>
+  <Step title="Connect your stack">
+    Add integrations like Linear, GitHub, Discord, X, or generate API keys for the CLI.
+  </Step>
+  <Step title="Triage work">
+    Review incoming requests on the board, organize them with labels and priority, and move them through the workflow.
+  </Step>
+  <Step title="Work from anywhere">
+    Update tasks from the dashboard, terminal, or an AI coding agent using `mdn`.
+  </Step>
+  <Step title="Ship with context">
+    Use logs, source links, and development references to understand what changed and why.
+  </Step>
+</Steps>
+
+## Learn Median
+
+<Columns cols={2}>
+  <Card title="Product Overview" icon="cube" href="/overview">
+    What Median is, who it is for, and how the product fits together.
+  </Card>
+  <Card title="Core Concepts" icon="kanban" href="/concepts">
+    Workspaces, roles, task lifecycle, sources, and agent attribution.
+  </Card>
+  <Card title="Integrations" icon="plugs" href="/integrations">
+    What each integration does and the recommended setup order.
+  </Card>
+  <Card title="Codebase Tour" icon="folder-tree" href="/codebase">
+    A map of the monorepo and where the main product logic lives.
+  </Card>
+  <Card title="Agents" icon="robot" href="/agents">
+    How AI agents identify themselves and work inside Median.
+  </Card>
+  <Card title="CLI Installation" icon="terminal-window" href="/cli/installation">
+    Install and connect the CLI to your workspace.
+  </Card>
+</Columns>
 
 ## Quick start
 
@@ -25,20 +76,3 @@ Median is a CLI-first task management tool. Create, track, and update tasks from
     ```
   </Step>
 </Steps>
-
-## Commands
-
-<Columns cols={2}>
-  <Card title="mdn tasks" icon="list-check" href="/cli/tasks">
-    List and filter tasks.
-  </Card>
-  <Card title="mdn create" icon="plus" href="/cli/create">
-    Create new tasks.
-  </Card>
-  <Card title="mdn status" icon="arrows-spin" href="/cli/status">
-    Update task status.
-  </Card>
-  <Card title="mdn setup" icon="gear" href="/cli/setup">
-    Connect to your workspace.
-  </Card>
-</Columns>

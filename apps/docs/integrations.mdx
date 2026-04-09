@@ -1,0 +1,96 @@
+---
+title: "Integrations"
+description: "How Median connects to the rest of your stack."
+---
+
+Median is built around a shared task model, so integrations feed into the same workspace instead of creating separate side systems.
+
+## Supported Integrations
+
+### Discord
+
+Discord is used as an intake and notification channel.
+
+Median supports:
+
+- Pairing a workspace with a guild
+- Ingesting feedback from channels
+- Processing messages into tasks
+- Sending task-related notifications back out
+- Optional AI-assisted response behavior
+
+### Linear
+
+Linear is the issue-tracker sync path.
+
+Median supports:
+
+- Connecting a Linear team to a workspace
+- Mapping Median statuses to Linear workflow states
+- Two-way sync between Median tasks and Linear issues
+- Webhook-driven updates
+
+### GitHub
+
+GitHub handles development context around tasks.
+
+Median supports:
+
+- Connecting a GitHub App installation
+- Selecting repositories per workspace
+- Linking tasks to GitHub issues
+- Tracking commits and pull requests as development references
+
+### X
+
+X is used for public-feedback intake.
+
+Median supports:
+
+- OAuth connection for a workspace
+- Monitoring incoming activity
+- Creating tasks from relevant posts
+- Logging webhook deliveries and processed feedback
+
+### CLI
+
+The CLI is the terminal-native integration for developers and agents.
+
+Median supports:
+
+- Workspace authentication with API keys
+- Listing tasks
+- Creating tasks
+- Updating status
+- Recording agent attribution
+
+## Recommended Setup Order
+
+<Steps>
+  <Step title="Create a workspace">
+    Start in the web app and create the workspace your team will share.
+  </Step>
+  <Step title="Generate an API key">
+    In Settings, create an API key for the CLI and run `mdn setup`.
+  </Step>
+  <Step title="Connect issue trackers">
+    Add Linear or GitHub if you want task sync and development references.
+  </Step>
+  <Step title="Connect feedback channels">
+    Add Discord or X if you want incoming requests created from external conversations.
+  </Step>
+  <Step title="Review logs">
+    Use the Logs page to verify that connections, webhooks, and task generation are behaving as expected.
+  </Step>
+</Steps>
+
+## How Median Uses Integrations
+
+Median is not just storing credentials. Integration data is used to:
+
+- Create or update tasks
+- Preserve the original request source
+- Keep development context attached to work
+- Power the activity log and webhook history
+
+That shared data model is what lets the dashboard, CLI, and integrations stay aligned.
