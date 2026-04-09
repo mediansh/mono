@@ -246,7 +246,7 @@ function sortTaskDocs(tasks: TaskDoc[]) {
 
 function normalizeTaskOrders(tasks: TaskDoc[]) {
   const orderByStatus = new Map<Status, number>()
-  return sortTaskDocs(tasks).map((task) => {
+  return tasks.map((task) => {
     const order = orderByStatus.get(task.status) ?? 0
     orderByStatus.set(task.status, order + 1)
     return task.order === order ? task : { ...task, order }
@@ -3010,7 +3010,10 @@ function ColumnBoardView({
         onMoveTask(activeId, activeColumn, newIndex)
       }
     } else {
-      onMoveTask(activeId, targetColumn, 0)
+      const overIndex = tasksByColumn[targetColumn].findIndex(
+        (t) => t.id === overId
+      )
+      onMoveTask(activeId, targetColumn, overIndex !== -1 ? overIndex : 0)
     }
   }
 
@@ -3511,7 +3514,10 @@ function ListView({
         onMoveTask(activeId, activeColumn, newIndex)
       }
     } else {
-      onMoveTask(activeId, targetColumn, 0)
+      const overIndex = tasksByColumn[targetColumn].findIndex(
+        (t) => t.id === overId
+      )
+      onMoveTask(activeId, targetColumn, overIndex !== -1 ? overIndex : 0)
     }
   }
 
