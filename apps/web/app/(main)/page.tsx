@@ -7,6 +7,8 @@ import { LandingDemo } from "@/components/landing-demo"
 import { LandingFeatures } from "@/components/landing-features"
 import { LandingIntegrations } from "@/components/landing-integrations"
 import { LandingPricing } from "@/components/landing-pricing"
+import { LandingCta } from "@/components/landing-cta"
+import { LandingFooter } from "@/components/landing-footer"
 
 export default function Page() {
   return (
@@ -30,6 +32,8 @@ export default function Page() {
       <LandingFeatures />
       <LandingIntegrations />
       <LandingPricing />
+      <LandingCta />
+      <LandingFooter />
     </motion.main>
   )
 }
