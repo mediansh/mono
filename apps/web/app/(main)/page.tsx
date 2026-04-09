@@ -18,7 +18,7 @@ export default function Page() {
         className="pointer-events-none absolute top-0 right-0 left-0 h-[600px]"
         style={{
           background:
-            "radial-gradient(ellipse 80% 50% at 50% -10%, rgba(140,130,255,0.15), transparent)",
+            "radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255,255,255,0.08), transparent)",
         }}
       />
       <LandingNavbar />
