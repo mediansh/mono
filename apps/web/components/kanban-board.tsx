@@ -1775,15 +1775,15 @@ function TaskDetailModal({
 
       setUploading(true)
 
-      try {
-        const newAttachments: TaskAttachment[] = []
+      const newAttachments: TaskAttachment[] = []
 
-        for (const file of Array.from(files)) {
-          if (file.size > 10 * 1024 * 1024) {
-            toast.error(`File "${file.name}" exceeds 10MB limit.`)
-            continue
-          }
+      for (const file of Array.from(files)) {
+        if (file.size > 10 * 1024 * 1024) {
+          toast.error(`File "${file.name}" exceeds 10MB limit.`)
+          continue
+        }
 
+        try {
           const imageMetadata = await readImageMetadata(file)
           const previewUrl = file.type.startsWith("image/")
             ? URL.createObjectURL(file)
@@ -1818,18 +1818,18 @@ function TaskDetailModal({
             displayWidth: imageMetadata?.displayWidth,
             url: previewUrl,
           })
+        } catch {
+          toast.error(`Failed to upload "${file.name}".`)
         }
-
-        if (newAttachments.length > 0) {
-          const existing = attachmentsRef.current ?? []
-          onUpdate(task.id, { attachments: [...existing, ...newAttachments] })
-        }
-      } catch {
-        toast.error("Upload failed. Try again.")
-      } finally {
-        setUploading(false)
-        if (fileInputRef.current) fileInputRef.current.value = ""
       }
+
+      if (newAttachments.length > 0) {
+        const existing = attachmentsRef.current ?? []
+        onUpdate(task.id, { attachments: [...existing, ...newAttachments] })
+      }
+
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ""
     },
     [canManageTasks, generateUploadUrl, onUpdate, readImageMetadata, task]
   )
