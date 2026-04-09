@@ -3,6 +3,7 @@
 import { motion } from "motion/react"
 import { LandingNavbar } from "@/components/landing-navbar"
 import { LandingHero } from "@/components/landing-hero"
+import { LandingDemo } from "@/components/landing-demo"
 
 export default function Page() {
   return (
@@ -14,6 +15,7 @@ export default function Page() {
     >
       <LandingNavbar />
       <LandingHero />
+      <LandingDemo />
     </motion.main>
   )
 }
