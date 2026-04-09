@@ -2,6 +2,7 @@
 
 import { motion } from "motion/react"
 import { LandingNavbar } from "@/components/landing-navbar"
+import { LandingHero } from "@/components/landing-hero"
 
 export default function Page() {
   return (
@@ -12,6 +13,7 @@ export default function Page() {
       className="min-h-svh"
     >
       <LandingNavbar />
+      <LandingHero />
     </motion.main>
   )
 }
