@@ -1730,7 +1730,9 @@ function TaskDetailModal({
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const attachmentsRef = useRef(task?.attachments)
-  attachmentsRef.current = task?.attachments
+  if (task) {
+    attachmentsRef.current = task.attachments
+  }
   const generateUploadUrl = useMutation(api.workspaces.generateUploadUrl)
 
   const readImageMetadata = useCallback(async (file: File) => {
