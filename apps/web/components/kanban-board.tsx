@@ -1729,9 +1729,14 @@ function TaskDetailModal({
   const [descValue, setDescValue] = useState("")
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const attachmentsRef = useRef(task?.attachments)
-  if (task) {
-    attachmentsRef.current = task.attachments
+  const attachmentsRef = useRef<{
+    taskId: string | null
+    attachments: TaskAttachment[] | undefined
+  }>({ taskId: task?.id ?? null, attachments: task?.attachments })
+  if (task && task.id === attachmentsRef.current.taskId) {
+    attachmentsRef.current.attachments = task.attachments
+  } else if (task) {
+    attachmentsRef.current = { taskId: task.id, attachments: task.attachments }
   }
   const generateUploadUrl = useMutation(api.workspaces.generateUploadUrl)
 
@@ -1828,7 +1833,9 @@ function TaskDetailModal({
       }
 
       if (newAttachments.length > 0) {
-        const existing = attachmentsRef.current ?? []
+        const ref = attachmentsRef.current
+        const existing =
+          ref.taskId === task.id ? (ref.attachments ?? []) : []
         onUpdate(task.id, { attachments: [...existing, ...newAttachments] })
       }
 
