@@ -1783,9 +1783,10 @@ function TaskDetailModal({
           continue
         }
 
+        let previewUrl: string | undefined
         try {
           const imageMetadata = await readImageMetadata(file)
-          const previewUrl = file.type.startsWith("image/")
+          previewUrl = file.type.startsWith("image/")
             ? URL.createObjectURL(file)
             : undefined
 
@@ -1819,6 +1820,7 @@ function TaskDetailModal({
             url: previewUrl,
           })
         } catch {
+          if (previewUrl) URL.revokeObjectURL(previewUrl)
           toast.error(`Failed to upload "${file.name}".`)
         }
       }
