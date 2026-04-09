@@ -4,209 +4,157 @@ import { motion } from "motion/react"
 
 const ease = [0.25, 0.1, 0.25, 1] as const
 
-/* ─── CSS/HTML-based illustrations ─── */
+/* ─── Graphics built with divs + Tailwind ─── */
 
 function InboxGraphic() {
   return (
-    <div className="relative flex h-48 items-center justify-center text-foreground">
-      {/* Central card */}
-      <div className="relative z-10 h-16 w-36 rounded-xl border border-foreground/[0.12] bg-foreground/[0.04]">
-        <div className="mt-3 ml-3 h-2 w-16 rounded-full bg-foreground/[0.1]" />
-        <div className="mt-2 ml-3 h-1.5 w-24 rounded-full bg-foreground/[0.06]" />
+    <div className="flex h-full items-center justify-center">
+      <div className="relative flex flex-col items-center gap-4">
+        {/* Source cards row */}
+        <div className="flex gap-3">
+          {[-10, 0, 8].map((rot, i) => (
+            <div
+              key={i}
+              className="h-8 w-20 rounded-lg border border-foreground/[0.08] bg-foreground/[0.02]"
+              style={{ transform: `rotate(${rot}deg)` }}
+            >
+              <div className="mt-2 ml-2 h-1 w-10 rounded-full bg-foreground/[0.06]" />
+            </div>
+          ))}
+        </div>
+
+        {/* Connecting lines */}
+        <div className="flex items-center gap-6">
+          <div className="h-6 w-px bg-foreground/[0.06] -rotate-[20deg]" />
+          <div className="h-6 w-px bg-foreground/[0.08]" />
+          <div className="h-6 w-px bg-foreground/[0.06] rotate-[20deg]" />
+        </div>
+
+        {/* Central inbox */}
+        <div className="h-12 w-36 rounded-xl border border-foreground/[0.15] bg-foreground/[0.04]">
+          <div className="mt-2.5 ml-3 h-1.5 w-16 rounded-full bg-foreground/[0.1]" />
+          <div className="mt-1.5 ml-3 h-1 w-24 rounded-full bg-foreground/[0.06]" />
+        </div>
       </div>
-      {/* Top-left pill */}
-      <div
-        className="absolute z-0 h-10 w-28 rounded-lg border border-foreground/[0.08] bg-foreground/[0.03]"
-        style={{ top: "24px", left: "calc(50% - 100px)", transform: "rotate(-12deg)" }}
-      >
-        <div className="mt-2.5 ml-2.5 h-1.5 w-14 rounded-full bg-foreground/[0.08]" />
-      </div>
-      {/* Top-center pill */}
-      <div
-        className="absolute z-0 h-10 w-28 rounded-lg border border-foreground/[0.08] bg-foreground/[0.03]"
-        style={{ top: "18px", left: "calc(50% - 14px)", transform: "rotate(6deg)" }}
-      >
-        <div className="mt-2.5 ml-2.5 h-1.5 w-16 rounded-full bg-foreground/[0.08]" />
-      </div>
-      {/* Top-right pill */}
-      <div
-        className="absolute z-0 h-10 w-24 rounded-lg border border-foreground/[0.06] bg-foreground/[0.02]"
-        style={{ top: "30px", right: "calc(50% - 110px)", transform: "rotate(14deg)" }}
-      >
-        <div className="mt-2.5 ml-2.5 h-1.5 w-12 rounded-full bg-foreground/[0.06]" />
-      </div>
-      {/* Converging lines */}
-      <div
-        className="absolute h-px w-12 bg-foreground/[0.08]"
-        style={{ top: "62px", left: "calc(50% - 68px)", transform: "rotate(35deg)" }}
-      />
-      <div
-        className="absolute h-px w-10 bg-foreground/[0.08]"
-        style={{ top: "56px", left: "calc(50% + 2px)", transform: "rotate(-20deg)" }}
-      />
-      <div
-        className="absolute h-px w-10 bg-foreground/[0.06]"
-        style={{ top: "64px", right: "calc(50% - 76px)", transform: "rotate(-40deg)" }}
-      />
     </div>
   )
 }
 
 function SparkGraphic() {
   return (
-    <div className="relative flex h-48 items-center justify-center text-foreground">
-      {/* Concentric rings */}
-      <div className="absolute h-32 w-32 rounded-full border border-foreground/[0.04]" />
-      <div className="absolute h-24 w-24 rounded-full border border-foreground/[0.06]" />
-      <div className="absolute h-16 w-16 rounded-full border border-foreground/[0.08]" />
-      <div className="absolute h-8 w-8 rounded-full border border-foreground/[0.12]" />
-      {/* Central dot */}
-      <div className="absolute h-3 w-3 rounded-full bg-foreground/[0.2]" />
-      {/* Radiating lines — cardinal */}
-      <div className="absolute h-px w-20 bg-foreground/[0.1]" style={{ top: "50%", left: "calc(50% + 16px)" }} />
-      <div className="absolute h-px w-20 bg-foreground/[0.1]" style={{ top: "50%", right: "calc(50% + 16px)" }} />
-      <div className="absolute h-20 w-px bg-foreground/[0.1]" style={{ left: "50%", top: "calc(50% - 80px)" }} />
-      <div className="absolute h-20 w-px bg-foreground/[0.1]" style={{ left: "50%", bottom: "calc(50% - 80px)" }} />
-      {/* Radiating lines — diagonal */}
-      <div
-        className="absolute h-px w-16 bg-foreground/[0.06]"
-        style={{ top: "calc(50% - 28px)", left: "calc(50% + 12px)", transform: "rotate(-45deg)", transformOrigin: "left center" }}
-      />
-      <div
-        className="absolute h-px w-16 bg-foreground/[0.06]"
-        style={{ top: "calc(50% - 28px)", right: "calc(50% + 12px)", transform: "rotate(45deg)", transformOrigin: "right center" }}
-      />
-      <div
-        className="absolute h-px w-16 bg-foreground/[0.06]"
-        style={{ top: "calc(50% + 28px)", left: "calc(50% + 12px)", transform: "rotate(45deg)", transformOrigin: "left center" }}
-      />
-      <div
-        className="absolute h-px w-16 bg-foreground/[0.06]"
-        style={{ top: "calc(50% + 28px)", right: "calc(50% + 12px)", transform: "rotate(-45deg)", transformOrigin: "right center" }}
-      />
-      {/* Endpoint dots */}
-      <div className="absolute h-1.5 w-1.5 rounded-full bg-foreground/[0.15]" style={{ top: "calc(50% - 1px)", right: "calc(50% - 96px)" }} />
-      <div className="absolute h-1.5 w-1.5 rounded-full bg-foreground/[0.15]" style={{ top: "calc(50% - 1px)", left: "calc(50% - 96px)" }} />
-      <div className="absolute h-1.5 w-1.5 rounded-full bg-foreground/[0.15]" style={{ left: "calc(50% - 1px)", top: "calc(50% - 80px)" }} />
-      <div className="absolute h-1.5 w-1.5 rounded-full bg-foreground/[0.15]" style={{ left: "calc(50% - 1px)", bottom: "calc(50% - 80px)" }} />
+    <div className="flex h-full items-center justify-center">
+      <div className="relative flex flex-col items-center gap-3">
+        {/* Spark lines above */}
+        <div className="flex items-end gap-3">
+          <div className="h-5 w-px bg-foreground/[0.1] -rotate-[30deg]" />
+          <div className="h-7 w-px bg-foreground/[0.12]" />
+          <div className="h-5 w-px bg-foreground/[0.1] rotate-[30deg]" />
+        </div>
+
+        {/* Primary generated card */}
+        <div className="h-14 w-40 rounded-xl border border-foreground/[0.15] bg-foreground/[0.04] shadow-[0_0_24px_rgba(255,255,255,0.02)]">
+          <div className="mt-2.5 ml-3 h-1.5 w-24 rounded-full bg-foreground/[0.1]" />
+          <div className="mt-1.5 ml-3 h-1 w-16 rounded-full bg-foreground/[0.06]" />
+          <div className="mt-1.5 ml-3 h-1 w-28 rounded-full bg-foreground/[0.05]" />
+        </div>
+
+        {/* Stacked cards behind — implying generation */}
+        <div className="-mt-2 h-3 w-36 rounded-b-lg border-x border-b border-foreground/[0.08] bg-foreground/[0.02]" />
+        <div className="-mt-2 h-3 w-32 rounded-b-lg border-x border-b border-foreground/[0.04] bg-foreground/[0.01]" />
+      </div>
     </div>
   )
 }
 
 function CubesGraphic() {
   return (
-    <div className="relative flex h-48 items-center justify-center text-foreground">
-      {/* Grid of connected squares */}
-      <div className="relative" style={{ width: "180px", height: "140px" }}>
-        {/* Connecting lines */}
-        <div className="absolute h-px w-10 bg-foreground/[0.08]" style={{ top: "30px", left: "42px" }} />
-        <div className="absolute h-px w-10 bg-foreground/[0.08]" style={{ top: "30px", left: "92px" }} />
-        <div className="absolute h-10 w-px bg-foreground/[0.08]" style={{ top: "42px", left: "30px" }} />
-        <div className="absolute h-10 w-px bg-foreground/[0.08]" style={{ top: "42px", left: "82px" }} />
-        <div className="absolute h-10 w-px bg-foreground/[0.08]" style={{ top: "42px", left: "134px" }} />
-        <div className="absolute h-px w-10 bg-foreground/[0.08]" style={{ top: "102px", left: "42px" }} />
+    <div className="flex h-full items-center justify-center">
+      <div className="relative grid grid-cols-3 grid-rows-3 place-items-center gap-2" style={{ width: 168, height: 168 }}>
+        {/* Top center */}
+        <div />
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-foreground/[0.1] bg-foreground/[0.03]">
+          <div className="h-3 w-3 rounded bg-foreground/[0.08]" />
+        </div>
+        <div />
 
-        {/* Square 1 — top left */}
-        <div
-          className="absolute flex items-center justify-center rounded-lg border border-foreground/[0.12] bg-foreground/[0.04]"
-          style={{ width: "36px", height: "36px", top: "12px", left: "12px" }}
-        >
-          <div className="h-3 w-3 rounded bg-foreground/[0.1]" />
-        </div>
-        {/* Square 2 — top center */}
-        <div
-          className="absolute flex items-center justify-center rounded-lg border border-foreground/[0.1] bg-foreground/[0.03]"
-          style={{ width: "36px", height: "36px", top: "12px", left: "64px" }}
-        >
+        {/* Middle row */}
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-foreground/[0.1] bg-foreground/[0.03]">
           <div className="h-3 w-3 rounded bg-foreground/[0.08]" />
         </div>
-        {/* Square 3 — top right */}
-        <div
-          className="absolute flex items-center justify-center rounded-lg border border-foreground/[0.1] bg-foreground/[0.03]"
-          style={{ width: "36px", height: "36px", top: "12px", left: "116px" }}
-        >
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-foreground/[0.15] bg-foreground/[0.05]">
+          <div className="h-4 w-4 rounded bg-foreground/[0.1]" />
+        </div>
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-foreground/[0.1] bg-foreground/[0.03]">
           <div className="h-3 w-3 rounded bg-foreground/[0.08]" />
         </div>
-        {/* Square 4 — bottom left */}
-        <div
-          className="absolute flex items-center justify-center rounded-lg border border-foreground/[0.08] bg-foreground/[0.02]"
-          style={{ width: "36px", height: "36px", top: "84px", left: "12px" }}
-        >
-          <div className="h-3 w-3 rounded bg-foreground/[0.06]" />
+
+        {/* Bottom center */}
+        <div />
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-foreground/[0.1] bg-foreground/[0.03]">
+          <div className="h-3 w-3 rounded bg-foreground/[0.08]" />
         </div>
-        {/* Square 5 — bottom center */}
-        <div
-          className="absolute flex items-center justify-center rounded-lg border border-foreground/[0.08] bg-foreground/[0.02]"
-          style={{ width: "36px", height: "36px", top: "84px", left: "64px" }}
-        >
-          <div className="h-3 w-3 rounded bg-foreground/[0.06]" />
-        </div>
+        <div />
+
+        {/* Dashed connecting lines (absolute over the grid) */}
+        {/* Vertical */}
+        <div className="absolute top-[52px] left-1/2 h-5 w-px -translate-x-1/2 border-l border-dashed border-foreground/[0.08]" />
+        <div className="absolute bottom-[52px] left-1/2 h-5 w-px -translate-x-1/2 border-l border-dashed border-foreground/[0.08]" />
+        {/* Horizontal */}
+        <div className="absolute top-1/2 left-[52px] h-px w-5 -translate-y-1/2 border-t border-dashed border-foreground/[0.08]" />
+        <div className="absolute top-1/2 right-[52px] h-px w-5 -translate-y-1/2 border-t border-dashed border-foreground/[0.08]" />
       </div>
     </div>
   )
 }
 
 function TagsGraphic() {
+  const tags = [
+    { w: "w-44", dotOpacity: "bg-foreground/[0.2]", barW: "w-20", opacity: "border-foreground/[0.12] bg-foreground/[0.04]", barOpacity: "bg-foreground/[0.1]", x: 0 },
+    { w: "w-40", dotOpacity: "bg-foreground/[0.15]", barW: "w-16", opacity: "border-foreground/[0.1] bg-foreground/[0.03]", barOpacity: "bg-foreground/[0.08]", x: 8 },
+    { w: "w-36", dotOpacity: "bg-foreground/[0.1]", barW: "w-14", opacity: "border-foreground/[0.08] bg-foreground/[0.02]", barOpacity: "bg-foreground/[0.06]", x: 4 },
+    { w: "w-32", dotOpacity: "bg-foreground/[0.06]", barW: "w-12", opacity: "border-foreground/[0.06] bg-foreground/[0.01]", barOpacity: "bg-foreground/[0.04]", x: 12 },
+  ]
+
   return (
-    <div className="relative flex h-48 items-center justify-center text-foreground">
+    <div className="flex h-full items-center justify-center">
       <div className="flex flex-col gap-2.5">
-        {/* Tag 1 — most prominent */}
-        <div className="flex h-9 w-44 items-center gap-2.5 rounded-full border border-foreground/[0.12] bg-foreground/[0.04] px-3">
-          <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-foreground/[0.2]" />
-          <div className="h-1.5 w-20 rounded-full bg-foreground/[0.1]" />
-        </div>
-        {/* Tag 2 */}
-        <div
-          className="flex h-9 w-40 items-center gap-2.5 rounded-full border border-foreground/[0.1] bg-foreground/[0.03] px-3"
-          style={{ transform: "translateX(8px)" }}
-        >
-          <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-foreground/[0.15]" />
-          <div className="h-1.5 w-16 rounded-full bg-foreground/[0.08]" />
-        </div>
-        {/* Tag 3 */}
-        <div
-          className="flex h-9 w-36 items-center gap-2.5 rounded-full border border-foreground/[0.08] bg-foreground/[0.02] px-3"
-          style={{ transform: "translateX(4px)" }}
-        >
-          <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-foreground/[0.12]" />
-          <div className="h-1.5 w-14 rounded-full bg-foreground/[0.06]" />
-        </div>
-        {/* Tag 4 — faintest */}
-        <div
-          className="flex h-9 w-32 items-center gap-2.5 rounded-full border border-foreground/[0.06] bg-foreground/[0.01] px-3"
-          style={{ transform: "translateX(12px)" }}
-        >
-          <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-foreground/[0.08]" />
-          <div className="h-1.5 w-12 rounded-full bg-foreground/[0.04]" />
-        </div>
+        {tags.map((tag, i) => (
+          <div
+            key={i}
+            className={`flex h-9 ${tag.w} items-center gap-2.5 rounded-full border ${tag.opacity} px-3`}
+            style={{ transform: `translateX(${tag.x}px)` }}
+          >
+            <div className={`h-2.5 w-2.5 shrink-0 rounded-full ${tag.dotOpacity}`} />
+            <div className={`h-1.5 ${tag.barW} rounded-full ${tag.barOpacity}`} />
+          </div>
+        ))}
       </div>
     </div>
   )
 }
 
 function LogsGraphic() {
+  const widths = [120, 100, 140, 90, 110, 70]
+
   return (
-    <div className="relative flex h-48 items-center justify-center text-foreground">
-      <div className="flex flex-col gap-0">
-        {[0, 1, 2, 3, 4, 5].map((i) => {
-          const opacity = 1 - i * 0.16
-          return (
-            <div key={i} className="flex items-center gap-3 px-2 py-1.5" style={{ opacity }}>
-              {/* Timeline dot */}
-              <div className="relative flex shrink-0 items-center justify-center">
-                <div className="h-2 w-2 rounded-full border border-foreground/[0.15] bg-foreground/[0.05]" />
-                {i < 5 && (
-                  <div className="absolute top-2 left-1/2 h-4 w-px -translate-x-1/2 bg-foreground/[0.06]" />
-                )}
-              </div>
-              {/* Content line */}
-              <div
-                className="h-1.5 rounded-full bg-foreground/[0.08]"
-                style={{ width: `${100 - i * 10}px` }}
-              />
-            </div>
-          )
-        })}
+    <div className="flex h-full items-center justify-center">
+      <div className="relative flex flex-col">
+        {/* Timeline line */}
+        <div className="absolute top-1 bottom-1 left-[5px] w-px bg-foreground/[0.06]" />
+
+        {widths.map((w, i) => (
+          <div
+            key={i}
+            className="flex items-center gap-3 py-[7px]"
+            style={{ opacity: 1 - i * 0.15 }}
+          >
+            <div className="relative z-10 h-[10px] w-[10px] shrink-0 rounded-full border border-foreground/[0.12] bg-background" />
+            <div
+              className="h-[3px] rounded-full bg-foreground/[0.08]"
+              style={{ width: w }}
+            />
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -214,38 +162,38 @@ function LogsGraphic() {
 
 function TerminalGraphic() {
   return (
-    <div className="relative flex h-48 items-center justify-center text-foreground">
-      <div className="w-56 overflow-hidden rounded-xl border border-foreground/[0.1] bg-foreground/[0.03]">
+    <div className="flex h-full items-center justify-center">
+      <div className="w-56 overflow-hidden rounded-xl border border-foreground/[0.1] bg-foreground/[0.02]">
         {/* Title bar */}
-        <div className="flex items-center gap-1.5 border-b border-foreground/[0.06] px-3 py-2.5">
-          <div className="h-2 w-2 rounded-full bg-foreground/[0.15]" />
-          <div className="h-2 w-2 rounded-full bg-foreground/[0.1]" />
-          <div className="h-2 w-2 rounded-full bg-foreground/[0.1]" />
+        <div className="flex items-center gap-1.5 border-b border-foreground/[0.06] px-3 py-2">
+          <div className="h-[7px] w-[7px] rounded-full bg-foreground/[0.15]" />
+          <div className="h-[7px] w-[7px] rounded-full bg-foreground/[0.1]" />
+          <div className="h-[7px] w-[7px] rounded-full bg-foreground/[0.1]" />
         </div>
-        {/* Terminal body */}
-        <div className="flex flex-col gap-3 p-4">
-          {/* Line 1 — prompt + command */}
-          <div className="flex items-center gap-2">
-            <div className="h-1.5 w-4 rounded-full bg-foreground/[0.2]" />
-            <div className="h-1.5 w-24 rounded-full bg-foreground/[0.1]" />
+
+        {/* Lines */}
+        <div className="flex flex-col gap-2.5 p-3.5">
+          {/* Prompt 1 */}
+          <div className="flex items-center gap-1.5">
+            <div className="h-[3px] w-3 rounded-full bg-foreground/[0.2]" />
+            <div className="h-[3px] w-20 rounded-full bg-foreground/[0.1]" />
           </div>
-          {/* Line 2 — response */}
-          <div className="flex items-center gap-2 pl-1">
-            <div className="h-1.5 w-32 rounded-full bg-foreground/[0.05]" />
+          {/* Response */}
+          <div className="pl-1">
+            <div className="h-[3px] w-28 rounded-full bg-foreground/[0.04]" />
           </div>
-          {/* Line 3 — response */}
-          <div className="flex items-center gap-2 pl-1">
-            <div className="h-1.5 w-20 rounded-full bg-foreground/[0.05]" />
+          <div className="pl-1">
+            <div className="h-[3px] w-16 rounded-full bg-foreground/[0.04]" />
           </div>
-          {/* Line 4 — prompt + command */}
-          <div className="flex items-center gap-2">
-            <div className="h-1.5 w-4 rounded-full bg-foreground/[0.2]" />
-            <div className="h-1.5 w-16 rounded-full bg-foreground/[0.1]" />
+          {/* Prompt 2 */}
+          <div className="flex items-center gap-1.5">
+            <div className="h-[3px] w-3 rounded-full bg-foreground/[0.2]" />
+            <div className="h-[3px] w-14 rounded-full bg-foreground/[0.1]" />
           </div>
-          {/* Line 5 — cursor */}
-          <div className="flex items-center gap-2">
-            <div className="h-1.5 w-4 rounded-full bg-foreground/[0.2]" />
-            <div className="h-3.5 w-1.5 bg-foreground/[0.15]" />
+          {/* Cursor */}
+          <div className="flex items-center gap-1.5">
+            <div className="h-[3px] w-3 rounded-full bg-foreground/[0.2]" />
+            <div className="h-3 w-[5px] rounded-[1px] bg-foreground/[0.15]" />
           </div>
         </div>
       </div>
@@ -261,42 +209,36 @@ const features = [
     description:
       "Feedback from Discord, X, GitHub, and more — funneled into a single board automatically.",
     graphic: InboxGraphic,
-    span: "col-span-1" as const,
   },
   {
     title: "AI-generated tasks",
     description:
       "Turn raw feedback into actionable, prioritized tasks with a single click.",
     graphic: SparkGraphic,
-    span: "col-span-1" as const,
   },
   {
     title: "Native integrations",
     description:
       "Two-way sync with Linear, Discord, GitHub, and X. Changes flow both directions.",
     graphic: CubesGraphic,
-    span: "col-span-1" as const,
   },
   {
     title: "Labels & organization",
     description:
       "Custom labels, priorities, and statuses to keep your board clean and searchable.",
     graphic: TagsGraphic,
-    span: "col-span-1" as const,
   },
   {
     title: "Activity logs",
     description:
       "Full audit trail of every task, webhook, integration event, and team action.",
     graphic: LogsGraphic,
-    span: "col-span-1" as const,
   },
   {
     title: "API & CLI",
     description:
       "Manage tasks from the terminal. Automate workflows with API keys and webhooks.",
     graphic: TerminalGraphic,
-    span: "col-span-1" as const,
   },
 ]
 
@@ -333,7 +275,7 @@ export function LandingFeatures() {
                 delay: i * 0.08,
                 ease,
               }}
-              className={`group relative overflow-hidden rounded-2xl border border-foreground/[0.06] ${feature.span}`}
+              className="group relative overflow-hidden rounded-2xl border border-foreground/[0.06]"
             >
               {/* Card background */}
               <div className="absolute inset-0 bg-foreground/[0.02]" />
