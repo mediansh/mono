@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react"
 import { useAuth } from "@clerk/nextjs"
+import { useTheme } from "next-themes"
 import Link from "next/link"
 import { CaretDown } from "@phosphor-icons/react"
 import { Logo } from "@/components/logo"
@@ -19,10 +20,47 @@ const resourceLinks = [
   { label: "Changelog", href: "#" },
 ]
 
+const glassStyles = {
+  dark: {
+    bg: "linear-gradient(to bottom, rgba(255,255,255,0.08), rgba(255,255,255,0.02))",
+    border:
+      "linear-gradient(to bottom, rgba(255,255,255,0.18), rgba(255,255,255,0.05))",
+    shadow: "0 4px 24px -4px rgba(0,0,0,0.4)",
+  },
+  light: {
+    bg: "linear-gradient(to bottom, rgba(255,255,255,0.85), rgba(255,255,255,0.65))",
+    border:
+      "linear-gradient(to bottom, rgba(0,0,0,0.08), rgba(0,0,0,0.03))",
+    shadow: "0 4px 24px -4px rgba(0,0,0,0.08)",
+  },
+}
+
+const ctaStyles = {
+  dark: {
+    bg: "linear-gradient(to bottom, rgba(255,255,255,1), rgba(220,220,220,1))",
+    border:
+      "linear-gradient(to bottom, rgba(255,255,255,0.9), rgba(180,180,180,0.4))",
+    shadow: "0 2px 12px -2px rgba(0,0,0,0.3)",
+    text: "text-neutral-900",
+  },
+  light: {
+    bg: "linear-gradient(to bottom, #1a1a1a, #2a2a2a)",
+    border:
+      "linear-gradient(to bottom, rgba(255,255,255,0.15), rgba(255,255,255,0.03))",
+    shadow: "0 2px 12px -2px rgba(0,0,0,0.2)",
+    text: "text-white",
+  },
+}
+
 export function LandingNavbar() {
   const { isSignedIn, isLoaded } = useAuth()
+  const { resolvedTheme } = useTheme()
   const [resourcesOpen, setResourcesOpen] = useState(false)
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const isDark = resolvedTheme === "dark"
+  const glass = isDark ? glassStyles.dark : glassStyles.light
+  const cta = isDark ? ctaStyles.dark : ctaStyles.light
 
   function handleMouseEnter() {
     if (closeTimerRef.current) {
@@ -47,37 +85,28 @@ export function LandingNavbar() {
         {/* Glass backdrop + gradient background */}
         <div
           className="pointer-events-none absolute inset-0 rounded-full backdrop-blur-xl"
-          style={{
-            background:
-              "linear-gradient(to bottom, rgba(255,255,255,0.08), rgba(255,255,255,0.02))",
-          }}
+          style={{ background: glass.bg }}
         />
-        {/* Gradient border: brighter on top, duller on bottom */}
+        {/* Gradient border */}
         <div
           className="pointer-events-none absolute inset-0 rounded-full"
           style={{
             padding: "1px",
-            background:
-              "linear-gradient(to bottom, rgba(255,255,255,0.18), rgba(255,255,255,0.05))",
+            background: glass.border,
             WebkitMask:
               "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
             WebkitMaskComposite: "xor",
             maskComposite: "exclude",
           }}
         />
-        {/* Subtle bottom shadow */}
+        {/* Shadow */}
         <div
           className="pointer-events-none absolute inset-0 rounded-full"
-          style={{
-            boxShadow: "0 4px 24px -4px rgba(0,0,0,0.4)",
-          }}
+          style={{ boxShadow: glass.shadow }}
         />
 
         {/* Logo */}
-        <Link
-          href="/"
-          className="relative z-10 flex items-center p-2"
-        >
+        <Link href="/" className="relative z-10 flex items-center p-2">
           <Logo symbolOnly className="size-5" />
         </Link>
 
@@ -144,41 +173,32 @@ export function LandingNavbar() {
         {/* Get started / Dashboard button */}
         <Link
           href={isSignedIn ? "/app" : "/sign-up"}
-          className="relative z-10 flex h-8 w-[106px] items-center justify-center overflow-hidden rounded-full text-sm font-medium text-background"
+          className="relative z-10 flex h-8 w-[106px] items-center justify-center overflow-hidden rounded-full text-sm font-medium"
         >
-          {/* Button gradient background */}
           <div
             className="pointer-events-none absolute inset-0"
-            style={{
-              background:
-                "linear-gradient(to bottom, rgba(255,255,255,1), rgba(220,220,220,1))",
-            }}
+            style={{ background: cta.bg }}
           />
-          {/* Button gradient border */}
           <div
             className="pointer-events-none absolute inset-0 rounded-full"
             style={{
               padding: "1px",
-              background:
-                "linear-gradient(to bottom, rgba(255,255,255,0.9), rgba(180,180,180,0.4))",
+              background: cta.border,
               WebkitMask:
                 "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
               WebkitMaskComposite: "xor",
               maskComposite: "exclude",
             }}
           />
-          {/* Button shadow */}
           <div
             className="pointer-events-none absolute inset-0 rounded-full"
-            style={{
-              boxShadow: "0 2px 12px -2px rgba(0,0,0,0.3)",
-            }}
+            style={{ boxShadow: cta.shadow }}
           />
           <AnimatePresence mode="wait" initial={false}>
             {isLoaded && isSignedIn ? (
               <motion.span
                 key="dashboard"
-                className="relative z-10 text-neutral-900"
+                className={`relative z-10 ${cta.text}`}
                 initial={{ opacity: 0, y: 8, filter: "blur(4px)" }}
                 animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
                 exit={{ opacity: 0, y: -8, filter: "blur(4px)" }}
@@ -189,7 +209,7 @@ export function LandingNavbar() {
             ) : (
               <motion.span
                 key="get-started"
-                className="relative z-10 text-neutral-900"
+                className={`relative z-10 ${cta.text}`}
                 initial={{ opacity: 0, y: 8, filter: "blur(4px)" }}
                 animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
                 exit={{ opacity: 0, y: -8, filter: "blur(4px)" }}

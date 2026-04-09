@@ -1,10 +1,43 @@
 "use client"
 
 import Link from "next/link"
+import { useTheme } from "next-themes"
 import { motion } from "motion/react"
 import { ChatCircleDots, Lightning, Atom, ArrowRight } from "@phosphor-icons/react"
 
 const ease = [0.25, 0.1, 0.25, 1] as const
+
+const ctaStyles = {
+  dark: {
+    bg: "linear-gradient(to bottom, rgba(255,255,255,1), rgba(220,220,220,1))",
+    border:
+      "linear-gradient(to bottom, rgba(255,255,255,0.9), rgba(180,180,180,0.4))",
+    shadow: "0 2px 12px -2px rgba(0,0,0,0.3)",
+    text: "text-neutral-900",
+  },
+  light: {
+    bg: "linear-gradient(to bottom, #1a1a1a, #2a2a2a)",
+    border:
+      "linear-gradient(to bottom, rgba(255,255,255,0.15), rgba(255,255,255,0.03))",
+    shadow: "0 2px 12px -2px rgba(0,0,0,0.2)",
+    text: "text-white",
+  },
+}
+
+const outlineStyles = {
+  dark: {
+    bg: "linear-gradient(to bottom, rgba(255,255,255,0.08), rgba(255,255,255,0.02))",
+    border:
+      "linear-gradient(to bottom, rgba(255,255,255,0.18), rgba(255,255,255,0.05))",
+    shadow: "0 2px 12px -2px rgba(0,0,0,0.2)",
+  },
+  light: {
+    bg: "linear-gradient(to bottom, rgba(255,255,255,0.85), rgba(255,255,255,0.65))",
+    border:
+      "linear-gradient(to bottom, rgba(0,0,0,0.08), rgba(0,0,0,0.03))",
+    shadow: "0 2px 12px -2px rgba(0,0,0,0.06)",
+  },
+}
 
 function InlineIcon({
   children,
@@ -26,6 +59,11 @@ function InlineIcon({
 }
 
 export function LandingHero() {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === "dark"
+  const cta = isDark ? ctaStyles.dark : ctaStyles.light
+  const outline = isDark ? outlineStyles.dark : outlineStyles.light
+
   return (
     <section className="flex flex-col items-center px-4 pt-36 pb-16">
       {/* Heading */}
@@ -69,75 +107,57 @@ export function LandingHero() {
         transition={{ duration: 0.5, delay: 0.6, ease }}
         className="mt-8 flex items-center gap-3"
       >
-        {/* Get started button — with depth/shine */}
+        {/* Get started button */}
         <Link
           href="/sign-up"
           className="relative flex h-10 items-center gap-2 overflow-hidden rounded-full px-5 text-sm font-medium"
         >
-          {/* Gradient bg */}
           <div
             className="pointer-events-none absolute inset-0"
-            style={{
-              background:
-                "linear-gradient(to bottom, rgba(255,255,255,1), rgba(220,220,220,1))",
-            }}
+            style={{ background: cta.bg }}
           />
-          {/* Gradient border */}
           <div
             className="pointer-events-none absolute inset-0 rounded-full"
             style={{
               padding: "1px",
-              background:
-                "linear-gradient(to bottom, rgba(255,255,255,0.9), rgba(180,180,180,0.4))",
+              background: cta.border,
               WebkitMask:
                 "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
               WebkitMaskComposite: "xor",
               maskComposite: "exclude",
             }}
           />
-          {/* Shadow */}
           <div
             className="pointer-events-none absolute inset-0 rounded-full"
-            style={{
-              boxShadow: "0 2px 12px -2px rgba(0,0,0,0.3)",
-            }}
+            style={{ boxShadow: cta.shadow }}
           />
-          <span className="relative z-10 text-neutral-900">Get started</span>
-          <ArrowRight size={14} weight="bold" className="relative z-10 text-neutral-900" />
+          <span className={`relative z-10 ${cta.text}`}>Get started</span>
+          <ArrowRight size={14} weight="bold" className={`relative z-10 ${cta.text}`} />
         </Link>
 
-        {/* Learn more button — glass/outline style */}
+        {/* Learn more button */}
         <Link
           href="#"
           className="relative flex h-10 items-center overflow-hidden rounded-full px-5 text-sm font-medium"
         >
-          {/* Glass bg */}
           <div
             className="pointer-events-none absolute inset-0 rounded-full backdrop-blur-xl"
-            style={{
-              background:
-                "linear-gradient(to bottom, rgba(255,255,255,0.08), rgba(255,255,255,0.02))",
-            }}
+            style={{ background: outline.bg }}
           />
-          {/* Gradient border */}
           <div
             className="pointer-events-none absolute inset-0 rounded-full"
             style={{
               padding: "1px",
-              background:
-                "linear-gradient(to bottom, rgba(255,255,255,0.18), rgba(255,255,255,0.05))",
+              background: outline.border,
               WebkitMask:
                 "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
               WebkitMaskComposite: "xor",
               maskComposite: "exclude",
             }}
           />
-          {/* Shadow */}
           <div
             className="pointer-events-none absolute inset-0 rounded-full"
-            style={{
-              boxShadow: "0 2px 12px -2px rgba(0,0,0,0.2)",
-            }}
+            style={{ boxShadow: outline.shadow }}
           />
           <span className="relative z-10 text-foreground">Learn more</span>
         </Link>
