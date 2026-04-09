@@ -1,9 +1,24 @@
 "use client"
 
+import { useState, useEffect } from "react"
+import { useTheme } from "next-themes"
 import { motion } from "motion/react"
 import { Cube } from "@phosphor-icons/react"
 
 const ease = [0.25, 0.1, 0.25, 1] as const
+
+const cardStyles = {
+  dark: {
+    bg: "linear-gradient(to bottom, rgba(255,255,255,0.04), rgba(255,255,255,0.01))",
+    border: "linear-gradient(to bottom, rgba(255,255,255,0.1), rgba(255,255,255,0.03))",
+    shadow: "0 4px 24px -4px rgba(0,0,0,0.3)",
+  },
+  light: {
+    bg: "linear-gradient(to bottom, rgba(255,255,255,0.85), rgba(255,255,255,0.65))",
+    border: "linear-gradient(to bottom, rgba(0,0,0,0.08), rgba(0,0,0,0.03))",
+    shadow: "0 4px 24px -4px rgba(0,0,0,0.06)",
+  },
+}
 
 /* ─── Graphics built with divs + Tailwind ─── */
 
@@ -245,6 +260,14 @@ const features = [
 /* ─── Component ─── */
 
 export function LandingFeatures() {
+  const { resolvedTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => setMounted(true), [])
+
+  const isDark = !mounted || resolvedTheme === "dark"
+  const card = isDark ? cardStyles.dark : cardStyles.light
+
   return (
     <section id="features" className="scroll-mt-24 px-4 py-24">
       <div className="mx-auto max-w-6xl">
@@ -281,18 +304,14 @@ export function LandingFeatures() {
               {/* Gradient background */}
               <div
                 className="absolute inset-0"
-                style={{
-                  background:
-                    "linear-gradient(to bottom, rgba(255,255,255,0.04), rgba(255,255,255,0.01))",
-                }}
+                style={{ background: card.bg }}
               />
               {/* Gradient border */}
               <div
                 className="pointer-events-none absolute inset-0 rounded-2xl"
                 style={{
                   padding: "1px",
-                  background:
-                    "linear-gradient(to bottom, rgba(255,255,255,0.1), rgba(255,255,255,0.03))",
+                  background: card.border,
                   WebkitMask:
                     "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
                   WebkitMaskComposite: "xor",
@@ -302,7 +321,7 @@ export function LandingFeatures() {
               {/* Shadow */}
               <div
                 className="pointer-events-none absolute inset-0 rounded-2xl"
-                style={{ boxShadow: "0 4px 24px -4px rgba(0,0,0,0.3)" }}
+                style={{ boxShadow: card.shadow }}
               />
 
               {/* Graphic area */}

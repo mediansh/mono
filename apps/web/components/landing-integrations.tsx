@@ -1,9 +1,30 @@
 "use client"
 
+import { useState, useEffect, createContext, useContext } from "react"
+import { useTheme } from "next-themes"
 import { motion } from "motion/react"
 import { Plugs } from "@phosphor-icons/react"
 
 const ease = [0.25, 0.1, 0.25, 1] as const
+
+const cardStyles = {
+  dark: {
+    bg: "linear-gradient(to bottom, rgba(255,255,255,0.04), rgba(255,255,255,0.01))",
+    border: "linear-gradient(to bottom, rgba(255,255,255,0.1), rgba(255,255,255,0.03))",
+    shadow: "0 4px 24px -4px rgba(0,0,0,0.3)",
+    pillBg: "linear-gradient(to bottom, rgba(255,255,255,0.06), rgba(255,255,255,0.02))",
+    pillBorder: "linear-gradient(to bottom, rgba(255,255,255,0.1), rgba(255,255,255,0.03))",
+  },
+  light: {
+    bg: "linear-gradient(to bottom, rgba(255,255,255,0.85), rgba(255,255,255,0.65))",
+    border: "linear-gradient(to bottom, rgba(0,0,0,0.08), rgba(0,0,0,0.03))",
+    shadow: "0 4px 24px -4px rgba(0,0,0,0.06)",
+    pillBg: "linear-gradient(to bottom, rgba(0,0,0,0.03), rgba(0,0,0,0.01))",
+    pillBorder: "linear-gradient(to bottom, rgba(0,0,0,0.06), rgba(0,0,0,0.02))",
+  },
+}
+
+const ThemeContext = createContext<{ card: typeof cardStyles.dark }>({ card: cardStyles.dark })
 
 /* ─── Brand icons ─── */
 
@@ -86,7 +107,16 @@ const integrations = [
 /* ─── Component ─── */
 
 export function LandingIntegrations() {
+  const { resolvedTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => setMounted(true), [])
+
+  const isDark = !mounted || resolvedTheme === "dark"
+  const card = isDark ? cardStyles.dark : cardStyles.light
+
   return (
+    <ThemeContext.Provider value={{ card }}>
     <section id="integrations" className="scroll-mt-24 px-4 py-24">
       <div className="mx-auto max-w-6xl">
         {/* Header */}
@@ -175,6 +205,7 @@ export function LandingIntegrations() {
         </div>
       </div>
     </section>
+    </ThemeContext.Provider>
   )
 }
 
@@ -185,6 +216,8 @@ function IntegrationCard({
   integration: (typeof integrations)[number]
   delay: number
 }) {
+  const { card } = useContext(ThemeContext)
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -196,18 +229,14 @@ function IntegrationCard({
       {/* Gradient background */}
       <div
         className="absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(to bottom, rgba(255,255,255,0.04), rgba(255,255,255,0.01))",
-        }}
+        style={{ background: card.bg }}
       />
       {/* Gradient border */}
       <div
         className="pointer-events-none absolute inset-0 rounded-2xl"
         style={{
           padding: "1px",
-          background:
-            "linear-gradient(to bottom, rgba(255,255,255,0.1), rgba(255,255,255,0.03))",
+          background: card.border,
           WebkitMask:
             "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
           WebkitMaskComposite: "xor",
@@ -217,7 +246,7 @@ function IntegrationCard({
       {/* Shadow */}
       <div
         className="pointer-events-none absolute inset-0 rounded-2xl"
-        style={{ boxShadow: "0 4px 24px -4px rgba(0,0,0,0.3)" }}
+        style={{ boxShadow: card.shadow }}
       />
 
       <div className="relative p-6">
@@ -240,17 +269,13 @@ function IntegrationCard({
             >
               <span
                 className="pointer-events-none absolute inset-0 rounded-full"
-                style={{
-                  background:
-                    "linear-gradient(to bottom, rgba(255,255,255,0.06), rgba(255,255,255,0.02))",
-                }}
+                style={{ background: card.pillBg }}
               />
               <span
                 className="pointer-events-none absolute inset-0 rounded-full"
                 style={{
                   padding: "1px",
-                  background:
-                    "linear-gradient(to bottom, rgba(255,255,255,0.1), rgba(255,255,255,0.03))",
+                  background: card.pillBorder,
                   WebkitMask:
                     "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
                   WebkitMaskComposite: "xor",

@@ -1,12 +1,37 @@
 "use client"
 
+import { useState, useEffect } from "react"
+import { useTheme } from "next-themes"
 import Link from "next/link"
 import { motion } from "motion/react"
 import { ArrowRight } from "@phosphor-icons/react"
 
 const ease = [0.25, 0.1, 0.25, 1] as const
 
+const ctaStyles = {
+  dark: {
+    bg: "linear-gradient(to bottom, rgba(255,255,255,1), rgba(220,220,220,1))",
+    border: "linear-gradient(to bottom, rgba(255,255,255,0.9), rgba(180,180,180,0.4))",
+    shadow: "0 2px 12px -2px rgba(0,0,0,0.3)",
+    text: "text-neutral-900",
+  },
+  light: {
+    bg: "linear-gradient(to bottom, #1a1a1a, #2a2a2a)",
+    border: "linear-gradient(to bottom, rgba(255,255,255,0.15), rgba(255,255,255,0.03))",
+    shadow: "0 2px 12px -2px rgba(0,0,0,0.2)",
+    text: "text-white",
+  },
+}
+
 export function LandingCta() {
+  const { resolvedTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => setMounted(true), [])
+
+  const isDark = !mounted || resolvedTheme === "dark"
+  const cta = isDark ? ctaStyles.dark : ctaStyles.light
+
   return (
     <section className="px-4 py-24">
       <motion.div
@@ -31,17 +56,13 @@ export function LandingCta() {
           >
             <div
               className="pointer-events-none absolute inset-0"
-              style={{
-                background:
-                  "linear-gradient(to bottom, rgba(255,255,255,1), rgba(220,220,220,1))",
-              }}
+              style={{ background: cta.bg }}
             />
             <div
               className="pointer-events-none absolute inset-0 rounded-full"
               style={{
                 padding: "1px",
-                background:
-                  "linear-gradient(to bottom, rgba(255,255,255,0.9), rgba(180,180,180,0.4))",
+                background: cta.border,
                 WebkitMask:
                   "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
                 WebkitMaskComposite: "xor",
@@ -50,10 +71,10 @@ export function LandingCta() {
             />
             <div
               className="pointer-events-none absolute inset-0 rounded-full"
-              style={{ boxShadow: "0 2px 12px -2px rgba(0,0,0,0.3)" }}
+              style={{ boxShadow: cta.shadow }}
             />
-            <span className="relative z-10 text-neutral-900">Get started free</span>
-            <ArrowRight size={14} weight="bold" className="relative z-10 text-neutral-900" />
+            <span className={`relative z-10 ${cta.text}`}>Get started free</span>
+            <ArrowRight size={14} weight="bold" className={`relative z-10 ${cta.text}`} />
           </Link>
 
           {/* Secondary */}

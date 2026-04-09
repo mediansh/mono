@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, createContext, useContext } from "react"
+import { useTheme } from "next-themes"
 import Link from "next/link"
 import { motion, AnimatePresence } from "motion/react"
 import { CreditCard, Check, Info, ArrowRight } from "@phosphor-icons/react"
@@ -12,8 +13,46 @@ import {
 
 const ease = [0.25, 0.1, 0.25, 1] as const
 
+const planCardStyles = {
+  dark: {
+    bg: "linear-gradient(to bottom, rgba(255,255,255,0.04), rgba(255,255,255,0.01))",
+    bgPopular: "linear-gradient(to bottom, rgba(255,255,255,0.06), rgba(255,255,255,0.02))",
+    border: "linear-gradient(to bottom, rgba(255,255,255,0.1), rgba(255,255,255,0.03))",
+    borderPopular: "linear-gradient(to bottom, rgba(255,255,255,0.15), rgba(255,255,255,0.05))",
+    shadow: "0 4px 24px -4px rgba(0,0,0,0.3)",
+    ctaBg: "linear-gradient(to bottom, rgba(255,255,255,0.06), rgba(255,255,255,0.02))",
+    ctaBorder: "linear-gradient(to bottom, rgba(255,255,255,0.12), rgba(255,255,255,0.04))",
+    ctaPopularBg: "linear-gradient(to bottom, rgba(255,255,255,1), rgba(220,220,220,1))",
+    ctaPopularBorder: "linear-gradient(to bottom, rgba(255,255,255,0.9), rgba(180,180,180,0.4))",
+    ctaPopularText: "text-neutral-900",
+  },
+  light: {
+    bg: "linear-gradient(to bottom, rgba(255,255,255,0.85), rgba(255,255,255,0.65))",
+    bgPopular: "linear-gradient(to bottom, rgba(255,255,255,0.9), rgba(255,255,255,0.7))",
+    border: "linear-gradient(to bottom, rgba(0,0,0,0.08), rgba(0,0,0,0.03))",
+    borderPopular: "linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.04))",
+    shadow: "0 4px 24px -4px rgba(0,0,0,0.06)",
+    ctaBg: "linear-gradient(to bottom, rgba(0,0,0,0.03), rgba(0,0,0,0.01))",
+    ctaBorder: "linear-gradient(to bottom, rgba(0,0,0,0.08), rgba(0,0,0,0.03))",
+    ctaPopularBg: "linear-gradient(to bottom, #1a1a1a, #2a2a2a)",
+    ctaPopularBorder: "linear-gradient(to bottom, rgba(255,255,255,0.15), rgba(255,255,255,0.03))",
+    ctaPopularText: "text-white",
+  },
+}
+
+const PricingThemeContext = createContext<{ styles: typeof planCardStyles.dark }>({ styles: planCardStyles.dark })
+
 export function LandingPricing() {
+  const { resolvedTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => setMounted(true), [])
+
+  const isDark = !mounted || resolvedTheme === "dark"
+  const styles = isDark ? planCardStyles.dark : planCardStyles.light
+
   return (
+    <PricingThemeContext.Provider value={{ styles }}>
     <section id="pricing" className="scroll-mt-24 px-4 py-24">
       <div className="mx-auto max-w-5xl">
         {/* Header */}
@@ -56,6 +95,7 @@ export function LandingPricing() {
         </motion.div>
       </div>
     </section>
+    </PricingThemeContext.Provider>
   )
 }
 
@@ -66,6 +106,7 @@ function PlanCard({
   plan: (typeof AUTUMN_BILLING_PLANS)[number]
   index: number
 }) {
+  const { styles } = useContext(PricingThemeContext)
   const copy = getPlanCopy(plan.id)
   const isPopular = plan.id === "plus"
 
@@ -81,9 +122,7 @@ function PlanCard({
       <div
         className="absolute inset-0"
         style={{
-          background: isPopular
-            ? "linear-gradient(to bottom, rgba(255,255,255,0.06), rgba(255,255,255,0.02))"
-            : "linear-gradient(to bottom, rgba(255,255,255,0.04), rgba(255,255,255,0.01))",
+          background: isPopular ? styles.bgPopular : styles.bg,
         }}
       />
       {/* Gradient border */}
@@ -91,9 +130,7 @@ function PlanCard({
         className="pointer-events-none absolute inset-0 rounded-2xl"
         style={{
           padding: "1px",
-          background: isPopular
-            ? "linear-gradient(to bottom, rgba(255,255,255,0.15), rgba(255,255,255,0.05))"
-            : "linear-gradient(to bottom, rgba(255,255,255,0.1), rgba(255,255,255,0.03))",
+          background: isPopular ? styles.borderPopular : styles.border,
           WebkitMask:
             "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
           WebkitMaskComposite: "xor",
@@ -103,7 +140,7 @@ function PlanCard({
       {/* Shadow */}
       <div
         className="pointer-events-none absolute inset-0 rounded-2xl"
-        style={{ boxShadow: "0 4px 24px -4px rgba(0,0,0,0.3)" }}
+        style={{ boxShadow: styles.shadow }}
       />
 
       <div className="relative flex flex-col p-6">
@@ -127,41 +164,33 @@ function PlanCard({
             <>
               <div
                 className="pointer-events-none absolute inset-0"
-                style={{
-                  background:
-                    "linear-gradient(to bottom, rgba(255,255,255,1), rgba(220,220,220,1))",
-                }}
+                style={{ background: styles.ctaPopularBg }}
               />
               <div
                 className="pointer-events-none absolute inset-0 rounded-full"
                 style={{
                   padding: "1px",
-                  background:
-                    "linear-gradient(to bottom, rgba(255,255,255,0.9), rgba(180,180,180,0.4))",
+                  background: styles.ctaPopularBorder,
                   WebkitMask:
                     "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
                   WebkitMaskComposite: "xor",
                   maskComposite: "exclude",
                 }}
               />
-              <span className="relative z-10 text-neutral-900">Get started</span>
-              <ArrowRight size={14} weight="bold" className="relative z-10 text-neutral-900" />
+              <span className={`relative z-10 ${styles.ctaPopularText}`}>Get started</span>
+              <ArrowRight size={14} weight="bold" className={`relative z-10 ${styles.ctaPopularText}`} />
             </>
           ) : (
             <>
               <div
                 className="pointer-events-none absolute inset-0 rounded-full"
-                style={{
-                  background:
-                    "linear-gradient(to bottom, rgba(255,255,255,0.06), rgba(255,255,255,0.02))",
-                }}
+                style={{ background: styles.ctaBg }}
               />
               <div
                 className="pointer-events-none absolute inset-0 rounded-full"
                 style={{
                   padding: "1px",
-                  background:
-                    "linear-gradient(to bottom, rgba(255,255,255,0.12), rgba(255,255,255,0.04))",
+                  background: styles.ctaBorder,
                   WebkitMask:
                     "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
                   WebkitMaskComposite: "xor",
