@@ -272,7 +272,7 @@ function SelectRow<T extends string>({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value as T)}
-        className="min-w-0 flex-1 rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-white/70 ring-1 ring-white/10 outline-none focus:ring-blue-500/50"
+        className="min-w-0 flex-1 rounded bg-white/5 pl-1.5 pr-7 py-0.5 text-[10px] text-white/70 ring-1 ring-white/10 outline-none focus:ring-blue-500/50"
       >
         {options.map((opt) => (
           <option key={opt} value={opt} className="bg-[#1a1a1a] text-white/80">

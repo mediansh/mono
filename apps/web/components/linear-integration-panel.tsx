@@ -149,7 +149,7 @@ function StatusMappingRow({
         value={selectValue}
         disabled={disabled}
         onChange={(event) => onChange(status, event.target.value)}
-        className="h-8 min-w-0 flex-1 rounded-[4px] border border-border bg-background px-2.5 text-[13px] text-foreground transition-colors outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:opacity-60"
+        className="h-8 min-w-0 flex-1 rounded-[4px] border border-border bg-background pl-2.5 pr-7 text-[13px] text-foreground transition-colors outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:opacity-60"
       >
         <option value="">Automatic</option>
         {states.map((state) => (
@@ -647,7 +647,7 @@ export function LinearIntegrationPanel() {
                   id="linear-team"
                   value={selectedTeamId}
                   onChange={(event) => setSelectedTeamId(event.target.value)}
-                  className="h-9 w-full rounded-[4px] border border-border bg-background px-3 text-[13px] transition-colors outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
+                  className="h-9 w-full rounded-[4px] border border-border bg-background pl-3 pr-7 text-[13px] transition-colors outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
                 >
                   {previewTeams.map((team) => (
                     <option key={team.id} value={team.id}>

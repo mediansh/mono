@@ -375,7 +375,7 @@ export default function MembersSettingsPage() {
                   value={linkRole}
                   onChange={(e) => setLinkRole(e.target.value as WorkspaceInviteRole)}
                   disabled={!canManageMembers || creatingLink}
-                  className="h-8 w-full rounded-[4px] ring-1 ring-border bg-background px-3 text-[13px] outline-none transition-colors focus:ring-foreground/30 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="h-8 w-full rounded-[4px] ring-1 ring-border bg-background pl-3 pr-7 text-[13px] outline-none transition-colors focus:ring-foreground/30 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {inviteRoleOptions.map((role) => (
                     <option key={role} value={role}>
@@ -415,7 +415,7 @@ export default function MembersSettingsPage() {
                   value={emailRole}
                   onChange={(e) => setEmailRole(e.target.value as WorkspaceInviteRole)}
                   disabled={!canManageMembers || sendingInvite}
-                  className="h-8 w-full rounded-[4px] ring-1 ring-border bg-background px-3 text-[13px] outline-none transition-colors focus:ring-foreground/30 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="h-8 w-full rounded-[4px] ring-1 ring-border bg-background pl-3 pr-7 text-[13px] outline-none transition-colors focus:ring-foreground/30 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {inviteRoleOptions.map((role) => (
                     <option key={role} value={role}>
@@ -539,7 +539,7 @@ export default function MembersSettingsPage() {
                       onChange={(e) =>
                         handleRoleChange(member._id, e.target.value as WorkspaceInviteRole)
                       }
-                      className="h-8 rounded-[4px] ring-1 ring-border bg-background px-2.5 text-[13px] outline-none transition-colors focus:ring-foreground/30 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="h-8 rounded-[4px] ring-1 ring-border bg-background pl-2.5 pr-7 text-[13px] outline-none transition-colors focus:ring-foreground/30 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {inviteRoleOptions.map((role) => (
                         <option key={role} value={role}>
