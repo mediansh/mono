@@ -1729,6 +1729,8 @@ function TaskDetailModal({
   const [descValue, setDescValue] = useState("")
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const attachmentsRef = useRef(task?.attachments)
+  attachmentsRef.current = task?.attachments
   const generateUploadUrl = useMutation(api.workspaces.generateUploadUrl)
 
   const readImageMetadata = useCallback(async (file: File) => {
@@ -1819,7 +1821,7 @@ function TaskDetailModal({
         }
 
         if (newAttachments.length > 0) {
-          const existing = task.attachments ?? []
+          const existing = attachmentsRef.current ?? []
           onUpdate(task.id, { attachments: [...existing, ...newAttachments] })
         }
       } catch {
