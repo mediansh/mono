@@ -1164,9 +1164,6 @@ function TaskContextMenu({
   const menuRef = useRef<HTMLDivElement>(null)
   const [menuPosition, setMenuPosition] = useState(position)
 
-  useEffect(() => {
-    setMenuPosition(position)
-  }, [position])
 
   useLayoutEffect(() => {
     if (!menuRef.current) {
