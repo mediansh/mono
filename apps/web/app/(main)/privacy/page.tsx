@@ -13,7 +13,7 @@ export default function PrivacyPage() {
   return (
     <LegalPage
       title="Privacy Policy"
-      eyebrow="Legal"
+
       lastUpdated={lastUpdated}
       summary="This Privacy Policy explains how Clovr Labs Pty Ltd collects, uses, discloses, and protects personal information when you use Median, including the website, web application, integrations, API, CLI, AI-assisted features, and related support channels."
     >

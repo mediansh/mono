@@ -13,7 +13,7 @@ export default function TermsPage() {
   return (
     <LegalPage
       title="Terms of Service"
-      eyebrow="Legal"
+
       lastUpdated={lastUpdated}
       summary="These Terms of Service govern your access to and use of Median. By using Median, you agree to these terms on your own behalf and, if applicable, on behalf of the organization or workspace you represent."
     >
