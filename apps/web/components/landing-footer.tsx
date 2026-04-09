@@ -8,7 +8,7 @@ const links = {
     { label: "Pricing", href: "#pricing" },
   ],
   Resources: [
-    { label: "Docs", href: "#" },
+    { label: "Docs", href: "https://docs.median.sh" },
     { label: "Changelog", href: "#" },
     { label: "News", href: "#" },
   ],
@@ -43,6 +43,7 @@ export function LandingFooter() {
                     <li key={item.label}>
                       <Link
                         href={item.href}
+                        {...(item.href.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                         className="text-sm text-muted-foreground transition-colors hover:text-foreground"
                       >
                         {item.label}
