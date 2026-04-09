@@ -1896,6 +1896,15 @@ function TaskDetailModal({
     onClose()
   }, [onClose])
 
+  useEffect(() => {
+    if (!task) return
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleClose()
+    }
+    document.addEventListener("keydown", handleEscape)
+    return () => document.removeEventListener("keydown", handleEscape)
+  }, [task, handleClose])
+
   return createPortal(
     <AnimatePresence>
       {task && (
@@ -1905,7 +1914,7 @@ function TaskDetailModal({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.12 }}
+            transition={{ duration: 0.08 }}
             className="fixed inset-0 z-50 bg-black/40"
             onClick={handleClose}
           />
@@ -1916,12 +1925,9 @@ function TaskDetailModal({
               initial={{ opacity: 0, scale: 0.97, y: 6 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.98, y: 6 }}
-              transition={{ duration: 0.15, ease: [0.32, 0, 0.67, 0] }}
+              transition={{ duration: 0.1, ease: [0.32, 0, 0.67, 0] }}
               className="relative flex max-h-[85vh] w-[min(92vw,40rem)] max-w-2xl flex-col overflow-hidden rounded-[8px] bg-background shadow-2xl ring-1 ring-border"
               onClick={(e) => e.stopPropagation()}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") handleClose()
-              }}
             >
               {/* ── Header: Title + Date + Close ── */}
               <div className="relative px-5 pt-5 pb-0">
