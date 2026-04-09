@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef } from "react"
 import { useAuth } from "@clerk/nextjs"
 import Link from "next/link"
 import { CaretDown } from "@phosphor-icons/react"
@@ -22,20 +22,19 @@ const resourceLinks = [
 export function LandingNavbar() {
   const { isSignedIn, isLoaded } = useAuth()
   const [resourcesOpen, setResourcesOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node)
-      ) {
-        setResourcesOpen(false)
-      }
+  function handleMouseEnter() {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
     }
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [])
+    setResourcesOpen(true)
+  }
+
+  function handleMouseLeave() {
+    closeTimerRef.current = setTimeout(() => setResourcesOpen(false), 150)
+  }
 
   return (
     <motion.header
@@ -77,7 +76,7 @@ export function LandingNavbar() {
         {/* Logo */}
         <Link
           href="/"
-          className="relative z-10 flex items-center rounded-full bg-foreground/10 p-2"
+          className="relative z-10 flex items-center p-2"
         >
           <Logo symbolOnly className="size-5" />
         </Link>
@@ -97,10 +96,13 @@ export function LandingNavbar() {
         ))}
 
         {/* Resources dropdown */}
-        <div ref={dropdownRef} className="relative z-10">
+        <div
+          className="relative z-10"
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+        >
           <button
             type="button"
-            onClick={() => setResourcesOpen((o) => !o)}
             className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             Resources
@@ -142,12 +144,41 @@ export function LandingNavbar() {
         {/* Get started / Dashboard button */}
         <Link
           href={isSignedIn ? "/app" : "/sign-up"}
-          className="relative z-10 flex h-8 w-[106px] items-center justify-center rounded-full bg-foreground text-sm font-medium text-background transition-colors hover:bg-foreground/90"
+          className="relative z-10 flex h-8 w-[106px] items-center justify-center overflow-hidden rounded-full text-sm font-medium text-background"
         >
+          {/* Button gradient background */}
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(to bottom, rgba(255,255,255,1), rgba(220,220,220,1))",
+            }}
+          />
+          {/* Button gradient border */}
+          <div
+            className="pointer-events-none absolute inset-0 rounded-full"
+            style={{
+              padding: "1px",
+              background:
+                "linear-gradient(to bottom, rgba(255,255,255,0.9), rgba(180,180,180,0.4))",
+              WebkitMask:
+                "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+              WebkitMaskComposite: "xor",
+              maskComposite: "exclude",
+            }}
+          />
+          {/* Button shadow */}
+          <div
+            className="pointer-events-none absolute inset-0 rounded-full"
+            style={{
+              boxShadow: "0 2px 12px -2px rgba(0,0,0,0.3)",
+            }}
+          />
           <AnimatePresence mode="wait" initial={false}>
             {isLoaded && isSignedIn ? (
               <motion.span
                 key="dashboard"
+                className="relative z-10 text-neutral-900"
                 initial={{ opacity: 0, y: 8, filter: "blur(4px)" }}
                 animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
                 exit={{ opacity: 0, y: -8, filter: "blur(4px)" }}
@@ -158,6 +189,7 @@ export function LandingNavbar() {
             ) : (
               <motion.span
                 key="get-started"
+                className="relative z-10 text-neutral-900"
                 initial={{ opacity: 0, y: 8, filter: "blur(4px)" }}
                 animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
                 exit={{ opacity: 0, y: -8, filter: "blur(4px)" }}
