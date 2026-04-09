@@ -6,6 +6,7 @@ import { LandingHero } from "@/components/landing-hero"
 import { LandingDemo } from "@/components/landing-demo"
 import { LandingFeatures } from "@/components/landing-features"
 import { LandingIntegrations } from "@/components/landing-integrations"
+import { LandingPricing } from "@/components/landing-pricing"
 
 export default function Page() {
   return (
@@ -28,6 +29,7 @@ export default function Page() {
       <LandingDemo />
       <LandingFeatures />
       <LandingIntegrations />
+      <LandingPricing />
     </motion.main>
   )
 }
