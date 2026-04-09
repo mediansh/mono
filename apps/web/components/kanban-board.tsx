@@ -2120,7 +2120,7 @@ function TaskDetailModal({
                   <button
                     disabled={!canManageTasks}
                     onClick={() => onDelete(task.id)}
-                    className="rounded-[4px] p-1.5 text-muted-foreground/40 ring-1 ring-border transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex items-center justify-center rounded-[4px] px-[7px] py-[7px] text-muted-foreground/40 ring-1 ring-border transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-60"
                     title="Delete task"
                   >
                     <Trash size={14} />
