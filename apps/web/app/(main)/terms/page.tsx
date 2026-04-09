@@ -236,9 +236,9 @@ export default function TermsPage() {
 
       <LegalSection title="16. Governing Law and Disputes">
         <p>
-          These terms are governed by the laws of Western Australia, Australia,
-          excluding conflict of laws principles. The courts located in Western
-          Australia will have exclusive jurisdiction over disputes arising out of
+          These terms are governed by the laws of New South Wales, Australia,
+          excluding conflict of laws principles. The courts located in New South
+          Wales will have exclusive jurisdiction over disputes arising out of
           or relating to these terms or the service, except where applicable law
           requires otherwise.
         </p>
