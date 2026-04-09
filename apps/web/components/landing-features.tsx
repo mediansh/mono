@@ -1,6 +1,7 @@
 "use client"
 
 import { motion } from "motion/react"
+import { Cube } from "@phosphor-icons/react"
 
 const ease = [0.25, 0.1, 0.25, 1] as const
 
@@ -117,12 +118,11 @@ function TagsGraphic() {
 
   return (
     <div className="flex h-full items-center justify-center">
-      <div className="flex flex-col gap-2.5">
+      <div className="flex flex-col items-center gap-2.5">
         {tags.map((tag, i) => (
           <div
             key={i}
             className={`flex h-9 ${tag.w} items-center gap-2.5 rounded-full border ${tag.opacity} px-3`}
-            style={{ transform: `translateX(${tag.x}px)` }}
           >
             <div className={`h-2.5 w-2.5 shrink-0 rounded-full ${tag.dotOpacity}`} />
             <div className={`h-1.5 ${tag.barW} rounded-full ${tag.barOpacity}`} />
@@ -255,7 +255,8 @@ export function LandingFeatures() {
           transition={{ duration: 0.5, ease }}
           className="mb-12 text-center"
         >
-          <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+          <h2 className="flex items-center justify-center gap-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+            <Cube size="1em" weight="duotone" className="text-foreground/40" />
             Built for how teams actually work
           </h2>
           <p className="mt-3 text-muted-foreground sm:text-lg">
@@ -275,10 +276,34 @@ export function LandingFeatures() {
                 delay: i * 0.08,
                 ease,
               }}
-              className="group relative overflow-hidden rounded-2xl border border-foreground/[0.06]"
+              className="group relative overflow-hidden rounded-2xl"
             >
-              {/* Card background */}
-              <div className="absolute inset-0 bg-foreground/[0.02]" />
+              {/* Gradient background */}
+              <div
+                className="absolute inset-0"
+                style={{
+                  background:
+                    "linear-gradient(to bottom, rgba(255,255,255,0.04), rgba(255,255,255,0.01))",
+                }}
+              />
+              {/* Gradient border */}
+              <div
+                className="pointer-events-none absolute inset-0 rounded-2xl"
+                style={{
+                  padding: "1px",
+                  background:
+                    "linear-gradient(to bottom, rgba(255,255,255,0.1), rgba(255,255,255,0.03))",
+                  WebkitMask:
+                    "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                  WebkitMaskComposite: "xor",
+                  maskComposite: "exclude",
+                }}
+              />
+              {/* Shadow */}
+              <div
+                className="pointer-events-none absolute inset-0 rounded-2xl"
+                style={{ boxShadow: "0 4px 24px -4px rgba(0,0,0,0.3)" }}
+              />
 
               {/* Graphic area */}
               <div className="relative h-48 text-foreground">

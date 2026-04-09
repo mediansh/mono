@@ -1,6 +1,7 @@
 "use client"
 
 import { motion } from "motion/react"
+import { Plugs } from "@phosphor-icons/react"
 
 const ease = [0.25, 0.1, 0.25, 1] as const
 
@@ -96,7 +97,8 @@ export function LandingIntegrations() {
           transition={{ duration: 0.5, ease }}
           className="mb-16 text-center"
         >
-          <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+          <h2 className="flex items-center justify-center gap-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+            <Plugs size="1em" weight="duotone" className="text-foreground/40" />
             Plugs into your stack
           </h2>
           <p className="mt-3 text-muted-foreground sm:text-lg">
@@ -152,78 +154,134 @@ export function LandingIntegrations() {
           })}
 
           {/* Connecting lines to center */}
-          {integrations.map((integration, i) => {
-            const angle = (i * 360) / integrations.length - 90
-            const rad = (angle * Math.PI) / 180
-            const x1 = 50 + 18 * Math.cos(rad)
-            const y1 = 50 + 18 * Math.sin(rad)
-            const x2 = 50 + 38 * Math.cos(rad)
-            const y2 = 50 + 38 * Math.sin(rad)
-            return (
-              <svg
-                key={`line-${integration.name}`}
-                className="pointer-events-none absolute inset-0 h-full w-full"
-                viewBox="0 0 100 100"
-                preserveAspectRatio="none"
-              >
+          <svg
+            className="pointer-events-none absolute inset-0 h-full w-full"
+            viewBox="0 0 100 100"
+          >
+            {integrations.map((integration, i) => {
+              const angle = (i * 360) / integrations.length - 90
+              const rad = (angle * Math.PI) / 180
+              const x1 = 50 + 12 * Math.cos(rad)
+              const y1 = 50 + 12 * Math.sin(rad)
+              const x2 = 50 + 40 * Math.cos(rad)
+              const y2 = 50 + 40 * Math.sin(rad)
+              return (
                 <line
+                  key={`line-${integration.name}`}
                   x1={x1}
                   y1={y1}
                   x2={x2}
                   y2={y2}
                   stroke="currentColor"
-                  strokeOpacity={0.06}
-                  strokeWidth={0.3}
-                  strokeDasharray="1 1"
+                  strokeOpacity={0.08}
+                  strokeWidth={0.25}
+                  strokeDasharray="1.5 1.5"
                 />
-              </svg>
-            )
-          })}
+              )
+            })}
+          </svg>
         </motion.div>
 
         {/* Integration cards grid */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {integrations.map((integration, i) => (
-            <motion.div
-              key={integration.name}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-60px" }}
-              transition={{ duration: 0.4, delay: i * 0.08, ease }}
-              className="relative overflow-hidden rounded-2xl border border-foreground/[0.06]"
-            >
-              <div className="absolute inset-0 bg-foreground/[0.02]" />
-
-              <div className="relative p-6">
-                {/* Icon + name */}
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-foreground/[0.1] bg-foreground/[0.04]">
-                    <integration.icon size={18} />
-                  </div>
-                  <h3 className="text-base font-semibold">{integration.name}</h3>
-                </div>
-
-                {/* Description */}
-                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                  {integration.description}
-                </p>
-
-                {/* Capability pills */}
-                <div className="mt-4 flex flex-wrap gap-1.5">
-                  {integration.capabilities.map((cap) => (
-                    <span
-                      key={cap}
-                      className="rounded-full border border-foreground/[0.06] bg-foreground/[0.03] px-2.5 py-1 text-xs text-muted-foreground"
-                    >
-                      {cap}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
+          {integrations.slice(0, 3).map((integration, i) => (
+            <IntegrationCard key={integration.name} integration={integration} delay={i * 0.08} />
+          ))}
+        </div>
+        <div className="mx-auto mt-4 grid max-w-[calc(66.666%+8px)] gap-4 sm:grid-cols-2">
+          {integrations.slice(3).map((integration, i) => (
+            <IntegrationCard key={integration.name} integration={integration} delay={(i + 3) * 0.08} />
           ))}
         </div>
       </div>
     </section>
+  )
+}
+
+function IntegrationCard({
+  integration,
+  delay,
+}: {
+  integration: (typeof integrations)[number]
+  delay: number
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.4, delay, ease }}
+      className="relative overflow-hidden rounded-2xl"
+    >
+      {/* Gradient background */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "linear-gradient(to bottom, rgba(255,255,255,0.04), rgba(255,255,255,0.01))",
+        }}
+      />
+      {/* Gradient border */}
+      <div
+        className="pointer-events-none absolute inset-0 rounded-2xl"
+        style={{
+          padding: "1px",
+          background:
+            "linear-gradient(to bottom, rgba(255,255,255,0.1), rgba(255,255,255,0.03))",
+          WebkitMask:
+            "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+          WebkitMaskComposite: "xor",
+          maskComposite: "exclude",
+        }}
+      />
+      {/* Shadow */}
+      <div
+        className="pointer-events-none absolute inset-0 rounded-2xl"
+        style={{ boxShadow: "0 4px 24px -4px rgba(0,0,0,0.3)" }}
+      />
+
+      <div className="relative p-6">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-foreground/[0.1] bg-foreground/[0.04]">
+            <integration.icon size={18} />
+          </div>
+          <h3 className="text-base font-semibold">{integration.name}</h3>
+        </div>
+
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+          {integration.description}
+        </p>
+
+        <div className="mt-4 flex flex-wrap gap-1.5">
+          {integration.capabilities.map((cap) => (
+            <span
+              key={cap}
+              className="relative overflow-hidden rounded-full px-2.5 py-1 text-xs text-muted-foreground"
+            >
+              <span
+                className="pointer-events-none absolute inset-0 rounded-full"
+                style={{
+                  background:
+                    "linear-gradient(to bottom, rgba(255,255,255,0.06), rgba(255,255,255,0.02))",
+                }}
+              />
+              <span
+                className="pointer-events-none absolute inset-0 rounded-full"
+                style={{
+                  padding: "1px",
+                  background:
+                    "linear-gradient(to bottom, rgba(255,255,255,0.1), rgba(255,255,255,0.03))",
+                  WebkitMask:
+                    "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                  WebkitMaskComposite: "xor",
+                  maskComposite: "exclude",
+                }}
+              />
+              <span className="relative">{cap}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+    </motion.div>
   )
 }
