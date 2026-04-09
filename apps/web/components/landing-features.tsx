@@ -4,202 +4,252 @@ import { motion } from "motion/react"
 
 const ease = [0.25, 0.1, 0.25, 1] as const
 
-/* ─── Isometric SVG illustrations ─── */
+/* ─── CSS/HTML-based illustrations ─── */
 
 function InboxGraphic() {
-  // Stacked layers flowing into a central inbox — represents multi-channel ingestion
   return (
-    <svg viewBox="0 0 400 300" fill="none" className="h-full w-full">
-      {/* Bottom layer */}
-      <path
-        d="M200 260 L340 180 L200 220 L60 180 Z"
-        stroke="currentColor"
-        strokeOpacity={0.1}
-        strokeWidth={1}
+    <div className="relative flex h-48 items-center justify-center text-foreground">
+      {/* Central card */}
+      <div className="relative z-10 h-16 w-36 rounded-xl border border-foreground/[0.12] bg-foreground/[0.04]">
+        <div className="mt-3 ml-3 h-2 w-16 rounded-full bg-foreground/[0.1]" />
+        <div className="mt-2 ml-3 h-1.5 w-24 rounded-full bg-foreground/[0.06]" />
+      </div>
+      {/* Top-left pill */}
+      <div
+        className="absolute z-0 h-10 w-28 rounded-lg border border-foreground/[0.08] bg-foreground/[0.03]"
+        style={{ top: "24px", left: "calc(50% - 100px)", transform: "rotate(-12deg)" }}
+      >
+        <div className="mt-2.5 ml-2.5 h-1.5 w-14 rounded-full bg-foreground/[0.08]" />
+      </div>
+      {/* Top-center pill */}
+      <div
+        className="absolute z-0 h-10 w-28 rounded-lg border border-foreground/[0.08] bg-foreground/[0.03]"
+        style={{ top: "18px", left: "calc(50% - 14px)", transform: "rotate(6deg)" }}
+      >
+        <div className="mt-2.5 ml-2.5 h-1.5 w-16 rounded-full bg-foreground/[0.08]" />
+      </div>
+      {/* Top-right pill */}
+      <div
+        className="absolute z-0 h-10 w-24 rounded-lg border border-foreground/[0.06] bg-foreground/[0.02]"
+        style={{ top: "30px", right: "calc(50% - 110px)", transform: "rotate(14deg)" }}
+      >
+        <div className="mt-2.5 ml-2.5 h-1.5 w-12 rounded-full bg-foreground/[0.06]" />
+      </div>
+      {/* Converging lines */}
+      <div
+        className="absolute h-px w-12 bg-foreground/[0.08]"
+        style={{ top: "62px", left: "calc(50% - 68px)", transform: "rotate(35deg)" }}
       />
-      {/* Middle layers */}
-      <path
-        d="M200 240 L340 160 L200 200 L60 160 Z"
-        stroke="currentColor"
-        strokeOpacity={0.12}
-        strokeWidth={1}
+      <div
+        className="absolute h-px w-10 bg-foreground/[0.08]"
+        style={{ top: "56px", left: "calc(50% + 2px)", transform: "rotate(-20deg)" }}
       />
-      <path
-        d="M200 220 L340 140 L200 180 L60 140 Z"
-        stroke="currentColor"
-        strokeOpacity={0.15}
-        strokeWidth={1}
+      <div
+        className="absolute h-px w-10 bg-foreground/[0.06]"
+        style={{ top: "64px", right: "calc(50% - 76px)", transform: "rotate(-40deg)" }}
       />
-      {/* Main inbox layer */}
-      <path
-        d="M200 200 L340 120 L200 160 L60 120 Z"
-        stroke="currentColor"
-        strokeOpacity={0.25}
-        strokeWidth={1}
-        fill="currentColor"
-        fillOpacity={0.03}
-      />
-      {/* Incoming arrows */}
-      <line x1="120" y1="60" x2="170" y2="130" stroke="currentColor" strokeOpacity={0.15} strokeWidth={1} />
-      <line x1="200" y1="40" x2="200" y2="130" stroke="currentColor" strokeOpacity={0.15} strokeWidth={1} />
-      <line x1="280" y1="60" x2="230" y2="130" stroke="currentColor" strokeOpacity={0.15} strokeWidth={1} />
-      {/* Source dots */}
-      <circle cx="120" cy="55" r="4" stroke="currentColor" strokeOpacity={0.25} strokeWidth={1} fill="currentColor" fillOpacity={0.05} />
-      <circle cx="200" cy="35" r="4" stroke="currentColor" strokeOpacity={0.25} strokeWidth={1} fill="currentColor" fillOpacity={0.05} />
-      <circle cx="280" cy="55" r="4" stroke="currentColor" strokeOpacity={0.25} strokeWidth={1} fill="currentColor" fillOpacity={0.05} />
-    </svg>
+    </div>
   )
 }
 
 function SparkGraphic() {
-  // Abstract neural/spark pattern — represents AI task generation
   return (
-    <svg viewBox="0 0 400 300" fill="none" className="h-full w-full">
-      {/* Central spark */}
-      <circle cx="200" cy="150" r="8" stroke="currentColor" strokeOpacity={0.3} strokeWidth={1} fill="currentColor" fillOpacity={0.05} />
-      <circle cx="200" cy="150" r="20" stroke="currentColor" strokeOpacity={0.15} strokeWidth={1} />
-      <circle cx="200" cy="150" r="40" stroke="currentColor" strokeOpacity={0.08} strokeWidth={1} />
-      {/* Radiating lines */}
-      <line x1="200" y1="110" x2="200" y2="50" stroke="currentColor" strokeOpacity={0.12} strokeWidth={1} />
-      <line x1="200" y1="190" x2="200" y2="250" stroke="currentColor" strokeOpacity={0.12} strokeWidth={1} />
-      <line x1="160" y1="150" x2="80" y2="150" stroke="currentColor" strokeOpacity={0.12} strokeWidth={1} />
-      <line x1="240" y1="150" x2="320" y2="150" stroke="currentColor" strokeOpacity={0.12} strokeWidth={1} />
-      {/* Diagonal lines */}
-      <line x1="172" y1="122" x2="120" y2="70" stroke="currentColor" strokeOpacity={0.08} strokeWidth={1} />
-      <line x1="228" y1="122" x2="280" y2="70" stroke="currentColor" strokeOpacity={0.08} strokeWidth={1} />
-      <line x1="172" y1="178" x2="120" y2="230" stroke="currentColor" strokeOpacity={0.08} strokeWidth={1} />
-      <line x1="228" y1="178" x2="280" y2="230" stroke="currentColor" strokeOpacity={0.08} strokeWidth={1} />
-      {/* Endpoint nodes */}
-      <circle cx="200" cy="50" r="3" stroke="currentColor" strokeOpacity={0.2} strokeWidth={1} />
-      <circle cx="200" cy="250" r="3" stroke="currentColor" strokeOpacity={0.2} strokeWidth={1} />
-      <circle cx="80" cy="150" r="3" stroke="currentColor" strokeOpacity={0.2} strokeWidth={1} />
-      <circle cx="320" cy="150" r="3" stroke="currentColor" strokeOpacity={0.2} strokeWidth={1} />
-      <circle cx="120" cy="70" r="3" stroke="currentColor" strokeOpacity={0.15} strokeWidth={1} />
-      <circle cx="280" cy="70" r="3" stroke="currentColor" strokeOpacity={0.15} strokeWidth={1} />
-      <circle cx="120" cy="230" r="3" stroke="currentColor" strokeOpacity={0.15} strokeWidth={1} />
-      <circle cx="280" cy="230" r="3" stroke="currentColor" strokeOpacity={0.15} strokeWidth={1} />
-    </svg>
+    <div className="relative flex h-48 items-center justify-center text-foreground">
+      {/* Concentric rings */}
+      <div className="absolute h-32 w-32 rounded-full border border-foreground/[0.04]" />
+      <div className="absolute h-24 w-24 rounded-full border border-foreground/[0.06]" />
+      <div className="absolute h-16 w-16 rounded-full border border-foreground/[0.08]" />
+      <div className="absolute h-8 w-8 rounded-full border border-foreground/[0.12]" />
+      {/* Central dot */}
+      <div className="absolute h-3 w-3 rounded-full bg-foreground/[0.2]" />
+      {/* Radiating lines — cardinal */}
+      <div className="absolute h-px w-20 bg-foreground/[0.1]" style={{ top: "50%", left: "calc(50% + 16px)" }} />
+      <div className="absolute h-px w-20 bg-foreground/[0.1]" style={{ top: "50%", right: "calc(50% + 16px)" }} />
+      <div className="absolute h-20 w-px bg-foreground/[0.1]" style={{ left: "50%", top: "calc(50% - 80px)" }} />
+      <div className="absolute h-20 w-px bg-foreground/[0.1]" style={{ left: "50%", bottom: "calc(50% - 80px)" }} />
+      {/* Radiating lines — diagonal */}
+      <div
+        className="absolute h-px w-16 bg-foreground/[0.06]"
+        style={{ top: "calc(50% - 28px)", left: "calc(50% + 12px)", transform: "rotate(-45deg)", transformOrigin: "left center" }}
+      />
+      <div
+        className="absolute h-px w-16 bg-foreground/[0.06]"
+        style={{ top: "calc(50% - 28px)", right: "calc(50% + 12px)", transform: "rotate(45deg)", transformOrigin: "right center" }}
+      />
+      <div
+        className="absolute h-px w-16 bg-foreground/[0.06]"
+        style={{ top: "calc(50% + 28px)", left: "calc(50% + 12px)", transform: "rotate(45deg)", transformOrigin: "left center" }}
+      />
+      <div
+        className="absolute h-px w-16 bg-foreground/[0.06]"
+        style={{ top: "calc(50% + 28px)", right: "calc(50% + 12px)", transform: "rotate(-45deg)", transformOrigin: "right center" }}
+      />
+      {/* Endpoint dots */}
+      <div className="absolute h-1.5 w-1.5 rounded-full bg-foreground/[0.15]" style={{ top: "calc(50% - 1px)", right: "calc(50% - 96px)" }} />
+      <div className="absolute h-1.5 w-1.5 rounded-full bg-foreground/[0.15]" style={{ top: "calc(50% - 1px)", left: "calc(50% - 96px)" }} />
+      <div className="absolute h-1.5 w-1.5 rounded-full bg-foreground/[0.15]" style={{ left: "calc(50% - 1px)", top: "calc(50% - 80px)" }} />
+      <div className="absolute h-1.5 w-1.5 rounded-full bg-foreground/[0.15]" style={{ left: "calc(50% - 1px)", bottom: "calc(50% - 80px)" }} />
+    </div>
   )
 }
 
 function CubesGraphic() {
-  // Connected isometric cubes — represents integrations
   return (
-    <svg viewBox="0 0 400 300" fill="none" className="h-full w-full">
-      {/* Large cube */}
-      <g transform="translate(160, 100)">
-        {/* Top face */}
-        <path d="M40 0 L80 20 L40 40 L0 20 Z" stroke="currentColor" strokeOpacity={0.2} strokeWidth={1} fill="currentColor" fillOpacity={0.03} />
-        {/* Right face */}
-        <path d="M80 20 L80 60 L40 80 L40 40 Z" stroke="currentColor" strokeOpacity={0.15} strokeWidth={1} fill="currentColor" fillOpacity={0.02} />
-        {/* Left face */}
-        <path d="M0 20 L0 60 L40 80 L40 40 Z" stroke="currentColor" strokeOpacity={0.12} strokeWidth={1} fill="currentColor" fillOpacity={0.01} />
-      </g>
-      {/* Small cube top-right */}
-      <g transform="translate(260, 70)">
-        <path d="M25 0 L50 12 L25 24 L0 12 Z" stroke="currentColor" strokeOpacity={0.2} strokeWidth={1} fill="currentColor" fillOpacity={0.03} />
-        <path d="M50 12 L50 38 L25 50 L25 24 Z" stroke="currentColor" strokeOpacity={0.15} strokeWidth={1} fill="currentColor" fillOpacity={0.02} />
-        <path d="M0 12 L0 38 L25 50 L25 24 Z" stroke="currentColor" strokeOpacity={0.12} strokeWidth={1} fill="currentColor" fillOpacity={0.01} />
-      </g>
-      {/* Small cube bottom-left */}
-      <g transform="translate(90, 180)">
-        <path d="M25 0 L50 12 L25 24 L0 12 Z" stroke="currentColor" strokeOpacity={0.2} strokeWidth={1} fill="currentColor" fillOpacity={0.03} />
-        <path d="M50 12 L50 38 L25 50 L25 24 Z" stroke="currentColor" strokeOpacity={0.15} strokeWidth={1} fill="currentColor" fillOpacity={0.02} />
-        <path d="M0 12 L0 38 L25 50 L25 24 Z" stroke="currentColor" strokeOpacity={0.12} strokeWidth={1} fill="currentColor" fillOpacity={0.01} />
-      </g>
-      {/* Small cube bottom-right */}
-      <g transform="translate(250, 180)">
-        <path d="M25 0 L50 12 L25 24 L0 12 Z" stroke="currentColor" strokeOpacity={0.2} strokeWidth={1} fill="currentColor" fillOpacity={0.03} />
-        <path d="M50 12 L50 38 L25 50 L25 24 Z" stroke="currentColor" strokeOpacity={0.15} strokeWidth={1} fill="currentColor" fillOpacity={0.02} />
-        <path d="M0 12 L0 38 L25 50 L25 24 Z" stroke="currentColor" strokeOpacity={0.12} strokeWidth={1} fill="currentColor" fillOpacity={0.01} />
-      </g>
-      {/* Connection lines */}
-      <line x1="240" y1="140" x2="260" y2="95" stroke="currentColor" strokeOpacity={0.1} strokeWidth={1} strokeDasharray="3 3" />
-      <line x1="200" y1="180" x2="140" y2="192" stroke="currentColor" strokeOpacity={0.1} strokeWidth={1} strokeDasharray="3 3" />
-      <line x1="240" y1="180" x2="250" y2="192" stroke="currentColor" strokeOpacity={0.1} strokeWidth={1} strokeDasharray="3 3" />
-    </svg>
+    <div className="relative flex h-48 items-center justify-center text-foreground">
+      {/* Grid of connected squares */}
+      <div className="relative" style={{ width: "180px", height: "140px" }}>
+        {/* Connecting lines */}
+        <div className="absolute h-px w-10 bg-foreground/[0.08]" style={{ top: "30px", left: "42px" }} />
+        <div className="absolute h-px w-10 bg-foreground/[0.08]" style={{ top: "30px", left: "92px" }} />
+        <div className="absolute h-10 w-px bg-foreground/[0.08]" style={{ top: "42px", left: "30px" }} />
+        <div className="absolute h-10 w-px bg-foreground/[0.08]" style={{ top: "42px", left: "82px" }} />
+        <div className="absolute h-10 w-px bg-foreground/[0.08]" style={{ top: "42px", left: "134px" }} />
+        <div className="absolute h-px w-10 bg-foreground/[0.08]" style={{ top: "102px", left: "42px" }} />
+
+        {/* Square 1 — top left */}
+        <div
+          className="absolute flex items-center justify-center rounded-lg border border-foreground/[0.12] bg-foreground/[0.04]"
+          style={{ width: "36px", height: "36px", top: "12px", left: "12px" }}
+        >
+          <div className="h-3 w-3 rounded bg-foreground/[0.1]" />
+        </div>
+        {/* Square 2 — top center */}
+        <div
+          className="absolute flex items-center justify-center rounded-lg border border-foreground/[0.1] bg-foreground/[0.03]"
+          style={{ width: "36px", height: "36px", top: "12px", left: "64px" }}
+        >
+          <div className="h-3 w-3 rounded bg-foreground/[0.08]" />
+        </div>
+        {/* Square 3 — top right */}
+        <div
+          className="absolute flex items-center justify-center rounded-lg border border-foreground/[0.1] bg-foreground/[0.03]"
+          style={{ width: "36px", height: "36px", top: "12px", left: "116px" }}
+        >
+          <div className="h-3 w-3 rounded bg-foreground/[0.08]" />
+        </div>
+        {/* Square 4 — bottom left */}
+        <div
+          className="absolute flex items-center justify-center rounded-lg border border-foreground/[0.08] bg-foreground/[0.02]"
+          style={{ width: "36px", height: "36px", top: "84px", left: "12px" }}
+        >
+          <div className="h-3 w-3 rounded bg-foreground/[0.06]" />
+        </div>
+        {/* Square 5 — bottom center */}
+        <div
+          className="absolute flex items-center justify-center rounded-lg border border-foreground/[0.08] bg-foreground/[0.02]"
+          style={{ width: "36px", height: "36px", top: "84px", left: "64px" }}
+        >
+          <div className="h-3 w-3 rounded bg-foreground/[0.06]" />
+        </div>
+      </div>
+    </div>
   )
 }
 
 function TagsGraphic() {
-  // Floating rounded-rect labels at angles — represents labels & organization
   return (
-    <svg viewBox="0 0 400 300" fill="none" className="h-full w-full">
-      {/* Stacked label cards in isometric perspective */}
-      <g transform="translate(100, 80)">
-        <rect x="0" y="80" width="200" height="32" rx="8" stroke="currentColor" strokeOpacity={0.08} strokeWidth={1} transform="skewY(-5)" />
-        <rect x="10" y="56" width="180" height="32" rx="8" stroke="currentColor" strokeOpacity={0.12} strokeWidth={1} transform="skewY(-5)" />
-        <rect x="20" y="32" width="160" height="32" rx="8" stroke="currentColor" strokeOpacity={0.18} strokeWidth={1} transform="skewY(-5)" fill="currentColor" fillOpacity={0.02} />
-        {/* Active label */}
-        <rect x="30" y="8" width="140" height="32" rx="8" stroke="currentColor" strokeOpacity={0.25} strokeWidth={1} fill="currentColor" fillOpacity={0.04} />
-        {/* Dot indicators */}
-        <circle cx="48" cy="24" r="4" fill="currentColor" fillOpacity={0.15} />
-        <line x1="60" y1="24" x2="120" y2="24" stroke="currentColor" strokeOpacity={0.12} strokeWidth={2} strokeLinecap="round" />
-      </g>
-      {/* Floating smaller tag */}
-      <rect x="240" y="170" width="100" height="24" rx="6" stroke="currentColor" strokeOpacity={0.15} strokeWidth={1} transform="rotate(-8 290 182)" />
-      <circle cx="258" cy="178" r="3" fill="currentColor" fillOpacity={0.12} transform="rotate(-8 290 182)" />
-    </svg>
+    <div className="relative flex h-48 items-center justify-center text-foreground">
+      <div className="flex flex-col gap-2.5">
+        {/* Tag 1 — most prominent */}
+        <div className="flex h-9 w-44 items-center gap-2.5 rounded-full border border-foreground/[0.12] bg-foreground/[0.04] px-3">
+          <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-foreground/[0.2]" />
+          <div className="h-1.5 w-20 rounded-full bg-foreground/[0.1]" />
+        </div>
+        {/* Tag 2 */}
+        <div
+          className="flex h-9 w-40 items-center gap-2.5 rounded-full border border-foreground/[0.1] bg-foreground/[0.03] px-3"
+          style={{ transform: "translateX(8px)" }}
+        >
+          <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-foreground/[0.15]" />
+          <div className="h-1.5 w-16 rounded-full bg-foreground/[0.08]" />
+        </div>
+        {/* Tag 3 */}
+        <div
+          className="flex h-9 w-36 items-center gap-2.5 rounded-full border border-foreground/[0.08] bg-foreground/[0.02] px-3"
+          style={{ transform: "translateX(4px)" }}
+        >
+          <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-foreground/[0.12]" />
+          <div className="h-1.5 w-14 rounded-full bg-foreground/[0.06]" />
+        </div>
+        {/* Tag 4 — faintest */}
+        <div
+          className="flex h-9 w-32 items-center gap-2.5 rounded-full border border-foreground/[0.06] bg-foreground/[0.01] px-3"
+          style={{ transform: "translateX(12px)" }}
+        >
+          <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-foreground/[0.08]" />
+          <div className="h-1.5 w-12 rounded-full bg-foreground/[0.04]" />
+        </div>
+      </div>
+    </div>
   )
 }
 
 function LogsGraphic() {
-  // Cascading cards flowing down — represents activity feed / logs
   return (
-    <svg viewBox="0 0 400 300" fill="none" className="h-full w-full">
-      {/* Stacked cards in perspective, cascading */}
-      {[0, 1, 2, 3, 4, 5, 6].map((i) => (
-        <g key={i} transform={`translate(${100 + i * 4}, ${40 + i * 34})`}>
-          <rect
-            width={200 - i * 4}
-            height={28}
-            rx={6}
-            stroke="currentColor"
-            strokeOpacity={0.06 + (6 - i) * 0.03}
-            strokeWidth={1}
-            fill="currentColor"
-            fillOpacity={i < 2 ? 0.03 : 0.01}
-          />
-          {/* Timeline dot */}
-          <circle cx={-12} cy={14} r={2.5} stroke="currentColor" strokeOpacity={0.1 + (6 - i) * 0.03} strokeWidth={1} />
-          {/* Placeholder lines */}
-          <line x1={12} y1={14} x2={60 + (6 - i) * 8} y2={14} stroke="currentColor" strokeOpacity={0.06 + (6 - i) * 0.02} strokeWidth={2} strokeLinecap="round" />
-        </g>
-      ))}
-      {/* Vertical timeline */}
-      <line x1="88" y1="54" x2="116" y2="278" stroke="currentColor" strokeOpacity={0.08} strokeWidth={1} />
-    </svg>
+    <div className="relative flex h-48 items-center justify-center text-foreground">
+      <div className="flex flex-col gap-0">
+        {[0, 1, 2, 3, 4, 5].map((i) => {
+          const opacity = 1 - i * 0.16
+          return (
+            <div key={i} className="flex items-center gap-3 px-2 py-1.5" style={{ opacity }}>
+              {/* Timeline dot */}
+              <div className="relative flex shrink-0 items-center justify-center">
+                <div className="h-2 w-2 rounded-full border border-foreground/[0.15] bg-foreground/[0.05]" />
+                {i < 5 && (
+                  <div className="absolute top-2 left-1/2 h-4 w-px -translate-x-1/2 bg-foreground/[0.06]" />
+                )}
+              </div>
+              {/* Content line */}
+              <div
+                className="h-1.5 rounded-full bg-foreground/[0.08]"
+                style={{ width: `${100 - i * 10}px` }}
+              />
+            </div>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 
 function TerminalGraphic() {
-  // Isometric terminal / command prompt — represents API & CLI
   return (
-    <svg viewBox="0 0 400 300" fill="none" className="h-full w-full">
-      {/* Terminal window frame */}
-      <rect x="80" y="60" width="240" height="180" rx="12" stroke="currentColor" strokeOpacity={0.2} strokeWidth={1} fill="currentColor" fillOpacity={0.02} />
-      {/* Title bar */}
-      <line x1="80" y1="88" x2="320" y2="88" stroke="currentColor" strokeOpacity={0.1} strokeWidth={1} />
-      {/* Window dots */}
-      <circle cx="100" cy="74" r="3" fill="currentColor" fillOpacity={0.15} />
-      <circle cx="112" cy="74" r="3" fill="currentColor" fillOpacity={0.1} />
-      <circle cx="124" cy="74" r="3" fill="currentColor" fillOpacity={0.1} />
-      {/* Command lines */}
-      <g strokeLinecap="round">
-        {/* Prompt 1 */}
-        <line x1="100" y1="110" x2="116" y2="110" stroke="currentColor" strokeOpacity={0.2} strokeWidth={2} />
-        <line x1="122" y1="110" x2="220" y2="110" stroke="currentColor" strokeOpacity={0.1} strokeWidth={2} />
-        {/* Response */}
-        <line x1="108" y1="130" x2="260" y2="130" stroke="currentColor" strokeOpacity={0.06} strokeWidth={2} />
-        <line x1="108" y1="146" x2="200" y2="146" stroke="currentColor" strokeOpacity={0.06} strokeWidth={2} />
-        {/* Prompt 2 */}
-        <line x1="100" y1="174" x2="116" y2="174" stroke="currentColor" strokeOpacity={0.2} strokeWidth={2} />
-        <line x1="122" y1="174" x2="190" y2="174" stroke="currentColor" strokeOpacity={0.1} strokeWidth={2} />
-        {/* Cursor */}
-        <line x1="100" y1="202" x2="116" y2="202" stroke="currentColor" strokeOpacity={0.2} strokeWidth={2} />
-        <rect x="122" y="197" width="8" height="12" fill="currentColor" fillOpacity={0.15} />
-      </g>
-    </svg>
+    <div className="relative flex h-48 items-center justify-center text-foreground">
+      <div className="w-56 overflow-hidden rounded-xl border border-foreground/[0.1] bg-foreground/[0.03]">
+        {/* Title bar */}
+        <div className="flex items-center gap-1.5 border-b border-foreground/[0.06] px-3 py-2.5">
+          <div className="h-2 w-2 rounded-full bg-foreground/[0.15]" />
+          <div className="h-2 w-2 rounded-full bg-foreground/[0.1]" />
+          <div className="h-2 w-2 rounded-full bg-foreground/[0.1]" />
+        </div>
+        {/* Terminal body */}
+        <div className="flex flex-col gap-3 p-4">
+          {/* Line 1 — prompt + command */}
+          <div className="flex items-center gap-2">
+            <div className="h-1.5 w-4 rounded-full bg-foreground/[0.2]" />
+            <div className="h-1.5 w-24 rounded-full bg-foreground/[0.1]" />
+          </div>
+          {/* Line 2 — response */}
+          <div className="flex items-center gap-2 pl-1">
+            <div className="h-1.5 w-32 rounded-full bg-foreground/[0.05]" />
+          </div>
+          {/* Line 3 — response */}
+          <div className="flex items-center gap-2 pl-1">
+            <div className="h-1.5 w-20 rounded-full bg-foreground/[0.05]" />
+          </div>
+          {/* Line 4 — prompt + command */}
+          <div className="flex items-center gap-2">
+            <div className="h-1.5 w-4 rounded-full bg-foreground/[0.2]" />
+            <div className="h-1.5 w-16 rounded-full bg-foreground/[0.1]" />
+          </div>
+          {/* Line 5 — cursor */}
+          <div className="flex items-center gap-2">
+            <div className="h-1.5 w-4 rounded-full bg-foreground/[0.2]" />
+            <div className="h-3.5 w-1.5 bg-foreground/[0.15]" />
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 
