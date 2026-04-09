@@ -36,10 +36,13 @@ import {
   Minus,
   ListBullets,
   SquaresFour,
+  Paperclip,
 } from "@phosphor-icons/react"
 import { NewTaskModal } from "@/components/new-task-modal"
 import {
   TaskAttachmentGallery,
+  cacheAttachmentPreview,
+  getDefaultAttachmentDisplayWidth,
   type TaskAttachment,
 } from "@/components/task-attachments"
 import {
@@ -1624,6 +1627,110 @@ function TaskDetailModal({
   const [titleValue, setTitleValue] = useState("")
   const [editingDesc, setEditingDesc] = useState(false)
   const [descValue, setDescValue] = useState("")
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const generateUploadUrl = useMutation(api.workspaces.generateUploadUrl)
+
+  const readImageMetadata = useCallback(async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      return null
+    }
+
+    return await new Promise<{
+      width: number
+      height: number
+      displayWidth: number
+    } | null>((resolve) => {
+      const objectUrl = URL.createObjectURL(file)
+      const image = new Image()
+
+      image.onload = () => {
+        const width = image.naturalWidth
+        const height = image.naturalHeight
+        URL.revokeObjectURL(objectUrl)
+        resolve({
+          width,
+          height,
+          displayWidth: getDefaultAttachmentDisplayWidth(width),
+        })
+      }
+
+      image.onerror = () => {
+        URL.revokeObjectURL(objectUrl)
+        resolve(null)
+      }
+
+      image.src = objectUrl
+    })
+  }, [])
+
+  const handleFileSelect = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!task || !canManageTasks) return
+
+      const files = e.target.files
+      if (!files || files.length === 0) return
+
+      setUploading(true)
+
+      try {
+        const newAttachments: TaskAttachment[] = []
+
+        for (const file of Array.from(files)) {
+          if (file.size > 10 * 1024 * 1024) {
+            toast.error(`File "${file.name}" exceeds 10MB limit.`)
+            continue
+          }
+
+          const imageMetadata = await readImageMetadata(file)
+          const previewUrl = file.type.startsWith("image/")
+            ? URL.createObjectURL(file)
+            : undefined
+
+          const uploadUrl = await generateUploadUrl()
+          const result = await fetch(uploadUrl, {
+            method: "POST",
+            headers: { "Content-Type": file.type },
+            body: file,
+          })
+
+          if (!result.ok) {
+            if (previewUrl) URL.revokeObjectURL(previewUrl)
+            toast.error(`Failed to upload "${file.name}".`)
+            continue
+          }
+
+          const { storageId } = await result.json()
+
+          if (previewUrl) {
+            cacheAttachmentPreview(storageId, previewUrl)
+          }
+
+          newAttachments.push({
+            storageId,
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            width: imageMetadata?.width,
+            height: imageMetadata?.height,
+            displayWidth: imageMetadata?.displayWidth,
+            url: previewUrl,
+          })
+        }
+
+        if (newAttachments.length > 0) {
+          const existing = task.attachments ?? []
+          onUpdate(task.id, { attachments: [...existing, ...newAttachments] })
+        }
+      } catch {
+        toast.error("Upload failed. Try again.")
+      } finally {
+        setUploading(false)
+        if (fileInputRef.current) fileInputRef.current.value = ""
+      }
+    },
+    [canManageTasks, generateUploadUrl, onUpdate, readImageMetadata, task]
+  )
 
   function handleTitleSave() {
     if (task && titleValue.trim() && titleValue !== task.title) {
@@ -1959,8 +2066,31 @@ function TaskDetailModal({
                   </DropdownMenu>
                 </div>
 
-                {/* Accept / Deny for request tasks, or Delete */}
+                {/* Attach + Accept/Deny + Delete */}
                 <div className="flex items-center gap-1.5">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                  <button
+                    disabled={!canManageTasks || uploading}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                    title="Attach files"
+                  >
+                    {uploading ? (
+                      <SpinnerGap
+                        size={14}
+                        className="animate-spin"
+                      />
+                    ) : (
+                      <Paperclip size={14} />
+                    )}
+                    {uploading ? "Uploading..." : "Attach"}
+                  </button>
                   {task.status === "requests" && onAccept && onDeny && (
                     <>
                       <button
