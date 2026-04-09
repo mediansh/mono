@@ -106,80 +106,60 @@ export function LandingIntegrations() {
           </p>
         </motion.div>
 
-        {/* Orbiting icon cluster */}
+        {/* Integration icon strip */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          whileInView={{ opacity: 1, scale: 1 }}
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-60px" }}
-          transition={{ duration: 0.6, ease }}
-          className="relative mx-auto mb-20 flex h-64 w-64 items-center justify-center sm:h-80 sm:w-80"
+          transition={{ duration: 0.5, ease }}
+          className="relative mx-auto mb-16 flex items-center justify-center"
         >
-          {/* Rings */}
-          <div className="absolute h-full w-full rounded-full border border-foreground/[0.04]" />
-          <div className="absolute h-3/4 w-3/4 rounded-full border border-foreground/[0.06]" />
-          <div className="absolute h-1/2 w-1/2 rounded-full border border-foreground/[0.08]" />
+          {/* Horizontal connecting line behind everything */}
+          <div className="absolute top-1/2 h-px w-full max-w-md -translate-y-1/2 bg-gradient-to-r from-transparent via-foreground/[0.08] to-transparent" />
 
-          {/* Center — Median logo mark */}
-          <div className="relative z-10 flex h-14 w-14 items-center justify-center rounded-2xl border border-foreground/[0.15] bg-foreground/[0.05]">
-            <svg viewBox="0 0 300 300" fill="currentColor" className="h-7 w-7">
-              <path d="M253.339 0H46.4123C20.7798 0 0 21.304 0 47.7159V107.267C0 111.503 2.98631 114.12 7.09249 112.874L238.283 52.6993C244.256 51.0797 247.74 55.6894 245.998 61.6694L185.649 292.649C184.529 297.135 187.267 300 191.746 300H252.095C278.1 300 300 277.699 300 252.409V47.7159C300 21.304 279.096 0 253.339 0Z" />
-              <path d="M0 139.531V253.526C0 278.942 20.6553 299.996 46.4123 299.996H159.768C164.247 299.996 166.362 296.259 165.118 291.898L147.822 229.232C147.076 226.865 147.2 224.747 148.445 222.38L203.691 111.251C206.802 105.021 199.336 100.412 194.857 105.146L53.8781 244.93C49.8963 249.166 43.5504 244.307 45.7901 238.701L72.1692 160.212C73.538 155.727 71.6715 151.367 66.321 150.37L7.71464 134.299C3.11074 132.679 0 135.171 0 139.531Z" />
-            </svg>
-          </div>
-
-          {/* Orbiting icons */}
-          {integrations.map((integration, i) => {
-            const angle = (i * 360) / integrations.length - 90
-            const rad = (angle * Math.PI) / 180
-            const radius = 45 // percentage from center
-            const x = 50 + radius * Math.cos(rad)
-            const y = 50 + radius * Math.sin(rad)
-            return (
+          <div className="relative flex items-center gap-5 sm:gap-8">
+            {/* Left integrations */}
+            {integrations.slice(0, 2).map((integration, i) => (
               <motion.div
                 key={integration.name}
-                initial={{ opacity: 0, scale: 0 }}
+                initial={{ opacity: 0, scale: 0.5 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: 0.3 + i * 0.1, ease }}
-                className="absolute flex h-10 w-10 items-center justify-center rounded-xl border border-foreground/[0.1] bg-foreground/[0.04] backdrop-blur-sm sm:h-12 sm:w-12"
-                style={{
-                  left: `${x}%`,
-                  top: `${y}%`,
-                  transform: "translate(-50%, -50%)",
-                }}
+                transition={{ duration: 0.4, delay: 0.15 + i * 0.08, ease }}
+                className="flex h-12 w-12 items-center justify-center rounded-xl border border-foreground/[0.1] bg-foreground/[0.04] backdrop-blur-sm"
               >
-                <integration.icon size={18} />
+                <integration.icon size={20} />
               </motion.div>
-            )
-          })}
+            ))}
 
-          {/* Connecting lines to center */}
-          <svg
-            className="pointer-events-none absolute inset-0 h-full w-full"
-            viewBox="0 0 100 100"
-          >
-            {integrations.map((integration, i) => {
-              const angle = (i * 360) / integrations.length - 90
-              const rad = (angle * Math.PI) / 180
-              const x1 = 50 + 12 * Math.cos(rad)
-              const y1 = 50 + 12 * Math.sin(rad)
-              const x2 = 50 + 40 * Math.cos(rad)
-              const y2 = 50 + 40 * Math.sin(rad)
-              return (
-                <line
-                  key={`line-${integration.name}`}
-                  x1={x1}
-                  y1={y1}
-                  x2={x2}
-                  y2={y2}
-                  stroke="currentColor"
-                  strokeOpacity={0.08}
-                  strokeWidth={0.25}
-                  strokeDasharray="1.5 1.5"
-                />
-              )
-            })}
-          </svg>
+            {/* Center — Median logo */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.5 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.1, ease }}
+              className="flex h-16 w-16 items-center justify-center rounded-2xl border border-foreground/[0.15] bg-foreground/[0.06]"
+            >
+              <svg viewBox="0 0 300 300" fill="currentColor" className="h-8 w-8">
+                <path d="M253.339 0H46.4123C20.7798 0 0 21.304 0 47.7159V107.267C0 111.503 2.98631 114.12 7.09249 112.874L238.283 52.6993C244.256 51.0797 247.74 55.6894 245.998 61.6694L185.649 292.649C184.529 297.135 187.267 300 191.746 300H252.095C278.1 300 300 277.699 300 252.409V47.7159C300 21.304 279.096 0 253.339 0Z" />
+                <path d="M0 139.531V253.526C0 278.942 20.6553 299.996 46.4123 299.996H159.768C164.247 299.996 166.362 296.259 165.118 291.898L147.822 229.232C147.076 226.865 147.2 224.747 148.445 222.38L203.691 111.251C206.802 105.021 199.336 100.412 194.857 105.146L53.8781 244.93C49.8963 249.166 43.5504 244.307 45.7901 238.701L72.1692 160.212C73.538 155.727 71.6715 151.367 66.321 150.37L7.71464 134.299C3.11074 132.679 0 135.171 0 139.531Z" />
+              </svg>
+            </motion.div>
+
+            {/* Right integrations */}
+            {integrations.slice(2).map((integration, i) => (
+              <motion.div
+                key={integration.name}
+                initial={{ opacity: 0, scale: 0.5 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: 0.35 + i * 0.08, ease }}
+                className="flex h-12 w-12 items-center justify-center rounded-xl border border-foreground/[0.1] bg-foreground/[0.04] backdrop-blur-sm"
+              >
+                <integration.icon size={20} />
+              </motion.div>
+            ))}
+          </div>
         </motion.div>
 
         {/* Integration cards grid */}
