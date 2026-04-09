@@ -42,8 +42,19 @@ function extractJsonObject(text: string) {
   return text.slice(start, end + 1)
 }
 
-function shouldGenerateMultipleTasks(prompt: string): boolean {
+type TaskGenerationMode = "single" | "smart" | "multiple"
+
+const SMART_TASK_LIMIT = 5
+
+function getTaskGenerationMode(prompt: string): TaskGenerationMode {
   const normalized = prompt.toLowerCase()
+
+  const explicitSingleIntentPatterns = [
+    /\bexactly\s+one\s+task\b/,
+    /\bjust\s+one\s+task\b/,
+    /\bone\s+task\b/,
+    /\bsingle\s+task\b/,
+  ]
 
   const explicitMultiIntentPatterns = [
     /\b([2-9]|1[0-2])\s+tasks?\b/,
@@ -57,12 +68,51 @@ function shouldGenerateMultipleTasks(prompt: string): boolean {
   ]
 
   if (explicitMultiIntentPatterns.some((pattern) => pattern.test(normalized))) {
-    return true
+    return "multiple"
   }
 
-  // If user explicitly enumerates multiple independent deliverables, allow multiple tasks.
+  if (explicitSingleIntentPatterns.some((pattern) => pattern.test(normalized))) {
+    return "single"
+  }
+
+  // If the prompt already enumerates separate deliverables, keep the full breakdown.
   const numberedListItemMatches = normalized.match(/(?:^|\n)\s*(?:\d+[.)]|[-*])\s+/g)
-  return (numberedListItemMatches?.length ?? 0) >= 2
+  if ((numberedListItemMatches?.length ?? 0) >= 2) {
+    return "multiple"
+  }
+
+  return "smart"
+}
+
+function getTaskGenerationInstruction(mode: TaskGenerationMode): string {
+  switch (mode) {
+    case "single":
+      return "Return exactly 1 task. The user explicitly asked for a single task."
+    case "multiple":
+      return "Return between 2 and 12 tasks. The user asked for multiple tasks or a clear breakdown. Use the fewest tasks that still matches the request."
+    case "smart":
+      return `Return between 1 and ${SMART_TASK_LIMIT} tasks. Prefer 1 task for a single cohesive request. Return multiple tasks only when the prompt clearly contains multiple distinct deliverables or asks for a breakdown. Follow the user's wording instead of refusing valid multi-task requests.`
+  }
+}
+
+function finalizeGeneratedTasks(
+  tasks: {
+    title: string
+    description?: string
+    status?: (typeof TASK_STATUSES)[number]
+    priority?: (typeof TASK_PRIORITIES)[number]
+    labels: string[]
+  }[],
+  mode: TaskGenerationMode
+) {
+  switch (mode) {
+    case "single":
+      return tasks.slice(0, 1)
+    case "smart":
+      return tasks.slice(0, SMART_TASK_LIMIT)
+    case "multiple":
+      return tasks
+  }
 }
 
 export const POST = withAxiom(async (request: Request) => {
@@ -106,7 +156,8 @@ export const POST = withAxiom(async (request: Request) => {
         : "No predefined labels available."
 
     const model = "anthropic/claude-haiku-4.5"
-    const allowMultipleTasks = shouldGenerateMultipleTasks(prompt)
+    const generationMode = getTaskGenerationMode(prompt)
+    const allowMultipleTasks = generationMode !== "single"
     const result = await generateText({
       model,
       system: [
@@ -115,9 +166,7 @@ export const POST = withAxiom(async (request: Request) => {
         `Allowed statuses: ${TASK_STATUSES.join(", ")}.`,
         `Allowed priorities: ${TASK_PRIORITIES.join(", ")}.`,
         `Allowed labels: ${labelsText}`,
-        allowMultipleTasks
-          ? "Return between 1 and 12 tasks only when the prompt clearly asks for multiple distinct tasks."
-          : "Return exactly 1 task by default. Do not split into multiple tasks unless the prompt explicitly asks for it.",
+        getTaskGenerationInstruction(generationMode),
         "Every task must have a concise title.",
         "Every task object must include title, description, status, priority, and labels.",
         "Use null for description, status, or priority when not specified.",
@@ -141,7 +190,7 @@ export const POST = withAxiom(async (request: Request) => {
       priority: task.priority ?? undefined,
       labels: task.labels.filter((label) => availableLabels.includes(label)),
     }))
-    const finalTasks = allowMultipleTasks ? normalizedTasks : normalizedTasks.slice(0, 1)
+    const finalTasks = finalizeGeneratedTasks(normalizedTasks, generationMode)
 
     const durationMs = Date.now() - start
 
@@ -149,6 +198,7 @@ export const POST = withAxiom(async (request: Request) => {
       userId,
       taskCount: finalTasks.length,
       durationMs,
+      generationMode,
       allowMultipleTasks,
     })
 
@@ -180,6 +230,7 @@ export const POST = withAxiom(async (request: Request) => {
           task_count: finalTasks.length,
           success: true,
           finish_reason: result.finishReason,
+          generation_mode: generationMode,
           allow_multiple_tasks: allowMultipleTasks,
         },
       })
