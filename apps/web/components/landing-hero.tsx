@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { motion } from "motion/react"
-import { Smiley, Lightning, Atom, ArrowRight } from "@phosphor-icons/react"
+import { ChatCircleDots, Lightning, Atom, ArrowRight } from "@phosphor-icons/react"
 
 const ease = [0.25, 0.1, 0.25, 1] as const
 
@@ -27,7 +27,7 @@ function InlineIcon({
 
 export function LandingHero() {
   return (
-    <section className="flex min-h-svh flex-col items-center justify-center px-4 pt-24 pb-16">
+    <section className="flex flex-col items-center px-4 pt-36 pb-16">
       {/* Heading */}
       <motion.h1
         initial={{ opacity: 0, y: 20 }}
@@ -37,7 +37,7 @@ export function LandingHero() {
       >
         The
         <InlineIcon delay={0.4}>
-          <Smiley size="1em" weight="fill" className="text-foreground/60" />
+          <ChatCircleDots size="1em" weight="fill" className="text-foreground/60" />
         </InlineIcon>
         feedback
         <InlineIcon delay={0.55}>
