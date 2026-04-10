@@ -49,7 +49,7 @@ export default function ChangelogPage() {
           className="mt-14"
         >
           {entries === undefined ? (
-            <LoadingState />
+            <ChangelogListSkeleton />
           ) : entries.length === 0 ? (
             <EmptyState />
           ) : (
@@ -106,9 +106,34 @@ export default function ChangelogPage() {
   )
 }
 
-function LoadingState() {
+function ChangelogListSkeleton() {
   return (
-    <div className="py-16 text-center text-sm text-muted-foreground">Loading…</div>
+    <div className="space-y-14">
+      {[0, 1, 2].map((i) => (
+        <section key={i}>
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-4 w-12" />
+            <Skeleton className="h-3 w-28" />
+          </div>
+          <Skeleton className="mt-3 h-6 w-3/4" />
+          <Skeleton className="mt-3 h-3 w-full" />
+          <Skeleton className="mt-2 h-3 w-11/12" />
+          <div className="mt-5 space-y-2">
+            <Skeleton className="h-3 w-[96%]" />
+            <Skeleton className="h-3 w-[92%]" />
+            <Skeleton className="h-3 w-4/5" />
+          </div>
+        </section>
+      ))}
+    </div>
+  )
+}
+
+function Skeleton({ className }: { className?: string }) {
+  return (
+    <div
+      className={`animate-pulse rounded-[4px] bg-foreground/[0.06] ${className ?? ""}`}
+    />
   )
 }
 

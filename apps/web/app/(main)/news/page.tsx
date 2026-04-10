@@ -48,7 +48,7 @@ export default function NewsPage() {
           className="mt-12"
         >
           {posts === undefined ? (
-            <LoadingState />
+            <NewsListSkeleton />
           ) : posts.length === 0 ? (
             <EmptyState />
           ) : (
@@ -98,9 +98,27 @@ export default function NewsPage() {
   )
 }
 
-function LoadingState() {
+function NewsListSkeleton() {
   return (
-    <div className="py-16 text-center text-sm text-muted-foreground">Loading…</div>
+    <ul className="divide-y divide-foreground/[0.06]">
+      {[0, 1, 2, 3].map((i) => (
+        <li key={i} className="py-6">
+          <Skeleton className="h-3 w-28" />
+          <Skeleton className="mt-3 h-5 w-4/5" />
+          <Skeleton className="mt-3 h-3 w-full" />
+          <Skeleton className="mt-2 h-3 w-11/12" />
+          <Skeleton className="mt-4 h-3 w-20" />
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function Skeleton({ className }: { className?: string }) {
+  return (
+    <div
+      className={`animate-pulse rounded-[4px] bg-foreground/[0.06] ${className ?? ""}`}
+    />
   )
 }
 

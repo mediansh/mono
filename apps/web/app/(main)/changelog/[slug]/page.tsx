@@ -52,7 +52,7 @@ export default function ChangelogEntryPage({
         </motion.div>
 
         {entry === undefined ? (
-          <div className="py-20 text-center text-sm text-muted-foreground">Loading…</div>
+          <EntrySkeleton />
         ) : entry === null ? (
           <NotFound />
         ) : (
@@ -96,6 +96,38 @@ export default function ChangelogEntryPage({
       </article>
       <LandingFooter />
     </motion.main>
+  )
+}
+
+function EntrySkeleton() {
+  return (
+    <div className="mt-6">
+      <div className="flex items-center gap-2">
+        <Skeleton className="h-4 w-12" />
+        <Skeleton className="h-3 w-32" />
+      </div>
+      <Skeleton className="mt-4 h-8 w-11/12" />
+      <Skeleton className="mt-3 h-8 w-2/3" />
+      <div className="mt-6 space-y-2">
+        <Skeleton className="h-3 w-full" />
+        <Skeleton className="h-3 w-[96%]" />
+        <Skeleton className="h-3 w-[90%]" />
+      </div>
+      <div className="mt-10 space-y-2">
+        <Skeleton className="h-3 w-full" />
+        <Skeleton className="h-3 w-[95%]" />
+        <Skeleton className="h-3 w-[91%]" />
+        <Skeleton className="h-3 w-4/5" />
+      </div>
+    </div>
+  )
+}
+
+function Skeleton({ className }: { className?: string }) {
+  return (
+    <div
+      className={`animate-pulse rounded-[4px] bg-foreground/[0.06] ${className ?? ""}`}
+    />
   )
 }
 

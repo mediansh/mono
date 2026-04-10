@@ -52,7 +52,7 @@ export default function NewsPostPage({
         </motion.div>
 
         {post === undefined ? (
-          <div className="py-20 text-center text-sm text-muted-foreground">Loading…</div>
+          <PostSkeleton />
         ) : post === null ? (
           <NotFound />
         ) : (
@@ -90,6 +90,41 @@ export default function NewsPostPage({
       </article>
       <LandingFooter />
     </motion.main>
+  )
+}
+
+function PostSkeleton() {
+  return (
+    <div className="mt-6">
+      <Skeleton className="h-3 w-40" />
+      <Skeleton className="mt-4 h-8 w-11/12" />
+      <Skeleton className="mt-3 h-8 w-3/5" />
+      <div className="mt-6 space-y-2">
+        <Skeleton className="h-3 w-full" />
+        <Skeleton className="h-3 w-[96%]" />
+        <Skeleton className="h-3 w-[92%]" />
+      </div>
+      <div className="mt-10 space-y-2">
+        <Skeleton className="h-3 w-full" />
+        <Skeleton className="h-3 w-[97%]" />
+        <Skeleton className="h-3 w-[90%]" />
+        <Skeleton className="h-3 w-[94%]" />
+        <Skeleton className="h-3 w-3/4" />
+      </div>
+      <div className="mt-8 space-y-2">
+        <Skeleton className="h-3 w-full" />
+        <Skeleton className="h-3 w-[85%]" />
+        <Skeleton className="h-3 w-[93%]" />
+      </div>
+    </div>
+  )
+}
+
+function Skeleton({ className }: { className?: string }) {
+  return (
+    <div
+      className={`animate-pulse rounded-[4px] bg-foreground/[0.06] ${className ?? ""}`}
+    />
   )
 }
 
