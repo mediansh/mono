@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef } from "react"
+import { useMemo, useRef } from "react"
 import {
   useEditor,
   useEditorState,
@@ -50,20 +50,56 @@ function parseInitial(value: RichTextValue | undefined) {
   }
 }
 
+// Stable editor content class — defined at module scope so it's reference-
+// stable across renders. TipTap's useEditor reinitializes the view whenever
+// editorProps changes identity, which breaks interaction.
+const editorContentClass = cn(
+  "min-h-[300px] max-w-none px-4 py-3 text-[13px] text-foreground focus:outline-none",
+  "[&_p]:my-2 [&_p]:leading-relaxed",
+  "[&_h1]:mt-5 [&_h1]:mb-2 [&_h1]:text-[20px] [&_h1]:font-semibold [&_h1]:leading-tight",
+  "[&_h2]:mt-4 [&_h2]:mb-2 [&_h2]:text-[16px] [&_h2]:font-semibold [&_h2]:leading-tight",
+  "[&_h3]:mt-3 [&_h3]:mb-1.5 [&_h3]:text-[14px] [&_h3]:font-semibold [&_h3]:leading-tight",
+  "[&_strong]:font-semibold",
+  "[&_em]:italic",
+  "[&_code]:rounded-[3px] [&_code]:bg-sidebar-accent [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[12px]",
+  "[&_pre]:my-3 [&_pre]:overflow-x-auto [&_pre]:rounded-[6px] [&_pre]:bg-sidebar-accent [&_pre]:p-3 [&_pre]:font-mono [&_pre]:text-[12px]",
+  "[&_pre_code]:bg-transparent [&_pre_code]:p-0",
+  "[&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2",
+  "[&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5",
+  "[&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5",
+  "[&_li]:my-0.5",
+  "[&_blockquote]:my-3 [&_blockquote]:border-l-2 [&_blockquote]:border-sidebar-border [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground",
+  "[&_hr]:my-4 [&_hr]:border-sidebar-border",
+)
+
+const stableEditorProps = {
+  attributes: {
+    class: editorContentClass,
+  },
+}
+
 export function RichTextEditor({
   defaultValue,
   onChange,
   placeholder = "Start writing…",
   className,
 }: RichTextEditorProps) {
+  // Freeze the initial content on first render so the object reference never
+  // changes — TipTap's useEditor compares options by identity.
+  const initialContentRef = useRef<unknown>(undefined)
+  if (initialContentRef.current === undefined) {
+    initialContentRef.current = parseInitial(defaultValue) ?? null
+  }
+
   // Keep the latest onChange in a ref so the editor's onUpdate closure
-  // (created once) always calls the current callback.
+  // always calls the current callback without recreating the editor.
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
 
-  const editor = useEditor({
-    immediatelyRender: false,
-    extensions: [
+  // Memoize extensions on the placeholder, so the array identity is stable
+  // unless the placeholder text actually changes.
+  const extensions = useMemo(
+    () => [
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
       }),
@@ -80,31 +116,16 @@ export function RichTextEditor({
           "before:text-muted-foreground before:float-left before:h-0 before:pointer-events-none before:content-[attr(data-placeholder)]",
       }),
     ],
-    content: parseInitial(defaultValue),
+    [placeholder],
+  )
+
+  const editor = useEditor({
+    immediatelyRender: false,
+    extensions,
+    content: (initialContentRef.current ?? undefined) as object | undefined,
+    editorProps: stableEditorProps,
     onUpdate: ({ editor }) => {
       onChangeRef.current(JSON.stringify(editor.getJSON()))
-    },
-    editorProps: {
-      attributes: {
-        class: cn(
-          "min-h-[300px] max-w-none px-4 py-3 text-[13px] text-foreground focus:outline-none",
-          "[&_p]:my-2 [&_p]:leading-relaxed",
-          "[&_h1]:mt-5 [&_h1]:mb-2 [&_h1]:text-[20px] [&_h1]:font-semibold [&_h1]:leading-tight",
-          "[&_h2]:mt-4 [&_h2]:mb-2 [&_h2]:text-[16px] [&_h2]:font-semibold [&_h2]:leading-tight",
-          "[&_h3]:mt-3 [&_h3]:mb-1.5 [&_h3]:text-[14px] [&_h3]:font-semibold [&_h3]:leading-tight",
-          "[&_strong]:font-semibold",
-          "[&_em]:italic",
-          "[&_code]:rounded-[3px] [&_code]:bg-sidebar-accent [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[12px]",
-          "[&_pre]:my-3 [&_pre]:overflow-x-auto [&_pre]:rounded-[6px] [&_pre]:bg-sidebar-accent [&_pre]:p-3 [&_pre]:font-mono [&_pre]:text-[12px]",
-          "[&_pre_code]:bg-transparent [&_pre_code]:p-0",
-          "[&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2",
-          "[&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5",
-          "[&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5",
-          "[&_li]:my-0.5",
-          "[&_blockquote]:my-3 [&_blockquote]:border-l-2 [&_blockquote]:border-sidebar-border [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground",
-          "[&_hr]:my-4 [&_hr]:border-sidebar-border",
-        ),
-      },
     },
   })
 
@@ -298,7 +319,10 @@ function TBtn({
       type="button"
       aria-label={label}
       title={label}
-      onClick={onClick}
+      onClick={(e) => {
+        e.preventDefault()
+        onClick()
+      }}
       disabled={disabled}
       className={cn(
         "flex h-7 w-7 items-center justify-center rounded-[4px] text-muted-foreground transition-colors",
