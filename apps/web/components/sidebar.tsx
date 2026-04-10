@@ -21,6 +21,7 @@ import {
   Plugs,
   ClockCounterClockwise,
   CreditCard,
+  ShieldCheck,
 } from "@phosphor-icons/react"
 import { Facehash } from "facehash"
 import { NewTaskModal } from "@/components/new-task-modal"
@@ -30,6 +31,7 @@ import { Logo } from "@/components/logo"
 import { useWorkspace } from "@/components/workspace-provider"
 import { useWorkspaceOptimisticMutations } from "@/hooks/use-workspace-optimistic-mutations"
 import { hasTaskWritePermission } from "@/lib/workspace-permissions"
+import { isAdminUser } from "@/lib/admin"
 import {
   Dialog,
   DialogContent,
@@ -424,6 +426,25 @@ export function AppSidebar() {
 
         <SidebarFooter className="p-1.5">
           <SidebarMenu className="gap-0.5">
+            {isAdminUser(user) && (
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  render={<Link href="/app/admin" />}
+                  isActive={pathname.startsWith("/app/admin")}
+                  className={
+                    pathname.startsWith("/app/admin")
+                      ? "data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground data-active:ring-1 data-active:ring-sidebar-border"
+                      : "text-sidebar-foreground/70"
+                  }
+                >
+                  <ShieldCheck
+                    size={15}
+                    weight={pathname.startsWith("/app/admin") ? "fill" : "regular"}
+                  />
+                  <span>Admin</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
             <SidebarMenuItem>
               <SidebarMenuButton
                 render={<Link href="/app/settings" />}
