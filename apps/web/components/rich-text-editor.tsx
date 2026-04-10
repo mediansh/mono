@@ -1,12 +1,7 @@
 "use client"
 
-import { useMemo, useRef } from "react"
-import {
-  useEditor,
-  useEditorState,
-  EditorContent,
-  type Editor,
-} from "@tiptap/react"
+import { useEffect, useReducer, useRef, useState } from "react"
+import { Editor } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import Link from "@tiptap/extension-link"
 import Placeholder from "@tiptap/extension-placeholder"
@@ -33,7 +28,7 @@ type RichTextEditorProps = {
   /**
    * Initial content as stringified TipTap JSON. Uncontrolled — the editor
    * owns its content after mount and only emits via `onChange`. Changing
-   * this prop after mount has no effect (use `key` to force a remount).
+   * this prop after mount has no effect; remount via `key` instead.
    */
   defaultValue?: RichTextValue
   onChange: (value: RichTextValue) => void
@@ -41,18 +36,6 @@ type RichTextEditorProps = {
   className?: string
 }
 
-function parseInitial(value: RichTextValue | undefined) {
-  if (!value) return undefined
-  try {
-    return JSON.parse(value)
-  } catch {
-    return undefined
-  }
-}
-
-// Stable editor content class — defined at module scope so it's reference-
-// stable across renders. TipTap's useEditor reinitializes the view whenever
-// editorProps changes identity, which breaks interaction.
 const editorContentClass = cn(
   "min-h-[300px] max-w-none px-4 py-3 text-[13px] text-foreground focus:outline-none",
   "[&_p]:my-2 [&_p]:leading-relaxed",
@@ -72,10 +55,13 @@ const editorContentClass = cn(
   "[&_hr]:my-4 [&_hr]:border-sidebar-border",
 )
 
-const stableEditorProps = {
-  attributes: {
-    class: editorContentClass,
-  },
+function parseInitial(value: RichTextValue | undefined): object | undefined {
+  if (!value) return undefined
+  try {
+    return JSON.parse(value)
+  } catch {
+    return undefined
+  }
 }
 
 export function RichTextEditor({
@@ -84,66 +70,58 @@ export function RichTextEditor({
   placeholder = "Start writing…",
   className,
 }: RichTextEditorProps) {
-  // Freeze the initial content on first render so the object reference never
-  // changes — TipTap's useEditor compares options by identity.
-  const initialContentRef = useRef<unknown>(undefined)
-  if (initialContentRef.current === undefined) {
-    initialContentRef.current = parseInitial(defaultValue) ?? null
-  }
+  const hostRef = useRef<HTMLDivElement | null>(null)
+  const [editor, setEditor] = useState<Editor | null>(null)
 
-  // Keep the latest onChange in a ref so the editor's onUpdate closure
-  // always calls the current callback without recreating the editor.
+  // Latest callback via ref so the editor doesn't need to be recreated.
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
 
-  // Memoize extensions on the placeholder, so the array identity is stable
-  // unless the placeholder text actually changes.
-  const extensions = useMemo(
-    () => [
-      StarterKit.configure({
-        heading: { levels: [1, 2, 3] },
-      }),
-      Link.configure({
-        openOnClick: false,
-        autolink: true,
-        HTMLAttributes: {
-          class: "text-primary underline underline-offset-2",
+  // Capture defaults once. Changing them after mount has no effect — this
+  // component is uncontrolled by contract.
+  const initialContentRef = useRef<object | undefined>(parseInitial(defaultValue))
+  const placeholderRef = useRef(placeholder)
+
+  useEffect(() => {
+    if (!hostRef.current) return
+
+    const instance = new Editor({
+      element: hostRef.current,
+      extensions: [
+        StarterKit.configure({
+          heading: { levels: [1, 2, 3] },
+        }),
+        Link.configure({
+          openOnClick: false,
+          autolink: true,
+          HTMLAttributes: {
+            class: "text-primary underline underline-offset-2",
+          },
+        }),
+        Placeholder.configure({
+          placeholder: placeholderRef.current,
+          emptyEditorClass:
+            "before:text-muted-foreground before:float-left before:h-0 before:pointer-events-none before:content-[attr(data-placeholder)]",
+        }),
+      ],
+      content: initialContentRef.current,
+      editorProps: {
+        attributes: {
+          class: editorContentClass,
         },
-      }),
-      Placeholder.configure({
-        placeholder,
-        emptyEditorClass:
-          "before:text-muted-foreground before:float-left before:h-0 before:pointer-events-none before:content-[attr(data-placeholder)]",
-      }),
-    ],
-    [placeholder],
-  )
+      },
+      onUpdate: ({ editor }) => {
+        onChangeRef.current(JSON.stringify(editor.getJSON()))
+      },
+    })
 
-  const editor = useEditor({
-    immediatelyRender: false,
-    extensions,
-    content: (initialContentRef.current ?? undefined) as object | undefined,
-    editorProps: stableEditorProps,
-    onUpdate: ({ editor }) => {
-      onChangeRef.current(JSON.stringify(editor.getJSON()))
-    },
-  })
+    setEditor(instance)
 
-  if (!editor) {
-    return (
-      <div
-        className={cn(
-          "rounded-[6px] border border-sidebar-border bg-background",
-          className,
-        )}
-      >
-        <div className="h-[46px] border-b border-sidebar-border" />
-        <div className="min-h-[300px] px-4 py-3 text-[13px] text-muted-foreground">
-          Loading editor…
-        </div>
-      </div>
-    )
-  }
+    return () => {
+      instance.destroy()
+      setEditor(null)
+    }
+  }, [])
 
   return (
     <div
@@ -153,32 +131,33 @@ export function RichTextEditor({
       )}
     >
       <Toolbar editor={editor} />
-      <EditorContent editor={editor} />
+      <div ref={hostRef} />
     </div>
   )
 }
 
-function Toolbar({ editor }: { editor: Editor }) {
-  const state = useEditorState({
-    editor,
-    selector: (ctx) => ({
-      isH1: ctx.editor.isActive("heading", { level: 1 }),
-      isH2: ctx.editor.isActive("heading", { level: 2 }),
-      isH3: ctx.editor.isActive("heading", { level: 3 }),
-      isBold: ctx.editor.isActive("bold"),
-      isItalic: ctx.editor.isActive("italic"),
-      isStrike: ctx.editor.isActive("strike"),
-      isCode: ctx.editor.isActive("code"),
-      isBulletList: ctx.editor.isActive("bulletList"),
-      isOrderedList: ctx.editor.isActive("orderedList"),
-      isBlockquote: ctx.editor.isActive("blockquote"),
-      isLink: ctx.editor.isActive("link"),
-      canUndo: ctx.editor.can().undo(),
-      canRedo: ctx.editor.can().redo(),
-    }),
-  })
+function Toolbar({ editor }: { editor: Editor | null }) {
+  const [, forceRerender] = useReducer((n: number) => n + 1, 0)
+
+  // Re-render toolbar whenever the editor state changes so `isActive` /
+  // `can()` reads stay in sync with the document and selection.
+  useEffect(() => {
+    if (!editor) return
+    const update = () => forceRerender()
+    editor.on("transaction", update)
+    editor.on("selectionUpdate", update)
+    editor.on("focus", update)
+    editor.on("blur", update)
+    return () => {
+      editor.off("transaction", update)
+      editor.off("selectionUpdate", update)
+      editor.off("focus", update)
+      editor.off("blur", update)
+    }
+  }, [editor])
 
   const setLink = () => {
+    if (!editor) return
     const prev = editor.getAttributes("link").href as string | undefined
     const url = window.prompt("URL", prev ?? "https://")
     if (url === null) return
@@ -189,27 +168,34 @@ function Toolbar({ editor }: { editor: Editor }) {
     editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run()
   }
 
+  const disabled = !editor
+  const isActive = (name: string, attrs?: Record<string, unknown>) =>
+    editor?.isActive(name, attrs) ?? false
+
   return (
     <div className="flex flex-wrap items-center gap-0.5 border-b border-sidebar-border bg-sidebar/40 px-1.5 py-1.5">
       <Group>
         <TBtn
           label="Heading 1"
-          onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-          active={state.isH1}
+          disabled={disabled}
+          onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}
+          active={isActive("heading", { level: 1 })}
         >
           <TextHOne size={14} />
         </TBtn>
         <TBtn
           label="Heading 2"
-          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-          active={state.isH2}
+          disabled={disabled}
+          onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
+          active={isActive("heading", { level: 2 })}
         >
           <TextHTwo size={14} />
         </TBtn>
         <TBtn
           label="Heading 3"
-          onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-          active={state.isH3}
+          disabled={disabled}
+          onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}
+          active={isActive("heading", { level: 3 })}
         >
           <TextHThree size={14} />
         </TBtn>
@@ -218,29 +204,33 @@ function Toolbar({ editor }: { editor: Editor }) {
       <Group>
         <TBtn
           label="Bold"
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          active={state.isBold}
+          disabled={disabled}
+          onClick={() => editor?.chain().focus().toggleBold().run()}
+          active={isActive("bold")}
         >
           <TextB size={14} />
         </TBtn>
         <TBtn
           label="Italic"
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          active={state.isItalic}
+          disabled={disabled}
+          onClick={() => editor?.chain().focus().toggleItalic().run()}
+          active={isActive("italic")}
         >
           <TextItalic size={14} />
         </TBtn>
         <TBtn
           label="Strike"
-          onClick={() => editor.chain().focus().toggleStrike().run()}
-          active={state.isStrike}
+          disabled={disabled}
+          onClick={() => editor?.chain().focus().toggleStrike().run()}
+          active={isActive("strike")}
         >
           <TextStrikethrough size={14} />
         </TBtn>
         <TBtn
           label="Inline code"
-          onClick={() => editor.chain().focus().toggleCode().run()}
-          active={state.isCode}
+          disabled={disabled}
+          onClick={() => editor?.chain().focus().toggleCode().run()}
+          active={isActive("code")}
         >
           <Code size={14} />
         </TBtn>
@@ -249,26 +239,29 @@ function Toolbar({ editor }: { editor: Editor }) {
       <Group>
         <TBtn
           label="Bulleted list"
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          active={state.isBulletList}
+          disabled={disabled}
+          onClick={() => editor?.chain().focus().toggleBulletList().run()}
+          active={isActive("bulletList")}
         >
           <ListBullets size={14} />
         </TBtn>
         <TBtn
           label="Numbered list"
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          active={state.isOrderedList}
+          disabled={disabled}
+          onClick={() => editor?.chain().focus().toggleOrderedList().run()}
+          active={isActive("orderedList")}
         >
           <ListNumbers size={14} />
         </TBtn>
         <TBtn
           label="Blockquote"
-          onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          active={state.isBlockquote}
+          disabled={disabled}
+          onClick={() => editor?.chain().focus().toggleBlockquote().run()}
+          active={isActive("blockquote")}
         >
           <Quotes size={14} />
         </TBtn>
-        <TBtn label="Link" onClick={setLink} active={state.isLink}>
+        <TBtn label="Link" disabled={disabled} onClick={setLink} active={isActive("link")}>
           <LinkSimple size={14} />
         </TBtn>
       </Group>
@@ -276,15 +269,15 @@ function Toolbar({ editor }: { editor: Editor }) {
       <Group>
         <TBtn
           label="Undo"
-          onClick={() => editor.chain().focus().undo().run()}
-          disabled={!state.canUndo}
+          disabled={!editor?.can().undo()}
+          onClick={() => editor?.chain().focus().undo().run()}
         >
           <ArrowCounterClockwise size={14} />
         </TBtn>
         <TBtn
           label="Redo"
-          onClick={() => editor.chain().focus().redo().run()}
-          disabled={!state.canRedo}
+          disabled={!editor?.can().redo()}
+          onClick={() => editor?.chain().focus().redo().run()}
         >
           <ArrowClockwise size={14} />
         </TBtn>
@@ -318,17 +311,24 @@ function TBtn({
     <button
       type="button"
       aria-label={label}
+      aria-pressed={active ? "true" : "false"}
       title={label}
+      onMouseDown={(e) => {
+        // Prevent the editor from losing its selection when clicking the
+        // toolbar, and prevent the enclosing form from swallowing the click.
+        e.preventDefault()
+      }}
       onClick={(e) => {
         e.preventDefault()
         onClick()
       }}
       disabled={disabled}
+      data-active={active ? "true" : undefined}
       className={cn(
         "flex h-7 w-7 items-center justify-center rounded-[4px] text-muted-foreground transition-colors",
         "hover:bg-sidebar-accent hover:text-foreground",
         "disabled:pointer-events-none disabled:opacity-40",
-        active && "bg-sidebar-accent text-foreground ring-1 ring-sidebar-border",
+        "data-[active=true]:bg-sidebar-accent data-[active=true]:text-foreground data-[active=true]:ring-1 data-[active=true]:ring-sidebar-border",
       )}
     >
       {children}
