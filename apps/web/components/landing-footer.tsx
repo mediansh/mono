@@ -9,8 +9,8 @@ const links = {
   ],
   Resources: [
     { label: "Docs", href: "https://docs.median.sh" },
-    { label: "Changelog", href: "#" },
-    { label: "News", href: "#" },
+    { label: "Changelog", href: "/changelog" },
+    { label: "News", href: "/news" },
   ],
   Company: [
     { label: "Sign in", href: "/sign-in" },

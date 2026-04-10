@@ -16,8 +16,8 @@ const navLinks = [
 
 const resourceLinks = [
   { label: "Docs", href: "https://docs.median.sh" },
-  { label: "News", href: "#" },
-  { label: "Changelog", href: "#" },
+  { label: "News", href: "/news" },
+  { label: "Changelog", href: "/changelog" },
 ]
 
 const glassStyles = {

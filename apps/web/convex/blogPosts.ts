@@ -63,6 +63,47 @@ export const getById = query({
   },
 })
 
+export const listPublished = query({
+  args: {},
+  handler: async (ctx) => {
+    const posts = await ctx.db
+      .query("blogPosts")
+      .withIndex("by_status_created", (q) => q.eq("status", "published"))
+      .order("desc")
+      .collect()
+    return posts.map((post) => ({
+      _id: post._id,
+      slug: post.slug,
+      title: post.title,
+      excerpt: post.excerpt,
+      coverImageUrl: post.coverImageUrl,
+      publishedAt: post.publishedAt ?? post.createdAt,
+      authorName: post.authorName,
+    }))
+  },
+})
+
+export const getPublishedBySlug = query({
+  args: { slug: v.string() },
+  handler: async (ctx, args) => {
+    const post = await ctx.db
+      .query("blogPosts")
+      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+      .unique()
+    if (!post || post.status !== "published") return null
+    return {
+      _id: post._id,
+      slug: post.slug,
+      title: post.title,
+      excerpt: post.excerpt,
+      content: post.content,
+      coverImageUrl: post.coverImageUrl,
+      publishedAt: post.publishedAt ?? post.createdAt,
+      authorName: post.authorName,
+    }
+  },
+})
+
 export const create = mutation({
   args: {
     title: v.string(),

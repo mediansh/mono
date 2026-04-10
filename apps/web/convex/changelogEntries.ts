@@ -67,6 +67,48 @@ export const getById = query({
   },
 })
 
+export const listPublished = query({
+  args: {},
+  handler: async (ctx) => {
+    const entries = await ctx.db
+      .query("changelogEntries")
+      .withIndex("by_status_created", (q) => q.eq("status", "published"))
+      .order("desc")
+      .collect()
+    return entries.map((entry) => ({
+      _id: entry._id,
+      slug: entry.slug,
+      title: entry.title,
+      excerpt: entry.excerpt,
+      version: entry.version,
+      content: entry.content,
+      publishedAt: entry.publishedAt ?? entry.createdAt,
+      authorName: entry.authorName,
+    }))
+  },
+})
+
+export const getPublishedBySlug = query({
+  args: { slug: v.string() },
+  handler: async (ctx, args) => {
+    const entry = await ctx.db
+      .query("changelogEntries")
+      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+      .unique()
+    if (!entry || entry.status !== "published") return null
+    return {
+      _id: entry._id,
+      slug: entry.slug,
+      title: entry.title,
+      excerpt: entry.excerpt,
+      content: entry.content,
+      version: entry.version,
+      publishedAt: entry.publishedAt ?? entry.createdAt,
+      authorName: entry.authorName,
+    }
+  },
+})
+
 export const create = mutation({
   args: {
     title: v.string(),
