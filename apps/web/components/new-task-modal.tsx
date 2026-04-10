@@ -784,43 +784,17 @@ export function NewTaskModal({
                 </div>
 
                 {activeTab === "manual" ? (
-                  <>
-                    <textarea
-                      ref={titleRef}
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      onKeyDown={handleTitleKeyDown}
-                      placeholder="Task title"
-                      autoFocus
-                      rows={1}
-                      className="block w-full resize-none overflow-hidden bg-transparent pr-8 text-[16px] leading-snug font-semibold tracking-tight break-words outline-none placeholder:text-muted-foreground/40"
-                    />
-                    <div className="mt-1.5 flex items-center gap-2">
-                      <span className="font-mono text-[11px] text-muted-foreground/50">
-                        New task
-                      </span>
-                      {currentWorkspace?.prefix ? (
-                        <>
-                          <span className="text-muted-foreground/20">·</span>
-                          <span className="text-[11px] text-muted-foreground/50">
-                            {currentWorkspace.prefix}
-                          </span>
-                        </>
-                      ) : null}
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <h2 className="pr-8 text-[16px] leading-snug font-semibold tracking-tight">
-                      Generate with AI
-                    </h2>
-                    <div className="mt-1.5 flex items-center gap-2">
-                      <span className="text-[11px] text-muted-foreground/50">
-                        Describe what you need — AI will draft the tasks.
-                      </span>
-                    </div>
-                  </>
-                )}
+                  <textarea
+                    ref={titleRef}
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    onKeyDown={handleTitleKeyDown}
+                    placeholder="Task title"
+                    autoFocus
+                    rows={1}
+                    className="block w-full resize-none overflow-hidden bg-transparent pr-8 text-[16px] leading-snug font-semibold tracking-tight break-words outline-none placeholder:text-muted-foreground/40"
+                  />
+                ) : null}
               </div>
 
               {/* ── Body ── */}
