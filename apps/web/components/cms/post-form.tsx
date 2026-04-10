@@ -176,7 +176,7 @@ export function PostForm({
           />
         </Field>
 
-        <Field label="Content">
+        <FieldGroup label="Content">
           <RichTextEditor
             defaultValue={initial?.content ?? ""}
             onChange={setContent}
@@ -184,7 +184,7 @@ export function PostForm({
               variant === "blog" ? "Start writing your post…" : "Describe what changed…"
             }
           />
-        </Field>
+        </FieldGroup>
       </motion.div>
     </motion.form>
   )
@@ -210,5 +210,29 @@ function Field({
       </div>
       {children}
     </label>
+  )
+}
+
+// Same look as Field, but renders a <div> instead of a <label>. Use this for
+// children that contain their own interactive controls (like the rich text
+// editor's toolbar buttons) — otherwise clicks anywhere in the group get
+// forwarded by the label to the first button inside.
+function FieldGroup({
+  label,
+  hint,
+  children,
+}: {
+  label: string
+  hint?: string
+  children: ReactNode
+}) {
+  return (
+    <div className="block">
+      <div className="mb-1 flex items-baseline justify-between">
+        <span className="text-[12px] font-medium">{label}</span>
+        {hint && <span className="text-[10px] text-muted-foreground">{hint}</span>}
+      </div>
+      {children}
+    </div>
   )
 }
