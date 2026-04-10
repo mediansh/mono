@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useConvexConnectionState } from "convex/react"
 import { cn } from "@workspace/ui/lib/utils"
 
-const FRAMES = ["|", "/", "-", "\\"] as const
+const FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] as const
 
 export function SyncIndicator({ className }: { className?: string }) {
   const connection = useConvexConnectionState()
@@ -18,7 +18,7 @@ export function SyncIndicator({ className }: { className?: string }) {
     if (!isSyncing) return
     const id = window.setInterval(() => {
       setFrame((f) => (f + 1) % FRAMES.length)
-    }, 110)
+    }, 80)
     return () => window.clearInterval(id)
   }, [isSyncing])
 
