@@ -529,8 +529,17 @@ export function NewTaskModal({
       return
     }
 
+    // Snapshot inputs before closing so reset doesn't wipe them mid-request
+    const workspace = currentWorkspace
+    const prompt = aiPrompt.trim()
+
     setError("")
     setIsGenerating(true)
+
+    // Close immediately — the toast below shows ongoing generation progress
+    onOpenChange(false)
+    resetForm()
+
     const genStart = Date.now()
     const toastId = toast.loading("Generating tasks...")
     const controller = new AbortController()
@@ -544,9 +553,9 @@ export function NewTaskModal({
         },
         signal: controller.signal,
         body: JSON.stringify({
-          prompt: aiPrompt.trim(),
-          workspaceId: currentWorkspace._id,
-          workspaceName: currentWorkspace.name,
+          prompt,
+          workspaceId: workspace._id,
+          workspaceName: workspace.name,
           availableLabels: labelOptions.map((label) => label.id),
         }),
       })
@@ -576,7 +585,7 @@ export function NewTaskModal({
         typeof payload.cost === "number" ? payload.cost : undefined
 
       const createdTasks = (await createTasks({
-        workspaceId: currentWorkspace._id,
+        workspaceId: workspace._id,
         tasks: generatedTasks.map((task) => ({
           title: task.title,
           description: task.description,
@@ -589,13 +598,13 @@ export function NewTaskModal({
         cost: generationCost,
       })) as Doc<"tasks">[]
 
-      updateWorkspaceTasks(currentWorkspace._id, (tasks) => [
+      updateWorkspaceTasks(workspace._id, (tasks) => [
         ...tasks,
         ...createdTasks,
       ])
 
       trackTasksGeneratedAI({
-        promptLength: aiPrompt.trim().length,
+        promptLength: prompt.length,
         taskCount: generatedTasks.length,
         durationMs: Date.now() - genStart,
       })
@@ -606,9 +615,6 @@ export function NewTaskModal({
           : `Created ${generatedTasks.length} tasks from your prompt.`,
         { id: toastId }
       )
-
-      onOpenChange(false)
-      resetForm()
     } catch (err) {
       const message =
         err instanceof DOMException && err.name === "AbortError"
@@ -616,7 +622,6 @@ export function NewTaskModal({
           : err instanceof Error
             ? err.message
             : "Task generation failed."
-      setError(message)
       toast.error(message, { id: toastId })
     } finally {
       window.clearTimeout(timeoutId)
