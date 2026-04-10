@@ -703,6 +703,11 @@ export function NewTaskModal({
 
   if (typeof document === "undefined") return null
 
+  const handleClose = () => {
+    onOpenChange(false)
+    resetForm()
+  }
+
   return createPortal(
     <AnimatePresence>
       {open && (
@@ -712,7 +717,7 @@ export function NewTaskModal({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.1 }}
+            transition={{ duration: 0.08 }}
             className="fixed inset-0 z-50 bg-black/40"
           />
 
@@ -720,11 +725,11 @@ export function NewTaskModal({
             {/* Panel */}
             <motion.div
               ref={panelRef}
-              initial={{ opacity: 0, scale: 0.97 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, y: 6, scale: 0.98 }}
-              transition={{ duration: 0.12, ease: [0.32, 0, 0.67, 0] }}
-              className="relative flex max-h-[calc(100vh-2rem)] w-full max-w-xl flex-col overflow-hidden rounded-[4px] bg-background shadow-2xl ring-1 ring-border sm:max-h-[calc(100vh-3rem)]"
+              initial={{ opacity: 0, scale: 0.97, y: 6 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.98, y: 6 }}
+              transition={{ duration: 0.1, ease: [0.32, 0, 0.67, 0] }}
+              className="relative flex max-h-[85vh] w-[min(92vw,40rem)] max-w-2xl flex-col overflow-hidden rounded-[8px] bg-background shadow-2xl ring-1 ring-border"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                   e.preventDefault()
@@ -736,301 +741,320 @@ export function NewTaskModal({
                 }
               }}
             >
-              {/* Header with tabs */}
-              <div className="flex items-center justify-between border-b border-border px-3">
-                <div className="flex items-center gap-0">
+              {/* ── Header: segmented tab + Title + Meta + Close ── */}
+              <div className="relative px-5 pt-5 pb-0">
+                {/* Close button */}
+                <button
+                  onClick={handleClose}
+                  aria-label="Close"
+                  className="absolute top-4 right-4 rounded-[4px] p-1.5 text-muted-foreground/50 ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <X size={14} weight="bold" />
+                </button>
+
+                {/* Segmented tab switcher */}
+                <div className="mb-3 inline-flex items-center gap-0.5 rounded-[6px] p-0.5 ring-1 ring-border">
                   <button
+                    type="button"
                     onClick={() => setActiveTab("manual")}
-                    className={`relative flex items-center gap-1.5 px-2.5 py-2 text-[12px] font-medium transition-colors ${
+                    className={`flex items-center gap-1.5 rounded-[4px] px-2 py-1 text-[11px] font-medium transition-colors ${
                       activeTab === "manual"
-                        ? "text-foreground"
+                        ? "bg-accent text-foreground"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    <PencilSimple size={13} />
+                    <PencilSimple size={12} />
                     Manual
-                    {activeTab === "manual" && (
-                      <div className="absolute inset-x-0 -bottom-px h-0.5 bg-foreground" />
-                    )}
                   </button>
                   <button
+                    type="button"
                     onClick={() => {
                       setActiveTab("ai")
                       trackAIPromptTabSelected()
                     }}
-                    className={`relative flex items-center gap-1.5 px-2.5 py-2 text-[12px] font-medium transition-colors ${
+                    className={`flex items-center gap-1.5 rounded-[4px] px-2 py-1 text-[11px] font-medium transition-colors ${
                       activeTab === "ai"
-                        ? "text-foreground"
+                        ? "bg-accent text-foreground"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    <Sparkle size={13} />
+                    <Sparkle size={12} />
                     AI Prompt
-                    {activeTab === "ai" && (
-                      <div className="absolute inset-x-0 -bottom-px h-0.5 bg-foreground" />
-                    )}
                   </button>
                 </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => onOpenChange(false)}
-                    className="flex size-6 items-center justify-center rounded-[4px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                  >
-                    <X size={13} />
-                  </button>
-                </div>
-              </div>
 
-              <div className="flex min-h-0 flex-1 flex-col">
                 {activeTab === "manual" ? (
                   <>
-                    {/* Body — scrollable */}
-                    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 pt-3 pb-1.5">
-                      <textarea
-                        ref={titleRef}
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        onKeyDown={handleTitleKeyDown}
-                        placeholder="Task title"
-                        autoFocus
-                        rows={1}
-                        className="w-full shrink-0 resize-none overflow-hidden bg-transparent text-[14px] font-medium outline-none placeholder:text-muted-foreground/50"
-                      />
-                      <textarea
-                        ref={descriptionRef}
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        placeholder="Add description..."
-                        rows={1}
-                        className="mt-1.5 w-full shrink-0 resize-none overflow-hidden bg-transparent text-[13px] outline-none placeholder:text-muted-foreground/50"
-                        style={{ minHeight: "3.5rem" }}
-                      />
-
-                      {/* Attachments inside scroll area */}
-                      {attachments.length > 0 && (
-                        <div className="mt-3 rounded-[14px] border border-border/70 bg-accent/10 p-3">
-                          <TaskAttachmentGallery
-                            attachments={attachments}
-                            workspaceId={currentWorkspace?._id}
-                            canManageAttachments
-                            onAttachmentsChange={(nextAttachments) =>
-                              setAttachments(
-                                nextAttachments as (TaskAttachment & {
-                                  previewUrl?: string
-                                })[]
-                              )
-                            }
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Footer — sticky */}
-                    <div className="shrink-0 border-t border-border px-3 py-2">
-                      <div className="flex flex-col gap-2">
-                        {/* Toolbar pills */}
-                        <div className="flex flex-wrap items-center gap-2">
-                          {/* Status */}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2 py-1 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent">
-                              {getStatusIcon(status)}
-                              {statusLabel}
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" sideOffset={6}>
-                              {STATUS_OPTIONS.map((opt) => (
-                                <DropdownMenuItem
-                                  key={opt.id}
-                                  onClick={() => setStatus(opt.id)}
-                                  className={
-                                    status === opt.id
-                                      ? "text-foreground"
-                                      : "text-muted-foreground"
-                                  }
-                                >
-                                  {getStatusIcon(opt.id)}
-                                  {opt.label}
-                                </DropdownMenuItem>
-                              ))}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-
-                          {/* Priority */}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2 py-1 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent">
-                              {getPriorityIcon(priority)}
-                              {priorityLabel}
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" sideOffset={6}>
-                              {PRIORITY_OPTIONS.map((opt) => (
-                                <DropdownMenuItem
-                                  key={opt.id}
-                                  onClick={() => setPriority(opt.id)}
-                                  className={
-                                    priority === opt.id
-                                      ? "text-foreground"
-                                      : "text-muted-foreground"
-                                  }
-                                >
-                                  {getPriorityIcon(opt.id)}
-                                  {opt.label}
-                                </DropdownMenuItem>
-                              ))}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-
-                          {/* Labels (multi-select) */}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2 py-1 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent">
-                              <Tag
-                                size={14}
-                                className="text-muted-foreground"
-                              />
-                              {labels.length > 0
-                                ? labels
-                                    .map(
-                                      (l) =>
-                                        labelOptions.find((o) => o.id === l)
-                                          ?.label
-                                    )
-                                    .join(", ")
-                                : "Labels"}
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent
-                              align="start"
-                              sideOffset={6}
-                              className="w-auto min-w-[180px]"
-                            >
-                              {labelOptions.map((opt) => (
-                                <DropdownMenuCheckboxItem
-                                  key={opt.id}
-                                  checked={labels.includes(opt.id)}
-                                  onCheckedChange={() => toggleLabel(opt.id)}
-                                >
-                                  <span
-                                    className="inline-block size-2.5 shrink-0 rounded-[4px]"
-                                    style={{ backgroundColor: opt.color }}
-                                  />
-                                  {opt.label}
-                                </DropdownMenuCheckboxItem>
-                              ))}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-
-                        {/* Actions row */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <input
-                              ref={fileInputRef}
-                              type="file"
-                              multiple
-                              onChange={handleFileSelect}
-                              className="hidden"
-                            />
-                            <button
-                              onClick={() => fileInputRef.current?.click()}
-                              disabled={uploading}
-                              className="flex items-center gap-1.5 rounded-[4px] px-2 py-1 text-[11px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
-                            >
-                              {uploading ? (
-                                <SpinnerGap
-                                  size={14}
-                                  className="animate-spin"
-                                />
-                              ) : (
-                                <Paperclip size={14} />
-                              )}
-                              {uploading ? "Uploading..." : "Attach"}
-                            </button>
-                            {error && (
-                              <span className="text-xs text-red-500">
-                                {error}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-3">
-                            {/* Create more toggle */}
-                            <button
-                              onClick={() => setCreateMore(!createMore)}
-                              className="flex items-center gap-2 text-xs text-muted-foreground"
-                            >
-                              <div
-                                className={`relative h-5 w-8 rounded-[4px] transition-colors ${
-                                  createMore ? "bg-primary" : "bg-accent"
-                                }`}
-                              >
-                                <div
-                                  className={`absolute top-1 size-3 rounded-[4px] transition-transform duration-150 ${createMore ? "bg-primary-foreground" : "bg-white"}`}
-                                  style={{
-                                    transform: createMore
-                                      ? "translateX(18px)"
-                                      : "translateX(2px)",
-                                  }}
-                                />
-                              </div>
-                              Create more
-                            </button>
-
-                            {/* Create button */}
-                            <button
-                              onClick={handleCreate}
-                              disabled={!title.trim() || !currentWorkspace}
-                              className="flex items-center gap-2 rounded-[4px] bg-primary px-3 py-1.5 text-[12px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-                            >
-                              Create task
-                              <kbd className="hidden rounded bg-primary-foreground/20 px-1.5 py-0.5 text-[10px] font-normal text-primary-foreground/70 sm:inline-block">
-                                {typeof navigator !== "undefined" &&
-                                /Mac|iPhone|iPad/.test(navigator.userAgent)
-                                  ? "⌘"
-                                  : "Ctrl"}
-                                ↵
-                              </kbd>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
+                    <textarea
+                      ref={titleRef}
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      onKeyDown={handleTitleKeyDown}
+                      placeholder="Task title"
+                      autoFocus
+                      rows={1}
+                      className="block w-full resize-none overflow-hidden bg-transparent pr-8 text-[16px] leading-snug font-semibold tracking-tight break-words outline-none placeholder:text-muted-foreground/40"
+                    />
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <span className="font-mono text-[11px] text-muted-foreground/50">
+                        New task
+                      </span>
+                      {currentWorkspace?.prefix ? (
+                        <>
+                          <span className="text-muted-foreground/20">·</span>
+                          <span className="text-[11px] text-muted-foreground/50">
+                            {currentWorkspace.prefix}
+                          </span>
+                        </>
+                      ) : null}
                     </div>
                   </>
                 ) : (
-                  /* AI Prompt Tab */
-                  <div className="flex flex-1 flex-col">
-                    <div className="flex flex-1 flex-col px-3 pt-3 pb-3">
-                      <p className="mb-2 text-[12px] text-muted-foreground">
-                        Describe the tasks you need and AI will generate them.
-                      </p>
-                      <textarea
-                        value={aiPrompt}
-                        onChange={(e) => setAiPrompt(e.target.value)}
-                        placeholder="e.g. Create tasks for building a user authentication flow..."
-                        autoFocus
-                        rows={4}
-                        className="w-full flex-1 resize-none rounded-[4px] bg-accent/30 p-2.5 text-[13px] ring-1 ring-border transition-colors outline-none placeholder:text-muted-foreground/50 focus:ring-foreground/30"
+                  <>
+                    <h2 className="pr-8 text-[16px] leading-snug font-semibold tracking-tight">
+                      Generate with AI
+                    </h2>
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <span className="text-[11px] text-muted-foreground/50">
+                        Describe what you need — AI will draft the tasks.
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* ── Body ── */}
+              {activeTab === "manual" ? (
+                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-4 pb-4">
+                  <textarea
+                    ref={descriptionRef}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Add a description..."
+                    className="w-full flex-1 resize-none bg-transparent text-[13px] leading-relaxed text-foreground/80 outline-none placeholder:text-muted-foreground/40"
+                    style={{ minHeight: "180px" }}
+                  />
+
+                  {attachments.length > 0 ? (
+                    <div className="mt-4 border-t border-border pt-4">
+                      <TaskAttachmentGallery
+                        attachments={attachments}
+                        workspaceId={currentWorkspace?._id}
+                        canManageAttachments
+                        onAttachmentsChange={(nextAttachments) =>
+                          setAttachments(
+                            nextAttachments as (TaskAttachment & {
+                              previewUrl?: string
+                            })[]
+                          )
+                        }
                       />
                     </div>
-                    <div className="flex items-center justify-end border-t border-border px-3 py-2">
+                  ) : null}
+                </div>
+              ) : (
+                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-4 pb-4">
+                  <textarea
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    placeholder="e.g. Create tasks for building a user authentication flow…"
+                    autoFocus
+                    className="w-full flex-1 resize-none bg-transparent text-[13px] leading-relaxed text-foreground/80 outline-none placeholder:text-muted-foreground/40"
+                    style={{ minHeight: "180px" }}
+                  />
+                </div>
+              )}
+
+              {/* ── Bottom toolbar ── */}
+              <div>
+                {error ? (
+                  <div className="px-5 pt-2">
+                    <span className="text-[11px] text-red-500">{error}</span>
+                  </div>
+                ) : null}
+                <div className="flex items-center justify-between gap-2 border-t border-border px-4 pt-2.5 pb-3">
+                  {activeTab === "manual" ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* Status */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent">
+                          {getStatusIcon(status)}
+                          <span>{statusLabel}</span>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent side="top" align="start">
+                          {STATUS_OPTIONS.map((opt) => (
+                            <DropdownMenuItem
+                              key={opt.id}
+                              onClick={() => setStatus(opt.id)}
+                              className={status === opt.id ? "font-medium" : ""}
+                            >
+                              <div className="flex items-center gap-2">
+                                {getStatusIcon(opt.id)}
+                                <span>{opt.label}</span>
+                              </div>
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+
+                      {/* Priority */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent">
+                          {getPriorityIcon(priority)}
+                          <span>{priorityLabel}</span>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent side="top" align="start">
+                          {PRIORITY_OPTIONS.map((opt) => (
+                            <DropdownMenuItem
+                              key={opt.id}
+                              onClick={() => setPriority(opt.id)}
+                              className={priority === opt.id ? "font-medium" : ""}
+                            >
+                              <div className="flex items-center gap-2">
+                                {getPriorityIcon(opt.id)}
+                                <span>{opt.label}</span>
+                              </div>
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+
+                      {/* Labels */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent">
+                          {labels.length > 0 ? (
+                            <div className="flex items-center gap-1.5">
+                              <div className="flex -space-x-0.5">
+                                {labels.map((label) => (
+                                  <div
+                                    key={label}
+                                    className="size-2 rounded-full ring-1 ring-background"
+                                    style={{
+                                      backgroundColor:
+                                        labelOptions.find((o) => o.id === label)
+                                          ?.color ?? "#888",
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                              <span>
+                                {labels.length === 1
+                                  ? (labelOptions.find((o) => o.id === labels[0])
+                                      ?.label ?? labels[0])
+                                  : `${labels.length} labels`}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5">
+                              <Tag size={12} className="text-muted-foreground" />
+                              <span className="text-muted-foreground">
+                                Labels
+                              </span>
+                            </div>
+                          )}
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          side="top"
+                          align="start"
+                          className="w-auto min-w-[180px]"
+                        >
+                          {labelOptions.map((opt) => (
+                            <DropdownMenuCheckboxItem
+                              key={opt.id}
+                              checked={labels.includes(opt.id)}
+                              onCheckedChange={() => toggleLabel(opt.id)}
+                            >
+                              <span
+                                className="inline-block size-2.5 shrink-0 rounded-full"
+                                style={{ backgroundColor: opt.color }}
+                              />
+                              {opt.label}
+                            </DropdownMenuCheckboxItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  ) : (
+                    <div />
+                  )}
+
+                  {/* Right side actions */}
+                  {activeTab === "manual" ? (
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        multiple
+                        onChange={handleFileSelect}
+                        className="hidden"
+                      />
                       <button
-                        onClick={handleGenerateTasks}
-                        disabled={!aiPrompt.trim() || isGenerating}
-                        className="flex items-center gap-2 rounded-[4px] bg-primary px-3 py-1.5 text-[12px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploading}
+                        title="Attach files"
+                        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        {isGenerating ? "Generating..." : "Generate tasks"}
-                        {isGenerating ? (
-                          <SpinnerGap size={16} className="animate-spin" />
+                        {uploading ? (
+                          <SpinnerGap size={14} className="animate-spin" />
                         ) : (
-                          <>
-                            <kbd className="hidden rounded bg-primary-foreground/20 px-1.5 py-0.5 text-[10px] font-normal text-primary-foreground/70 sm:inline-block">
-                              {typeof navigator !== "undefined" &&
-                              /Mac|iPhone|iPad/.test(navigator.userAgent)
-                                ? "⌘"
-                                : "Ctrl"}
-                              ↵
-                            </kbd>
-                          </>
+                          <Paperclip size={14} />
                         )}
+                        {uploading ? "Uploading..." : "Attach"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCreateMore(!createMore)}
+                        title="Keep the modal open after creating"
+                        className={`flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent ${
+                          createMore ? "text-foreground" : "text-muted-foreground"
+                        }`}
+                      >
+                        <span
+                          className={`inline-block size-2.5 rounded-full ring-1 transition-colors ${
+                            createMore
+                              ? "bg-primary ring-primary"
+                              : "ring-border"
+                          }`}
+                        />
+                        Create more
+                      </button>
+                      <button
+                        onClick={handleCreate}
+                        disabled={!title.trim() || !currentWorkspace}
+                        className="flex items-center gap-1.5 rounded-[4px] bg-primary px-3 py-1.5 text-[11px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Create
+                        <ArrowRight
+                          size={12}
+                          weight="bold"
+                          className="opacity-70"
+                        />
                       </button>
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <button
+                      onClick={handleGenerateTasks}
+                      disabled={!aiPrompt.trim() || isGenerating}
+                      className="flex items-center gap-1.5 rounded-[4px] bg-primary px-3 py-1.5 text-[11px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isGenerating ? (
+                        <>
+                          <SpinnerGap size={12} className="animate-spin" />
+                          Generating…
+                        </>
+                      ) : (
+                        <>
+                          Generate
+                          <Sparkle
+                            size={12}
+                            weight="fill"
+                            className="opacity-80"
+                          />
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
               </div>
             </motion.div>
           </div>
