@@ -1,57 +1,106 @@
 "use client"
 
-import { useEffect, type ReactNode } from "react"
+import Link from "next/link"
+import { useQuery } from "convex/react"
 import { motion } from "motion/react"
-import { ShieldCheck } from "@phosphor-icons/react"
-
-function Stagger({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <motion.div
-      initial="hidden"
-      animate="show"
-      variants={{ show: { transition: { staggerChildren: 0.06 } } }}
-      className={className}
-    >
-      {children}
-    </motion.div>
-  )
-}
+import { Article, Megaphone, ArrowUpRight } from "@phosphor-icons/react"
+import { api } from "@/convex/_generated/api"
 
 const fadeUp = {
   hidden: { opacity: 0, y: 8 },
   show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] as const } },
 }
 
-export default function AdminPage() {
-  useEffect(() => {
-    document.title = "Admin — Median"
-  }, [])
+export default function AdminOverviewPage() {
+  const blogPosts = useQuery(api.blogPosts.list, {})
+  const changelog = useQuery(api.changelogEntries.list, {})
+
+  const blogDraftCount = blogPosts?.filter((p) => p.status === "draft").length ?? 0
+  const blogPublishedCount = blogPosts?.filter((p) => p.status === "published").length ?? 0
+  const changelogDraftCount = changelog?.filter((p) => p.status === "draft").length ?? 0
+  const changelogPublishedCount = changelog?.filter((p) => p.status === "published").length ?? 0
 
   return (
-    <div className="min-h-screen overflow-y-auto">
-      <Stagger className="mx-auto max-w-3xl px-8 py-10">
-        <motion.div variants={fadeUp} className="mb-8 flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-[6px] bg-sidebar-accent ring-1 ring-sidebar-border">
-            <ShieldCheck size={16} weight="fill" className="text-foreground" />
-          </div>
-          <div>
-            <h1 className="text-[15px] font-semibold leading-tight">Admin</h1>
-            <p className="text-[12px] text-muted-foreground leading-tight">
-              Internal tools. Visible only to global admins.
-            </p>
-          </div>
-        </motion.div>
+    <motion.div
+      initial="hidden"
+      animate="show"
+      variants={{ show: { transition: { staggerChildren: 0.06 } } }}
+      className="mx-auto max-w-3xl px-8 py-10"
+    >
+      <motion.div variants={fadeUp} className="mb-8">
+        <h1 className="text-[15px] font-semibold leading-tight">Admin overview</h1>
+        <p className="mt-1 text-[12px] text-muted-foreground">
+          Manage blog posts and changelog entries.
+        </p>
+      </motion.div>
 
-        <motion.div
-          variants={fadeUp}
-          className="rounded-[6px] border border-sidebar-border bg-sidebar/30 p-5"
-        >
-          <h2 className="mb-1 text-[13px] font-semibold">Welcome</h2>
-          <p className="text-[12px] text-muted-foreground">
-            This area is reserved for Median staff. Add admin tooling here as needed.
-          </p>
-        </motion.div>
-      </Stagger>
-    </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <AdminCard
+          href="/app/admin/blog"
+          icon={<Article size={16} weight="fill" />}
+          title="Blog posts"
+          description="Long-form articles."
+          stats={[
+            { label: "Published", value: blogPublishedCount },
+            { label: "Drafts", value: blogDraftCount },
+          ]}
+        />
+        <AdminCard
+          href="/app/admin/changelog"
+          icon={<Megaphone size={16} weight="fill" />}
+          title="Changelog"
+          description="Release notes and updates."
+          stats={[
+            { label: "Published", value: changelogPublishedCount },
+            { label: "Drafts", value: changelogDraftCount },
+          ]}
+        />
+      </div>
+    </motion.div>
+  )
+}
+
+function AdminCard({
+  href,
+  icon,
+  title,
+  description,
+  stats,
+}: {
+  href: string
+  icon: React.ReactNode
+  title: string
+  description: string
+  stats: { label: string; value: number }[]
+}) {
+  return (
+    <motion.div variants={fadeUp}>
+      <Link
+        href={href}
+        className="group flex h-full flex-col rounded-[6px] border border-sidebar-border bg-sidebar/30 p-4 transition-colors hover:bg-sidebar-accent/60"
+      >
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex h-7 w-7 items-center justify-center rounded-[5px] bg-sidebar-accent ring-1 ring-sidebar-border">
+            {icon}
+          </div>
+          <ArrowUpRight
+            size={14}
+            className="text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+          />
+        </div>
+        <h2 className="text-[13px] font-semibold leading-tight">{title}</h2>
+        <p className="mt-0.5 text-[11px] leading-tight text-muted-foreground">{description}</p>
+        <div className="mt-4 flex gap-4">
+          {stats.map((stat) => (
+            <div key={stat.label}>
+              <div className="text-[15px] font-semibold leading-tight">{stat.value}</div>
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                {stat.label}
+              </div>
+            </div>
+          ))}
+        </div>
+      </Link>
+    </motion.div>
   )
 }

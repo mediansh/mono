@@ -5,7 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useClerk, useUser } from "@clerk/nextjs"
 import { useTheme } from "next-themes"
-import { useMutation } from "convex/react"
+import { useMutation, useQuery } from "convex/react"
 import {
   House,
   MagnifyingGlass,
@@ -31,7 +31,6 @@ import { Logo } from "@/components/logo"
 import { useWorkspace } from "@/components/workspace-provider"
 import { useWorkspaceOptimisticMutations } from "@/hooks/use-workspace-optimistic-mutations"
 import { hasTaskWritePermission } from "@/lib/workspace-permissions"
-import { isAdminUser } from "@/lib/admin"
 import {
   Dialog,
   DialogContent,
@@ -270,6 +269,7 @@ export function AppSidebar() {
   const pathname = usePathname()
   const { signOut, openUserProfile } = useClerk()
   const { user } = useUser()
+  const isAdmin = useQuery(api.admins.isCurrentUserAdmin) ?? false
   const { theme, setTheme } = useTheme()
   const { workspaces, currentWorkspace, switchWorkspace } = useWorkspace()
   const canManageTasks = hasTaskWritePermission(currentWorkspace?.role)
@@ -426,7 +426,7 @@ export function AppSidebar() {
 
         <SidebarFooter className="p-1.5">
           <SidebarMenu className="gap-0.5">
-            {isAdminUser(user) && (
+            {isAdmin && (
               <SidebarMenuItem>
                 <SidebarMenuButton
                   render={<Link href="/app/admin" />}
