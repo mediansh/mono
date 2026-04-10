@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   },
   description: "Median",
   icons: {
-    icon: "/favicon.svg",
+    icon: process.env.NODE_ENV === "development" ? "/favicon-dev.svg" : "/favicon.svg",
   },
 }
 
