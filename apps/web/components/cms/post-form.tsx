@@ -178,7 +178,7 @@ export function PostForm({
 
         <Field label="Content">
           <RichTextEditor
-            value={content}
+            defaultValue={initial?.content ?? ""}
             onChange={setContent}
             placeholder={
               variant === "blog" ? "Start writing your post…" : "Describe what changed…"

@@ -1,7 +1,12 @@
 "use client"
 
-import { useEffect } from "react"
-import { useEditor, EditorContent, type Editor } from "@tiptap/react"
+import { useRef } from "react"
+import {
+  useEditor,
+  useEditorState,
+  EditorContent,
+  type Editor,
+} from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import Link from "@tiptap/extension-link"
 import Placeholder from "@tiptap/extension-placeholder"
@@ -25,13 +30,18 @@ import { cn } from "@workspace/ui/lib/utils"
 export type RichTextValue = string // TipTap JSON, stringified
 
 type RichTextEditorProps = {
-  value: RichTextValue
+  /**
+   * Initial content as stringified TipTap JSON. Uncontrolled — the editor
+   * owns its content after mount and only emits via `onChange`. Changing
+   * this prop after mount has no effect (use `key` to force a remount).
+   */
+  defaultValue?: RichTextValue
   onChange: (value: RichTextValue) => void
   placeholder?: string
   className?: string
 }
 
-function parseInitial(value: RichTextValue) {
+function parseInitial(value: RichTextValue | undefined) {
   if (!value) return undefined
   try {
     return JSON.parse(value)
@@ -41,11 +51,16 @@ function parseInitial(value: RichTextValue) {
 }
 
 export function RichTextEditor({
-  value,
+  defaultValue,
   onChange,
   placeholder = "Start writing…",
   className,
 }: RichTextEditorProps) {
+  // Keep the latest onChange in a ref so the editor's onUpdate closure
+  // (created once) always calls the current callback.
+  const onChangeRef = useRef(onChange)
+  onChangeRef.current = onChange
+
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -65,9 +80,9 @@ export function RichTextEditor({
           "before:text-muted-foreground before:float-left before:h-0 before:pointer-events-none before:content-[attr(data-placeholder)]",
       }),
     ],
-    content: parseInitial(value),
+    content: parseInitial(defaultValue),
     onUpdate: ({ editor }) => {
-      onChange(JSON.stringify(editor.getJSON()))
+      onChangeRef.current(JSON.stringify(editor.getJSON()))
     },
     editorProps: {
       attributes: {
@@ -92,16 +107,6 @@ export function RichTextEditor({
       },
     },
   })
-
-  useEffect(() => {
-    if (!editor) return
-    const next = parseInitial(value)
-    const current = editor.getJSON()
-    if (JSON.stringify(next ?? {}) !== JSON.stringify(current)) {
-      editor.commands.setContent(next ?? "", { emitUpdate: false })
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editor, value])
 
   if (!editor) {
     return (
@@ -133,6 +138,25 @@ export function RichTextEditor({
 }
 
 function Toolbar({ editor }: { editor: Editor }) {
+  const state = useEditorState({
+    editor,
+    selector: (ctx) => ({
+      isH1: ctx.editor.isActive("heading", { level: 1 }),
+      isH2: ctx.editor.isActive("heading", { level: 2 }),
+      isH3: ctx.editor.isActive("heading", { level: 3 }),
+      isBold: ctx.editor.isActive("bold"),
+      isItalic: ctx.editor.isActive("italic"),
+      isStrike: ctx.editor.isActive("strike"),
+      isCode: ctx.editor.isActive("code"),
+      isBulletList: ctx.editor.isActive("bulletList"),
+      isOrderedList: ctx.editor.isActive("orderedList"),
+      isBlockquote: ctx.editor.isActive("blockquote"),
+      isLink: ctx.editor.isActive("link"),
+      canUndo: ctx.editor.can().undo(),
+      canRedo: ctx.editor.can().redo(),
+    }),
+  })
+
   const setLink = () => {
     const prev = editor.getAttributes("link").href as string | undefined
     const url = window.prompt("URL", prev ?? "https://")
@@ -150,21 +174,21 @@ function Toolbar({ editor }: { editor: Editor }) {
         <TBtn
           label="Heading 1"
           onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-          active={editor.isActive("heading", { level: 1 })}
+          active={state.isH1}
         >
           <TextHOne size={14} />
         </TBtn>
         <TBtn
           label="Heading 2"
           onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-          active={editor.isActive("heading", { level: 2 })}
+          active={state.isH2}
         >
           <TextHTwo size={14} />
         </TBtn>
         <TBtn
           label="Heading 3"
           onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-          active={editor.isActive("heading", { level: 3 })}
+          active={state.isH3}
         >
           <TextHThree size={14} />
         </TBtn>
@@ -174,28 +198,28 @@ function Toolbar({ editor }: { editor: Editor }) {
         <TBtn
           label="Bold"
           onClick={() => editor.chain().focus().toggleBold().run()}
-          active={editor.isActive("bold")}
+          active={state.isBold}
         >
           <TextB size={14} />
         </TBtn>
         <TBtn
           label="Italic"
           onClick={() => editor.chain().focus().toggleItalic().run()}
-          active={editor.isActive("italic")}
+          active={state.isItalic}
         >
           <TextItalic size={14} />
         </TBtn>
         <TBtn
           label="Strike"
           onClick={() => editor.chain().focus().toggleStrike().run()}
-          active={editor.isActive("strike")}
+          active={state.isStrike}
         >
           <TextStrikethrough size={14} />
         </TBtn>
         <TBtn
           label="Inline code"
           onClick={() => editor.chain().focus().toggleCode().run()}
-          active={editor.isActive("code")}
+          active={state.isCode}
         >
           <Code size={14} />
         </TBtn>
@@ -205,25 +229,25 @@ function Toolbar({ editor }: { editor: Editor }) {
         <TBtn
           label="Bulleted list"
           onClick={() => editor.chain().focus().toggleBulletList().run()}
-          active={editor.isActive("bulletList")}
+          active={state.isBulletList}
         >
           <ListBullets size={14} />
         </TBtn>
         <TBtn
           label="Numbered list"
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          active={editor.isActive("orderedList")}
+          active={state.isOrderedList}
         >
           <ListNumbers size={14} />
         </TBtn>
         <TBtn
           label="Blockquote"
           onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          active={editor.isActive("blockquote")}
+          active={state.isBlockquote}
         >
           <Quotes size={14} />
         </TBtn>
-        <TBtn label="Link" onClick={setLink} active={editor.isActive("link")}>
+        <TBtn label="Link" onClick={setLink} active={state.isLink}>
           <LinkSimple size={14} />
         </TBtn>
       </Group>
@@ -232,14 +256,14 @@ function Toolbar({ editor }: { editor: Editor }) {
         <TBtn
           label="Undo"
           onClick={() => editor.chain().focus().undo().run()}
-          disabled={!editor.can().undo()}
+          disabled={!state.canUndo}
         >
           <ArrowCounterClockwise size={14} />
         </TBtn>
         <TBtn
           label="Redo"
           onClick={() => editor.chain().focus().redo().run()}
-          disabled={!editor.can().redo()}
+          disabled={!state.canRedo}
         >
           <ArrowClockwise size={14} />
         </TBtn>
