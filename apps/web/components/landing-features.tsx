@@ -25,9 +25,9 @@ const cardStyles = {
 
 function InboxGraphic() {
   const sources = [
-    { source: "Discord", text: "bug on onboarding", rot: -10 },
-    { source: "X", text: "dark mode pls", rot: 0 },
-    { source: "GitHub", text: "sync issue", rot: 8 },
+    { Icon: DiscordBrandIcon, text: "bug on onboarding", rot: -10 },
+    { Icon: XBrandIcon, text: "dark mode pls", rot: 0 },
+    { Icon: GithubBrandIcon, text: "sync issue", rot: 8 },
   ]
 
   return (
@@ -35,20 +35,21 @@ function InboxGraphic() {
       <div className="relative flex flex-col items-center gap-4">
         {/* Source cards row */}
         <div className="flex gap-3">
-          {sources.map((item, i) => (
-            <div
-              key={i}
-              className="flex h-8 w-20 flex-col justify-center gap-[2px] overflow-hidden rounded-lg border border-foreground/[0.08] bg-foreground/[0.02] px-2"
-              style={{ transform: `rotate(${item.rot}deg)` }}
-            >
-              <span className="truncate text-[6px] font-medium uppercase leading-none tracking-wider text-foreground/35">
-                {item.source}
-              </span>
-              <span className="truncate text-[7px] leading-none text-foreground/25">
-                {item.text}
-              </span>
-            </div>
-          ))}
+          {sources.map((item, i) => {
+            const { Icon } = item
+            return (
+              <div
+                key={i}
+                className="flex h-8 w-20 items-center gap-2 overflow-hidden rounded-lg border border-foreground/[0.08] bg-foreground/[0.02] px-2 text-foreground/35"
+                style={{ transform: `rotate(${item.rot}deg)` }}
+              >
+                <Icon size={10} />
+                <span className="truncate text-[7px] leading-none text-foreground/30">
+                  {item.text}
+                </span>
+              </div>
+            )
+          })}
         </div>
 
         {/* Connecting lines */}
