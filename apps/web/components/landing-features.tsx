@@ -3,7 +3,16 @@
 import { useState, useEffect } from "react"
 import { useTheme } from "next-themes"
 import { motion } from "motion/react"
-import { Cube } from "@phosphor-icons/react"
+import {
+  Cube,
+  CheckCircle,
+  XCircle,
+  DiscordLogo,
+  GithubLogo,
+  XLogo,
+} from "@phosphor-icons/react"
+import { Logo } from "@/components/logo"
+import { LinearLogo } from "@/components/icons/linear-logo"
 
 const ease = [0.25, 0.1, 0.25, 1] as const
 
@@ -23,20 +32,32 @@ const cardStyles = {
 /* ─── Graphics built with divs + Tailwind ─── */
 
 function InboxGraphic() {
+  const sources = [
+    { Icon: DiscordLogo, text: "bug on onboarding", rot: -10 },
+    { Icon: XLogo, text: "dark mode pls", rot: 0 },
+    { Icon: GithubLogo, text: "sync issue", rot: 8 },
+  ]
+
   return (
     <div className="flex h-full items-center justify-center">
       <div className="relative flex flex-col items-center gap-4">
         {/* Source cards row */}
         <div className="flex gap-3">
-          {[-10, 0, 8].map((rot, i) => (
-            <div
-              key={i}
-              className="h-8 w-20 rounded-lg border border-foreground/[0.08] bg-foreground/[0.02]"
-              style={{ transform: `rotate(${rot}deg)` }}
-            >
-              <div className="mt-2 ml-2 h-1 w-10 rounded-full bg-foreground/[0.06]" />
-            </div>
-          ))}
+          {sources.map((item, i) => {
+            const { Icon } = item
+            return (
+              <div
+                key={i}
+                className="flex h-8 w-20 items-center gap-2 overflow-hidden rounded-lg border border-foreground/[0.08] bg-foreground/[0.02] px-2 text-foreground/35"
+                style={{ transform: `rotate(${item.rot}deg)` }}
+              >
+                <Icon size={10} weight="fill" />
+                <span className="truncate text-[7px] leading-none text-foreground/30">
+                  {item.text}
+                </span>
+              </div>
+            )
+          })}
         </div>
 
         {/* Connecting lines */}
@@ -47,9 +68,13 @@ function InboxGraphic() {
         </div>
 
         {/* Central inbox */}
-        <div className="h-12 w-36 rounded-xl border border-foreground/[0.15] bg-foreground/[0.04]">
-          <div className="mt-2.5 ml-3 h-1.5 w-16 rounded-full bg-foreground/[0.1]" />
-          <div className="mt-1.5 ml-3 h-1 w-24 rounded-full bg-foreground/[0.06]" />
+        <div className="flex h-12 w-36 flex-col justify-center gap-[3px] overflow-hidden rounded-xl border border-foreground/[0.15] bg-foreground/[0.04] px-3">
+          <span className="text-[8px] font-semibold leading-none text-foreground/60">
+            Inbox
+          </span>
+          <span className="truncate text-[7px] leading-none text-foreground/30">
+            3 new feedback items
+          </span>
         </div>
       </div>
     </div>
@@ -59,55 +84,76 @@ function InboxGraphic() {
 function SparkGraphic() {
   return (
     <div className="flex h-full items-center justify-center">
-      <div className="relative flex flex-col items-center gap-3">
-        {/* Spark lines above */}
+      <div className="relative flex flex-col items-center gap-2">
+        {/* Spark lines above — AI generation indicator */}
         <div className="flex items-end gap-3">
-          <div className="h-5 w-px bg-foreground/[0.1] -rotate-[30deg]" />
-          <div className="h-7 w-px bg-foreground/[0.12]" />
-          <div className="h-5 w-px bg-foreground/[0.1] rotate-[30deg]" />
+          <div className="h-4 w-px bg-foreground/[0.12] -rotate-[30deg]" />
+          <div className="h-6 w-px bg-foreground/[0.15]" />
+          <div className="h-4 w-px bg-foreground/[0.12] rotate-[30deg]" />
         </div>
 
-        {/* Primary generated card */}
-        <div className="h-14 w-40 rounded-xl border border-foreground/[0.15] bg-foreground/[0.04] shadow-[0_0_24px_rgba(255,255,255,0.02)]">
-          <div className="mt-2.5 ml-3 h-1.5 w-24 rounded-full bg-foreground/[0.1]" />
-          <div className="mt-1.5 ml-3 h-1 w-16 rounded-full bg-foreground/[0.06]" />
-          <div className="mt-1.5 ml-3 h-1 w-28 rounded-full bg-foreground/[0.05]" />
+        {/* Notification card */}
+        <div className="w-56 overflow-hidden rounded-xl border border-foreground/[0.15] bg-foreground/[0.04] shadow-[0_0_24px_rgba(255,255,255,0.02)]">
+          {/* Body */}
+          <div className="flex items-start gap-2 px-3 pt-3 pb-2">
+            <p className="flex-1 text-[10px] font-semibold leading-snug text-foreground/85">
+              Fix onboarding bug blocking new signup flow
+            </p>
+            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-foreground/[0.1] bg-foreground/[0.05] text-foreground/70">
+              <DiscordLogo size={10} weight="fill" />
+            </div>
+          </div>
+          {/* Meta row */}
+          <div className="flex items-center justify-between border-t border-foreground/[0.08] px-3 py-1.5 text-[8px] text-foreground/35">
+            <span>Mar 10</span>
+            <span>MED-42</span>
+          </div>
+          {/* Actions */}
+          <div className="grid grid-cols-2 border-t border-foreground/[0.08] text-[9px] font-medium">
+            <div className="flex items-center justify-center gap-1 py-1.5 text-emerald-400/85">
+              <CheckCircle weight="fill" size={10} />
+              Accept
+            </div>
+            <div className="flex items-center justify-center gap-1 border-l border-foreground/[0.08] py-1.5 text-rose-400/85">
+              <XCircle weight="fill" size={10} />
+              Deny
+            </div>
+          </div>
         </div>
-
-        {/* Stacked cards behind — implying generation */}
-        <div className="-mt-2 h-3 w-36 rounded-b-lg border-x border-b border-foreground/[0.08] bg-foreground/[0.02]" />
-        <div className="-mt-2 h-3 w-32 rounded-b-lg border-x border-b border-foreground/[0.04] bg-foreground/[0.01]" />
       </div>
     </div>
   )
 }
 
 function CubesGraphic() {
+  const satellite =
+    "flex h-10 w-10 items-center justify-center rounded-lg border border-foreground/[0.1] bg-foreground/[0.03] text-foreground/70"
+
   return (
     <div className="flex h-full items-center justify-center">
       <div className="relative grid grid-cols-3 grid-rows-3 place-items-center gap-2" style={{ width: 168, height: 168 }}>
-        {/* Top center */}
+        {/* Top center — GitHub */}
         <div />
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-foreground/[0.1] bg-foreground/[0.03]">
-          <div className="h-3 w-3 rounded bg-foreground/[0.08]" />
+        <div className={satellite}>
+          <GithubLogo size={16} weight="fill" />
         </div>
         <div />
 
-        {/* Middle row */}
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-foreground/[0.1] bg-foreground/[0.03]">
-          <div className="h-3 w-3 rounded bg-foreground/[0.08]" />
+        {/* Middle row — Discord, Median, Linear */}
+        <div className={satellite}>
+          <DiscordLogo size={16} weight="fill" />
         </div>
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-foreground/[0.15] bg-foreground/[0.05]">
-          <div className="h-4 w-4 rounded bg-foreground/[0.1]" />
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-foreground/[0.15] bg-foreground/[0.05] text-foreground">
+          <Logo symbolOnly className="text-[18px]" />
         </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-foreground/[0.1] bg-foreground/[0.03]">
-          <div className="h-3 w-3 rounded bg-foreground/[0.08]" />
+        <div className={satellite}>
+          <LinearLogo size={16} />
         </div>
 
-        {/* Bottom center */}
+        {/* Bottom center — X */}
         <div />
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-foreground/[0.1] bg-foreground/[0.03]">
-          <div className="h-3 w-3 rounded bg-foreground/[0.08]" />
+        <div className={satellite}>
+          <XLogo size={16} weight="fill" />
         </div>
         <div />
 
@@ -125,10 +171,10 @@ function CubesGraphic() {
 
 function TagsGraphic() {
   const tags = [
-    { w: "w-44", dotOpacity: "bg-foreground/[0.2]", barW: "w-20", opacity: "border-foreground/[0.12] bg-foreground/[0.04]", barOpacity: "bg-foreground/[0.1]", x: 0 },
-    { w: "w-40", dotOpacity: "bg-foreground/[0.15]", barW: "w-16", opacity: "border-foreground/[0.1] bg-foreground/[0.03]", barOpacity: "bg-foreground/[0.08]", x: 8 },
-    { w: "w-36", dotOpacity: "bg-foreground/[0.1]", barW: "w-14", opacity: "border-foreground/[0.08] bg-foreground/[0.02]", barOpacity: "bg-foreground/[0.06]", x: 4 },
-    { w: "w-32", dotOpacity: "bg-foreground/[0.06]", barW: "w-12", opacity: "border-foreground/[0.06] bg-foreground/[0.01]", barOpacity: "bg-foreground/[0.04]", x: 12 },
+    { label: "customer request", w: "w-44", dotOpacity: "bg-foreground/[0.2]", textOpacity: "text-foreground/55", opacity: "border-foreground/[0.12] bg-foreground/[0.04]" },
+    { label: "feature request", w: "w-40", dotOpacity: "bg-foreground/[0.15]", textOpacity: "text-foreground/45", opacity: "border-foreground/[0.1] bg-foreground/[0.03]" },
+    { label: "in review", w: "w-36", dotOpacity: "bg-foreground/[0.1]", textOpacity: "text-foreground/35", opacity: "border-foreground/[0.08] bg-foreground/[0.02]" },
+    { label: "bug", w: "w-32", dotOpacity: "bg-foreground/[0.06]", textOpacity: "text-foreground/30", opacity: "border-foreground/[0.06] bg-foreground/[0.01]" },
   ]
 
   return (
@@ -140,7 +186,9 @@ function TagsGraphic() {
             className={`flex h-9 ${tag.w} items-center gap-2.5 rounded-full border ${tag.opacity} px-3`}
           >
             <div className={`h-2.5 w-2.5 shrink-0 rounded-full ${tag.dotOpacity}`} />
-            <div className={`h-1.5 ${tag.barW} rounded-full ${tag.barOpacity}`} />
+            <span className={`truncate text-[10px] leading-none ${tag.textOpacity}`}>
+              {tag.label}
+            </span>
           </div>
         ))}
       </div>
@@ -149,25 +197,31 @@ function TagsGraphic() {
 }
 
 function LogsGraphic() {
-  const widths = [120, 100, 140, 90, 110, 70]
+  const entries = [
+    "Task created",
+    "Imported from Discord",
+    "Status changed to In Progress",
+    "Synced to Linear",
+    "Reply sent to user",
+    "Webhook received",
+  ]
 
   return (
     <div className="flex h-full items-center justify-center">
       <div className="relative flex flex-col">
-        {/* Timeline line */}
-        <div className="absolute top-1 bottom-1 left-[5px] w-px bg-foreground/[0.06]" />
+        {/* Timeline line — centered on the 10px dot column */}
+        <div className="pointer-events-none absolute top-1 bottom-1 left-[5px] w-px -translate-x-1/2 bg-foreground/[0.06]" />
 
-        {widths.map((w, i) => (
+        {entries.map((entry, i) => (
           <div
             key={i}
-            className="flex items-center gap-3 py-[7px]"
+            className="flex items-center gap-3 py-[5px]"
             style={{ opacity: 1 - i * 0.15 }}
           >
             <div className="relative z-10 h-[10px] w-[10px] shrink-0 rounded-full border border-foreground/[0.12] bg-background" />
-            <div
-              className="h-[3px] rounded-full bg-foreground/[0.08]"
-              style={{ width: w }}
-            />
+            <span className="whitespace-nowrap text-[9px] leading-none text-foreground/45">
+              {entry}
+            </span>
           </div>
         ))}
       </div>
@@ -187,27 +241,35 @@ function TerminalGraphic() {
         </div>
 
         {/* Lines */}
-        <div className="flex flex-col gap-2.5 p-3.5">
+        <div className="flex flex-col gap-2 p-3.5 font-mono">
           {/* Prompt 1 */}
           <div className="flex items-center gap-1.5">
-            <div className="h-[3px] w-3 rounded-full bg-foreground/[0.2]" />
-            <div className="h-[3px] w-20 rounded-full bg-foreground/[0.1]" />
+            <span className="text-[8px] leading-none text-foreground/40">$</span>
+            <span className="truncate text-[8px] leading-none text-foreground/55">
+              median sync --source discord
+            </span>
           </div>
           {/* Response */}
           <div className="pl-1">
-            <div className="h-[3px] w-28 rounded-full bg-foreground/[0.04]" />
+            <span className="truncate text-[8px] leading-none text-foreground/30">
+              webhook received
+            </span>
           </div>
           <div className="pl-1">
-            <div className="h-[3px] w-16 rounded-full bg-foreground/[0.04]" />
+            <span className="truncate text-[8px] leading-none text-foreground/30">
+              task.created
+            </span>
           </div>
           {/* Prompt 2 */}
           <div className="flex items-center gap-1.5">
-            <div className="h-[3px] w-3 rounded-full bg-foreground/[0.2]" />
-            <div className="h-[3px] w-14 rounded-full bg-foreground/[0.1]" />
+            <span className="text-[8px] leading-none text-foreground/40">$</span>
+            <span className="truncate text-[8px] leading-none text-foreground/55">
+              linear.push=true
+            </span>
           </div>
           {/* Cursor */}
           <div className="flex items-center gap-1.5">
-            <div className="h-[3px] w-3 rounded-full bg-foreground/[0.2]" />
+            <span className="text-[8px] leading-none text-foreground/40">$</span>
             <div className="h-3 w-[5px] rounded-[1px] bg-foreground/[0.15]" />
           </div>
         </div>

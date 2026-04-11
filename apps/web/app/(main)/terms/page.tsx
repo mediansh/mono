@@ -256,7 +256,7 @@ export default function TermsPage() {
       <LegalSection title="18. Contact">
         <p>
           Questions about these terms can be sent to{" "}
-          <LegalLink href="mailto:hello@clovr.dev">hello@clovr.dev</LegalLink>.
+          <LegalLink href="mailto:hello@clovrlabs.co">hello@clovrlabs.co</LegalLink>.
         </p>
       </LegalSection>
     </LegalPage>

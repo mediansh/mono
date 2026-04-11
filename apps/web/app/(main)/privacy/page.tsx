@@ -24,7 +24,7 @@ export default function PrivacyPage() {
         </p>
         <p>
           If you have privacy questions, requests, or complaints, contact{" "}
-          <LegalLink href="mailto:hello@clovr.dev">hello@clovr.dev</LegalLink>.
+          <LegalLink href="mailto:hello@clovrlabs.co">hello@clovrlabs.co</LegalLink>.
         </p>
       </LegalSection>
 
@@ -193,7 +193,7 @@ export default function PrivacyPage() {
           Our provider list may change as the service evolves. If you need
           confirmation of a current subprocessor for procurement or security
           review, contact{" "}
-          <LegalLink href="mailto:hello@clovr.dev">hello@clovr.dev</LegalLink>.
+          <LegalLink href="mailto:hello@clovrlabs.co">hello@clovrlabs.co</LegalLink>.
         </p>
       </LegalSection>
 
@@ -259,7 +259,7 @@ export default function PrivacyPage() {
           Median is not directed to children, and we do not intend for children
           under 16 to use the service. If you believe a child has provided us
           personal information, contact{" "}
-          <LegalLink href="mailto:hello@clovr.dev">hello@clovr.dev</LegalLink>{" "}
+          <LegalLink href="mailto:hello@clovrlabs.co">hello@clovrlabs.co</LegalLink>{" "}
           so we can review and take appropriate action.
         </p>
       </LegalSection>
@@ -277,7 +277,7 @@ export default function PrivacyPage() {
       <LegalSection title="16. Contact">
         <p>
           Privacy inquiries, data requests, and complaints can be sent to{" "}
-          <LegalLink href="mailto:hello@clovr.dev">hello@clovr.dev</LegalLink>.
+          <LegalLink href="mailto:hello@clovrlabs.co">hello@clovrlabs.co</LegalLink>.
         </p>
       </LegalSection>
     </LegalPage>
