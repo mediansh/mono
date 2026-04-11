@@ -11,6 +11,7 @@ function PostHogPageView() {
 
   useEffect(() => {
     if (!pathname) return
+    if (!posthog.__loaded) return
 
     let url = window.origin + pathname
     const params = searchParams?.toString()
@@ -29,6 +30,7 @@ function PostHogIdentifier() {
 
   useEffect(() => {
     if (!isLoaded) return
+    if (!posthog.__loaded) return
 
     if (userId && !identified.current) {
       posthog.identify(userId, {

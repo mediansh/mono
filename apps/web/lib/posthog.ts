@@ -2,6 +2,7 @@ import posthog from "posthog-js"
 
 export function initPostHog() {
   if (typeof window === "undefined") return
+  if (process.env.NODE_ENV === "development") return
   if (posthog.__loaded) return
 
   const key =
@@ -16,12 +17,6 @@ export function initPostHog() {
     capture_pageview: false,
     capture_pageleave: true,
     autocapture: true,
-    disable_session_recording: process.env.NODE_ENV === "development",
-    loaded: (ph) => {
-      if (process.env.NODE_ENV === "development") {
-        ph.debug()
-      }
-    },
   })
 }
 
