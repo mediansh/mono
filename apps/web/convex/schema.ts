@@ -541,6 +541,48 @@ export default defineSchema({
     joinedAt: v.number(),
   }).index("by_email", ["email"]),
 
+  admins: defineTable({
+    userId: v.string(),
+    addedAt: v.number(),
+    addedByUserId: v.optional(v.string()),
+    note: v.optional(v.string()),
+  }).index("by_user", ["userId"]),
+
+  blogPosts: defineTable({
+    slug: v.string(),
+    title: v.string(),
+    excerpt: v.optional(v.string()),
+    // TipTap JSON document, stringified
+    content: v.string(),
+    coverImageUrl: v.optional(v.string()),
+    status: v.union(v.literal("draft"), v.literal("published")),
+    publishedAt: v.optional(v.number()),
+    authorId: v.string(),
+    authorName: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_status_created", ["status", "createdAt"])
+    .index("by_updated", ["updatedAt"]),
+
+  changelogEntries: defineTable({
+    slug: v.string(),
+    title: v.string(),
+    excerpt: v.optional(v.string()),
+    content: v.string(),
+    version: v.optional(v.string()),
+    status: v.union(v.literal("draft"), v.literal("published")),
+    publishedAt: v.optional(v.number()),
+    authorId: v.string(),
+    authorName: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_status_created", ["status", "createdAt"])
+    .index("by_updated", ["updatedAt"]),
+
   deletedTaskSources: defineTable({
     workspaceId: v.id("workspaces"),
     platform: v.union(

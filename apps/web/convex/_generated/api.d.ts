@@ -8,8 +8,11 @@
  * @module
  */
 
+import type * as admins from "../admins.js";
 import type * as billing from "../billing.js";
 import type * as billingTracking from "../billingTracking.js";
+import type * as blogPosts from "../blogPosts.js";
+import type * as changelogEntries from "../changelogEntries.js";
 import type * as cli from "../cli.js";
 import type * as discord from "../discord.js";
 import type * as discordFeedback from "../discordFeedback.js";
@@ -32,8 +35,11 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  admins: typeof admins;
   billing: typeof billing;
   billingTracking: typeof billingTracking;
+  blogPosts: typeof blogPosts;
+  changelogEntries: typeof changelogEntries;
   cli: typeof cli;
   discord: typeof discord;
   discordFeedback: typeof discordFeedback;

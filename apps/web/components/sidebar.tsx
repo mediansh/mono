@@ -5,7 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useClerk, useUser } from "@clerk/nextjs"
 import { useTheme } from "next-themes"
-import { useMutation } from "convex/react"
+import { useMutation, useQuery } from "convex/react"
 import {
   House,
   MagnifyingGlass,
@@ -21,6 +21,7 @@ import {
   Plugs,
   ClockCounterClockwise,
   CreditCard,
+  ShieldCheck,
 } from "@phosphor-icons/react"
 import { Facehash } from "facehash"
 import { NewTaskModal } from "@/components/new-task-modal"
@@ -269,6 +270,7 @@ export function AppSidebar() {
   const pathname = usePathname()
   const { signOut, openUserProfile } = useClerk()
   const { user } = useUser()
+  const isAdmin = useQuery(api.admins.isCurrentUserAdmin) ?? false
   const { theme, setTheme } = useTheme()
   const { workspaces, currentWorkspace, switchWorkspace } = useWorkspace()
   const canManageTasks = hasTaskWritePermission(currentWorkspace?.role)
@@ -426,6 +428,25 @@ export function AppSidebar() {
 
         <SidebarFooter className="p-1.5">
           <SidebarMenu className="gap-0.5">
+            {isAdmin && (
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  render={<Link href="/app/admin" />}
+                  isActive={pathname.startsWith("/app/admin")}
+                  className={
+                    pathname.startsWith("/app/admin")
+                      ? "data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground data-active:ring-1 data-active:ring-sidebar-border"
+                      : "text-sidebar-foreground/70"
+                  }
+                >
+                  <ShieldCheck
+                    size={15}
+                    weight={pathname.startsWith("/app/admin") ? "fill" : "regular"}
+                  />
+                  <span>Admin</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
             <SidebarMenuItem>
               <SidebarMenuButton
                 render={<Link href="/app/settings" />}
