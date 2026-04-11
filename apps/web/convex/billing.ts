@@ -24,6 +24,7 @@ import {
   ensureAutumnCustomer,
   isAutumnConfigured,
   loadWorkspaceBillingSnapshot,
+  loadWorkspaceQuotaBalances,
 } from "../lib/billing/autumn"
 import {
   requireWorkspaceAccess,
@@ -337,16 +338,13 @@ async function computeWorkspaceQuotaStatus(settings: {
   }
 
   try {
-    const snapshot = await loadWorkspaceBillingSnapshot({
+    const balances = await loadWorkspaceQuotaBalances({
       workspaceId: settings.workspaceId,
       workspaceName: settings.workspaceName,
     })
 
-    const aiBalance = getBalance(snapshot.customer.balances, AUTUMN_AI_USAGE_FEATURE_ID)
-    const eventBalance = getBalance(
-      snapshot.customer.balances,
-      AUTUMN_EVENTS_FEATURE_ID
-    )
+    const aiBalance = getBalance(balances, AUTUMN_AI_USAGE_FEATURE_ID)
+    const eventBalance = getBalance(balances, AUTUMN_EVENTS_FEATURE_ID)
 
     return {
       overagesDisabled: true,

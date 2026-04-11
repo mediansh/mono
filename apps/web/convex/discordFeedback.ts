@@ -347,6 +347,15 @@ function formatExistingTasks(tasks: TaskSnapshot[]) {
     .join("\n")
 }
 
+function getCompletedProcessingReason(result: WorkpoolResult): string | null {
+  if (result.kind !== "success" || typeof result.returnValue !== "object") {
+    return null
+  }
+
+  const reason = (result.returnValue as { reason?: unknown } | null)?.reason
+  return typeof reason === "string" ? reason : null
+}
+
 async function loadPendingFeedbackWindow(
   ctx: QueryCtx,
   integrationId: Id<"discordWorkspaceIntegrations">,
@@ -585,11 +594,14 @@ export const handleFeedbackProcessingComplete = internalMutation({
           messageCreatedAt: integration.lastProcessedMessageCreatedAt ?? null,
         })
       : false
+    const completionReason = getCompletedProcessingReason(args.result)
+    const pausedForEventsExhausted = completionReason === "events_exhausted"
 
     const shouldRerun =
-      args.result.kind === "failed" ||
-      integration.feedbackProcessingNeedsRerun === true ||
-      hasPendingMessages
+      !pausedForEventsExhausted &&
+      (args.result.kind === "failed" ||
+        integration.feedbackProcessingNeedsRerun === true ||
+        hasPendingMessages)
 
     if (shouldRerun) {
       const workId = await enqueueFeedbackProcessingWork(
@@ -626,7 +638,11 @@ export const handleFeedbackProcessingComplete = internalMutation({
       feedbackProcessingStartedAt: undefined,
       feedbackProcessingCompletedAt: Date.now(),
       feedbackProcessingLastError:
-        args.result.kind === "failed" ? args.result.error : undefined,
+        pausedForEventsExhausted
+          ? integration.feedbackProcessingLastError
+          : args.result.kind === "failed"
+            ? args.result.error
+            : undefined,
     })
   },
 })

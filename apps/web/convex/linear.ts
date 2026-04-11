@@ -2434,6 +2434,13 @@ export const linearWebhook = httpAction(async (ctx, request) => {
     return new Response("Ignored", { status: 200 })
   }
 
+  if (payload.action === "remove") {
+    await ctx.runMutation(internal.linear.archiveTaskForRemovedLinearIssue, {
+      linearIssueId: payload.data.id,
+    })
+    return new Response("Archived", { status: 200 })
+  }
+
   // Skip ingest when overages are disabled and the workspace's events are
   // exhausted. We still 200 so Linear doesn't keep retrying — sync resumes
   // automatically once the cycle resets or the user upgrades.
@@ -2455,13 +2462,6 @@ export const linearWebhook = httpAction(async (ctx, request) => {
       { workspaceId: integration.workspaceId, deliveryId },
       error
     )
-  }
-
-  if (payload.action === "remove") {
-    await ctx.runMutation(internal.linear.archiveTaskForRemovedLinearIssue, {
-      linearIssueId: payload.data.id,
-    })
-    return new Response("Archived", { status: 200 })
   }
 
   await ctx.runAction(internal.linear.syncLinearIssueFromWebhook, {
