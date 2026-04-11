@@ -555,12 +555,9 @@ export const markFeedbackProcessingPaused = internalMutation({
     }
 
     await ctx.db.patch(args.integrationId, {
-      feedbackProcessingState: "idle",
-      feedbackProcessingWorkId: undefined,
-      feedbackProcessingNeedsRerun: false,
-      feedbackProcessingQueuedAt: undefined,
-      feedbackProcessingStartedAt: undefined,
-      feedbackProcessingCompletedAt: Date.now(),
+      // Preserve the active state until the workpool onComplete callback
+      // finalizes this run. Flipping to idle here opens a race where newly
+      // ingested messages can schedule work that onComplete then clobbers.
       feedbackProcessingLastError: args.reason,
     })
 
@@ -594,13 +591,17 @@ export const handleFeedbackProcessingComplete = internalMutation({
           messageCreatedAt: integration.lastProcessedMessageCreatedAt ?? null,
         })
       : false
+    const latestIntegration = await ctx.db.get(args.context.integrationId)
+    if (!latestIntegration) {
+      return
+    }
     const completionReason = getCompletedProcessingReason(args.result)
     const pausedForEventsExhausted = completionReason === "events_exhausted"
 
     const shouldRerun =
       !pausedForEventsExhausted &&
       (args.result.kind === "failed" ||
-        integration.feedbackProcessingNeedsRerun === true ||
+        latestIntegration.feedbackProcessingNeedsRerun === true ||
         hasPendingMessages)
 
     if (shouldRerun) {
@@ -623,7 +624,7 @@ export const handleFeedbackProcessingComplete = internalMutation({
         reason:
           args.result.kind === "failed"
             ? "failed"
-            : integration.feedbackProcessingNeedsRerun
+            : latestIntegration.feedbackProcessingNeedsRerun
               ? "rerun_requested"
               : "pending_messages",
       })
@@ -639,7 +640,7 @@ export const handleFeedbackProcessingComplete = internalMutation({
       feedbackProcessingCompletedAt: Date.now(),
       feedbackProcessingLastError:
         pausedForEventsExhausted
-          ? integration.feedbackProcessingLastError
+          ? latestIntegration.feedbackProcessingLastError
           : args.result.kind === "failed"
             ? args.result.error
             : undefined,

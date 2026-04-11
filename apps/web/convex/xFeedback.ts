@@ -7,8 +7,9 @@ import { Workpool, vOnCompleteArgs } from "@convex-dev/workpool"
 import { makeFunctionReference } from "convex/server"
 import { v } from "convex/values"
 import { z } from "zod"
-import { components } from "./_generated/api"
+import { components, internal } from "./_generated/api"
 import type { Id } from "./_generated/dataModel"
+import type { WorkspaceQuotaStatus } from "./billing"
 import {
   internalAction,
   internalMutation,
@@ -579,6 +580,22 @@ export const processFeedbackWindow = internalAction({
           limit: FEEDBACK_WINDOW_LIMIT,
         }
       )
+
+      // Hard-stop scanning when overages are disabled and the workspace has
+      // run out of events. We bail before any LLM call so the workspace isn't
+      // billed for AI usage tied to ingest the user has paused.
+      const quotaStatus = (await ctx.runAction(
+        internal.billing.getWorkspaceQuotaStatusInternal,
+        { workspaceId: feedbackWindow.integration.workspaceId }
+      )) as WorkspaceQuotaStatus
+
+      if (quotaStatus.eventsExhausted) {
+        logInfo("Skipping X feedback scan — events exhausted", {
+          integrationId: args.integrationId,
+          workspaceId: feedbackWindow.integration.workspaceId,
+        })
+        return { skipped: true, reason: "events_exhausted" }
+      }
 
       const pendingPosts = feedbackWindow.posts.filter((post) =>
         isPostAfterCursor(post, {
