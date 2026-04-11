@@ -233,8 +233,8 @@ function LogsGraphic() {
   return (
     <div className="flex h-full items-center justify-center">
       <div className="relative flex flex-col">
-        {/* Timeline line */}
-        <div className="absolute top-1 bottom-1 left-[5px] w-px bg-foreground/[0.06]" />
+        {/* Timeline line — centered on the 10px dot column */}
+        <div className="pointer-events-none absolute top-1 bottom-1 left-[5px] w-px -translate-x-1/2 bg-foreground/[0.06]" />
 
         {entries.map((entry, i) => (
           <div
