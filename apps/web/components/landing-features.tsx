@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useTheme } from "next-themes"
 import { motion } from "motion/react"
-import { Cube } from "@phosphor-icons/react"
+import { Cube, CheckCircle, XCircle } from "@phosphor-icons/react"
 import { Logo } from "@/components/logo"
 
 const ease = [0.25, 0.1, 0.25, 1] as const
@@ -76,30 +76,42 @@ function InboxGraphic() {
 function SparkGraphic() {
   return (
     <div className="flex h-full items-center justify-center">
-      <div className="relative flex flex-col items-center gap-3">
-        {/* Spark lines above */}
+      <div className="relative flex flex-col items-center gap-2">
+        {/* Spark lines above — AI generation indicator */}
         <div className="flex items-end gap-3">
-          <div className="h-5 w-px bg-foreground/[0.1] -rotate-[30deg]" />
-          <div className="h-7 w-px bg-foreground/[0.12]" />
-          <div className="h-5 w-px bg-foreground/[0.1] rotate-[30deg]" />
+          <div className="h-4 w-px bg-foreground/[0.12] -rotate-[30deg]" />
+          <div className="h-6 w-px bg-foreground/[0.15]" />
+          <div className="h-4 w-px bg-foreground/[0.12] rotate-[30deg]" />
         </div>
 
-        {/* Primary generated card */}
-        <div className="flex h-14 w-40 flex-col justify-center gap-1 overflow-hidden rounded-xl border border-foreground/[0.15] bg-foreground/[0.04] px-3 shadow-[0_0_24px_rgba(255,255,255,0.02)]">
-          <span className="truncate text-[9px] font-semibold leading-none text-foreground/70">
-            Fix onboarding bug
-          </span>
-          <span className="truncate text-[7px] leading-none text-foreground/35">
-            Priority: High · Source: Discord
-          </span>
-          <span className="truncate text-[7px] leading-none text-foreground/30">
-            Status: Todo
-          </span>
+        {/* Notification card */}
+        <div className="w-56 overflow-hidden rounded-xl border border-foreground/[0.15] bg-foreground/[0.04] shadow-[0_0_24px_rgba(255,255,255,0.02)]">
+          {/* Body */}
+          <div className="flex items-start gap-2 px-3 pt-3 pb-2">
+            <p className="flex-1 text-[10px] font-semibold leading-snug text-foreground/85">
+              Fix onboarding bug blocking new signup flow
+            </p>
+            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-foreground/[0.1] bg-foreground/[0.05] text-foreground/70">
+              <DiscordBrandIcon size={10} />
+            </div>
+          </div>
+          {/* Meta row */}
+          <div className="flex items-center justify-between border-t border-foreground/[0.08] px-3 py-1.5 text-[8px] text-foreground/35">
+            <span>Mar 10</span>
+            <span>MED-42</span>
+          </div>
+          {/* Actions */}
+          <div className="grid grid-cols-2 border-t border-foreground/[0.08] text-[9px] font-medium">
+            <div className="flex items-center justify-center gap-1 py-1.5 text-emerald-400/85">
+              <CheckCircle weight="fill" size={10} />
+              Accept
+            </div>
+            <div className="flex items-center justify-center gap-1 border-l border-foreground/[0.08] py-1.5 text-rose-400/85">
+              <XCircle weight="fill" size={10} />
+              Deny
+            </div>
+          </div>
         </div>
-
-        {/* Stacked cards behind — implying generation */}
-        <div className="-mt-2 h-3 w-36 rounded-b-lg border-x border-b border-foreground/[0.08] bg-foreground/[0.02]" />
-        <div className="-mt-2 h-3 w-32 rounded-b-lg border-x border-b border-foreground/[0.04] bg-foreground/[0.01]" />
       </div>
     </div>
   )
