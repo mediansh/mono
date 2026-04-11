@@ -16,6 +16,7 @@ export default defineSchema({
         })
       )
     ),
+    disableOveragesWhenExhausted: v.optional(v.boolean()),
   }).index("by_owner", ["ownerId"]),
 
   workspaceMembers: defineTable({

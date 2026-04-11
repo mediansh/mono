@@ -202,6 +202,15 @@ export async function safeTrackIntegrationEvent(
   }
 }
 
+export async function loadWorkspaceQuotaBalances(args: {
+  workspaceId: string
+  workspaceName?: string | null
+  email?: string | null
+}) {
+  const customer = await ensureAutumnCustomer(args)
+  return customer.balances
+}
+
 export async function loadWorkspaceBillingSnapshot(args: {
   workspaceId: string
   workspaceName?: string | null

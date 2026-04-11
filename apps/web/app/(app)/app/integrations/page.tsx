@@ -1,7 +1,12 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { motion } from "motion/react"
+import { useAction } from "convex/react"
+import { Warning } from "@phosphor-icons/react"
+import { api } from "@/convex/_generated/api"
+import { useWorkspace } from "@/components/workspace-provider"
 
 const integrations = [
   {
@@ -42,6 +47,31 @@ const fadeUp = {
 }
 
 export default function IntegrationsPage() {
+  const { currentWorkspace } = useWorkspace()
+  const getQuotaStatus = useAction(api.billing.getWorkspaceQuotaStatus)
+  const [eventsPaused, setEventsPaused] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    if (!currentWorkspace) {
+      setEventsPaused(false)
+      return
+    }
+    void (async () => {
+      try {
+        const quota = await getQuotaStatus({ workspaceId: currentWorkspace._id })
+        if (!cancelled) {
+          setEventsPaused(quota.eventsExhausted && quota.overagesDisabled)
+        }
+      } catch {
+        if (!cancelled) setEventsPaused(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [currentWorkspace?._id, getQuotaStatus])
+
   return (
     <motion.div
       initial="hidden"
@@ -56,27 +86,62 @@ export default function IntegrationsPage() {
         </p>
       </motion.div>
 
+      {eventsPaused && (
+        <motion.div
+          variants={fadeUp}
+          className="mt-5 flex items-start gap-2.5 rounded-[4px] bg-amber-500/5 p-3 ring-1 ring-amber-500/20"
+        >
+          <Warning size={14} weight="fill" className="mt-0.5 shrink-0 text-amber-500" />
+          <div className="min-w-0 flex-1">
+            <p className="text-[12px] font-medium text-foreground">
+              Ingest paused — you&apos;re out of events
+            </p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              Discord scanning, Linear, GitHub, and X webhooks are not syncing new
+              events because overages are disabled for this workspace.{" "}
+              <Link
+                href="/app/billing"
+                className="underline underline-offset-2 hover:text-foreground"
+              >
+                Manage billing
+              </Link>{" "}
+              to upgrade or re-enable overages.
+            </p>
+          </div>
+        </motion.div>
+      )}
+
       <motion.div
         variants={fadeUp}
         className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2"
       >
-        {integrations.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className="group flex items-start gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-accent"
-          >
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-foreground ring-1 ring-border">
-              <item.icon size={18} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[13px] font-medium">{item.label}</p>
-              <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
-                {item.description}
-              </p>
-            </div>
-          </Link>
-        ))}
+        {integrations.map((item) => {
+          const showPaused = eventsPaused && item.label !== "CLI"
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="group flex items-start gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-accent"
+            >
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-foreground ring-1 ring-border">
+                <item.icon size={18} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[13px] font-medium">{item.label}</p>
+                  {showPaused && (
+                    <span className="shrink-0 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 ring-1 ring-amber-500/20">
+                      Paused
+                    </span>
+                  )}
+                </div>
+                <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
+                  {item.description}
+                </p>
+              </div>
+            </Link>
+          )
+        })}
       </motion.div>
     </motion.div>
   )

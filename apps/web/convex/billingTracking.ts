@@ -1,10 +1,13 @@
 import { v } from "convex/values"
 import { internalAction } from "./_generated/server"
+import { internal } from "./_generated/api"
+import type { Id } from "./_generated/dataModel"
 import {
   safeTrackIntegrationEvent,
   safeTrackAiUsage,
 } from "../lib/billing/autumn"
 import type { TrackedAiModel } from "../lib/billing/config"
+import type { WorkspaceQuotaStatus } from "./billing"
 
 export const trackIntegrationEvent = internalAction({
   args: {
@@ -18,7 +21,30 @@ export const trackIntegrationEvent = internalAction({
     ),
     properties: v.optional(v.any()),
   },
-  handler: async (_ctx, args) => {
+  handler: async (ctx, args) => {
+    // Skip tracking when overages are disabled and the workspace has run out
+    // of events. The corresponding ingest path is also gated, so this is the
+    // belt-and-braces guard preventing the meter from ticking past the cap.
+    try {
+      const quota = (await ctx.runAction(
+        internal.billing.getWorkspaceQuotaStatusInternal,
+        { workspaceId: args.workspaceId as Id<"workspaces"> }
+      )) as WorkspaceQuotaStatus
+
+      if (quota.eventsExhausted) {
+        console.info(
+          `[billing] Skipping integration event — events exhausted: source=${args.source} workspace=${args.workspaceId}`
+        )
+        return
+      }
+    } catch (error) {
+      console.error(
+        "[billing] Quota check failed in trackIntegrationEvent — allowing track",
+        { workspaceId: args.workspaceId, source: args.source },
+        error
+      )
+    }
+
     console.info(
       `[billing] Tracking integration event: source=${args.source} workspace=${args.workspaceId}`
     )

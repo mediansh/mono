@@ -7,8 +7,9 @@ import { Workpool, vOnCompleteArgs } from "@convex-dev/workpool"
 import { makeFunctionReference } from "convex/server"
 import { v } from "convex/values"
 import { z } from "zod"
-import { components } from "./_generated/api"
+import { components, internal } from "./_generated/api"
 import type { Id } from "./_generated/dataModel"
+import type { WorkspaceQuotaStatus } from "./billing"
 import {
   internalAction,
   internalMutation,
@@ -204,6 +205,15 @@ const markFeedbackProcessingRunningMutation = makeFunctionReference<
   boolean
 >("discordFeedback:markFeedbackProcessingRunning")
 
+const markFeedbackProcessingPausedMutation = makeFunctionReference<
+  "mutation",
+  {
+    integrationId: Id<"discordWorkspaceIntegrations">
+    reason: string
+  },
+  null
+>("discordFeedback:markFeedbackProcessingPaused")
+
 const getTaskSnapshotForDiscordInternalQuery = makeFunctionReference<
   "query",
   {
@@ -335,6 +345,15 @@ function formatExistingTasks(tasks: TaskSnapshot[]) {
         .join(" | ")
     )
     .join("\n")
+}
+
+function getCompletedProcessingReason(result: WorkpoolResult): string | null {
+  if (result.kind !== "success" || typeof result.returnValue !== "object") {
+    return null
+  }
+
+  const reason = (result.returnValue as { reason?: unknown } | null)?.reason
+  return typeof reason === "string" ? reason : null
 }
 
 async function loadPendingFeedbackWindow(
@@ -524,6 +543,28 @@ export const markFeedbackProcessingRunning = internalMutation({
   },
 })
 
+export const markFeedbackProcessingPaused = internalMutation({
+  args: {
+    integrationId: v.id("discordWorkspaceIntegrations"),
+    reason: v.string(),
+  },
+  handler: async (ctx, args): Promise<null> => {
+    const integration = await ctx.db.get(args.integrationId)
+    if (!integration) {
+      return null
+    }
+
+    await ctx.db.patch(args.integrationId, {
+      // Preserve the active state until the workpool onComplete callback
+      // finalizes this run. Flipping to idle here opens a race where newly
+      // ingested messages can schedule work that onComplete then clobbers.
+      feedbackProcessingLastError: args.reason,
+    })
+
+    return null
+  },
+})
+
 export const handleFeedbackProcessingComplete = internalMutation({
   args: vOnCompleteArgs(
     v.object({
@@ -550,11 +591,18 @@ export const handleFeedbackProcessingComplete = internalMutation({
           messageCreatedAt: integration.lastProcessedMessageCreatedAt ?? null,
         })
       : false
+    const latestIntegration = await ctx.db.get(args.context.integrationId)
+    if (!latestIntegration) {
+      return
+    }
+    const completionReason = getCompletedProcessingReason(args.result)
+    const pausedForEventsExhausted = completionReason === "events_exhausted"
 
     const shouldRerun =
-      args.result.kind === "failed" ||
-      integration.feedbackProcessingNeedsRerun === true ||
-      hasPendingMessages
+      !pausedForEventsExhausted &&
+      (args.result.kind === "failed" ||
+        latestIntegration.feedbackProcessingNeedsRerun === true ||
+        hasPendingMessages)
 
     if (shouldRerun) {
       const workId = await enqueueFeedbackProcessingWork(
@@ -576,7 +624,7 @@ export const handleFeedbackProcessingComplete = internalMutation({
         reason:
           args.result.kind === "failed"
             ? "failed"
-            : integration.feedbackProcessingNeedsRerun
+            : latestIntegration.feedbackProcessingNeedsRerun
               ? "rerun_requested"
               : "pending_messages",
       })
@@ -591,7 +639,11 @@ export const handleFeedbackProcessingComplete = internalMutation({
       feedbackProcessingStartedAt: undefined,
       feedbackProcessingCompletedAt: Date.now(),
       feedbackProcessingLastError:
-        args.result.kind === "failed" ? args.result.error : undefined,
+        pausedForEventsExhausted
+          ? latestIntegration.feedbackProcessingLastError
+          : args.result.kind === "failed"
+            ? args.result.error
+            : undefined,
     })
   },
 })
@@ -620,6 +672,26 @@ export const processFeedbackWindow = internalAction({
           limit: FEEDBACK_WINDOW_LIMIT,
         }
       )
+
+      // Hard-stop scanning when overages are disabled and the workspace has
+      // run out of events. We bail before any LLM call so the workspace isn't
+      // billed for AI usage tied to ingest the user has paused.
+      const quotaStatus = (await ctx.runAction(
+        internal.billing.getWorkspaceQuotaStatusInternal,
+        { workspaceId: feedbackWindow.integration.workspaceId }
+      )) as WorkspaceQuotaStatus
+
+      if (quotaStatus.eventsExhausted) {
+        logInfo("Skipping Discord feedback scan — events exhausted", {
+          integrationId: args.integrationId,
+          workspaceId: feedbackWindow.integration.workspaceId,
+        })
+        await ctx.runMutation(markFeedbackProcessingPausedMutation, {
+          integrationId: args.integrationId,
+          reason: "Paused — events exhausted (overages disabled)",
+        })
+        return { skipped: true, reason: "events_exhausted" }
+      }
 
       const pendingMessages = feedbackWindow.messages.filter((message) =>
         isMessageAfterCursor(message, {

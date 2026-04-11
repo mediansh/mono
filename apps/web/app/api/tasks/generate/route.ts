@@ -1,7 +1,10 @@
 import { auth } from "@clerk/nextjs/server"
 import { generateText } from "ai"
+import { fetchAction } from "convex/nextjs"
 import { NextResponse } from "next/server"
 import { z } from "zod"
+import { api } from "@/convex/_generated/api"
+import type { Id } from "@/convex/_generated/dataModel"
 import { withAxiom, logger } from "@/lib/logger"
 import { getPostHogServerClient } from "@/lib/posthog-server"
 import { safeTrackAiUsage } from "@/lib/billing/autumn"
@@ -116,7 +119,7 @@ function finalizeGeneratedTasks(
 }
 
 export const POST = withAxiom(async (request: Request) => {
-  const { userId } = await auth()
+  const { userId, getToken } = await auth()
 
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -142,6 +145,41 @@ export const POST = withAxiom(async (request: Request) => {
     }
 
     const { prompt, workspaceId, workspaceName, availableLabels } = parsed.data
+
+    // Hard-stop AI generation when the workspace has disabled overages and the
+    // AI budget is exhausted. We fail open on any quota lookup error so a flaky
+    // billing read never blocks generation.
+    try {
+      const convexToken = await getToken({ template: "convex" })
+      if (convexToken) {
+        const quota = await fetchAction(
+          api.billing.getWorkspaceQuotaStatus,
+          { workspaceId: workspaceId as Id<"workspaces"> },
+          { token: convexToken }
+        )
+
+        if (quota.aiExhausted) {
+          logger.info("Blocking AI task generation — budget exhausted", {
+            userId,
+            workspaceId,
+          })
+          return NextResponse.json(
+            {
+              error:
+                "AI budget exhausted. Overages are disabled for this workspace — upgrade your plan to keep generating tasks.",
+              code: "ai_budget_exhausted",
+            },
+            { status: 402 }
+          )
+        }
+      }
+    } catch (quotaError) {
+      logger.warn("Quota check failed — allowing AI generation", {
+        userId,
+        workspaceId,
+        error: quotaError instanceof Error ? quotaError.message : "Unknown error",
+      })
+    }
 
     logger.info("Generating tasks with AI", {
       userId,

@@ -2441,6 +2441,29 @@ export const linearWebhook = httpAction(async (ctx, request) => {
     return new Response("Archived", { status: 200 })
   }
 
+  // Skip ingest when overages are disabled and the workspace's events are
+  // exhausted. We still 200 so Linear doesn't keep retrying — sync resumes
+  // automatically once the cycle resets or the user upgrades.
+  try {
+    const quota = await ctx.runAction(
+      internal.billing.getWorkspaceQuotaStatusInternal,
+      { workspaceId: integration.workspaceId }
+    )
+    if (quota.eventsExhausted) {
+      console.info(
+        "[linear] Skipping webhook — events exhausted (overages disabled)",
+        { workspaceId: integration.workspaceId, deliveryId }
+      )
+      return new Response("Paused — events exhausted", { status: 200 })
+    }
+  } catch (error) {
+    console.error(
+      "[linear] Quota check failed in webhook — allowing sync",
+      { workspaceId: integration.workspaceId, deliveryId },
+      error
+    )
+  }
+
   await ctx.runAction(internal.linear.syncLinearIssueFromWebhook, {
     integrationId: integration._id,
     issueId: payload.data.id,

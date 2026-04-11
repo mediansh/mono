@@ -2487,6 +2487,39 @@ export const githubWebhook = httpAction(async (ctx, request) => {
     return new Response("Duplicate delivery", { status: 200 })
   }
 
+  // Skip ingest events (issues / PRs / pushes) when overages are disabled and
+  // events are exhausted. Installation/management events fall through so the
+  // app keeps reflecting connection state.
+  const isIngestEvent =
+    eventType === "issues" ||
+    eventType === "pull_request" ||
+    eventType === "push"
+  if (isIngestEvent) {
+    try {
+      const quota = await ctx.runAction(
+        internal.billing.getWorkspaceQuotaStatusInternal,
+        { workspaceId: integration.workspaceId }
+      )
+      if (quota.eventsExhausted) {
+        console.info(
+          "[github] Skipping webhook — events exhausted (overages disabled)",
+          {
+            workspaceId: integration.workspaceId,
+            deliveryId,
+            eventType,
+          }
+        )
+        return new Response("Paused — events exhausted", { status: 200 })
+      }
+    } catch (error) {
+      console.error(
+        "[github] Quota check failed in webhook — allowing sync",
+        { workspaceId: integration.workspaceId, deliveryId, eventType },
+        error
+      )
+    }
+  }
+
   try {
     if (eventType === "issues") {
       const issuePayload = payload as GitHubIssueWebhookPayload

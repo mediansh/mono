@@ -7,8 +7,9 @@ import { Workpool, vOnCompleteArgs } from "@convex-dev/workpool"
 import { makeFunctionReference } from "convex/server"
 import { v } from "convex/values"
 import { z } from "zod"
-import { components } from "./_generated/api"
+import { components, internal } from "./_generated/api"
 import type { Id } from "./_generated/dataModel"
+import type { WorkspaceQuotaStatus } from "./billing"
 import {
   internalAction,
   internalMutation,
@@ -168,6 +169,15 @@ const handleFeedbackProcessingCompleteMutation = makeFunctionReference<
   null
 >("xFeedback:handleFeedbackProcessingComplete")
 
+function getCompletedProcessingReason(result: WorkpoolResult): string | null {
+  if (result.kind !== "success" || typeof result.returnValue !== "object") {
+    return null
+  }
+
+  const reason = (result.returnValue as { reason?: unknown } | null)?.reason
+  return typeof reason === "string" ? reason : null
+}
+
 const getPendingFeedbackWindowInternalQuery = makeFunctionReference<
   "query",
   {
@@ -192,6 +202,15 @@ const markFeedbackProcessingRunningMutation = makeFunctionReference<
   { integrationId: Id<"xWorkspaceIntegrations"> },
   boolean
 >("xFeedback:markFeedbackProcessingRunning")
+
+const markFeedbackProcessingPausedMutation = makeFunctionReference<
+  "mutation",
+  {
+    integrationId: Id<"xWorkspaceIntegrations">
+    reason: string
+  },
+  null
+>("xFeedback:markFeedbackProcessingPaused")
 
 const getTaskSnapshotForFeedbackInternalQuery = makeFunctionReference<
   "query",
@@ -483,6 +502,25 @@ export const markFeedbackProcessingRunning = internalMutation({
   },
 })
 
+export const markFeedbackProcessingPaused = internalMutation({
+  args: {
+    integrationId: v.id("xWorkspaceIntegrations"),
+    reason: v.string(),
+  },
+  handler: async (ctx, args): Promise<null> => {
+    const integration = await ctx.db.get(args.integrationId)
+    if (!integration) {
+      return null
+    }
+
+    await ctx.db.patch(args.integrationId, {
+      feedbackProcessingLastError: args.reason,
+    })
+
+    return null
+  },
+})
+
 export const handleFeedbackProcessingComplete = internalMutation({
   args: vOnCompleteArgs(
     v.object({
@@ -509,11 +547,14 @@ export const handleFeedbackProcessingComplete = internalMutation({
           postCreatedAt: integration.lastProcessedPostCreatedAt ?? null,
         })
       : false
+    const completionReason = getCompletedProcessingReason(args.result)
+    const pausedForEventsExhausted = completionReason === "events_exhausted"
 
     const shouldRerun =
-      args.result.kind === "failed" ||
-      integration.feedbackProcessingNeedsRerun === true ||
-      hasPendingPosts
+      !pausedForEventsExhausted &&
+      (args.result.kind === "failed" ||
+        integration.feedbackProcessingNeedsRerun === true ||
+        hasPendingPosts)
 
     if (shouldRerun) {
       const workId = await enqueueFeedbackProcessingWork(
@@ -550,7 +591,11 @@ export const handleFeedbackProcessingComplete = internalMutation({
       feedbackProcessingStartedAt: undefined,
       feedbackProcessingCompletedAt: Date.now(),
       feedbackProcessingLastError:
-        args.result.kind === "failed" ? args.result.error : undefined,
+        pausedForEventsExhausted
+          ? integration.feedbackProcessingLastError
+          : args.result.kind === "failed"
+            ? args.result.error
+            : undefined,
     })
   },
 })
@@ -579,6 +624,26 @@ export const processFeedbackWindow = internalAction({
           limit: FEEDBACK_WINDOW_LIMIT,
         }
       )
+
+      // Hard-stop scanning when overages are disabled and the workspace has
+      // run out of events. We bail before any LLM call so the workspace isn't
+      // billed for AI usage tied to ingest the user has paused.
+      const quotaStatus = (await ctx.runAction(
+        internal.billing.getWorkspaceQuotaStatusInternal,
+        { workspaceId: feedbackWindow.integration.workspaceId }
+      )) as WorkspaceQuotaStatus
+
+      if (quotaStatus.eventsExhausted) {
+        logInfo("Skipping X feedback scan — events exhausted", {
+          integrationId: args.integrationId,
+          workspaceId: feedbackWindow.integration.workspaceId,
+        })
+        await ctx.runMutation(markFeedbackProcessingPausedMutation, {
+          integrationId: args.integrationId,
+          reason: "Paused — events exhausted (overages disabled)",
+        })
+        return { skipped: true, reason: "events_exhausted" }
+      }
 
       const pendingPosts = feedbackWindow.posts.filter((post) =>
         isPostAfterCursor(post, {
