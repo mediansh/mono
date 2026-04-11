@@ -203,6 +203,15 @@ const markFeedbackProcessingRunningMutation = makeFunctionReference<
   boolean
 >("xFeedback:markFeedbackProcessingRunning")
 
+const markFeedbackProcessingPausedMutation = makeFunctionReference<
+  "mutation",
+  {
+    integrationId: Id<"xWorkspaceIntegrations">
+    reason: string
+  },
+  null
+>("xFeedback:markFeedbackProcessingPaused")
+
 const getTaskSnapshotForFeedbackInternalQuery = makeFunctionReference<
   "query",
   {
@@ -493,6 +502,25 @@ export const markFeedbackProcessingRunning = internalMutation({
   },
 })
 
+export const markFeedbackProcessingPaused = internalMutation({
+  args: {
+    integrationId: v.id("xWorkspaceIntegrations"),
+    reason: v.string(),
+  },
+  handler: async (ctx, args): Promise<null> => {
+    const integration = await ctx.db.get(args.integrationId)
+    if (!integration) {
+      return null
+    }
+
+    await ctx.db.patch(args.integrationId, {
+      feedbackProcessingLastError: args.reason,
+    })
+
+    return null
+  },
+})
+
 export const handleFeedbackProcessingComplete = internalMutation({
   args: vOnCompleteArgs(
     v.object({
@@ -609,6 +637,10 @@ export const processFeedbackWindow = internalAction({
         logInfo("Skipping X feedback scan — events exhausted", {
           integrationId: args.integrationId,
           workspaceId: feedbackWindow.integration.workspaceId,
+        })
+        await ctx.runMutation(markFeedbackProcessingPausedMutation, {
+          integrationId: args.integrationId,
+          reason: "Paused — events exhausted (overages disabled)",
         })
         return { skipped: true, reason: "events_exhausted" }
       }
