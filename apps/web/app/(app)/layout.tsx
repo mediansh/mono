@@ -9,6 +9,7 @@ import { WorkspaceProvider } from "@/components/workspace-provider"
 import { WorkspaceGuard } from "@/components/workspace-guard"
 import { WorkspaceQueryPreloader } from "@/components/workspace-query-preloader"
 import { PlanGuard } from "@/components/plan-guard"
+import { QuotaBanner } from "@/components/quota-banner"
 import { DevErrorTrigger } from "@/components/dev-error-trigger"
 import { Logo } from "@/components/logo"
 import Link from "next/link"
@@ -45,6 +46,7 @@ export default function AppLayout({
                 </Link>
               </header>
               <PlanGuard>
+                <QuotaBanner />
                 <PageTransition>{children}</PageTransition>
               </PlanGuard>
             </SidebarInset>
