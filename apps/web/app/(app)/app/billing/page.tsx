@@ -3,6 +3,13 @@
 import { useEffect, useState, type ReactNode } from "react"
 import { useAction, useMutation } from "convex/react"
 import { Switch } from "@workspace/ui/components/switch"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@workspace/ui/components/dialog"
 import { motion } from "motion/react"
 import {
   CreditCard,
@@ -212,6 +219,8 @@ export default function BillingPage() {
   const [managingBilling, setManagingBilling] = useState(false)
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null)
   const [disableOveragesPending, setDisableOveragesPending] = useState(false)
+  const [confirmDisableOveragesOpen, setConfirmDisableOveragesOpen] =
+    useState(false)
 
   useEffect(() => {
     document.title = "Billing — Median"
@@ -293,8 +302,23 @@ export default function BillingPage() {
     }
   }
 
-  async function handleToggleDisableOverages(nextValue: boolean) {
-    if (!currentWorkspace || !dashboard?.canManageBilling || disableOveragesPending) return
+  function handleSwitchDisableOverages(nextValue: boolean) {
+    if (!currentWorkspace || !dashboard?.canManageBilling || disableOveragesPending)
+      return
+
+    if (nextValue) {
+      // Hard-cap is destructive (can pause syncs / block AI generation), so
+      // confirm before enabling. Turning it back off is not destructive and
+      // applies immediately.
+      setConfirmDisableOveragesOpen(true)
+      return
+    }
+
+    void applyDisableOveragesChange(false)
+  }
+
+  async function applyDisableOveragesChange(nextValue: boolean) {
+    if (!currentWorkspace || !dashboard) return
 
     const previousValue = dashboard.disableOveragesWhenExhausted
     setDashboard((current) =>
@@ -641,7 +665,7 @@ export default function BillingPage() {
           </div>
           <Switch
             checked={dashboard.disableOveragesWhenExhausted}
-            onCheckedChange={(checked) => void handleToggleDisableOverages(checked)}
+            onCheckedChange={handleSwitchDisableOverages}
             disabled={!dashboard.canManageBilling || disableOveragesPending}
             aria-label="Disable overages when plan limits are reached"
           />
@@ -689,6 +713,47 @@ export default function BillingPage() {
         </motion.div>
 
       </div>
+
+      <Dialog
+        open={confirmDisableOveragesOpen}
+        onOpenChange={(open) => {
+          if (disableOveragesPending) return
+          setConfirmDisableOveragesOpen(open)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Disable overages?</DialogTitle>
+            <DialogDescription>
+              When you reach your plan limits, Median will stop generating AI tasks
+              and stop ingesting new events from Discord, Linear, GitHub, and X
+              until the next billing cycle or an upgrade. Your task board will
+              keep working — but Linear and GitHub syncs will pause.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setConfirmDisableOveragesOpen(false)}
+              disabled={disableOveragesPending}
+              className="flex h-8 flex-1 items-center justify-center rounded-[4px] ring-1 ring-border text-[13px] font-medium transition-colors hover:bg-muted disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={disableOveragesPending}
+              onClick={async () => {
+                await applyDisableOveragesChange(true)
+                setConfirmDisableOveragesOpen(false)
+              }}
+              className="flex h-8 flex-1 items-center justify-center rounded-[4px] bg-primary text-[13px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+            >
+              {disableOveragesPending ? "Disabling..." : "Disable overages"}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Stagger>
   )
 }
