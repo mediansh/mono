@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  Fragment,
   memo,
   useCallback,
   useContext,
@@ -40,6 +41,7 @@ import {
   Paperclip,
   CaretRight,
   X,
+  Plus,
 } from "@phosphor-icons/react"
 import { NewTaskModal } from "@/components/new-task-modal"
 import {
@@ -165,7 +167,15 @@ function useBoardMounted() {
 
 const STATUS_LABELS = TASK_STATUS_LABELS
 
-const SORTABLE_TRANSITION = null
+const SORTABLE_TRANSITION = {
+  duration: 200,
+  easing: "cubic-bezier(0.25, 1, 0.5, 1)",
+}
+
+const DROP_ANIMATION = {
+  duration: 200,
+  easing: "cubic-bezier(0.25, 1, 0.5, 1)",
+}
 
 function getStatusIcon(status: Status, size = 14) {
   switch (status) {
@@ -246,7 +256,7 @@ function sortTaskDocs(tasks: TaskDoc[]) {
 
 function normalizeTaskOrders(tasks: TaskDoc[]) {
   const orderByStatus = new Map<Status, number>()
-  return sortTaskDocs(tasks).map((task) => {
+  return tasks.map((task) => {
     const order = orderByStatus.get(task.status) ?? 0
     orderByStatus.set(task.status, order + 1)
     return task.order === order ? task : { ...task, order }
@@ -806,88 +816,66 @@ const RequestRow = memo(function RequestRow({
   return (
     <div
       onClick={() => onSelect(task)}
-      className="cursor-pointer rounded-[4px] bg-background p-3 ring-1 ring-border transition-colors hover:border-border/80 hover:bg-accent/20 dark:bg-card"
+      className="cursor-pointer rounded-[4px] bg-background ring-1 ring-border transition-colors hover:border-border/80 hover:bg-accent/20 dark:bg-card"
     >
-      {/* Top row: source + date */}
-      <div className="mb-2 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {sources.length > 0 ? (
-            sources.map((source) => {
-              const config = SOURCE_CONFIG[source.platform]
-              return source.url ? (
-                <a
-                  key={`${source.platform}-${source.url}-${source.author}`}
-                  href={source.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  className="flex items-center gap-1.5 rounded-[4px] py-0.5 pr-2.5 pl-1.5 text-[10px] font-medium transition-opacity hover:opacity-80"
-                  style={{ backgroundColor: config.bg, color: config.color }}
-                  title={`View on ${config.label}`}
-                >
-                  <SourceIcon platform={source.platform} size={12} />
-                  {source.author}
-                  <LinkIcon size={9} className="opacity-60" />
-                </a>
-              ) : (
-                <span
-                  key={`${source.platform}-${source.url}-${source.author}`}
-                  className="flex items-center gap-1.5 rounded-[4px] py-0.5 pr-2.5 pl-1.5 text-[10px] font-medium"
-                  style={{ backgroundColor: config.bg, color: config.color }}
-                >
-                  <SourceIcon platform={source.platform} size={12} />
-                  {source.author}
-                </span>
-              )
-            })
-          ) : (
-            <span className="text-[11px] text-muted-foreground/60">
-              Request
-            </span>
-          )}
-          {(task.labels ?? []).map((label) => (
-            <span
-              key={label}
-              className="rounded-[4px] px-2 py-0.5 text-[10px] font-medium capitalize"
-              style={{
-                backgroundColor: (labelColors[label] ?? "#6b7280") + "18",
-                color: labelColors[label] ?? "#6b7280",
-              }}
-            >
-              {label}
-            </span>
-          ))}
+      {/* Card body */}
+      <div className="p-2.5 pb-0">
+        {/* Title */}
+        <p className="mb-2 text-[13px] leading-snug font-medium text-foreground/90">
+          {task.title}
+        </p>
+
+        {/* Middle: priority + labels (left) | integration icons (right) */}
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {(task.labels ?? []).map((label) => (
+              <span
+                key={label}
+                className="rounded-[4px] px-1.5 py-0.5 text-[9px] font-medium capitalize"
+                style={{
+                  backgroundColor: (labelColors[label] ?? "#6b7280") + "18",
+                  color: labelColors[label] ?? "#6b7280",
+                }}
+              >
+                {label}
+              </span>
+            ))}
+          </div>
+          <SourceIcons task={task} />
         </div>
-        <span className="text-[11px] text-muted-foreground/50">
+      </div>
+
+      {/* Footer: date + task code */}
+      <div className="flex items-center justify-between border-t border-border px-2.5 py-1.5">
+        <span className="text-[10px] text-muted-foreground/50">
           {task.createdAt}
+        </span>
+        <span className="font-mono text-[10px] text-muted-foreground/50 tabular-nums">
+          {task.taskCode}
         </span>
       </div>
 
-      {/* Title */}
-      <p className="mb-3 text-[13px] leading-snug font-medium text-foreground/90">
-        {task.title}
-      </p>
-
-      {/* Actions — always visible */}
-      <div className="flex items-center gap-2">
+      {/* Actions */}
+      <div className="flex items-stretch border-t border-border">
         <button
           disabled={!canManageTasks}
           onClick={(e) => {
             e.stopPropagation()
             onAccept(task)
           }}
-          className="flex items-center gap-1.5 rounded-[4px] border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
+          className="flex flex-1 items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/10 disabled:opacity-50 dark:text-emerald-400"
         >
           <CheckCircle size={12} weight="fill" />
           Accept
         </button>
+        <div className="w-px bg-border" />
         <button
           disabled={!canManageTasks}
           onClick={(e) => {
             e.stopPropagation()
             onDeny(task)
           }}
-          className="flex items-center gap-1.5 rounded-[4px] border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-[11px] font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
+          className="flex flex-1 items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium text-red-600 transition-colors hover:bg-red-500/10 disabled:opacity-50 dark:text-red-400"
         >
           <XCircle size={12} />
           Deny
@@ -1416,9 +1404,16 @@ const SortableListRow = memo(function SortableListRow({
 
   const [hasAnimated, setHasAnimated] = useState(boardMounted)
   const rowDelay = groupDelay + Math.min(rowIndex, 8) * 0.02
+  const hidden = isDragging || isDraggedAway
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
-    opacity: isDragging || isDraggedAway ? 0.3 : undefined,
+    opacity: hidden ? 0 : undefined,
+    height: hidden ? 0 : undefined,
+    padding: hidden ? 0 : undefined,
+    margin: hidden ? 0 : undefined,
+    border: hidden ? "none" : undefined,
+    overflow: hidden ? "hidden" : undefined,
+    pointerEvents: hidden ? "none" : undefined,
     willChange: transform ? "transform" : undefined,
     ...(!hasAnimated
       ? { animation: `kanban-row-in 0.25s ease-out ${rowDelay}s both` }
@@ -1460,7 +1455,7 @@ const SortableListRow = memo(function SortableListRow({
         onClick={handleClick}
         onContextMenu={handleContextMenu}
         onAnimationEnd={() => setHasAnimated(true)}
-        className={`group flex cursor-pointer touch-none items-center gap-3 border-b border-l-2 border-border px-3 py-2 transition-all duration-150 select-none hover:bg-accent/40 ${PRIORITY_ACCENT[task.priority]} ${isSelected ? "bg-primary/[0.06] hover:bg-primary/[0.10]" : "bg-background"}`}
+        className={`group flex cursor-pointer touch-none items-center gap-3 border-b border-l-2 border-border px-3 py-2 transition-[background-color,box-shadow,opacity] duration-150 select-none hover:bg-accent/40 ${PRIORITY_ACCENT[task.priority]} ${isSelected ? "bg-primary/[0.06] hover:bg-primary/[0.10]" : "bg-background"}`}
       >
         {/* Checkbox */}
         <div
@@ -1508,37 +1503,44 @@ function DragOverlayCard({
           )}
         </>
       )}
-      <div className="relative w-[240px] rounded-[4px] bg-background p-2.5 shadow-lg ring-2 ring-primary/40 dark:bg-card">
-        <div className="mb-1.5 flex items-center justify-between">
-          <span className="font-mono text-[10px] text-muted-foreground/50 tabular-nums">
-            {task.taskCode}
-          </span>
+      <div className="relative w-[240px] rounded-[4px] bg-background shadow-lg ring-2 ring-primary/40 dark:bg-card">
+        <div className="p-2.5 pb-0">
           {dragCount > 1 && (
-            <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+            <span className="float-right ml-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
               {dragCount}
             </span>
           )}
+          <p className="mb-2 line-clamp-2 text-[13px] leading-snug font-medium text-foreground/90">
+            {task.title}
+          </p>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <div className="shrink-0">
+                {getPriorityIcon(task.priority, 12)}
+              </div>
+              {activeAgent && <AgentBadge agentName={activeAgent} />}
+              {(task.labels ?? []).map((label) => (
+                <span
+                  key={label}
+                  className="rounded-[4px] px-1.5 py-0.5 text-[9px] font-medium capitalize"
+                  style={{
+                    backgroundColor: (labelColors[label] ?? "#888") + "18",
+                    color: labelColors[label] ?? "#888",
+                  }}
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
+            <SourceIcons task={task} />
+          </div>
         </div>
-        <p className="mb-2 line-clamp-2 text-[13px] leading-snug font-medium text-foreground/90">
-          {task.title}
-        </p>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <div className="shrink-0">{getPriorityIcon(task.priority, 12)}</div>
-          {activeAgent && <AgentBadge agentName={activeAgent} />}
-          {(task.labels ?? []).map((label) => (
-            <span
-              key={label}
-              className="rounded-[4px] px-1.5 py-0.5 text-[9px] font-medium capitalize"
-              style={{
-                backgroundColor: (labelColors[label] ?? "#888") + "18",
-                color: labelColors[label] ?? "#888",
-              }}
-            >
-              {label}
-            </span>
-          ))}
-          <span className="ml-auto text-[10px] text-muted-foreground/50">
+        <div className="flex items-center justify-between border-t border-border px-2.5 py-1.5">
+          <span className="text-[10px] text-muted-foreground/50">
             {task.createdAt}
+          </span>
+          <span className="font-mono text-[10px] text-muted-foreground/50 tabular-nums">
+            {task.taskCode}
           </span>
         </div>
       </div>
@@ -1582,6 +1584,8 @@ function ListGroup({
   tasks,
   groupIndex,
   isDropTarget,
+  overItemId,
+  activeTaskId,
   collapsed,
   selectedTaskIds,
   draggedTaskIds,
@@ -1591,11 +1595,14 @@ function ListGroup({
   onToggleSelectTask,
   onUpdateTask,
   onDeleteTask,
+  onAddTask,
 }: {
   column: (typeof COLUMNS)[number]
   tasks: Task[]
   groupIndex: number
   isDropTarget?: boolean
+  overItemId: string | null
+  activeTaskId: string | null
   collapsed: boolean
   selectedTaskIds: Set<string>
   draggedTaskIds: Set<string>
@@ -1605,6 +1612,7 @@ function ListGroup({
   onToggleSelectTask: (taskId: string, shiftKey: boolean) => void
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void
   onDeleteTask: (taskId: string) => void
+  onAddTask: (status: Status) => void
 }) {
   const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks])
   const hasSelection = selectedTaskIds.size > 0
@@ -1650,6 +1658,19 @@ function ListGroup({
         <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
           {tasks.length}
         </span>
+        {canManageTasks && (
+          <span
+            role="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onAddTask(column.id)
+            }}
+            className="ml-auto rounded-[4px] p-0.5 text-muted-foreground/50 transition-colors hover:bg-accent hover:text-foreground"
+            title={`Add task to ${column.label}`}
+          >
+            <Plus size={14} />
+          </span>
+        )}
       </button>
 
       {/* Rows */}
@@ -1662,20 +1683,35 @@ function ListGroup({
             {tasks.length === 0
               ? null
               : tasks.map((task, rowIndex) => (
-                  <SortableListRow
-                    key={task.id}
-                    task={task}
-                    rowIndex={rowIndex}
-                    groupDelay={groupIndex * 0.04}
-                    isSelected={selectedTaskIds.has(task.id)}
-                    hasSelection={hasSelection}
-                    isDraggedAway={draggedTaskIds.has(task.id)}
-                    canManageTasks={canManageTasks}
-                    onSelect={onSelectTask}
-                    onToggleSelect={onToggleSelectTask}
-                    onUpdate={onUpdateTask}
-                    onDelete={onDeleteTask}
-                  />
+                  <Fragment key={task.id}>
+                    {overItemId === task.id &&
+                      activeTaskId &&
+                      activeTaskId !== task.id && (
+                        <motion.div
+                          initial={{ opacity: 0, scaleX: 0.5 }}
+                          animate={{ opacity: 1, scaleX: 1 }}
+                          transition={{ duration: 0.15, ease: "easeOut" }}
+                          style={{ originX: 0 }}
+                          className="relative flex items-center"
+                        >
+                          <div className="absolute -left-0.5 z-10 size-2 rounded-full bg-primary" />
+                          <div className="h-0.5 w-full bg-primary" />
+                        </motion.div>
+                      )}
+                    <SortableListRow
+                      task={task}
+                      rowIndex={rowIndex}
+                      groupDelay={groupIndex * 0.04}
+                      isSelected={selectedTaskIds.has(task.id)}
+                      hasSelection={hasSelection}
+                      isDraggedAway={draggedTaskIds.has(task.id)}
+                      canManageTasks={canManageTasks}
+                      onSelect={onSelectTask}
+                      onToggleSelect={onToggleSelectTask}
+                      onUpdate={onUpdateTask}
+                      onDelete={onDeleteTask}
+                    />
+                  </Fragment>
                 ))}
           </SortableContext>
         </div>
@@ -1870,381 +1906,405 @@ function TaskDetailModal({
   const taskSources = task ? getTaskSources(task) : []
   const activeAgent = task ? getActiveAgent(task) : null
 
-  return (
-    <Dialog
-      open={task !== null}
-      onOpenChange={(open) => {
-        if (!open) {
-          setEditingTitle(false)
-          setEditingDesc(false)
-          onClose()
-        }
-      }}
-    >
-      <DialogContent
-        showCloseButton={false}
-        className="max-h-[85vh] w-[min(92vw,40rem)] max-w-2xl overflow-hidden rounded-[8px] p-0 duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] data-ending-style:translate-y-2 data-ending-style:scale-[0.96] data-starting-style:translate-y-2 data-starting-style:scale-[0.96]"
-      >
-        {task && (
-          <div className="flex max-h-[85vh] flex-col">
-            {/* ── Header: Title + Date + Close ── */}
-            <div className="relative px-5 pt-5 pb-0">
-              {/* Close button */}
-              <button
-                onClick={onClose}
-                className="absolute top-4 right-4 rounded-[4px] p-1.5 text-muted-foreground/50 ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground"
-              >
-                <X size={14} weight="bold" />
-              </button>
+  const handleClose = useCallback(() => {
+    setEditingTitle(false)
+    setEditingDesc(false)
+    onClose()
+  }, [onClose])
 
-              {/* Title */}
-              <DialogHeader>
-                <DialogTitle className="sr-only">{task.title}</DialogTitle>
-                {editingTitle ? (
-                  <input
-                    autoFocus
-                    value={titleValue}
-                    onChange={(e) => setTitleValue(e.target.value)}
-                    onBlur={handleTitleSave}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleTitleSave()
-                      if (e.key === "Escape") {
-                        setTitleValue(task.title)
-                        setEditingTitle(false)
-                      }
-                    }}
-                    className="w-full rounded-[4px] bg-transparent pr-8 text-[16px] leading-snug font-semibold tracking-tight ring-1 ring-border outline-none focus:ring-1 focus:ring-primary"
-                  />
-                ) : (
-                  <h2
-                    onClick={() => {
-                      if (!canManageTasks) return
-                      setTitleValue(task.title)
-                      setEditingTitle(true)
-                    }}
-                    className={`pr-8 text-[16px] leading-snug font-semibold tracking-tight break-words transition-colors ${canManageTasks ? "cursor-text" : ""}`}
-                  >
-                    {task.title}
-                  </h2>
-                )}
-              </DialogHeader>
+  useEffect(() => {
+    if (!task) return
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleClose()
+    }
+    document.addEventListener("keydown", handleEscape)
+    return () => document.removeEventListener("keydown", handleEscape)
+  }, [task, handleClose])
 
-              {/* Date + task code */}
-              <div className="mt-1.5 flex items-center gap-2">
-                <span className="font-mono text-[11px] text-muted-foreground/50">
-                  {task.taskCode}
-                </span>
-                <span className="text-muted-foreground/20">·</span>
-                <span className="text-[11px] text-muted-foreground/50">
-                  {task.createdAt}
-                </span>
-              </div>
-            </div>
+  return createPortal(
+    <AnimatePresence>
+      {task && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.08 }}
+            className="fixed inset-0 z-50 bg-black/40"
+            onClick={handleClose}
+          />
 
-            {/* ── Body: Description (scrollable) ── */}
-            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-4 pb-4">
-              {task._syncStatus === "error" ? (
-                <motion.div
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mb-4 flex items-start gap-2 rounded-[6px] border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-200"
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" onClick={handleClose}>
+            {/* Panel */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.97, y: 6 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.98, y: 6 }}
+              transition={{ duration: 0.1, ease: [0.32, 0, 0.67, 0] }}
+              className="relative flex max-h-[85vh] w-[min(92vw,40rem)] max-w-2xl flex-col overflow-hidden rounded-[8px] bg-background shadow-2xl ring-1 ring-border"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* ── Header: Title + Date + Close ── */}
+              <div className="relative px-5 pt-5 pb-0">
+                {/* Close button */}
+                <button
+                  onClick={handleClose}
+                  className="absolute top-4 right-4 rounded-[4px] p-1.5 text-muted-foreground/50 ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground"
                 >
-                  <WarningCircle
-                    size={14}
-                    weight="fill"
-                    className="mt-0.5 shrink-0 text-amber-400"
-                  />
-                  <span className="leading-relaxed">
-                    Attachment changes are visible locally, but they have not
-                    synced to the server yet.
-                  </span>
-                </motion.div>
-              ) : null}
+                  <X size={14} weight="bold" />
+                </button>
 
-              {/* Description */}
-              <div className="flex-1">
-                {editingDesc ? (
-                  <textarea
-                    autoFocus
-                    value={descValue}
-                    onChange={(e) => setDescValue(e.target.value)}
-                    onBlur={handleDescSave}
-                    onKeyDown={(e) => {
-                      if (e.key === "Escape") {
-                        setDescValue(task.description ?? "")
-                        setEditingDesc(false)
-                      }
-                    }}
-                    placeholder="Add a description..."
-                    className="min-h-[180px] w-full resize-none rounded-[4px] bg-transparent text-[13px] leading-relaxed text-foreground/80 outline-none placeholder:text-muted-foreground/40"
-                  />
-                ) : (
-                  <div
-                    onClick={() => {
-                      if (!canManageTasks) return
-                      setDescValue(task.description ?? "")
-                      setEditingDesc(true)
-                    }}
-                    className={`min-h-[180px] text-[13px] leading-relaxed transition-colors ${canManageTasks ? "cursor-text" : ""}`}
+                {/* Title */}
+                <div>
+                  <span className="sr-only">{task.title}</span>
+                  {editingTitle ? (
+                    <input
+                      autoFocus
+                      value={titleValue}
+                      onChange={(e) => setTitleValue(e.target.value)}
+                      onBlur={handleTitleSave}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleTitleSave()
+                        if (e.key === "Escape") {
+                          setTitleValue(task.title)
+                          setEditingTitle(false)
+                        }
+                      }}
+                      className="w-full rounded-[4px] bg-transparent pr-8 text-[16px] leading-snug font-semibold tracking-tight ring-1 ring-border outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  ) : (
+                    <h2
+                      onClick={() => {
+                        if (!canManageTasks) return
+                        setTitleValue(task.title)
+                        setEditingTitle(true)
+                      }}
+                      className={`pr-8 text-[16px] leading-snug font-semibold tracking-tight break-words transition-colors ${canManageTasks ? "cursor-text" : ""}`}
+                    >
+                      {task.title}
+                    </h2>
+                  )}
+                </div>
+
+                {/* Date + task code */}
+                <div className="mt-1.5 flex items-center gap-2">
+                  <span className="font-mono text-[11px] text-muted-foreground/50">
+                    {task.taskCode}
+                  </span>
+                  <span className="text-muted-foreground/20">·</span>
+                  <span className="text-[11px] text-muted-foreground/50">
+                    {task.createdAt}
+                  </span>
+                </div>
+              </div>
+
+              {/* ── Body: Description (scrollable) ── */}
+              <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-4 pb-4">
+                {task._syncStatus === "error" ? (
+                  <motion.div
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mb-4 flex items-start gap-2 rounded-[6px] border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-200"
                   >
-                    {task.description ? (
-                      <span className="block break-words whitespace-pre-wrap text-foreground/80">
-                        {task.description}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground/40">
-                        Add a description...
+                    <WarningCircle
+                      size={14}
+                      weight="fill"
+                      className="mt-0.5 shrink-0 text-amber-400"
+                    />
+                    <span className="leading-relaxed">
+                      Attachment changes are visible locally, but they have not
+                      synced to the server yet.
+                    </span>
+                  </motion.div>
+                ) : null}
+
+                {/* Description */}
+                <div className="flex-1">
+                  {editingDesc ? (
+                    <textarea
+                      autoFocus
+                      value={descValue}
+                      onChange={(e) => setDescValue(e.target.value)}
+                      onBlur={handleDescSave}
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape") {
+                          setDescValue(task.description ?? "")
+                          setEditingDesc(false)
+                        }
+                      }}
+                      placeholder="Add a description..."
+                      className="min-h-[180px] w-full resize-none rounded-[4px] bg-transparent text-[13px] leading-relaxed text-foreground/80 outline-none placeholder:text-muted-foreground/40"
+                    />
+                  ) : (
+                    <div
+                      onClick={() => {
+                        if (!canManageTasks) return
+                        setDescValue(task.description ?? "")
+                        setEditingDesc(true)
+                      }}
+                      className={`min-h-[180px] text-[13px] leading-relaxed transition-colors ${canManageTasks ? "cursor-text" : ""}`}
+                    >
+                      {task.description ? (
+                        <span className="block break-words whitespace-pre-wrap text-foreground/80">
+                          {task.description}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground/40">
+                          Add a description...
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Attachments */}
+                {task.attachments && task.attachments.length > 0 ? (
+                  <div className="mt-4 border-t border-border pt-4">
+                    <TaskAttachmentGallery
+                      attachments={task.attachments}
+                      workspaceId={task.workspaceId}
+                      canManageAttachments={canManageTasks}
+                      onAttachmentsChange={(attachments) =>
+                        onUpdate(task.id, { attachments })
+                      }
+                    />
+                  </div>
+                ) : null}
+
+              </div>
+
+              {/* ── Bottom toolbar ── */}
+              <div>
+                {/* Row 1: Sources (Linear, Agent, Discord, etc.) */}
+                {(taskSources.length > 0 || activeAgent) && (
+                  <div className="flex flex-wrap items-center gap-2 px-4 pt-2.5 pb-2.5">
+                    {taskSources.map((src) => {
+                      const cfg = SOURCE_CONFIG[src.platform]
+                      return src.url ? (
+                        <a
+                          key={`${src.platform}-${src.url}-${src.author}`}
+                          href={src.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium transition-opacity hover:opacity-80"
+                          style={{
+                            backgroundColor: cfg.bg,
+                            color: cfg.color,
+                          }}
+                        >
+                          <SourceIcon platform={src.platform} size={12} />
+                          <span>{src.author}</span>
+                          <LinkIcon size={10} className="opacity-50" />
+                        </a>
+                      ) : (
+                        <span
+                          key={`${src.platform}-${src.url}-${src.author}`}
+                          className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium"
+                          style={{
+                            backgroundColor: cfg.bg,
+                            color: cfg.color,
+                          }}
+                        >
+                          <SourceIcon platform={src.platform} size={12} />
+                          <span>{src.author}</span>
+                        </span>
+                      )
+                    })}
+                    {activeAgent && (
+                      <span className="flex items-center gap-1.5 rounded-[4px] bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                        <span className="text-[12px]">
+                          {getAgentIcon(activeAgent)}
+                        </span>
+                        <span className="capitalize">{activeAgent}</span>
                       </span>
                     )}
                   </div>
                 )}
-              </div>
 
-              {/* Attachments */}
-              {task.attachments && task.attachments.length > 0 ? (
-                <div className="mt-4 border-t border-border pt-4">
-                  <TaskAttachmentGallery
-                    attachments={task.attachments}
-                    workspaceId={task.workspaceId}
-                    canManageAttachments={canManageTasks}
-                    onAttachmentsChange={(attachments) =>
-                      onUpdate(task.id, { attachments })
-                    }
-                  />
-                </div>
-              ) : null}
-
-            </div>
-
-            {/* ── Bottom toolbar ── */}
-            <div>
-              {/* Row 1: Sources (Linear, Agent, Discord, etc.) */}
-              {(taskSources.length > 0 || activeAgent) && (
-                <div className="flex flex-wrap items-center gap-2 px-4 pt-2.5 pb-2.5">
-                  {taskSources.map((src) => {
-                    const cfg = SOURCE_CONFIG[src.platform]
-                    return src.url ? (
-                      <a
-                        key={`${src.platform}-${src.url}-${src.author}`}
-                        href={src.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium transition-opacity hover:opacity-80"
-                        style={{
-                          backgroundColor: cfg.bg,
-                          color: cfg.color,
-                        }}
+                {/* Row 2: Status, Priority, Labels + Delete */}
+                <div className="flex items-center justify-between gap-2 border-t border-border px-4 pt-2.5 pb-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Status */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        disabled={!canManageTasks}
+                        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        <SourceIcon platform={src.platform} size={12} />
-                        <span>{src.author}</span>
-                        <LinkIcon size={10} className="opacity-50" />
-                      </a>
-                    ) : (
-                      <span
-                        key={`${src.platform}-${src.url}-${src.author}`}
-                        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium"
-                        style={{
-                          backgroundColor: cfg.bg,
-                          color: cfg.color,
-                        }}
+                        {getStatusIcon(task.status, 12)}
+                        <span>{STATUS_LABELS[task.status]}</span>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent side="top" align="start">
+                        {ALL_STATUSES.map((s) => (
+                          <DropdownMenuItem
+                            key={s}
+                            className={task.status === s ? "font-medium" : ""}
+                            onClick={() => onUpdate(task.id, { status: s })}
+                          >
+                            <div className="flex items-center gap-2">
+                              {getStatusIcon(s, 14)}
+                              <span>{STATUS_LABELS[s]}</span>
+                            </div>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {/* Priority */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        disabled={!canManageTasks}
+                        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        <SourceIcon platform={src.platform} size={12} />
-                        <span>{src.author}</span>
-                      </span>
-                    )
-                  })}
-                  {activeAgent && (
-                    <span className="flex items-center gap-1.5 rounded-[4px] bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                      <span className="text-[12px]">
-                        {getAgentIcon(activeAgent)}
-                      </span>
-                      <span className="capitalize">{activeAgent}</span>
-                    </span>
-                  )}
-                </div>
-              )}
+                        {getPriorityIcon(task.priority, 12)}
+                        <span>{PRIORITY_LABELS[task.priority]}</span>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent side="top" align="start">
+                        {ALL_PRIORITIES.map((p) => (
+                          <DropdownMenuItem
+                            key={p}
+                            className={task.priority === p ? "font-medium" : ""}
+                            onClick={() => onUpdate(task.id, { priority: p })}
+                          >
+                            <div className="flex items-center gap-2">
+                              {getPriorityIcon(p, 14)}
+                              <span>{PRIORITY_LABELS[p]}</span>
+                            </div>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
 
-              {/* Row 2: Status, Priority, Labels + Delete */}
-              <div className="flex items-center justify-between gap-2 border-t border-border px-4 pt-2.5 pb-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  {/* Status */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      disabled={!canManageTasks}
-                      className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {getStatusIcon(task.status, 12)}
-                      <span>{STATUS_LABELS[task.status]}</span>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent side="top" align="start">
-                      {ALL_STATUSES.map((s) => (
-                        <DropdownMenuItem
-                          key={s}
-                          className={task.status === s ? "font-medium" : ""}
-                          onClick={() => onUpdate(task.id, { status: s })}
-                        >
-                          <div className="flex items-center gap-2">
-                            {getStatusIcon(s, 14)}
-                            <span>{STATUS_LABELS[s]}</span>
+                    {/* Labels */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        disabled={!canManageTasks}
+                        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {(task.labels ?? []).length > 0 ? (
+                          <div className="flex items-center gap-1.5">
+                            <div className="flex -space-x-0.5">
+                              {(task.labels ?? []).map((label) => (
+                                <div
+                                  key={label}
+                                  className="size-2 rounded-full ring-1 ring-background"
+                                  style={{
+                                    backgroundColor:
+                                      labelConfig.colors[label] ?? "#888",
+                                  }}
+                                />
+                              ))}
+                            </div>
+                            <span>
+                              {(task.labels ?? []).length === 1
+                                ? (task.labels ?? [])[0]
+                                : `${(task.labels ?? []).length} labels`}
+                            </span>
                           </div>
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-
-                  {/* Priority */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      disabled={!canManageTasks}
-                      className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {getPriorityIcon(task.priority, 12)}
-                      <span>{PRIORITY_LABELS[task.priority]}</span>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent side="top" align="start">
-                      {ALL_PRIORITIES.map((p) => (
-                        <DropdownMenuItem
-                          key={p}
-                          className={task.priority === p ? "font-medium" : ""}
-                          onClick={() => onUpdate(task.id, { priority: p })}
-                        >
-                          <div className="flex items-center gap-2">
-                            {getPriorityIcon(p, 14)}
-                            <span>{PRIORITY_LABELS[p]}</span>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <Tag size={12} className="text-muted-foreground" />
+                            <span className="text-muted-foreground">Labels</span>
                           </div>
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-
-                  {/* Labels */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      disabled={!canManageTasks}
-                      className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {(task.labels ?? []).length > 0 ? (
-                        <div className="flex items-center gap-1.5">
-                          <div className="flex -space-x-0.5">
-                            {(task.labels ?? []).map((label) => (
+                        )}
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent side="top" align="start">
+                        {labelConfig.names.map((label) => (
+                          <DropdownMenuItem
+                            key={label}
+                            onClick={() => toggleLabel(label)}
+                          >
+                            <div className="flex w-full items-center gap-2 capitalize">
                               <div
-                                key={label}
-                                className="size-2 rounded-full ring-1 ring-background"
+                                className="size-2.5 rounded-full"
                                 style={{
                                   backgroundColor:
                                     labelConfig.colors[label] ?? "#888",
                                 }}
                               />
-                            ))}
-                          </div>
-                          <span>
-                            {(task.labels ?? []).length === 1
-                              ? (task.labels ?? [])[0]
-                              : `${(task.labels ?? []).length} labels`}
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1.5">
-                          <Tag size={12} className="text-muted-foreground" />
-                          <span className="text-muted-foreground">Labels</span>
-                        </div>
-                      )}
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent side="top" align="start">
-                      {labelConfig.names.map((label) => (
-                        <DropdownMenuItem
-                          key={label}
-                          onClick={() => toggleLabel(label)}
-                        >
-                          <div className="flex w-full items-center gap-2 capitalize">
-                            <div
-                              className="size-2.5 rounded-full"
-                              style={{
-                                backgroundColor:
-                                  labelConfig.colors[label] ?? "#888",
-                              }}
-                            />
-                            <span>{label}</span>
-                            {(task.labels ?? []).includes(label) && (
-                              <Check
-                                size={12}
-                                weight="bold"
-                                className="ml-auto text-primary"
-                              />
-                            )}
-                          </div>
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+                              <span>{label}</span>
+                              {(task.labels ?? []).includes(label) && (
+                                <Check
+                                  size={12}
+                                  weight="bold"
+                                  className="ml-auto text-primary"
+                                />
+                              )}
+                            </div>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
 
-                {/* Attach + Accept/Deny + Delete */}
-                <div className="flex items-center gap-1.5">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    multiple
-                    onChange={handleFileSelect}
-                    className="hidden"
-                  />
-                  <button
-                    disabled={!canManageTasks || uploading}
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                    title="Attach files"
-                  >
-                    {uploading ? (
-                      <SpinnerGap
-                        size={14}
-                        className="animate-spin"
-                      />
-                    ) : (
-                      <Paperclip size={14} />
+                  {/* Attach + Accept/Deny + Delete */}
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      multiple
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                    <button
+                      disabled={!canManageTasks || uploading}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                      title="Attach files"
+                    >
+                      {uploading ? (
+                        <SpinnerGap
+                          size={14}
+                          className="animate-spin"
+                        />
+                      ) : (
+                        <Paperclip size={14} />
+                      )}
+                      {uploading ? "Uploading..." : "Attach"}
+                    </button>
+                    {task.status === "requests" && onAccept && onDeny && (
+                      <>
+                        <button
+                          disabled={!canManageTasks}
+                          onClick={() => {
+                            onAccept(task)
+                            handleClose()
+                          }}
+                          className="flex items-center gap-1.5 rounded-[4px] border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
+                        >
+                          <CheckCircle size={13} weight="fill" />
+                          Accept
+                        </button>
+                        <button
+                          disabled={!canManageTasks}
+                          onClick={() => {
+                            onDeny(task)
+                            handleClose()
+                          }}
+                          className="flex items-center gap-1.5 rounded-[4px] border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-[11px] font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
+                        >
+                          <XCircle size={13} />
+                          Deny
+                        </button>
+                      </>
                     )}
-                    {uploading ? "Uploading..." : "Attach"}
-                  </button>
-                  {task.status === "requests" && onAccept && onDeny && (
-                    <>
-                      <button
-                        disabled={!canManageTasks}
-                        onClick={() => {
-                          onAccept(task)
-                          onClose()
-                        }}
-                        className="flex items-center gap-1.5 rounded-[4px] border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
-                      >
-                        <CheckCircle size={13} weight="fill" />
-                        Accept
-                      </button>
-                      <button
-                        disabled={!canManageTasks}
-                        onClick={() => {
-                          onDeny(task)
-                          onClose()
-                        }}
-                        className="flex items-center gap-1.5 rounded-[4px] border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-[11px] font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
-                      >
-                        <XCircle size={13} />
-                        Deny
-                      </button>
-                    </>
-                  )}
-                  <button
-                    disabled={!canManageTasks}
-                    onClick={() => onDelete(task.id)}
-                    className="flex items-center justify-center rounded-[4px] px-[7px] py-[7px] text-muted-foreground/40 ring-1 ring-border transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-60"
-                    title="Delete task"
-                  >
-                    <Trash size={14} />
-                  </button>
+                    <button
+                      disabled={!canManageTasks}
+                      onClick={() => onDelete(task.id)}
+                      className="flex items-center justify-center rounded-[4px] px-[7px] py-[7px] text-muted-foreground/40 ring-1 ring-border transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-60"
+                      title="Delete task"
+                    >
+                      <Trash size={14} />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
-        )}
-      </DialogContent>
-    </Dialog>
+        </>
+      )}
+    </AnimatePresence>,
+    document.body
   )
 }
 
@@ -2368,6 +2428,39 @@ function BulkActionToolbar({
   )
 }
 
+// ── Source Integration Icons ──
+
+function SourceIcons({ task }: { task: Pick<Task, "source" | "sources"> }) {
+  const sources = getTaskSources(task)
+  if (sources.length === 0) return null
+
+  // Dedupe by platform
+  const seen = new Set<string>()
+  const platforms = sources.filter((s) => {
+    if (seen.has(s.platform)) return false
+    seen.add(s.platform)
+    return true
+  })
+
+  return (
+    <div className="flex shrink-0 items-center gap-1">
+      {platforms.map((source) => {
+        const config = SOURCE_CONFIG[source.platform]
+        return (
+          <span
+            key={source.platform}
+            className="flex size-6 items-center justify-center rounded-[4px] ring-1 ring-border"
+            style={{ backgroundColor: config.bg }}
+            title={config.label}
+          >
+            <SourceIcon platform={source.platform} size={12} />
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
 // ── Kanban Card (for Board View) ──
 
 const KanbanCard = memo(function KanbanCard({
@@ -2410,9 +2503,15 @@ const KanbanCard = memo(function KanbanCard({
       disabled: !canManageTasks,
     })
 
+  const hidden = isDragging || isDraggedAway
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
-    opacity: isDragging || isDraggedAway ? 0.3 : undefined,
+    opacity: hidden ? 0 : undefined,
+    height: hidden ? 0 : undefined,
+    padding: hidden ? 0 : undefined,
+    margin: hidden ? 0 : undefined,
+    overflow: hidden ? "hidden" : undefined,
+    pointerEvents: hidden ? "none" : undefined,
     willChange: transform ? "transform" : undefined,
   }
 
@@ -2460,54 +2559,62 @@ const KanbanCard = memo(function KanbanCard({
                 ease: [0.25, 0.1, 0.25, 1],
               }
         }
-        layout
-        layoutId={`kanban-card-${task.id}`}
         {...attributes}
         {...listeners}
         onClick={handleClick}
         onContextMenu={handleContextMenu}
-        className={`group cursor-pointer touch-none rounded-[4px] bg-background p-2.5 ring-1 ring-border transition-colors duration-150 select-none hover:bg-accent/20 dark:bg-card ${isSelected ? "bg-primary/[0.06] ring-2 ring-primary/40" : ""}`}
+        className={`group relative cursor-pointer touch-none rounded-[4px] bg-background ring-1 ring-border transition-[background-color,box-shadow,opacity] duration-150 select-none hover:bg-accent/20 dark:bg-card ${isSelected ? "bg-primary/[0.06] ring-2 ring-primary/40" : ""} ${hidden ? "!ring-0" : ""}`}
       >
-        {/* Top: task code + checkbox */}
-        <div className="mb-1.5 flex items-center justify-between">
-          <span className="font-mono text-[10px] text-muted-foreground/50 tabular-nums">
-            {task.taskCode}
-          </span>
-          <div
-            onClick={handleCheckboxClick}
-            className={`flex size-3.5 shrink-0 items-center justify-center rounded border transition-all ${
-              isSelected
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border bg-background opacity-0 group-hover:opacity-100"
-            } ${hasSelection ? "!opacity-100" : ""}`}
-          >
-            {isSelected && <Check size={8} weight="bold" />}
+        {/* Checkbox overlay */}
+        <div
+          onClick={handleCheckboxClick}
+          className={`absolute top-2 right-2 z-10 flex size-3.5 shrink-0 items-center justify-center rounded border transition-all ${
+            isSelected
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border bg-background opacity-0 group-hover:opacity-100"
+          } ${hasSelection ? "!opacity-100" : ""}`}
+        >
+          {isSelected && <Check size={8} weight="bold" />}
+        </div>
+
+        {/* Card body */}
+        <div className="relative p-2.5 pb-0">
+          {/* Title */}
+          <p className="mb-2 line-clamp-2 pr-5 text-[13px] leading-snug font-medium text-foreground/90">
+            {task.title}
+          </p>
+
+          {/* Middle: priority + labels + agent (left) | integration icons (right) */}
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <div className="shrink-0">
+                {getPriorityIcon(task.priority, 12)}
+              </div>
+              {activeAgent && <AgentBadge agentName={activeAgent} />}
+              {(task.labels ?? []).map((label) => (
+                <span
+                  key={label}
+                  className="rounded-[4px] px-1.5 py-0.5 text-[9px] font-medium capitalize"
+                  style={{
+                    backgroundColor: (labelColors[label] ?? "#888") + "18",
+                    color: labelColors[label] ?? "#888",
+                  }}
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
+            <SourceIcons task={task} />
           </div>
         </div>
 
-        {/* Title */}
-        <p className="mb-2 line-clamp-2 text-[13px] leading-snug font-medium text-foreground/90">
-          {task.title}
-        </p>
-
-        {/* Bottom: priority + labels + agent + date */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          <div className="shrink-0">{getPriorityIcon(task.priority, 12)}</div>
-          {activeAgent && <AgentBadge agentName={activeAgent} />}
-          {(task.labels ?? []).map((label) => (
-            <span
-              key={label}
-              className="rounded-[4px] px-1.5 py-0.5 text-[9px] font-medium capitalize"
-              style={{
-                backgroundColor: (labelColors[label] ?? "#888") + "18",
-                color: labelColors[label] ?? "#888",
-              }}
-            >
-              {label}
-            </span>
-          ))}
-          <span className="ml-auto text-[10px] text-muted-foreground/50">
+        {/* Footer: date + task code */}
+        <div className="flex items-center justify-between border-t border-border px-2.5 py-1.5">
+          <span className="text-[10px] text-muted-foreground/50">
             {task.createdAt}
+          </span>
+          <span className="font-mono text-[10px] text-muted-foreground/50 tabular-nums">
+            {task.taskCode}
           </span>
         </div>
       </motion.div>
@@ -2532,6 +2639,8 @@ function KanbanColumn({
   columnIndex,
   tasks,
   isDropTarget,
+  overItemId,
+  activeTaskId,
   selectedTaskIds,
   draggedTaskIds,
   canManageTasks,
@@ -2539,11 +2648,14 @@ function KanbanColumn({
   onToggleSelectTask,
   onUpdateTask,
   onDeleteTask,
+  onAddTask,
 }: {
   column: (typeof COLUMNS)[number]
   columnIndex: number
   tasks: Task[]
   isDropTarget?: boolean
+  overItemId: string | null
+  activeTaskId: string | null
   selectedTaskIds: Set<string>
   draggedTaskIds: Set<string>
   canManageTasks: boolean
@@ -2551,6 +2663,7 @@ function KanbanColumn({
   onToggleSelectTask: (taskId: string, shiftKey: boolean) => void
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void
   onDeleteTask: (taskId: string) => void
+  onAddTask: (status: Status) => void
 }) {
   const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks])
   const hasSelection = selectedTaskIds.size > 0
@@ -2589,6 +2702,15 @@ function KanbanColumn({
         >
           {tasks.length}
         </motion.span>
+        {canManageTasks && (
+          <button
+            onClick={() => onAddTask(column.id)}
+            className="ml-auto rounded-[4px] p-0.5 text-muted-foreground/50 transition-colors hover:bg-accent hover:text-foreground"
+            title={`Add task to ${column.label}`}
+          >
+            <Plus size={14} />
+          </button>
+        )}
       </div>
 
       {/* Cards */}
@@ -2599,20 +2721,35 @@ function KanbanColumn({
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
           <div className="flex flex-col gap-2">
             {tasks.map((task, cardIndex) => (
-              <KanbanCard
-                key={task.id}
-                task={task}
-                cardIndex={cardIndex}
-                columnIndex={columnIndex}
-                isSelected={selectedTaskIds.has(task.id)}
-                hasSelection={hasSelection}
-                isDraggedAway={draggedTaskIds.has(task.id)}
-                canManageTasks={canManageTasks}
-                onSelect={onSelectTask}
-                onToggleSelect={onToggleSelectTask}
-                onUpdate={onUpdateTask}
-                onDelete={onDeleteTask}
-              />
+              <Fragment key={task.id}>
+                {overItemId === task.id &&
+                  activeTaskId &&
+                  activeTaskId !== task.id && (
+                    <motion.div
+                      initial={{ opacity: 0, scaleX: 0.5 }}
+                      animate={{ opacity: 1, scaleX: 1 }}
+                      transition={{ duration: 0.15, ease: "easeOut" }}
+                      style={{ originX: 0 }}
+                      className="relative flex items-center"
+                    >
+                      <div className="absolute -left-0.5 size-2 rounded-full bg-primary" />
+                      <div className="h-0.5 w-full rounded-full bg-primary" />
+                    </motion.div>
+                  )}
+                <KanbanCard
+                  task={task}
+                  cardIndex={cardIndex}
+                  columnIndex={columnIndex}
+                  isSelected={selectedTaskIds.has(task.id)}
+                  hasSelection={hasSelection}
+                  isDraggedAway={draggedTaskIds.has(task.id)}
+                  canManageTasks={canManageTasks}
+                  onSelect={onSelectTask}
+                  onToggleSelect={onToggleSelectTask}
+                  onUpdate={onUpdateTask}
+                  onDelete={onDeleteTask}
+                />
+              </Fragment>
             ))}
           </div>
         </SortableContext>
@@ -2635,6 +2772,7 @@ function ColumnBoardView({
   onBulkDeleteTasks,
   onAcceptRequest,
   onDenyRequest,
+  onAddTask,
 }: {
   tasks: Task[]
   hiddenColumns: Status[]
@@ -2654,6 +2792,7 @@ function ColumnBoardView({
   onBulkDeleteTasks: (taskIds: string[]) => void
   onAcceptRequest: (task: Task) => void
   onDenyRequest: (task: Task) => void
+  onAddTask: (status: Status) => void
 }) {
   const visibleColumns = COLUMNS.filter(
     (c) => !hiddenColumns.includes(c.id) && c.id !== "requests"
@@ -2662,6 +2801,7 @@ function ColumnBoardView({
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [draggedTaskIds, setDraggedTaskIds] = useState<Set<string>>(new Set())
   const [overColumn, setOverColumn] = useState<Status | null>(null)
+  const [overItemId, setOverItemId] = useState<string | null>(null)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
   const lastToggledTaskIdRef = useRef<string | null>(null)
@@ -2834,6 +2974,7 @@ function ColumnBoardView({
     const { over } = event
     if (!over) {
       setOverColumn(null)
+      setOverItemId(null)
       return
     }
     const overId = over.id as string
@@ -2843,9 +2984,11 @@ function ColumnBoardView({
         : findColumnOfTask(overId)
     if (targetCol === "requests") {
       setOverColumn(null)
+      setOverItemId(null)
       return
     }
     setOverColumn((current) => (current === targetCol ? current : targetCol))
+    setOverItemId(over.data.current?.type === "column" ? null : overId)
   }
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -2968,6 +3111,7 @@ function ColumnBoardView({
     setActiveTask(null)
     setDraggedTaskIds(new Set())
     setOverColumn(null)
+    setOverItemId(null)
     if (!over) return
 
     const activeId = active.id as string
@@ -3010,7 +3154,10 @@ function ColumnBoardView({
         onMoveTask(activeId, activeColumn, newIndex)
       }
     } else {
-      onMoveTask(activeId, targetColumn, 0)
+      const overIndex = tasksByColumn[targetColumn].findIndex(
+        (t) => t.id === overId
+      )
+      onMoveTask(activeId, targetColumn, overIndex !== -1 ? overIndex : 0)
     }
   }
 
@@ -3104,6 +3251,8 @@ function ColumnBoardView({
                     activeTaskSource !== null &&
                     activeTaskSource !== column.id
                   }
+                  overItemId={overItemId}
+                  activeTaskId={activeTask?.id ?? null}
                   selectedTaskIds={selectedTaskIds}
                   draggedTaskIds={draggedTaskIds}
                   canManageTasks={canManageTasks}
@@ -3111,12 +3260,13 @@ function ColumnBoardView({
                   onToggleSelectTask={handleToggleSelectTask}
                   onUpdateTask={onUpdateTask}
                   onDeleteTask={onDeleteTask}
+                  onAddTask={onAddTask}
                 />
               </div>
             )
           })}
         </div>
-        <DragOverlay dropAnimation={null}>
+        <DragOverlay dropAnimation={DROP_ANIMATION}>
           {activeTask ? (
             <DragOverlayCard
               task={activeTask}
@@ -3218,6 +3368,7 @@ function ListView({
   onBulkDeleteTasks,
   onAcceptRequest,
   onDenyRequest,
+  onAddTask,
 }: {
   tasks: Task[]
   hiddenColumns: Status[]
@@ -3239,6 +3390,7 @@ function ListView({
   onBulkDeleteTasks: (taskIds: string[]) => void
   onAcceptRequest: (task: Task) => void
   onDenyRequest: (task: Task) => void
+  onAddTask: (status: Status) => void
 }) {
   // Non-request columns only for DnD
   const visibleColumns = COLUMNS.filter(
@@ -3248,6 +3400,7 @@ function ListView({
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [draggedTaskIds, setDraggedTaskIds] = useState<Set<string>>(new Set())
   const [overColumn, setOverColumn] = useState<Status | null>(null)
+  const [overItemId, setOverItemId] = useState<string | null>(null)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
   const lastToggledTaskIdRef = useRef<string | null>(null)
@@ -3434,6 +3587,7 @@ function ListView({
     const { active, over } = event
     if (!over) {
       setOverColumn(null)
+      setOverItemId(null)
       return
     }
 
@@ -3446,10 +3600,12 @@ function ListView({
     // Block dragging into requests
     if (targetCol === "requests") {
       setOverColumn(null)
+      setOverItemId(null)
       return
     }
 
     setOverColumn((current) => (current === targetCol ? current : targetCol))
+    setOverItemId(over.data.current?.type === "column" ? null : overId)
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -3459,6 +3615,7 @@ function ListView({
     setActiveTask(null)
     setDraggedTaskIds(new Set())
     setOverColumn(null)
+    setOverItemId(null)
 
     if (!over) return
 
@@ -3511,7 +3668,10 @@ function ListView({
         onMoveTask(activeId, activeColumn, newIndex)
       }
     } else {
-      onMoveTask(activeId, targetColumn, 0)
+      const overIndex = tasksByColumn[targetColumn].findIndex(
+        (t) => t.id === overId
+      )
+      onMoveTask(activeId, targetColumn, overIndex !== -1 ? overIndex : 0)
     }
   }
 
@@ -3561,6 +3721,8 @@ function ListView({
                   activeTaskSource !== null &&
                   activeTaskSource !== column.id
                 }
+                overItemId={overItemId}
+                activeTaskId={activeTask?.id ?? null}
                 collapsed={collapsedColumns.includes(column.id)}
                 selectedTaskIds={selectedTaskIds}
                 draggedTaskIds={draggedTaskIds}
@@ -3570,11 +3732,12 @@ function ListView({
                 onToggleSelectTask={handleToggleSelectTask}
                 onUpdateTask={onUpdateTask}
                 onDeleteTask={onDeleteTask}
+                onAddTask={onAddTask}
               />
             )
           })}
         </div>
-        <DragOverlay dropAnimation={null}>
+        <DragOverlay dropAnimation={DROP_ANIMATION}>
           {activeTask ? (
             <DragOverlayListRow
               task={activeTask}
@@ -4260,6 +4423,7 @@ export function KanbanBoard() {
                 onBulkDeleteTasks={handleBulkDeleteTasks}
                 onAcceptRequest={handleAcceptRequest}
                 onDenyRequest={handleDenyRequest}
+                onAddTask={handleAddTask}
               />
             ) : (
               <ListView
@@ -4276,6 +4440,7 @@ export function KanbanBoard() {
                 onBulkDeleteTasks={handleBulkDeleteTasks}
                 onAcceptRequest={handleAcceptRequest}
                 onDenyRequest={handleDenyRequest}
+                onAddTask={handleAddTask}
               />
             )}
           </div>

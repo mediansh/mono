@@ -28,6 +28,7 @@ import { NewTaskModal } from "@/components/new-task-modal"
 import { SearchPalette } from "@/components/search-palette"
 import { api } from "@/convex/_generated/api"
 import { Logo } from "@/components/logo"
+import { SyncIndicator } from "@/components/sync-indicator"
 import { useWorkspace } from "@/components/workspace-provider"
 import { useWorkspaceOptimisticMutations } from "@/hooks/use-workspace-optimistic-mutations"
 import { hasTaskWritePermission } from "@/lib/workspace-permissions"
@@ -316,8 +317,9 @@ export function AppSidebar() {
     <>
       <Sidebar collapsible="icon" variant="inset">
         <SidebarHeader className="p-1.5">
-          <Link href="/app" className="flex items-center px-1 py-0.5">
+          <Link href="/app" className="flex items-center gap-1.5 px-1 py-0.5">
             <Logo symbolOnly className="size-6" />
+            <SyncIndicator className="group-data-[collapsible=icon]:hidden" />
           </Link>
         </SidebarHeader>
 
