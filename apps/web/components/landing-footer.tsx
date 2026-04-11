@@ -15,6 +15,7 @@ const links = {
   Company: [
     { label: "Sign in", href: "/sign-in" },
     { label: "Get started", href: "/sign-up" },
+    { label: "Contact us", href: "mailto:hello@clovrlabs.co" },
   ],
 }
 
