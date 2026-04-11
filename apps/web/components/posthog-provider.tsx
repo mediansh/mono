@@ -5,6 +5,11 @@ import { useAuth, useUser } from "@clerk/nextjs"
 import { usePathname, useSearchParams } from "next/navigation"
 import { initPostHog, posthog } from "@/lib/posthog"
 
+// Run synchronously on client module load so the first PostHogPageView
+// effect sees __loaded === true (child effects fire before parent effects,
+// so we can't rely on initialising inside PostHogProvider's useEffect).
+initPostHog()
+
 function PostHogPageView() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -51,11 +56,6 @@ function PostHogIdentifier() {
 }
 
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
-  // Init after hydration to avoid injecting <script> tags before React takes over
-  useEffect(() => {
-    initPostHog()
-  }, [])
-
   return (
     <>
       <PostHogIdentifier />

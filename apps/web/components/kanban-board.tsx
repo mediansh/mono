@@ -3189,6 +3189,7 @@ function ColumnBoardView({
     if (!canManageTasks) return
     const { active, over } = event
     const currentDraggedIds = draggedTaskIds
+    const wasOverItemAtEnd = overItemAtEnd
     setActiveTask(null)
     setDraggedTaskIds(new Set())
     setOverColumn(null)
@@ -3206,6 +3207,7 @@ function ColumnBoardView({
     if (!activeColumn || !targetColumn) return
     if (targetColumn === "requests") return
 
+    const endOffset = wasOverItemAtEnd ? 1 : 0
     const isMultiDrag = currentDraggedIds.size > 1
     if (isMultiDrag) {
       const targetIndex =
@@ -3214,7 +3216,7 @@ function ColumnBoardView({
           : Math.max(
               0,
               tasksByColumn[targetColumn].findIndex((t) => t.id === overId)
-            )
+            ) + endOffset
       onMoveMultipleTasks(
         Array.from(currentDraggedIds),
         targetColumn,
@@ -3233,13 +3235,17 @@ function ColumnBoardView({
       const oldIndex = columnTasks.findIndex((t) => t.id === activeId)
       const newIndex = columnTasks.findIndex((t) => t.id === overId)
       if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-        onMoveTask(activeId, activeColumn, newIndex)
+        onMoveTask(activeId, activeColumn, newIndex + endOffset)
       }
     } else {
       const overIndex = tasksByColumn[targetColumn].findIndex(
         (t) => t.id === overId
       )
-      onMoveTask(activeId, targetColumn, overIndex !== -1 ? overIndex : 0)
+      onMoveTask(
+        activeId,
+        targetColumn,
+        overIndex !== -1 ? overIndex + endOffset : 0
+      )
     }
   }
 
@@ -3714,6 +3720,7 @@ function ListView({
     if (!canManageTasks) return
     const { active, over } = event
     const currentDraggedIds = draggedTaskIds
+    const wasOverItemAtEnd = overItemAtEnd
     setActiveTask(null)
     setDraggedTaskIds(new Set())
     setOverColumn(null)
@@ -3736,6 +3743,7 @@ function ListView({
     // Block dragging into requests
     if (targetColumn === "requests") return
 
+    const endOffset = wasOverItemAtEnd ? 1 : 0
     const isMultiDrag = currentDraggedIds.size > 1
 
     if (isMultiDrag) {
@@ -3746,7 +3754,7 @@ function ListView({
           : Math.max(
               0,
               tasksByColumn[targetColumn].findIndex((t) => t.id === overId)
-            )
+            ) + endOffset
 
       onMoveMultipleTasks(
         Array.from(currentDraggedIds),
@@ -3768,13 +3776,17 @@ function ListView({
       const oldIndex = columnTasks.findIndex((t) => t.id === activeId)
       const newIndex = columnTasks.findIndex((t) => t.id === overId)
       if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-        onMoveTask(activeId, activeColumn, newIndex)
+        onMoveTask(activeId, activeColumn, newIndex + endOffset)
       }
     } else {
       const overIndex = tasksByColumn[targetColumn].findIndex(
         (t) => t.id === overId
       )
-      onMoveTask(activeId, targetColumn, overIndex !== -1 ? overIndex : 0)
+      onMoveTask(
+        activeId,
+        targetColumn,
+        overIndex !== -1 ? overIndex + endOffset : 0
+      )
     }
   }
 
