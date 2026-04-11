@@ -1999,12 +1999,13 @@ function TaskDetailModal({
                       onChange={(e) => setTitleValue(e.target.value)}
                       onBlur={handleTitleSave}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                        if (e.key === "Enter" && !e.shiftKey) {
                           e.preventDefault()
                           handleTitleSave()
                         }
                         if (e.key === "Escape") {
                           e.preventDefault()
+                          e.stopPropagation()
                           setTitleValue(task.title)
                           setEditingTitle(false)
                         }
@@ -2067,6 +2068,8 @@ function TaskDetailModal({
                       onBlur={handleDescSave}
                       onKeyDown={(e) => {
                         if (e.key === "Escape") {
+                          e.preventDefault()
+                          e.stopPropagation()
                           setDescValue(task.description ?? "")
                           setEditingDesc(false)
                         }
@@ -2819,6 +2822,196 @@ function KanbanColumn({
   )
 }
 
+// ── Shared drag-and-drop hook for list + board views ──
+
+function useKanbanDragAndDrop({
+  tasksByColumn,
+  selectedTaskIds,
+  canManageTasks,
+  onMoveTask,
+  onMoveMultipleTasks,
+  onClearSelection,
+}: {
+  tasksByColumn: Record<Status, Task[]>
+  selectedTaskIds: Set<string>
+  canManageTasks: boolean
+  onMoveTask: (taskId: string, toStatus: Status, toIndex: number) => void
+  onMoveMultipleTasks: (
+    taskIds: string[],
+    toStatus: Status,
+    toIndex: number
+  ) => void
+  onClearSelection: () => void
+}) {
+  const [activeTask, setActiveTask] = useState<Task | null>(null)
+  const [draggedTaskIds, setDraggedTaskIds] = useState<Set<string>>(new Set())
+  const [overColumn, setOverColumn] = useState<Status | null>(null)
+  const [overItemId, setOverItemId] = useState<string | null>(null)
+  const [overItemAtEnd, setOverItemAtEnd] = useState(false)
+  // Ref mirrors the state so handleDragEnd reads the latest value without
+  // depending on React having flushed the setState from handleDragOver.
+  const overItemAtEndRef = useRef(false)
+
+  function findColumnOfTask(taskId: string): Status | null {
+    for (const col of COLUMNS) {
+      if (tasksByColumn[col.id].some((t) => t.id === taskId)) {
+        return col.id
+      }
+    }
+    return null
+  }
+
+  function resetDragState() {
+    setActiveTask(null)
+    setDraggedTaskIds(new Set())
+    setOverColumn(null)
+    setOverItemId(null)
+    setOverItemAtEnd(false)
+    overItemAtEndRef.current = false
+  }
+
+  function handleDragStart(event: DragStartEvent) {
+    if (!canManageTasks) return
+    const task = event.active.data.current?.task as Task | undefined
+    if (!task) return
+    setActiveTask(task)
+    if (selectedTaskIds.has(task.id) && selectedTaskIds.size > 1) {
+      setDraggedTaskIds(new Set(selectedTaskIds))
+    } else {
+      setDraggedTaskIds(new Set([task.id]))
+    }
+  }
+
+  function handleDragOver(event: DragOverEvent) {
+    if (!canManageTasks) return
+    const { active, over } = event
+    if (!over) {
+      setOverColumn(null)
+      setOverItemId(null)
+      setOverItemAtEnd(false)
+      overItemAtEndRef.current = false
+      return
+    }
+
+    const overId = over.id as string
+    const targetCol =
+      over.data.current?.type === "column"
+        ? (over.id as Status)
+        : findColumnOfTask(overId)
+
+    if (targetCol === "requests") {
+      setOverColumn(null)
+      setOverItemId(null)
+      setOverItemAtEnd(false)
+      overItemAtEndRef.current = false
+      return
+    }
+
+    setOverColumn((current) => (current === targetCol ? current : targetCol))
+    const isColumnTarget = over.data.current?.type === "column"
+    setOverItemId(isColumnTarget ? null : overId)
+
+    if (isColumnTarget || !targetCol) {
+      setOverItemAtEnd(false)
+      overItemAtEndRef.current = false
+      return
+    }
+
+    const columnTasks = tasksByColumn[targetCol]
+    const lastTask = columnTasks[columnTasks.length - 1]
+    const isOverLast =
+      lastTask?.id === overId && lastTask?.id !== (active.id as string)
+    const activeRect = active.rect.current.translated
+    const overRect = over.rect
+    const isPastMidpoint =
+      !!activeRect &&
+      activeRect.top + activeRect.height / 2 >
+        overRect.top + overRect.height / 2
+    const atEnd = isOverLast && isPastMidpoint
+    setOverItemAtEnd(atEnd)
+    overItemAtEndRef.current = atEnd
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    const currentDraggedIds = draggedTaskIds
+    const wasOverItemAtEnd = overItemAtEndRef.current
+    resetDragState()
+
+    if (!canManageTasks) return
+    if (!over) return
+
+    const activeId = active.id as string
+    const overId = over.id as string
+
+    const activeColumn = findColumnOfTask(activeId)
+    const targetColumn =
+      over.data.current?.type === "column"
+        ? (over.id as Status)
+        : findColumnOfTask(overId)
+
+    if (!activeColumn || !targetColumn) return
+    if (targetColumn === "requests") return
+
+    const endOffset = wasOverItemAtEnd ? 1 : 0
+    const isMultiDrag = currentDraggedIds.size > 1
+
+    if (isMultiDrag) {
+      const targetIndex =
+        over.data.current?.type === "column"
+          ? tasksByColumn[targetColumn].length
+          : Math.max(
+              0,
+              tasksByColumn[targetColumn].findIndex((t) => t.id === overId)
+            ) + endOffset
+
+      onMoveMultipleTasks(
+        Array.from(currentDraggedIds),
+        targetColumn,
+        targetIndex
+      )
+      onClearSelection()
+      return
+    }
+
+    if (over.data.current?.type === "column") {
+      onMoveTask(activeId, targetColumn, tasksByColumn[targetColumn].length)
+      return
+    }
+
+    if (activeColumn === targetColumn) {
+      const columnTasks = tasksByColumn[activeColumn]
+      const oldIndex = columnTasks.findIndex((t) => t.id === activeId)
+      const newIndex = columnTasks.findIndex((t) => t.id === overId)
+      if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+        onMoveTask(activeId, activeColumn, newIndex + endOffset)
+      }
+      return
+    }
+
+    const overIndex = tasksByColumn[targetColumn].findIndex(
+      (t) => t.id === overId
+    )
+    onMoveTask(
+      activeId,
+      targetColumn,
+      overIndex !== -1 ? overIndex + endOffset : 0
+    )
+  }
+
+  return {
+    activeTask,
+    draggedTaskIds,
+    overColumn,
+    overItemId,
+    overItemAtEnd,
+    findColumnOfTask,
+    handleDragStart,
+    handleDragOver,
+    handleDragEnd,
+  }
+}
+
 // ── Board View (Kanban Columns) ──
 
 function ColumnBoardView({
@@ -2859,11 +3052,6 @@ function ColumnBoardView({
     (c) => !hiddenColumns.includes(c.id) && c.id !== "requests"
   )
   const showRequests = !hiddenColumns.includes("requests")
-  const [activeTask, setActiveTask] = useState<Task | null>(null)
-  const [draggedTaskIds, setDraggedTaskIds] = useState<Set<string>>(new Set())
-  const [overColumn, setOverColumn] = useState<Status | null>(null)
-  const [overItemId, setOverItemId] = useState<string | null>(null)
-  const [overItemAtEnd, setOverItemAtEnd] = useState(false)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
   const lastToggledTaskIdRef = useRef<string | null>(null)
@@ -3010,67 +3198,23 @@ function ColumnBoardView({
     return map
   }, [tasks])
 
-  function findColumnOfTask(taskId: string): Status | null {
-    for (const col of COLUMNS) {
-      if (tasksByColumn[col.id].some((t) => t.id === taskId)) {
-        return col.id
-      }
-    }
-    return null
-  }
-
-  function handleDragStart(event: DragStartEvent) {
-    if (!canManageTasks) return
-    const task = event.active.data.current?.task as Task | undefined
-    if (!task) return
-    setActiveTask(task)
-    if (selectedTaskIds.has(task.id) && selectedTaskIds.size > 1) {
-      setDraggedTaskIds(new Set(selectedTaskIds))
-    } else {
-      setDraggedTaskIds(new Set([task.id]))
-    }
-  }
-
-  function handleDragOver(event: DragOverEvent) {
-    if (!canManageTasks) return
-    const { active, over } = event
-    if (!over) {
-      setOverColumn(null)
-      setOverItemId(null)
-      setOverItemAtEnd(false)
-      return
-    }
-    const overId = over.id as string
-    const targetCol =
-      over.data.current?.type === "column"
-        ? (over.id as Status)
-        : findColumnOfTask(overId)
-    if (targetCol === "requests") {
-      setOverColumn(null)
-      setOverItemId(null)
-      setOverItemAtEnd(false)
-      return
-    }
-    setOverColumn((current) => (current === targetCol ? current : targetCol))
-    const isColumnTarget = over.data.current?.type === "column"
-    setOverItemId(isColumnTarget ? null : overId)
-
-    if (isColumnTarget || !targetCol) {
-      setOverItemAtEnd(false)
-    } else {
-      const columnTasks = tasksByColumn[targetCol]
-      const lastTask = columnTasks[columnTasks.length - 1]
-      const isOverLast =
-        lastTask?.id === overId && lastTask?.id !== (active.id as string)
-      const activeRect = active.rect.current.translated
-      const overRect = over.rect
-      const isPastMidpoint =
-        !!activeRect &&
-        activeRect.top + activeRect.height / 2 >
-          overRect.top + overRect.height / 2
-      setOverItemAtEnd(isOverLast && isPastMidpoint)
-    }
-  }
+  const {
+    activeTask,
+    draggedTaskIds,
+    overColumn,
+    overItemId,
+    overItemAtEnd,
+    handleDragStart,
+    handleDragOver,
+    handleDragEnd: hookHandleDragEnd,
+  } = useKanbanDragAndDrop({
+    tasksByColumn,
+    selectedTaskIds,
+    canManageTasks,
+    onMoveTask,
+    onMoveMultipleTasks,
+    onClearSelection: handleClearSelection,
+  })
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const autoScrollRafRef = useRef<number | null>(null)
@@ -3186,67 +3330,7 @@ function ColumnBoardView({
 
   function handleDragEnd(event: DragEndEvent) {
     stopAutoScroll()
-    if (!canManageTasks) return
-    const { active, over } = event
-    const currentDraggedIds = draggedTaskIds
-    const wasOverItemAtEnd = overItemAtEnd
-    setActiveTask(null)
-    setDraggedTaskIds(new Set())
-    setOverColumn(null)
-    setOverItemId(null)
-    setOverItemAtEnd(false)
-    if (!over) return
-
-    const activeId = active.id as string
-    const overId = over.id as string
-    const activeColumn = findColumnOfTask(activeId)
-    const targetColumn =
-      over.data.current?.type === "column"
-        ? (over.id as Status)
-        : findColumnOfTask(overId)
-    if (!activeColumn || !targetColumn) return
-    if (targetColumn === "requests") return
-
-    const endOffset = wasOverItemAtEnd ? 1 : 0
-    const isMultiDrag = currentDraggedIds.size > 1
-    if (isMultiDrag) {
-      const targetIndex =
-        over.data.current?.type === "column"
-          ? tasksByColumn[targetColumn].length
-          : Math.max(
-              0,
-              tasksByColumn[targetColumn].findIndex((t) => t.id === overId)
-            ) + endOffset
-      onMoveMultipleTasks(
-        Array.from(currentDraggedIds),
-        targetColumn,
-        targetIndex
-      )
-      handleClearSelection()
-      return
-    }
-
-    if (over.data.current?.type === "column") {
-      onMoveTask(activeId, targetColumn, tasksByColumn[targetColumn].length)
-      return
-    }
-    if (activeColumn === targetColumn) {
-      const columnTasks = tasksByColumn[activeColumn]
-      const oldIndex = columnTasks.findIndex((t) => t.id === activeId)
-      const newIndex = columnTasks.findIndex((t) => t.id === overId)
-      if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-        onMoveTask(activeId, activeColumn, newIndex + endOffset)
-      }
-    } else {
-      const overIndex = tasksByColumn[targetColumn].findIndex(
-        (t) => t.id === overId
-      )
-      onMoveTask(
-        activeId,
-        targetColumn,
-        overIndex !== -1 ? overIndex + endOffset : 0
-      )
-    }
+    hookHandleDragEnd(event)
   }
 
   // Clean up on unmount
@@ -3486,11 +3570,6 @@ function ListView({
     (c) => !hiddenColumns.includes(c.id) && c.id !== "requests"
   )
   const showRequests = !hiddenColumns.includes("requests")
-  const [activeTask, setActiveTask] = useState<Task | null>(null)
-  const [draggedTaskIds, setDraggedTaskIds] = useState<Set<string>>(new Set())
-  const [overColumn, setOverColumn] = useState<Status | null>(null)
-  const [overItemId, setOverItemId] = useState<string | null>(null)
-  const [overItemAtEnd, setOverItemAtEnd] = useState(false)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
   const lastToggledTaskIdRef = useRef<string | null>(null)
@@ -3648,147 +3727,23 @@ function ListView({
     return map
   }, [tasks])
 
-  function findColumnOfTask(taskId: string): Status | null {
-    for (const col of COLUMNS) {
-      if (tasksByColumn[col.id].some((t) => t.id === taskId)) {
-        return col.id
-      }
-    }
-    return null
-  }
-
-  function handleDragStart(event: DragStartEvent) {
-    if (!canManageTasks) return
-    const task = event.active.data.current?.task as Task | undefined
-    if (!task) return
-    setActiveTask(task)
-
-    // If the dragged task is part of the selection, drag all selected tasks
-    // Otherwise, drag just this one task
-    if (selectedTaskIds.has(task.id) && selectedTaskIds.size > 1) {
-      setDraggedTaskIds(new Set(selectedTaskIds))
-    } else {
-      setDraggedTaskIds(new Set([task.id]))
-    }
-  }
-
-  function handleDragOver(event: DragOverEvent) {
-    if (!canManageTasks) return
-    const { active, over } = event
-    if (!over) {
-      setOverColumn(null)
-      setOverItemId(null)
-      setOverItemAtEnd(false)
-      return
-    }
-
-    const overId = over.id as string
-    const targetCol =
-      over.data.current?.type === "column"
-        ? (over.id as Status)
-        : findColumnOfTask(overId)
-
-    // Block dragging into requests
-    if (targetCol === "requests") {
-      setOverColumn(null)
-      setOverItemId(null)
-      setOverItemAtEnd(false)
-      return
-    }
-
-    setOverColumn((current) => (current === targetCol ? current : targetCol))
-    const isColumnTarget = over.data.current?.type === "column"
-    setOverItemId(isColumnTarget ? null : overId)
-
-    if (isColumnTarget || !targetCol) {
-      setOverItemAtEnd(false)
-    } else {
-      const columnTasks = tasksByColumn[targetCol]
-      const lastTask = columnTasks[columnTasks.length - 1]
-      const isOverLast = lastTask?.id === overId && lastTask?.id !== (active.id as string)
-      const activeRect = active.rect.current.translated
-      const overRect = over.rect
-      const isPastMidpoint =
-        !!activeRect &&
-        activeRect.top + activeRect.height / 2 >
-          overRect.top + overRect.height / 2
-      setOverItemAtEnd(isOverLast && isPastMidpoint)
-    }
-  }
-
-  function handleDragEnd(event: DragEndEvent) {
-    if (!canManageTasks) return
-    const { active, over } = event
-    const currentDraggedIds = draggedTaskIds
-    const wasOverItemAtEnd = overItemAtEnd
-    setActiveTask(null)
-    setDraggedTaskIds(new Set())
-    setOverColumn(null)
-    setOverItemId(null)
-    setOverItemAtEnd(false)
-
-    if (!over) return
-
-    const activeId = active.id as string
-    const overId = over.id as string
-
-    const activeColumn = findColumnOfTask(activeId)
-    const targetColumn =
-      over.data.current?.type === "column"
-        ? (over.id as Status)
-        : findColumnOfTask(overId)
-
-    if (!activeColumn || !targetColumn) return
-
-    // Block dragging into requests
-    if (targetColumn === "requests") return
-
-    const endOffset = wasOverItemAtEnd ? 1 : 0
-    const isMultiDrag = currentDraggedIds.size > 1
-
-    if (isMultiDrag) {
-      // Multi-drag: move all dragged tasks to target column
-      const targetIndex =
-        over.data.current?.type === "column"
-          ? tasksByColumn[targetColumn].length
-          : Math.max(
-              0,
-              tasksByColumn[targetColumn].findIndex((t) => t.id === overId)
-            ) + endOffset
-
-      onMoveMultipleTasks(
-        Array.from(currentDraggedIds),
-        targetColumn,
-        targetIndex
-      )
-      handleClearSelection()
-      return
-    }
-
-    // Single drag
-    if (over.data.current?.type === "column") {
-      onMoveTask(activeId, targetColumn, tasksByColumn[targetColumn].length)
-      return
-    }
-
-    if (activeColumn === targetColumn) {
-      const columnTasks = tasksByColumn[activeColumn]
-      const oldIndex = columnTasks.findIndex((t) => t.id === activeId)
-      const newIndex = columnTasks.findIndex((t) => t.id === overId)
-      if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-        onMoveTask(activeId, activeColumn, newIndex + endOffset)
-      }
-    } else {
-      const overIndex = tasksByColumn[targetColumn].findIndex(
-        (t) => t.id === overId
-      )
-      onMoveTask(
-        activeId,
-        targetColumn,
-        overIndex !== -1 ? overIndex + endOffset : 0
-      )
-    }
-  }
+  const {
+    activeTask,
+    draggedTaskIds,
+    overColumn,
+    overItemId,
+    overItemAtEnd,
+    handleDragStart,
+    handleDragOver,
+    handleDragEnd,
+  } = useKanbanDragAndDrop({
+    tasksByColumn,
+    selectedTaskIds,
+    canManageTasks,
+    onMoveTask,
+    onMoveMultipleTasks,
+    onClearSelection: handleClearSelection,
+  })
 
   const activeTaskSource = activeTask ? activeTask.status : null
 
