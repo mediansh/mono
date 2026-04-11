@@ -1,8 +1,10 @@
 import { v } from "convex/values"
 import {
   action,
+  internalAction,
   internalMutation,
   internalQuery,
+  mutation,
 } from "./_generated/server"
 import { internal } from "./_generated/api"
 import {
@@ -20,6 +22,7 @@ import {
   attachWorkspacePlan,
   createBillingPortalUrl,
   ensureAutumnCustomer,
+  isAutumnConfigured,
   loadWorkspaceBillingSnapshot,
 } from "../lib/billing/autumn"
 import {
@@ -47,16 +50,24 @@ type WorkspaceBillingContext = {
   workspaceId: string
   workspaceName: string
   canManageBilling: boolean
+  disableOveragesWhenExhausted: boolean
   user: {
     id: string
     email: string | null
   }
 }
 
+export type WorkspaceQuotaStatus = {
+  overagesDisabled: boolean
+  aiExhausted: boolean
+  eventsExhausted: boolean
+}
+
 type WorkspaceBillingDashboard = {
   currentPlanId: string | null
   currentPlanName: string
   canManageBilling: boolean
+  disableOveragesWhenExhausted: boolean
   monthLabel: string
   summary: {
     aiBudget: number
@@ -258,6 +269,7 @@ export const getWorkspaceBillingContext = internalQuery({
       workspaceId: workspace._id,
       workspaceName: workspace.name,
       canManageBilling: membership.role === "owner" || membership.role === "admin",
+      disableOveragesWhenExhausted: workspace.disableOveragesWhenExhausted ?? false,
       user: {
         id: identity.subject,
         email:
@@ -266,6 +278,127 @@ export const getWorkspaceBillingContext = internalQuery({
             : null,
       },
     }
+  },
+})
+
+export const getWorkspaceOverageSettings = internalQuery({
+  args: {
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (
+    ctx,
+    args
+  ): Promise<{
+    workspaceId: string
+    workspaceName: string
+    disableOveragesWhenExhausted: boolean
+  } | null> => {
+    const workspace = await ctx.db.get(args.workspaceId)
+    if (!workspace) {
+      return null
+    }
+
+    return {
+      workspaceId: workspace._id,
+      workspaceName: workspace.name,
+      disableOveragesWhenExhausted: workspace.disableOveragesWhenExhausted ?? false,
+    }
+  },
+})
+
+export const setWorkspaceDisableOverages = mutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    disableOveragesWhenExhausted: v.boolean(),
+  },
+  handler: async (ctx, args): Promise<{ disableOveragesWhenExhausted: boolean }> => {
+    await requireWorkspaceAdminAccess(ctx, args.workspaceId)
+    await ctx.db.patch(args.workspaceId, {
+      disableOveragesWhenExhausted: args.disableOveragesWhenExhausted,
+    })
+    return {
+      disableOveragesWhenExhausted: args.disableOveragesWhenExhausted,
+    }
+  },
+})
+
+async function computeWorkspaceQuotaStatus(settings: {
+  workspaceId: string
+  workspaceName: string
+  disableOveragesWhenExhausted: boolean
+}): Promise<WorkspaceQuotaStatus> {
+  if (!settings.disableOveragesWhenExhausted) {
+    return { overagesDisabled: false, aiExhausted: false, eventsExhausted: false }
+  }
+
+  if (!isAutumnConfigured()) {
+    // Local dev with no Autumn configured — never block ingest or generation.
+    return { overagesDisabled: true, aiExhausted: false, eventsExhausted: false }
+  }
+
+  try {
+    const snapshot = await loadWorkspaceBillingSnapshot({
+      workspaceId: settings.workspaceId,
+      workspaceName: settings.workspaceName,
+    })
+
+    const aiBalance = getBalance(snapshot.customer.balances, AUTUMN_AI_USAGE_FEATURE_ID)
+    const eventBalance = getBalance(
+      snapshot.customer.balances,
+      AUTUMN_EVENTS_FEATURE_ID
+    )
+
+    return {
+      overagesDisabled: true,
+      aiExhausted: aiBalance.granted > 0 && aiBalance.remaining <= 0,
+      eventsExhausted: eventBalance.granted > 0 && eventBalance.remaining <= 0,
+    }
+  } catch (error) {
+    console.error(
+      "[billing] Failed to load quota snapshot — failing open",
+      { workspaceId: settings.workspaceId },
+      error
+    )
+    return { overagesDisabled: true, aiExhausted: false, eventsExhausted: false }
+  }
+}
+
+export const getWorkspaceQuotaStatus = action({
+  args: {
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args): Promise<WorkspaceQuotaStatus> => {
+    // Public action — gate via workspace membership before reading billing state.
+    await ctx.runMutation(internal.billing.assertWorkspaceAccess, {
+      workspaceId: args.workspaceId,
+    })
+
+    const settings = await ctx.runQuery(internal.billing.getWorkspaceOverageSettings, {
+      workspaceId: args.workspaceId,
+    })
+
+    if (!settings) {
+      return { overagesDisabled: false, aiExhausted: false, eventsExhausted: false }
+    }
+
+    return await computeWorkspaceQuotaStatus(settings)
+  },
+})
+
+export const getWorkspaceQuotaStatusInternal = internalAction({
+  args: {
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args): Promise<WorkspaceQuotaStatus> => {
+    const settings = await ctx.runQuery(internal.billing.getWorkspaceOverageSettings, {
+      workspaceId: args.workspaceId,
+    })
+
+    if (!settings) {
+      return { overagesDisabled: false, aiExhausted: false, eventsExhausted: false }
+    }
+
+    return await computeWorkspaceQuotaStatus(settings)
   },
 })
 
@@ -401,6 +534,7 @@ export const getWorkspaceBillingDashboard = action({
       currentPlanName:
         plans.find((plan) => plan.id === activeSubscription?.planId)?.name ?? "No plan",
       canManageBilling: billingContext.canManageBilling,
+      disableOveragesWhenExhausted: billingContext.disableOveragesWhenExhausted,
       monthLabel: getCurrentMonthLabel(),
       summary: {
         aiBudget: aiBalance.granted,

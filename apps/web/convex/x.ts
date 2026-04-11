@@ -1813,6 +1813,28 @@ export const xWebhook = httpAction(async (ctx, request) => {
     return new Response("Ignored", { status: 200 })
   }
 
+  // Skip ingest when overages are disabled and the workspace's events are
+  // exhausted. We still 200 so X doesn't keep retrying.
+  try {
+    const quota = await ctx.runAction(
+      internal.billing.getWorkspaceQuotaStatusInternal,
+      { workspaceId: integration.workspaceId }
+    )
+    if (quota.eventsExhausted) {
+      logInfo("Skipping X webhook — events exhausted (overages disabled)", {
+        workspaceId: integration.workspaceId,
+        forUserId,
+      })
+      return new Response("Paused — events exhausted", { status: 200 })
+    }
+  } catch (error) {
+    logError(
+      "Quota check failed in X webhook — allowing sync",
+      error,
+      { workspaceId: integration.workspaceId, forUserId }
+    )
+  }
+
   const tweetCreateEventCount = payload.tweet_create_events?.length ?? 0
   const eventKind = payload.replay_job_status
     ? "replay_status"

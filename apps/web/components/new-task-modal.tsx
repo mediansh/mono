@@ -563,6 +563,22 @@ export function NewTaskModal({
       const payload = await response.json()
 
       if (!response.ok) {
+        if (response.status === 402 && payload?.code === "ai_budget_exhausted") {
+          toast.error(
+            payload?.error ??
+              "AI budget exhausted. Overages are disabled for this workspace.",
+            {
+              id: toastId,
+              action: {
+                label: "Manage billing",
+                onClick: () => {
+                  window.location.assign("/app/billing")
+                },
+              },
+            }
+          )
+          return
+        }
         throw new Error(payload?.error || "Task generation failed.")
       }
 

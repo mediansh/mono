@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useState, type ReactNode } from "react"
-import { useAction } from "convex/react"
+import { useAction, useMutation } from "convex/react"
+import { Switch } from "@workspace/ui/components/switch"
 import { motion } from "motion/react"
 import {
   CreditCard,
@@ -64,6 +65,7 @@ type BillingDashboard = {
   currentPlanId: string | null
   currentPlanName: string
   canManageBilling: boolean
+  disableOveragesWhenExhausted: boolean
   monthLabel: string
   summary: {
     aiBudget: number
@@ -203,11 +205,13 @@ export default function BillingPage() {
   const loadBillingDashboard = useAction(api.billing.getWorkspaceBillingDashboard)
   const openBillingPortal = useAction(api.billing.openWorkspaceBillingPortal)
   const attachBillingPlan = useAction(api.billing.attachWorkspaceBillingPlan)
+  const setDisableOverages = useMutation(api.billing.setWorkspaceDisableOverages)
   const [loading, setLoading] = useState(true)
   const [dashboard, setDashboard] = useState<BillingDashboard | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [managingBilling, setManagingBilling] = useState(false)
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null)
+  const [disableOveragesPending, setDisableOveragesPending] = useState(false)
 
   useEffect(() => {
     document.title = "Billing — Median"
@@ -286,6 +290,41 @@ export default function BillingPage() {
           : "Unable to open the billing portal."
       )
       setManagingBilling(false)
+    }
+  }
+
+  async function handleToggleDisableOverages(nextValue: boolean) {
+    if (!currentWorkspace || !dashboard?.canManageBilling || disableOveragesPending) return
+
+    const previousValue = dashboard.disableOveragesWhenExhausted
+    setDashboard((current) =>
+      current ? { ...current, disableOveragesWhenExhausted: nextValue } : current
+    )
+    setDisableOveragesPending(true)
+
+    try {
+      await setDisableOverages({
+        workspaceId: currentWorkspace._id,
+        disableOveragesWhenExhausted: nextValue,
+      })
+      toast.success(
+        nextValue
+          ? "Overages disabled. Usage will hard-stop at plan limits."
+          : "Overages re-enabled. Usage beyond plan limits will be billed."
+      )
+    } catch (nextError) {
+      setDashboard((current) =>
+        current
+          ? { ...current, disableOveragesWhenExhausted: previousValue }
+          : current
+      )
+      toast.error(
+        nextError instanceof Error
+          ? nextError.message
+          : "Unable to update overage settings."
+      )
+    } finally {
+      setDisableOveragesPending(false)
     }
   }
 
@@ -585,6 +624,29 @@ export default function BillingPage() {
           </div>
         </motion.div>
 
+        <motion.div
+          variants={fadeUp}
+          className="mb-6 flex items-start gap-3 rounded-[4px] p-3.5 ring-1 ring-border"
+        >
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-medium text-foreground">
+              Hard cap usage at plan limits
+            </p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              When enabled, AI task generation pauses once your monthly budget is spent and
+              integrations stop ingesting new events past your plan&apos;s allowance. The task
+              board stays available — Linear, GitHub, and Discord just won&apos;t sync new
+              events until the next cycle or an upgrade.
+            </p>
+          </div>
+          <Switch
+            checked={dashboard.disableOveragesWhenExhausted}
+            onCheckedChange={(checked) => void handleToggleDisableOverages(checked)}
+            disabled={!dashboard.canManageBilling || disableOveragesPending}
+            aria-label="Disable overages when plan limits are reached"
+          />
+        </motion.div>
+
         {(dashboard.summary.aiOverage > 0 || dashboard.summary.eventOverage > 0) && (
           <motion.div
             variants={fadeUp}
@@ -593,14 +655,18 @@ export default function BillingPage() {
             <Warning size={14} weight="fill" className="mt-0.5 shrink-0 text-amber-500" />
             <div>
               <p className="text-[12px] font-medium text-foreground">
-                You have overages this billing cycle
+                {dashboard.disableOveragesWhenExhausted
+                  ? "You've reached your plan limits"
+                  : "You have overages this billing cycle"}
               </p>
               <p className="mt-0.5 text-[11px] text-muted-foreground">
                 {dashboard.summary.aiOverage > 0 &&
                   `AI spend exceeds budget by ${formatCurrency(dashboard.summary.aiOverage)}. `}
                 {dashboard.summary.eventOverage > 0 &&
                   `${dashboard.summary.eventOverage.toLocaleString()} events over your ${dashboard.summary.eventLimit.toLocaleString()} limit. `}
-                Overages are automatically charged at the end of the billing cycle.
+                {dashboard.disableOveragesWhenExhausted
+                  ? "Ingest is paused — overages are disabled. Upgrade your plan to resume."
+                  : "Overages are automatically charged at the end of the billing cycle."}
               </p>
             </div>
           </motion.div>
