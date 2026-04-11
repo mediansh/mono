@@ -816,12 +816,12 @@ const RequestRow = memo(function RequestRow({
   return (
     <div
       onClick={() => onSelect(task)}
-      className="cursor-pointer rounded-[4px] bg-background ring-1 ring-border transition-colors hover:border-border/80 hover:bg-accent/20 dark:bg-card"
+      className="flex h-full min-w-0 cursor-pointer flex-col rounded-[4px] bg-background ring-1 ring-border transition-colors hover:border-border/80 hover:bg-accent/20 dark:bg-card"
     >
       {/* Card body */}
-      <div className="p-2.5 pb-0">
+      <div className="flex flex-1 flex-col p-2.5 pb-0">
         {/* Title */}
-        <p className="mb-2 text-[13px] leading-snug font-medium text-foreground/90">
+        <p className="mb-2 text-[13px] leading-snug font-medium break-words text-foreground/90">
           {task.title}
         </p>
 
@@ -1765,6 +1765,7 @@ function TaskDetailModal({
   const [descValue, setDescValue] = useState("")
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const titleRef = useRef<HTMLTextAreaElement>(null)
   const attachmentsRef = useRef<{
     taskId: string | null
     attachments: TaskAttachment[] | undefined
@@ -1921,6 +1922,14 @@ function TaskDetailModal({
     return () => document.removeEventListener("keydown", handleEscape)
   }, [task, handleClose])
 
+  useEffect(() => {
+    if (!editingTitle) return
+    const el = titleRef.current
+    if (!el) return
+    el.style.height = "auto"
+    el.style.height = `${el.scrollHeight}px`
+  }, [editingTitle, titleValue])
+
   return createPortal(
     <AnimatePresence>
       {task && (
@@ -1959,19 +1968,25 @@ function TaskDetailModal({
                 <div>
                   <span className="sr-only">{task.title}</span>
                   {editingTitle ? (
-                    <input
+                    <textarea
+                      ref={titleRef}
                       autoFocus
+                      rows={1}
                       value={titleValue}
                       onChange={(e) => setTitleValue(e.target.value)}
                       onBlur={handleTitleSave}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") handleTitleSave()
+                        if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                          e.preventDefault()
+                          handleTitleSave()
+                        }
                         if (e.key === "Escape") {
+                          e.preventDefault()
                           setTitleValue(task.title)
                           setEditingTitle(false)
                         }
                       }}
-                      className="w-full rounded-[4px] bg-transparent pr-8 text-[16px] leading-snug font-semibold tracking-tight ring-1 ring-border outline-none focus:ring-1 focus:ring-primary"
+                      className="block w-full resize-none overflow-hidden bg-transparent pr-8 text-[16px] leading-snug font-semibold tracking-tight break-words outline-none"
                     />
                   ) : (
                     <h2
