@@ -52,7 +52,7 @@
         },
         {
           "anchor": "Discord",
-          "href": "https://discord.gg/median",
+          "href": "https://clovr.dev/discord",
           "icon": "discord"
         }
       ]
@@ -77,7 +77,7 @@
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mediansh",
+      "x": "https://x.com/mediandotsh",
       "github": "https://github.com/mediansh"
     }
   }

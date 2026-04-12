@@ -9,10 +9,10 @@ import {
   XCircle,
   DiscordLogo,
   GithubLogo,
-  XLogo,
 } from "@phosphor-icons/react"
 import { Logo } from "@/components/logo"
 import { LinearLogo } from "@/components/icons/linear-logo"
+import { XLogoIcon } from "@/components/icons/x-logo"
 
 const ease = [0.25, 0.1, 0.25, 1] as const
 
@@ -34,7 +34,7 @@ const cardStyles = {
 function InboxGraphic() {
   const sources = [
     { Icon: DiscordLogo, text: "bug on onboarding", rot: -10 },
-    { Icon: XLogo, text: "dark mode pls", rot: 0 },
+    { Icon: XLogoIcon, text: "dark mode pls", rot: 0 },
     { Icon: GithubLogo, text: "sync issue", rot: 8 },
   ]
 
@@ -153,7 +153,7 @@ function CubesGraphic() {
         {/* Bottom center — X */}
         <div />
         <div className={satellite}>
-          <XLogo size={16} weight="fill" />
+          <XLogoIcon size={16} />
         </div>
         <div />
 
@@ -340,8 +340,8 @@ export function LandingFeatures() {
           transition={{ duration: 0.5, ease }}
           className="mb-12 text-center"
         >
-          <h2 className="flex items-center justify-center gap-3 text-3xl font-semibold tracking-tight sm:text-4xl">
-            <Cube size="1em" weight="duotone" className="text-foreground/40" />
+          <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+            <Cube size="1em" weight="duotone" className="mr-2 inline-block align-middle text-foreground/40 sm:mr-3" />
             Built for how teams actually work
           </h2>
           <p className="mt-3 text-muted-foreground sm:text-lg">

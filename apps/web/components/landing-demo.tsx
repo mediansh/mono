@@ -12,11 +12,14 @@ export function LandingDemo() {
         className="mx-auto max-w-6xl"
       >
         <div className="overflow-hidden rounded-2xl border border-foreground/10 shadow-2xl">
-          <img
-            src="/demo.svg"
-            alt="Median dashboard"
-            className="w-full"
-          />
+          <picture>
+            <source media="(max-width: 768px)" srcSet="/demo-mobile.svg" />
+            <img
+              src="/demo.svg"
+              alt="Median dashboard"
+              className="w-full"
+            />
+          </picture>
         </div>
       </motion.div>
     </section>

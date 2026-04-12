@@ -7,10 +7,10 @@ import {
   Plugs,
   DiscordLogo,
   GithubLogo,
-  XLogo,
   Terminal,
 } from "@phosphor-icons/react"
 import { LinearLogo } from "@/components/icons/linear-logo"
+import { XLogoIcon } from "@/components/icons/x-logo"
 
 type BrandIconProps = { size?: number }
 
@@ -58,7 +58,7 @@ const integrations = [
   },
   {
     name: "X (Twitter)",
-    icon: ({ size = 20 }: BrandIconProps) => <XLogo size={size} weight="fill" />,
+    icon: ({ size = 20 }: BrandIconProps) => <XLogoIcon size={size} />,
     description: "Monitor mentions and create tasks from tweets. Stay on top of public feedback.",
     capabilities: ["Mention monitoring", "Auto task creation", "OAuth connect"],
   },
@@ -83,7 +83,7 @@ export function LandingIntegrations() {
 
   return (
     <ThemeContext.Provider value={{ card }}>
-    <section id="integrations" className="scroll-mt-24 px-4 py-24">
+    <section id="integrations" className="scroll-mt-24 px-6 py-24 sm:px-4">
       <div className="mx-auto max-w-6xl">
         {/* Header */}
         <motion.div
@@ -93,8 +93,8 @@ export function LandingIntegrations() {
           transition={{ duration: 0.5, ease }}
           className="mb-16 text-center"
         >
-          <h2 className="flex items-center justify-center gap-3 text-3xl font-semibold tracking-tight sm:text-4xl">
-            <Plugs size="1em" weight="duotone" className="text-foreground/40" />
+          <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+            <Plugs size="1em" weight="duotone" className="mr-2 inline-block align-middle text-foreground/40 sm:mr-3" />
             Plugs into your stack
           </h2>
           <p className="mt-3 text-muted-foreground sm:text-lg">
@@ -110,9 +110,9 @@ export function LandingIntegrations() {
           transition={{ duration: 0.5, ease }}
           className="relative mx-auto mb-20 flex items-center justify-center py-4"
         >
-          <div className="relative flex items-center gap-6 sm:gap-10">
+          <div className="relative flex items-center gap-3 sm:gap-10">
             {/* Connecting line — sits behind icons, spans between first and last */}
-            <div className="pointer-events-none absolute top-1/2 right-[28px] left-[28px] h-px -translate-y-1/2 bg-foreground/[0.08] sm:right-[32px] sm:left-[32px]" />
+            <div className="pointer-events-none absolute top-1/2 right-[20px] left-[20px] h-px -translate-y-1/2 bg-foreground/[0.08] sm:right-[32px] sm:left-[32px]" />
 
             {/* Left integrations (Discord, GitHub) */}
             {integrations.slice(0, 2).map((integration, i) => (
@@ -122,9 +122,9 @@ export function LandingIntegrations() {
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.4, delay: 0.15 + i * 0.08, ease }}
-                className="relative z-10 flex h-14 w-14 items-center justify-center rounded-2xl border border-foreground/[0.1] bg-background sm:h-16 sm:w-16"
+                className="relative z-10 flex h-11 w-11 items-center justify-center rounded-xl border border-foreground/[0.1] bg-background sm:h-16 sm:w-16 sm:rounded-2xl"
               >
-                <integration.icon size={24} />
+                <integration.icon size={20} />
               </motion.div>
             ))}
 
@@ -134,9 +134,9 @@ export function LandingIntegrations() {
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.1, ease }}
-              className="relative z-10 flex h-20 w-20 items-center justify-center rounded-2xl border border-foreground/[0.15] bg-background sm:h-24 sm:w-24"
+              className="relative z-10 flex h-14 w-14 items-center justify-center rounded-xl border border-foreground/[0.15] bg-background sm:h-24 sm:w-24 sm:rounded-2xl"
             >
-              <svg viewBox="0 0 300 300" fill="currentColor" className="h-10 w-10 sm:h-12 sm:w-12">
+              <svg viewBox="0 0 300 300" fill="currentColor" className="h-7 w-7 sm:h-12 sm:w-12">
                 <path d="M253.339 0H46.4123C20.7798 0 0 21.304 0 47.7159V107.267C0 111.503 2.98631 114.12 7.09249 112.874L238.283 52.6993C244.256 51.0797 247.74 55.6894 245.998 61.6694L185.649 292.649C184.529 297.135 187.267 300 191.746 300H252.095C278.1 300 300 277.699 300 252.409V47.7159C300 21.304 279.096 0 253.339 0Z" />
                 <path d="M0 139.531V253.526C0 278.942 20.6553 299.996 46.4123 299.996H159.768C164.247 299.996 166.362 296.259 165.118 291.898L147.822 229.232C147.076 226.865 147.2 224.747 148.445 222.38L203.691 111.251C206.802 105.021 199.336 100.412 194.857 105.146L53.8781 244.93C49.8963 249.166 43.5504 244.307 45.7901 238.701L72.1692 160.212C73.538 155.727 71.6715 151.367 66.321 150.37L7.71464 134.299C3.11074 132.679 0 135.171 0 139.531Z" />
               </svg>
@@ -150,9 +150,9 @@ export function LandingIntegrations() {
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.4, delay: 0.35 + i * 0.08, ease }}
-                className="relative z-10 flex h-14 w-14 items-center justify-center rounded-2xl border border-foreground/[0.1] bg-background sm:h-16 sm:w-16"
+                className="relative z-10 flex h-11 w-11 items-center justify-center rounded-xl border border-foreground/[0.1] bg-background sm:h-16 sm:w-16 sm:rounded-2xl"
               >
-                <integration.icon size={24} />
+                <integration.icon size={20} />
               </motion.div>
             ))}
           </div>
@@ -164,7 +164,7 @@ export function LandingIntegrations() {
             <IntegrationCard key={integration.name} integration={integration} delay={i * 0.08} />
           ))}
         </div>
-        <div className="mx-auto mt-4 grid max-w-[calc(66.666%+8px)] gap-4 sm:grid-cols-2">
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:mx-auto lg:max-w-[calc(66.666%+8px)]">
           {integrations.slice(3).map((integration, i) => (
             <IntegrationCard key={integration.name} integration={integration} delay={(i + 3) * 0.08} />
           ))}
