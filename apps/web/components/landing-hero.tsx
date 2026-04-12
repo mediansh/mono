@@ -139,8 +139,12 @@ export function LandingHero() {
         </Link>
 
         {/* Learn more button */}
-        <Link
-          href="#"
+        <button
+          onClick={() => {
+            document
+              .getElementById("features")
+              ?.scrollIntoView({ behavior: "smooth" })
+          }}
           className="relative flex h-10 items-center overflow-hidden rounded-full px-5 text-sm font-medium"
         >
           <div
@@ -163,7 +167,7 @@ export function LandingHero() {
             style={{ boxShadow: outline.shadow }}
           />
           <span className="relative z-10 text-foreground">Learn more</span>
-        </Link>
+        </button>
       </motion.div>
     </section>
   )
