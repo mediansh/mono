@@ -280,7 +280,7 @@ function EventTooltip({ eventLimit }: { eventLimit: number }) {
               connected integrations (Discord, GitHub, Linear, X).
             </p>
             {/* Arrow */}
-            <div className="absolute -bottom-1 right-2 h-2 w-2 rotate-45 border-r border-b border-foreground/10 bg-background/95 sm:right-auto sm:left-1/2 sm:-translate-x-1/2" />
+            <div className="absolute -bottom-1 right-[3px] h-2 w-2 rotate-45 border-r border-b border-foreground/10 bg-background/95 sm:right-auto sm:left-1/2 sm:-translate-x-1/2" />
           </motion.div>
         )}
       </AnimatePresence>
