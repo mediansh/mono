@@ -145,7 +145,7 @@ export function LandingHero() {
               .getElementById("features")
               ?.scrollIntoView({ behavior: "smooth" })
           }}
-          className="relative flex h-10 items-center overflow-hidden rounded-full px-5 text-sm font-medium"
+          className="relative flex h-10 cursor-pointer items-center overflow-hidden rounded-full px-5 text-sm font-medium"
         >
           <div
             className="pointer-events-none absolute inset-0 rounded-full backdrop-blur-xl"
