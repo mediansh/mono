@@ -7,10 +7,10 @@ import {
   Plugs,
   DiscordLogo,
   GithubLogo,
-  XLogo,
   Terminal,
 } from "@phosphor-icons/react"
 import { LinearLogo } from "@/components/icons/linear-logo"
+import { XLogoIcon } from "@/components/icons/x-logo"
 
 type BrandIconProps = { size?: number }
 
@@ -58,7 +58,7 @@ const integrations = [
   },
   {
     name: "X (Twitter)",
-    icon: ({ size = 20 }: BrandIconProps) => <XLogo size={size} weight="fill" />,
+    icon: ({ size = 20 }: BrandIconProps) => <XLogoIcon size={size} />,
     description: "Monitor mentions and create tasks from tweets. Stay on top of public feedback.",
     capabilities: ["Mention monitoring", "Auto task creation", "OAuth connect"],
   },
@@ -83,7 +83,7 @@ export function LandingIntegrations() {
 
   return (
     <ThemeContext.Provider value={{ card }}>
-    <section id="integrations" className="scroll-mt-24 px-4 py-24">
+    <section id="integrations" className="scroll-mt-24 px-6 py-24 sm:px-4">
       <div className="mx-auto max-w-6xl">
         {/* Header */}
         <motion.div
@@ -93,9 +93,9 @@ export function LandingIntegrations() {
           transition={{ duration: 0.5, ease }}
           className="mb-16 text-center"
         >
-          <h2 className="flex items-center justify-center gap-3 text-3xl font-semibold tracking-tight sm:text-4xl">
-            <Plugs size="1em" weight="duotone" className="text-foreground/40" />
-            Plugs into your stack
+          <h2 className="flex items-start justify-center gap-2 text-3xl font-semibold tracking-tight sm:items-center sm:gap-3 sm:text-4xl">
+            <Plugs size="1em" weight="duotone" className="mt-1 shrink-0 text-foreground/40 sm:mt-0" />
+            <span>Plugs into your stack</span>
           </h2>
           <p className="mt-3 text-muted-foreground sm:text-lg">
             Connect the tools your team already uses. Feedback flows in, updates flow out.
@@ -164,7 +164,7 @@ export function LandingIntegrations() {
             <IntegrationCard key={integration.name} integration={integration} delay={i * 0.08} />
           ))}
         </div>
-        <div className="mx-auto mt-4 grid max-w-[calc(66.666%+8px)] gap-4 sm:grid-cols-2">
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:mx-auto lg:max-w-[calc(66.666%+8px)]">
           {integrations.slice(3).map((integration, i) => (
             <IntegrationCard key={integration.name} integration={integration} delay={(i + 3) * 0.08} />
           ))}

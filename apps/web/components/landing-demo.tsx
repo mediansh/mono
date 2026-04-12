@@ -11,12 +11,15 @@ export function LandingDemo() {
         transition={{ duration: 0.7, delay: 0.8, ease: [0.25, 0.1, 0.25, 1] }}
         className="mx-auto max-w-6xl"
       >
-        <div className="overflow-hidden rounded-2xl border border-foreground/10 shadow-2xl">
-          <img
-            src="/demo.svg"
-            alt="Median dashboard"
-            className="w-full"
-          />
+        <div className="relative overflow-hidden rounded-2xl border border-foreground/10 shadow-2xl">
+          <div className="max-h-[220px] sm:max-h-none">
+            <img
+              src="/demo.svg"
+              alt="Median dashboard"
+              className="w-full"
+            />
+          </div>
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-b from-transparent to-background sm:hidden" />
         </div>
       </motion.div>
     </section>

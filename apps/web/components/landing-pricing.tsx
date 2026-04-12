@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, createContext, useContext } from "react"
+import { useState, useEffect, useRef, createContext, useContext } from "react"
 import { useTheme } from "next-themes"
 import Link from "next/link"
 import { motion, AnimatePresence } from "motion/react"
@@ -63,9 +63,9 @@ export function LandingPricing() {
           transition={{ duration: 0.5, ease }}
           className="mb-12 text-center"
         >
-          <h2 className="flex items-center justify-center gap-3 text-3xl font-semibold tracking-tight sm:text-4xl">
-            <CreditCard size="1em" weight="duotone" className="text-foreground/40" />
-            Simple, transparent pricing
+          <h2 className="flex items-start justify-center gap-2 text-3xl font-semibold tracking-tight sm:items-center sm:gap-3 sm:text-4xl">
+            <CreditCard size="1em" weight="duotone" className="mt-1 shrink-0 text-foreground/40 sm:mt-0" />
+            <span>Simple, transparent pricing</span>
           </h2>
           <p className="mt-3 text-muted-foreground sm:text-lg">
             Start small, scale as you grow. Every plan includes all features.
@@ -227,9 +227,26 @@ function PlanCard({
 
 function EventTooltip({ eventLimit }: { eventLimit: number }) {
   const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLSpanElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handleClickOutside(e: MouseEvent | TouchEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    document.addEventListener("touchstart", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+      document.removeEventListener("touchstart", handleClickOutside)
+    }
+  }, [open])
 
   return (
     <span
+      ref={ref}
       className="relative inline-flex"
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
@@ -238,6 +255,10 @@ function EventTooltip({ eventLimit }: { eventLimit: number }) {
         size={14}
         weight="fill"
         className="cursor-help text-foreground/30 transition-colors hover:text-foreground/50"
+        onClick={(e) => {
+          e.preventDefault()
+          setOpen((prev) => !prev)
+        }}
       />
       <AnimatePresence>
         {open && (
