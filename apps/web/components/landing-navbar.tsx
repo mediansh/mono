@@ -128,9 +128,12 @@ export function LandingNavbar() {
           />
 
           {/* Logo */}
-          <Link href="/" className="relative z-10 flex items-center p-2">
+          <button
+            onClick={() => window.scrollTo({ top: 0 })}
+            className="relative z-10 flex cursor-pointer items-center p-2"
+          >
             <Logo symbolOnly className="size-5" />
-          </Link>
+          </button>
 
           {/* Separator */}
           <div className="relative z-10 mx-1 h-5 w-px bg-foreground/10" />
