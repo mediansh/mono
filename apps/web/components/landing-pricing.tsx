@@ -231,14 +231,17 @@ function EventTooltip({ eventLimit }: { eventLimit: number }) {
 
   useEffect(() => {
     if (!open) return
+    const raf = requestAnimationFrame(() => {
+      document.addEventListener("mousedown", handleClickOutside)
+      document.addEventListener("touchstart", handleClickOutside)
+    })
     function handleClickOutside(e: MouseEvent | TouchEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) {
         setOpen(false)
       }
     }
-    document.addEventListener("mousedown", handleClickOutside)
-    document.addEventListener("touchstart", handleClickOutside)
     return () => {
+      cancelAnimationFrame(raf)
       document.removeEventListener("mousedown", handleClickOutside)
       document.removeEventListener("touchstart", handleClickOutside)
     }
@@ -255,7 +258,7 @@ function EventTooltip({ eventLimit }: { eventLimit: number }) {
         size={14}
         weight="fill"
         className="cursor-help text-foreground/30 transition-colors hover:text-foreground/50"
-        onClick={(e) => {
+        onTouchEnd={(e) => {
           e.preventDefault()
           setOpen((prev) => !prev)
         }}
