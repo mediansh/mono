@@ -93,9 +93,9 @@ export function LandingIntegrations() {
           transition={{ duration: 0.5, ease }}
           className="mb-16 text-center"
         >
-          <h2 className="flex items-start justify-center gap-2 text-3xl font-semibold tracking-tight sm:items-center sm:gap-3 sm:text-4xl">
-            <Plugs size="1em" weight="duotone" className="mt-1 shrink-0 text-foreground/40 sm:mt-0" />
-            <span>Plugs into your stack</span>
+          <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+            <Plugs size="1em" weight="duotone" className="mr-2 inline-block align-middle text-foreground/40 sm:mr-3" />
+            Plugs into your stack
           </h2>
           <p className="mt-3 text-muted-foreground sm:text-lg">
             Connect the tools your team already uses. Feedback flows in, updates flow out.

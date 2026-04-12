@@ -63,9 +63,9 @@ export function LandingPricing() {
           transition={{ duration: 0.5, ease }}
           className="mb-12 text-center"
         >
-          <h2 className="flex items-start justify-center gap-2 text-3xl font-semibold tracking-tight sm:items-center sm:gap-3 sm:text-4xl">
-            <CreditCard size="1em" weight="duotone" className="mt-1 shrink-0 text-foreground/40 sm:mt-0" />
-            <span>Simple, transparent pricing</span>
+          <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+            <CreditCard size="1em" weight="duotone" className="mr-2 inline-block align-middle text-foreground/40 sm:mr-3" />
+            Simple, transparent pricing
           </h2>
           <p className="mt-3 text-muted-foreground sm:text-lg">
             Start small, scale as you grow. Every plan includes all features.

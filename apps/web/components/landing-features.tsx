@@ -340,9 +340,9 @@ export function LandingFeatures() {
           transition={{ duration: 0.5, ease }}
           className="mb-12 text-center"
         >
-          <h2 className="flex items-start justify-center gap-2 text-3xl font-semibold tracking-tight sm:items-center sm:gap-3 sm:text-4xl">
-            <Cube size="1em" weight="duotone" className="mt-1 shrink-0 text-foreground/40 sm:mt-0" />
-            <span>Built for how teams actually work</span>
+          <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+            <Cube size="1em" weight="duotone" className="mr-2 inline-block align-middle text-foreground/40 sm:mr-3" />
+            Built for how teams actually work
           </h2>
           <p className="mt-3 text-muted-foreground sm:text-lg">
             Everything you need to close the loop on user feedback.
