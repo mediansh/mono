@@ -9,10 +9,10 @@ import {
   XCircle,
   DiscordLogo,
   GithubLogo,
+  XLogo,
 } from "@phosphor-icons/react"
 import { Logo } from "@/components/logo"
 import { LinearLogo } from "@/components/icons/linear-logo"
-import { XLogoIcon } from "@/components/icons/x-logo"
 
 const ease = [0.25, 0.1, 0.25, 1] as const
 
@@ -34,7 +34,7 @@ const cardStyles = {
 function InboxGraphic() {
   const sources = [
     { Icon: DiscordLogo, text: "bug on onboarding", rot: -10 },
-    { Icon: XLogoIcon, text: "dark mode pls", rot: 0 },
+    { Icon: XLogo, text: "dark mode pls", rot: 0 },
     { Icon: GithubLogo, text: "sync issue", rot: 8 },
   ]
 
@@ -153,7 +153,7 @@ function CubesGraphic() {
         {/* Bottom center — X */}
         <div />
         <div className={satellite}>
-          <XLogoIcon size={16} />
+          <XLogo size={16} />
         </div>
         <div />
 

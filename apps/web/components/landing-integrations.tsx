@@ -8,9 +8,9 @@ import {
   DiscordLogo,
   GithubLogo,
   Terminal,
+  XLogo,
 } from "@phosphor-icons/react"
 import { LinearLogo } from "@/components/icons/linear-logo"
-import { XLogoIcon } from "@/components/icons/x-logo"
 
 type BrandIconProps = { size?: number }
 
@@ -58,7 +58,7 @@ const integrations = [
   },
   {
     name: "X (Twitter)",
-    icon: ({ size = 20 }: BrandIconProps) => <XLogoIcon size={size} />,
+    icon: ({ size = 20 }: BrandIconProps) => <XLogo size={size} />,
     description: "Monitor mentions and create tasks from tweets. Stay on top of public feedback.",
     capabilities: ["Mention monitoring", "Auto task creation", "OAuth connect"],
   },
