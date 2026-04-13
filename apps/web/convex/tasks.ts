@@ -1278,7 +1278,7 @@ async function queueSlackNotificationForStatusChange(
   if (!shouldRespondInSlackChannel(integration, respondChannelIds)) return
 
   if (nextStatus === "shipped" && task.status !== "shipped") {
-    await ctx.db.insert("slackPendingNotifications", {
+    const notificationId = await ctx.db.insert("slackPendingNotifications", {
       workspaceId: task.workspaceId,
       integrationId: integration._id,
       taskId,
@@ -1292,8 +1292,8 @@ async function queueSlackNotificationForStatusChange(
     })
     await ctx.scheduler.runAfter(
       0,
-      internal.slack.sendPendingNotifications,
-      { integrationId: integration._id }
+      internal.slack.sendSlackNotification,
+      { notificationId }
     )
   }
 
@@ -1303,7 +1303,7 @@ async function queueSlackNotificationForStatusChange(
       nextStatus === "in_progress" ||
       nextStatus === "ready")
   ) {
-    await ctx.db.insert("slackPendingNotifications", {
+    const notificationId = await ctx.db.insert("slackPendingNotifications", {
       workspaceId: task.workspaceId,
       integrationId: integration._id,
       taskId,
@@ -1317,8 +1317,8 @@ async function queueSlackNotificationForStatusChange(
     })
     await ctx.scheduler.runAfter(
       0,
-      internal.slack.sendPendingNotifications,
-      { integrationId: integration._id }
+      internal.slack.sendSlackNotification,
+      { notificationId }
     )
   }
 }

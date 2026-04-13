@@ -1142,7 +1142,7 @@ export const queueFeatureRequestNotification = internalMutation({
       taskCode: args.taskCode,
     })
 
-    await ctx.db.insert("slackPendingNotifications", {
+    const notificationId = await ctx.db.insert("slackPendingNotifications", {
       workspaceId: args.workspaceId,
       integrationId: integration._id,
       taskId: args.taskId,
@@ -1158,223 +1158,237 @@ export const queueFeatureRequestNotification = internalMutation({
       createdAt: Date.now(),
     })
 
-    // Trigger sending immediately
+    // Trigger sending this specific notification
     await ctx.scheduler.runAfter(
       0,
-      internal.slack.sendPendingNotifications,
-      { integrationId: integration._id }
+      internal.slack.sendSlackNotification,
+      { notificationId }
     )
   },
 })
 
-// ── Notification sender ─────────────────────────────────
+// ── Notification sender (one notification at a time) ────
 
-export const sendPendingNotifications = internalAction({
+export const claimNotification = internalMutation({
   args: {
-    integrationId: v.id("slackWorkspaceIntegrations"),
+    notificationId: v.id("slackPendingNotifications"),
   },
   handler: async (ctx, args) => {
-    console.log("[slack] sendPendingNotifications called", {
-      integrationId: args.integrationId,
-    })
+    const notification = await ctx.db.get(args.notificationId)
+    if (!notification || notification.status !== "pending") {
+      return null
+    }
+    // Atomically claim it so no other sender picks it up
+    await ctx.db.patch(args.notificationId, { status: "sent" })
+    return {
+      _id: notification._id,
+      integrationId: notification.integrationId,
+      type: notification.type,
+      channelId: notification.channelId,
+      threadTs: notification.threadTs ?? null,
+      taskTitle: notification.taskTitle,
+      taskCode: notification.taskCode,
+      taskDescription: notification.taskDescription ?? null,
+      taskPriority: notification.taskPriority ?? null,
+      taskLabels: notification.taskLabels ?? [],
+      sourceAuthor: notification.sourceAuthor ?? null,
+      taskId: notification.taskId,
+    }
+  },
+})
+
+export const sendSlackNotification = internalAction({
+  args: {
+    notificationId: v.id("slackPendingNotifications"),
+  },
+  handler: async (ctx, args) => {
+    // Claim the notification atomically — if another sender already claimed it, bail
+    const notification = await ctx.runMutation(
+      internal.slack.claimNotification,
+      { notificationId: args.notificationId }
+    )
+    if (!notification) return
 
     const integration = await ctx.runQuery(
       internal.slack.getIntegrationInternal,
-      { integrationId: args.integrationId }
+      { integrationId: notification.integrationId }
     )
     if (!integration) {
-      console.log("[slack] Integration not found in sender", args.integrationId)
+      await ctx.runMutation(internal.slack.markSlackNotificationSent, {
+        notificationId: notification._id,
+        status: "failed",
+      })
       return
     }
 
     const token = await decryptSecret(integration.accessTokenEncrypted)
 
-    const notifications = await ctx.runQuery(
-      internal.slack.getAllPendingSlackNotifications,
-      { limit: 20 }
-    )
+    try {
+      let slackResponse: { ok: boolean; ts?: string; error?: string }
 
-    console.log("[slack] Found pending notifications", {
-      total: notifications.length,
-      forThisIntegration: notifications.filter((n) => n.integrationId === args.integrationId).length,
-    })
-
-    for (const notification of notifications) {
-      if (notification.integrationId !== args.integrationId) continue
-
-      try {
-        let slackResponse: { ok: boolean; ts?: string; error?: string }
-
-        if (notification.type === "feature_request") {
-          // Build Block Kit message with accept/deny buttons
-          const blocks: unknown[] = [
-            {
-              type: "header",
-              text: {
-                type: "plain_text",
-                text: `:sparkles: New Feature Request`,
-                emoji: true,
-              },
+      if (notification.type === "feature_request") {
+        const blocks: unknown[] = [
+          {
+            type: "header",
+            text: {
+              type: "plain_text",
+              text: `:sparkles: New Feature Request`,
+              emoji: true,
             },
-            {
-              type: "section",
-              fields: [
-                {
-                  type: "mrkdwn",
-                  text: `*Title:*\n${notification.taskTitle}`,
-                },
-                {
-                  type: "mrkdwn",
-                  text: `*Code:*\n${notification.taskCode}`,
-                },
-              ],
-            },
-          ]
-
-          if (notification.taskDescription) {
-            blocks.push({
-              type: "section",
-              text: {
+          },
+          {
+            type: "section",
+            fields: [
+              {
                 type: "mrkdwn",
-                text: `*Description:*\n${notification.taskDescription}`,
+                text: `*Title:*\n${notification.taskTitle}`,
               },
-            })
-          }
+              {
+                type: "mrkdwn",
+                text: `*Code:*\n${notification.taskCode}`,
+              },
+            ],
+          },
+        ]
 
-          const metaFields: Array<{ type: string; text: string }> = []
-          if (notification.taskPriority && notification.taskPriority !== "none") {
-            metaFields.push({
+        if (notification.taskDescription) {
+          blocks.push({
+            type: "section",
+            text: {
               type: "mrkdwn",
-              text: `*Priority:* ${notification.taskPriority}`,
-            })
-          }
-          if (notification.sourceAuthor) {
-            metaFields.push({
-              type: "mrkdwn",
-              text: `*From:* ${notification.sourceAuthor}`,
-            })
-          }
-          if (notification.taskLabels && notification.taskLabels.length > 0) {
-            metaFields.push({
-              type: "mrkdwn",
-              text: `*Labels:* ${notification.taskLabels.join(", ")}`,
-            })
-          }
-
-          if (metaFields.length > 0) {
-            blocks.push({
-              type: "section",
-              fields: metaFields,
-            })
-          }
-
-          blocks.push(
-            { type: "divider" },
-            {
-              type: "actions",
-              elements: [
-                {
-                  type: "button",
-                  text: {
-                    type: "plain_text",
-                    text: "Accept",
-                    emoji: true,
-                  },
-                  style: "primary",
-                  action_id: "accept_request",
-                  value: notification.taskId,
-                },
-                {
-                  type: "button",
-                  text: {
-                    type: "plain_text",
-                    text: "Deny",
-                    emoji: true,
-                  },
-                  style: "danger",
-                  action_id: "deny_request",
-                  value: notification.taskId,
-                },
-              ],
-            }
-          )
-
-          const response = await fetch("https://slack.com/api/chat.postMessage", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
+              text: `*Description:*\n${notification.taskDescription}`,
             },
-            body: JSON.stringify({
-              channel: notification.channelId,
-              blocks,
-              text: `New feature request: ${notification.taskTitle}`, // fallback
-            }),
           })
-          slackResponse = (await response.json()) as { ok: boolean; ts?: string; error?: string }
-          console.log("[slack] feature_request API response", {
-            ok: slackResponse.ok,
-            error: slackResponse.error,
+        }
+
+        const metaFields: Array<{ type: string; text: string }> = []
+        if (notification.taskPriority && notification.taskPriority !== "none") {
+          metaFields.push({
+            type: "mrkdwn",
+            text: `*Priority:* ${notification.taskPriority}`,
+          })
+        }
+        if (notification.sourceAuthor) {
+          metaFields.push({
+            type: "mrkdwn",
+            text: `*From:* ${notification.sourceAuthor}`,
+          })
+        }
+        if (notification.taskLabels && notification.taskLabels.length > 0) {
+          metaFields.push({
+            type: "mrkdwn",
+            text: `*Labels:* ${notification.taskLabels.join(", ")}`,
+          })
+        }
+
+        if (metaFields.length > 0) {
+          blocks.push({
+            type: "section",
+            fields: metaFields,
+          })
+        }
+
+        blocks.push(
+          { type: "divider" },
+          {
+            type: "actions",
+            elements: [
+              {
+                type: "button",
+                text: {
+                  type: "plain_text",
+                  text: "Accept",
+                  emoji: true,
+                },
+                style: "primary",
+                action_id: "accept_request",
+                value: notification.taskId,
+              },
+              {
+                type: "button",
+                text: {
+                  type: "plain_text",
+                  text: "Deny",
+                  emoji: true,
+                },
+                style: "danger",
+                action_id: "deny_request",
+                value: notification.taskId,
+              },
+            ],
+          }
+        )
+
+        const response = await fetch("https://slack.com/api/chat.postMessage", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
             channel: notification.channelId,
-          })
-        } else if (notification.type === "request_received") {
-          const response = await fetch("https://slack.com/api/chat.postMessage", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              channel: notification.channelId,
-              thread_ts: notification.threadTs ?? undefined,
-              text: `:white_check_mark: Got it — we're on it. Tracking as *${notification.taskCode}*.`,
-            }),
-          })
-          slackResponse = (await response.json()) as { ok: boolean; ts?: string; error?: string }
-        } else if (notification.type === "request_shipped") {
-          const response = await fetch("https://slack.com/api/chat.postMessage", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              channel: notification.channelId,
-              thread_ts: notification.threadTs ?? undefined,
-              text: `:rocket: This should be resolved now — shipped in *${notification.taskCode}*.`,
-            }),
-          })
-          slackResponse = (await response.json()) as { ok: boolean; ts?: string; error?: string }
-        } else {
-          continue
-        }
+            blocks,
+            text: `New feature request: ${notification.taskTitle}`,
+          }),
+        })
+        slackResponse = (await response.json()) as { ok: boolean; ts?: string; error?: string }
+      } else if (notification.type === "request_received") {
+        const response = await fetch("https://slack.com/api/chat.postMessage", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            channel: notification.channelId,
+            thread_ts: notification.threadTs ?? undefined,
+            text: `:white_check_mark: Got it — we're on it. Tracking as *${notification.taskCode}*.`,
+          }),
+        })
+        slackResponse = (await response.json()) as { ok: boolean; ts?: string; error?: string }
+      } else if (notification.type === "request_shipped") {
+        const response = await fetch("https://slack.com/api/chat.postMessage", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            channel: notification.channelId,
+            thread_ts: notification.threadTs ?? undefined,
+            text: `:rocket: This should be resolved now — shipped in *${notification.taskCode}*.`,
+          }),
+        })
+        slackResponse = (await response.json()) as { ok: boolean; ts?: string; error?: string }
+      } else {
+        return
+      }
 
-        if (slackResponse.ok) {
-          await ctx.runMutation(internal.slack.markSlackNotificationSent, {
-            notificationId: notification._id,
-            status: "sent",
-            slackMessageTs: slackResponse.ts,
-          })
-        } else {
-          console.error("[slack] Failed to send notification", {
-            notificationId: notification._id,
-            error: slackResponse.error,
-          })
-          await ctx.runMutation(internal.slack.markSlackNotificationSent, {
-            notificationId: notification._id,
-            status: "failed",
-          })
-        }
-      } catch (error) {
-        console.error("[slack] Error sending notification", {
+      if (slackResponse.ok) {
+        await ctx.runMutation(internal.slack.markSlackNotificationSent, {
           notificationId: notification._id,
-          error,
+          status: "sent",
+          slackMessageTs: slackResponse.ts,
+        })
+      } else {
+        console.error("[slack] Failed to send notification", {
+          notificationId: notification._id,
+          error: slackResponse.error,
         })
         await ctx.runMutation(internal.slack.markSlackNotificationSent, {
           notificationId: notification._id,
           status: "failed",
         })
       }
+    } catch (error) {
+      console.error("[slack] Error sending notification", {
+        notificationId: notification._id,
+        error,
+      })
+      await ctx.runMutation(internal.slack.markSlackNotificationSent, {
+        notificationId: notification._id,
+        status: "failed",
+      })
     }
   },
 })
