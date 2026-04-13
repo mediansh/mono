@@ -221,7 +221,7 @@ function LogsSkeleton() {
 const PAGE_SIZE = 20
 
 // ── Mock data for local preview (remove before shipping) ──
-const USE_MOCK_DATA = true
+const USE_MOCK_DATA = false
 
 const NOW = Date.now()
 const MOCK_EVENTS: LogEvent[] = [
@@ -303,7 +303,7 @@ export default function LogsPage() {
   const events = allEvents.filter((e) => {
     if (filter === "all") return true
     if (filter === "tasks") return e.type.startsWith("task")
-    if (filter === "ai") return e.source === "ai" || e.type === "tasks_generated_ai"
+    if (filter === "ai") return e.source === "ai" || e.type === "tasks_generated_ai" || e.type === "feedback_processed"
     if (filter === "webhooks") return e.type.startsWith("webhook")
     if (filter === "integrations") return e.type.startsWith("integration")
     if (filter === "members") return e.type.startsWith("member")
