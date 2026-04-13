@@ -1,26 +1,18 @@
 import Link from "next/link"
 import { Logo } from "@/components/logo"
-import {
-  XLogo,
-  GithubLogo,
-  InstagramLogo,
-  TiktokLogo,
-  YoutubeLogo,
-  DiscordLogo,
-  RedditLogo,
-} from "@phosphor-icons/react"
-import type { Icon } from "@phosphor-icons/react"
+import { FaXTwitter, FaDiscord, FaYoutube, FaInstagram, FaRedditAlien, FaGithub, FaTiktok } from "react-icons/fa6"
+import type { ReactNode } from "react"
 
-type FooterLink = { label: string; href: string; icon?: Icon }
+type FooterLink = { label: string; href: string; icon?: ReactNode }
 
 const socialLinks: FooterLink[] = [
-  { label: "X/Twitter", href: "https://x.com/mediandotsh", icon: XLogo },
-  { label: "GitHub", href: "https://github.com/mediansh", icon: GithubLogo },
-  { label: "Instagram", href: "https://www.instagram.com/clovrlabs/", icon: InstagramLogo },
-  { label: "TikTok", href: "https://www.tiktok.com/@clovrlabs", icon: TiktokLogo },
-  { label: "YouTube", href: "https://www.youtube.com/@clovrlabs", icon: YoutubeLogo },
-  { label: "Discord", href: "https://clovrlabs.co/discord", icon: DiscordLogo },
-  { label: "Reddit", href: "https://www.reddit.com/r/Clovr/", icon: RedditLogo },
+  { label: "X/Twitter", href: "https://x.com/mediandotsh", icon: <FaXTwitter size={16} /> },
+  { label: "GitHub", href: "https://github.com/mediansh", icon: <FaGithub size={16} /> },
+  { label: "Instagram", href: "https://www.instagram.com/clovrlabs/", icon: <FaInstagram size={16} /> },
+  { label: "TikTok", href: "https://www.tiktok.com/@clovrlabs", icon: <FaTiktok size={16} /> },
+  { label: "YouTube", href: "https://www.youtube.com/@clovrlabs", icon: <FaYoutube size={16} /> },
+  { label: "Discord", href: "https://clovrlabs.co/discord", icon: <FaDiscord size={16} /> },
+  { label: "Reddit", href: "https://www.reddit.com/r/Clovr/", icon: <FaRedditAlien size={16} /> },
 ]
 
 const links: Record<string, FooterLink[]> = {
@@ -67,10 +59,10 @@ export function LandingFooter() {
                     <li key={item.label}>
                       <Link
                         href={item.href}
-                        {...(item.href.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                        {...(item.href.startsWith("http") || item.href.startsWith("mailto") ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                         className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
                       >
-                        {item.icon && <item.icon weight="fill" size={16} />}
+                        {item.icon}
                         {item.label}
                       </Link>
                     </li>
