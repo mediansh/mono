@@ -5,12 +5,10 @@ import { useTheme } from "next-themes"
 import { motion } from "motion/react"
 import {
   Plugs,
-  DiscordLogo,
-  GithubLogo,
   Terminal,
-  XLogo,
 } from "@phosphor-icons/react"
-import { LinearLogo } from "@/components/icons/linear-logo"
+import { FaXTwitter, FaDiscord, FaGithub } from "react-icons/fa6"
+import { SiLinear } from "react-icons/si"
 
 type BrandIconProps = { size?: number }
 
@@ -40,25 +38,25 @@ const ThemeContext = createContext<{ card: typeof cardStyles.dark }>({ card: car
 const integrations = [
   {
     name: "Discord",
-    icon: ({ size = 20 }: BrandIconProps) => <DiscordLogo size={size} weight="fill" />,
+    icon: ({ size = 20 }: BrandIconProps) => <FaDiscord size={size} />,
     description: "Ingest feedback from channels automatically. Get task updates pushed back to your server.",
     capabilities: ["Auto-ingest messages", "Task notifications", "AI responses"],
   },
   {
     name: "GitHub",
-    icon: ({ size = 20 }: BrandIconProps) => <GithubLogo size={size} weight="fill" />,
+    icon: ({ size = 20 }: BrandIconProps) => <FaGithub size={size} />,
     description: "Link repositories, sync issues, and track commits and PRs tied to tasks.",
     capabilities: ["Issue sync", "PR tracking", "Commit linking"],
   },
   {
     name: "Linear",
-    icon: ({ size = 20 }: BrandIconProps) => <LinearLogo size={size} />,
+    icon: ({ size = 20 }: BrandIconProps) => <SiLinear size={size} />,
     description: "Two-way sync between Median tasks and Linear issues. Status changes flow both directions.",
     capabilities: ["Bidirectional sync", "Status mapping", "Real-time webhooks"],
   },
   {
     name: "X (Twitter)",
-    icon: ({ size = 20 }: BrandIconProps) => <XLogo size={size} />,
+    icon: ({ size = 20 }: BrandIconProps) => <FaXTwitter size={size} />,
     description: "Monitor mentions and create tasks from tweets. Stay on top of public feedback.",
     capabilities: ["Mention monitoring", "Auto task creation", "OAuth connect"],
   },
