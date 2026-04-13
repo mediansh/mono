@@ -6,7 +6,7 @@ import type { ReactNode } from "react"
 type FooterLink = { label: string; href: string; icon?: ReactNode }
 
 const socialLinks: FooterLink[] = [
-  { label: "X", href: "https://x.com/mediandotsh", icon: <FaXTwitter size={16} /> },
+  { label: "X/Twitter", href: "https://x.com/mediandotsh", icon: <FaXTwitter size={16} /> },
   { label: "GitHub", href: "https://github.com/mediansh", icon: <FaGithub size={16} /> },
   { label: "Instagram", href: "https://www.instagram.com/clovrlabs/", icon: <FaInstagram size={16} /> },
   { label: "TikTok", href: "https://www.tiktok.com/@clovrlabs", icon: <FaTiktok size={16} /> },
