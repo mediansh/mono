@@ -7,12 +7,10 @@ import {
   Cube,
   CheckCircle,
   XCircle,
-  DiscordLogo,
-  GithubLogo,
-  XLogo,
 } from "@phosphor-icons/react"
+import { FaXTwitter, FaDiscord, FaGithub } from "react-icons/fa6"
+import { SiLinear } from "react-icons/si"
 import { Logo } from "@/components/logo"
-import { LinearLogo } from "@/components/icons/linear-logo"
 
 const ease = [0.25, 0.1, 0.25, 1] as const
 
@@ -33,9 +31,9 @@ const cardStyles = {
 
 function InboxGraphic() {
   const sources = [
-    { Icon: DiscordLogo, text: "bug on onboarding", rot: -10 },
-    { Icon: XLogo, text: "dark mode pls", rot: 0 },
-    { Icon: GithubLogo, text: "sync issue", rot: 8 },
+    { Icon: FaDiscord, text: "bug on onboarding", rot: -10 },
+    { Icon: FaXTwitter, text: "dark mode pls", rot: 0 },
+    { Icon: FaGithub, text: "sync issue", rot: 8 },
   ]
 
   return (
@@ -51,7 +49,7 @@ function InboxGraphic() {
                 className="flex h-8 w-20 items-center gap-2 overflow-hidden rounded-lg border border-foreground/[0.08] bg-foreground/[0.02] px-2 text-foreground/35"
                 style={{ transform: `rotate(${item.rot}deg)` }}
               >
-                <Icon size={10} weight="fill" />
+                <Icon size={10} />
                 <span className="truncate text-[7px] leading-none text-foreground/30">
                   {item.text}
                 </span>
@@ -100,7 +98,7 @@ function SparkGraphic() {
               Fix onboarding bug blocking new signup flow
             </p>
             <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-foreground/[0.1] bg-foreground/[0.05] text-foreground/70">
-              <DiscordLogo size={10} weight="fill" />
+              <FaDiscord size={10} />
             </div>
           </div>
           {/* Meta row */}
@@ -135,25 +133,25 @@ function CubesGraphic() {
         {/* Top center — GitHub */}
         <div />
         <div className={satellite}>
-          <GithubLogo size={16} weight="fill" />
+          <FaGithub size={16} />
         </div>
         <div />
 
         {/* Middle row — Discord, Median, Linear */}
         <div className={satellite}>
-          <DiscordLogo size={16} weight="fill" />
+          <FaDiscord size={16} />
         </div>
         <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-foreground/[0.15] bg-foreground/[0.05] text-foreground">
           <Logo symbolOnly className="text-[18px]" />
         </div>
         <div className={satellite}>
-          <LinearLogo size={16} />
+          <SiLinear size={16} />
         </div>
 
         {/* Bottom center — X */}
         <div />
         <div className={satellite}>
-          <XLogo size={16} />
+          <FaXTwitter size={16} />
         </div>
         <div />
 
