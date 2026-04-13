@@ -19,6 +19,7 @@ import {
   type TaskPriority,
   type TaskStatus,
 } from "../lib/task-board"
+import { getCanonicalTaskSourceKey } from "./taskSourceUtils"
 
 const LINEAR_GRAPHQL_URL = "https://api.linear.app/graphql"
 const LINEAR_MEDIAN_TITLE_PREFIX = "[MDN]"
@@ -121,21 +122,7 @@ const linearStatusMappingsValidator = v.object({
   archive: v.optional(v.string()),
 })
 
-function getCanonicalTaskSourceKey(source: {
-  platform: "discord" | "slack" | "x" | "linear" | "github" | "cli"
-  url: string
-  author: string
-}) {
-  const normalizedUrl = source.url.trim()
-  if (
-    normalizedUrl &&
-    (source.platform === "linear" || source.platform === "github")
-  ) {
-    return `${source.platform}:${normalizedUrl}`
-  }
-
-  return `${source.platform}:${normalizedUrl}:${source.author.trim()}`
-}
+// getCanonicalTaskSourceKey is imported from ./taskSourceUtils
 
 function normalizeTitle(value: string) {
   return stripMedianTaskTitlePrefixFromLinear(value)
@@ -1387,17 +1374,16 @@ export const saveLinearTaskLink = internalMutation({
       }
       const existing = task.sources ?? (task.source ? [task.source] : [])
       const canonicalUrl = canonicalSource.url
-      const filtered = canonicalUrl
-        ? existing.filter(
-            (s) => !(s.platform === "linear" && s.url.trim() === canonicalUrl)
-          )
-        : existing.filter(
-            (s) =>
-              !(
-                s.platform === "linear" &&
-                s.author === canonicalSource.author
-              )
-          )
+      // Filter out any existing Linear source that matches by URL OR author
+      // to prevent duplicates when issue URLs change (e.g., moved between projects)
+      const filtered = existing.filter((s) => {
+        if (s.platform !== "linear") return true
+        // Remove if URL matches (when both have URLs)
+        if (canonicalUrl && s.url.trim() === canonicalUrl) return false
+        // Remove if author/identifier matches
+        if (s.author === canonicalSource.author) return false
+        return true
+      })
       const next = [...filtered, canonicalSource]
       await ctx.db.patch(task._id, {
         sources: next.length > 0 ? next : undefined,

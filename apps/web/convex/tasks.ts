@@ -11,6 +11,7 @@ import { internal } from "./_generated/api"
 import { STATUS_ORDER, isDemoTaskSet } from "../lib/task-board"
 import { insertWorkspaceLog, insertWorkspaceLogs } from "./logs"
 import { requireTaskWriteAccess, requireWorkspaceAccess } from "./permissions"
+import { getCanonicalTaskSourceKey } from "./taskSourceUtils"
 
 const taskStatusValidator = v.union(
   v.literal("requests"),
@@ -146,29 +147,7 @@ function getWorkspaceLogSource(
   return "manual"
 }
 
-function getCanonicalTaskSourceKey(source: {
-  platform: "discord" | "slack" | "x" | "linear" | "github" | "cli"
-  url: string
-  author: string
-}) {
-  const normalizedUrl = source.url.trim()
-  if (
-    normalizedUrl &&
-    (source.platform === "linear" || source.platform === "github")
-  ) {
-    return `${source.platform}:${normalizedUrl}`
-  }
-
-  return `${source.platform}:${normalizedUrl}:${source.author.trim()}`
-}
-
-function getTaskSourceKey(source: {
-  platform: "discord" | "slack" | "x" | "linear" | "github" | "cli"
-  url: string
-  author: string
-}) {
-  return getCanonicalTaskSourceKey(source)
-}
+// getCanonicalTaskSourceKey is imported from ./taskSourceUtils
 
 function dedupeTaskSources(
   sources:
@@ -184,7 +163,7 @@ function dedupeTaskSources(
   const seen = new Set<string>()
 
   return sources.filter((source) => {
-    const key = getTaskSourceKey(source)
+    const key = getCanonicalTaskSourceKey(source)
     if (seen.has(key)) {
       return false
     }
