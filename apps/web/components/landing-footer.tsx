@@ -38,9 +38,9 @@ export function LandingFooter() {
   return (
     <footer className="border-t border-foreground/[0.06] px-4 pt-12 pb-8">
       <div className="mx-auto max-w-6xl">
-        <div className="flex flex-col justify-between gap-10 sm:flex-row">
+        <div className="flex flex-col items-center gap-10 sm:flex-row sm:items-start sm:justify-between">
           {/* Logo + tagline */}
-          <div className="max-w-xs">
+          <div className="max-w-xs text-center sm:text-left">
             <Logo className="text-lg" />
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
               The feedback engine for modern teams.
@@ -48,13 +48,13 @@ export function LandingFooter() {
           </div>
 
           {/* Link columns */}
-          <div className="flex flex-wrap gap-16">
+          <div className="flex flex-wrap justify-center gap-16 sm:justify-end">
             {Object.entries(links).map(([heading, items]) => (
-              <div key={heading}>
+              <div key={heading} className="text-center sm:text-left">
                 <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/60">
                   {heading}
                 </p>
-                <ul className="mt-3 flex flex-col gap-2">
+                <ul className="mt-3 flex flex-col items-center gap-2 sm:items-start">
                   {items.map((item) => (
                     <li key={item.label}>
                       <Link
