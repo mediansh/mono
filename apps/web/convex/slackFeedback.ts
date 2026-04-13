@@ -211,7 +211,7 @@ const getTaskSnapshotForSlackInternalQuery = makeFunctionReference<
     limit?: number
   },
   TaskSnapshot[]
->("tasks:getTaskSnapshotForDiscordInternal")
+>("tasks:getTaskSnapshotForFeedbackInternal")
 
 const createTasksFromSlackFeedbackInternalMutation = makeFunctionReference<
   "mutation",
