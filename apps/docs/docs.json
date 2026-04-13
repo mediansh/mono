@@ -44,18 +44,7 @@
       }
     ],
     "global": {
-      "anchors": [
-        {
-          "anchor": "GitHub",
-          "href": "https://github.com/mediansh",
-          "icon": "github"
-        },
-        {
-          "anchor": "Discord",
-          "href": "https://clovr.dev/discord",
-          "icon": "discord"
-        }
-      ]
+      "anchors": []
     }
   },
   "logo": {
