@@ -149,6 +149,68 @@ export const getWorkspaceMembers = query({
   },
 })
 
+export const getWorkspaceTaskGenerationContext = query({
+  args: {
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args) => {
+    await requireWorkspaceAccess(ctx, args.workspaceId)
+
+    const workspace = await ctx.db.get(args.workspaceId)
+    if (!workspace) {
+      throw new Error("Workspace not found")
+    }
+
+    return {
+      workspaceName: workspace.name,
+      availableLabels: (workspace.labels ?? []).map((label) => label.name),
+    }
+  },
+})
+
+export const getEmailInviteDeliveryContext = query({
+  args: {
+    workspaceId: v.id("workspaces"),
+    token: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await requireWorkspaceAdminAccess(ctx, args.workspaceId)
+
+    const invite = await ctx.db
+      .query("workspaceInvites")
+      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .unique()
+
+    if (!invite || invite.workspaceId !== args.workspaceId) {
+      throw new Error("Invite not found")
+    }
+
+    if (invite.inviteType !== "email") {
+      throw new Error("Invite is not an email invite")
+    }
+
+    if (invite.status !== "pending" || invite.expiresAt <= Date.now()) {
+      throw new Error("Invite is no longer active")
+    }
+
+    const workspace = await ctx.db.get(args.workspaceId)
+    if (!workspace) {
+      throw new Error("Workspace not found")
+    }
+
+    if (!invite.invitedEmail) {
+      throw new Error("Invite is missing an email address")
+    }
+
+    return {
+      workspaceName: workspace.name,
+      role: invite.role,
+      invitedEmail: invite.invitedEmail,
+      token: invite.token,
+    }
+  },
+})
+
 export const syncMyProfile = mutation({
   args: {
     workspaceId: v.id("workspaces"),

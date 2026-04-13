@@ -555,8 +555,6 @@ export function NewTaskModal({
         body: JSON.stringify({
           prompt,
           workspaceId: workspace._id,
-          workspaceName: workspace.name,
-          availableLabels: labelOptions.map((label) => label.id),
         }),
       })
 

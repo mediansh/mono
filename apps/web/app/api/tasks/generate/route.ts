@@ -1,12 +1,13 @@
 import { auth } from "@clerk/nextjs/server"
 import { generateText } from "ai"
-import { fetchAction } from "convex/nextjs"
+import { fetchAction, fetchQuery } from "convex/nextjs"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
 import { withAxiom, logger } from "@/lib/logger"
 import { getPostHogServerClient } from "@/lib/posthog-server"
+import { checkRateLimit, getRequestIp } from "@/lib/rate-limit"
 import { safeTrackAiUsage } from "@/lib/billing/autumn"
 import { getAiCostForTokens } from "@/lib/billing/config"
 
@@ -15,8 +16,6 @@ import { TASK_PRIORITIES, TASK_STATUSES } from "@/lib/task-board"
 const requestSchema = z.object({
   prompt: z.string().min(1),
   workspaceId: z.string().min(1),
-  workspaceName: z.string().min(1),
-  availableLabels: z.array(z.string()).max(20).default([]),
 })
 
 const generatedTasksSchema = z.object({
@@ -134,6 +133,25 @@ export const POST = withAxiom(async (request: Request) => {
   }
 
   const start = Date.now()
+  const ip = getRequestIp(request)
+  const rateLimit = checkRateLimit({
+    key: `tasks-generate:${userId}:${ip}`,
+    limit: 12,
+    windowMs: 60_000,
+  })
+
+  if (!rateLimit.allowed) {
+    logger.warn("Task generation rate limit exceeded", { userId, ip })
+    return NextResponse.json(
+      { error: "Too many AI generation requests. Try again in a minute." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(rateLimit.retryAfterSeconds),
+        },
+      }
+    )
+  }
 
   try {
     const body = await request.json()
@@ -144,34 +162,44 @@ export const POST = withAxiom(async (request: Request) => {
       return NextResponse.json({ error: "Invalid request." }, { status: 400 })
     }
 
-    const { prompt, workspaceId, workspaceName, availableLabels } = parsed.data
+    const { prompt, workspaceId } = parsed.data
+    const convexToken = await getToken({ template: "convex" })
+    if (!convexToken) {
+      logger.warn("Missing Convex token for task generation", { userId, workspaceId })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const generationContext = await fetchQuery(
+      api.workspaces.getWorkspaceTaskGenerationContext,
+      { workspaceId: workspaceId as Id<"workspaces"> },
+      { token: convexToken }
+    )
+
+    const { workspaceName, availableLabels } = generationContext
 
     // Hard-stop AI generation when the workspace has disabled overages and the
-    // AI budget is exhausted. We fail open on any quota lookup error so a flaky
-    // billing read never blocks generation.
+    // AI budget is exhausted. Access is already verified above, so a flaky
+    // billing read should not become a cross-workspace spend bypass.
     try {
-      const convexToken = await getToken({ template: "convex" })
-      if (convexToken) {
-        const quota = await fetchAction(
-          api.billing.getWorkspaceQuotaStatus,
-          { workspaceId: workspaceId as Id<"workspaces"> },
-          { token: convexToken }
-        )
+      const quota = await fetchAction(
+        api.billing.getWorkspaceQuotaStatus,
+        { workspaceId: workspaceId as Id<"workspaces"> },
+        { token: convexToken }
+      )
 
-        if (quota.aiExhausted) {
-          logger.info("Blocking AI task generation — budget exhausted", {
-            userId,
-            workspaceId,
-          })
-          return NextResponse.json(
-            {
-              error:
-                "AI budget exhausted. Overages are disabled for this workspace — upgrade your plan to keep generating tasks.",
-              code: "ai_budget_exhausted",
-            },
-            { status: 402 }
-          )
-        }
+      if (quota.aiExhausted) {
+        logger.info("Blocking AI task generation — budget exhausted", {
+          userId,
+          workspaceId,
+        })
+        return NextResponse.json(
+          {
+            error:
+              "AI budget exhausted. Overages are disabled for this workspace — upgrade your plan to keep generating tasks.",
+            code: "ai_budget_exhausted",
+          },
+          { status: 402 }
+        )
       }
     } catch (quotaError) {
       logger.warn("Quota check failed — allowing AI generation", {

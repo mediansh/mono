@@ -263,10 +263,8 @@ export default function MembersSettingsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: invite.invitedEmail,
-          role: invite.role,
-          workspaceName: invite.workspaceName,
-          inviteUrl: getInviteUrl(invite.token),
+          workspaceId,
+          inviteToken: invite.token,
         }),
       })
 

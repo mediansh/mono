@@ -2,12 +2,33 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { Inbound } from "@inboundemail/sdk"
 import { withAxiom, logger } from "@/lib/logger"
+import { checkRateLimit, getRequestIp } from "@/lib/rate-limit"
 
 const bodySchema = z.object({
   email: z.string().email(),
 })
 
 export const POST = withAxiom(async (request: Request) => {
+  const ip = getRequestIp(request)
+  const rateLimit = checkRateLimit({
+    key: `waitlist-email:${ip}`,
+    limit: 5,
+    windowMs: 60 * 60 * 1000,
+  })
+
+  if (!rateLimit.allowed) {
+    logger.warn("Waitlist email rate limit exceeded", { ip })
+    return NextResponse.json(
+      { error: "Too many waitlist email requests. Try again later." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(rateLimit.retryAfterSeconds),
+        },
+      }
+    )
+  }
+
   const apiKey = process.env.INBOUND_API_KEY
   if (!apiKey) {
     logger.error("INBOUND_API_KEY is not configured")
