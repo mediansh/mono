@@ -19,6 +19,7 @@ import {
   type TaskPriority,
   type TaskStatus,
 } from "../lib/task-board"
+import { getCanonicalTaskSourceKey } from "./taskSourceUtils"
 
 const LINEAR_GRAPHQL_URL = "https://api.linear.app/graphql"
 const LINEAR_MEDIAN_TITLE_PREFIX = "[MDN]"
@@ -121,24 +122,7 @@ const linearStatusMappingsValidator = v.object({
   archive: v.optional(v.string()),
 })
 
-function getCanonicalTaskSourceKey(source: {
-  platform: "discord" | "slack" | "x" | "linear" | "github" | "cli"
-  url: string
-  author: string
-}) {
-  const normalizedUrl = source.url.trim()
-  // For Linear, use author (issue identifier) as the key to prevent duplicates
-  // when URLs change (e.g., issue moved between projects). The identifier is stable.
-  if (source.platform === "linear") {
-    return `linear:${source.author.trim()}`
-  }
-  // For GitHub, use URL as the key since URLs are stable for issues/PRs
-  if (normalizedUrl && source.platform === "github") {
-    return `${source.platform}:${normalizedUrl}`
-  }
-
-  return `${source.platform}:${normalizedUrl}:${source.author.trim()}`
-}
+// getCanonicalTaskSourceKey is imported from ./taskSourceUtils
 
 function normalizeTitle(value: string) {
   return stripMedianTaskTitlePrefixFromLinear(value)

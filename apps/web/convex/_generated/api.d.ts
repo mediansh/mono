@@ -22,6 +22,7 @@ import type * as linear from "../linear.js";
 import type * as logs from "../logs.js";
 import type * as permissions from "../permissions.js";
 import type * as posthog from "../posthog.js";
+import type * as taskSourceUtils from "../taskSourceUtils.js";
 import type * as tasks from "../tasks.js";
 import type * as waitlist from "../waitlist.js";
 import type * as workspaces from "../workspaces.js";
@@ -49,6 +50,7 @@ declare const fullApi: ApiFromModules<{
   logs: typeof logs;
   permissions: typeof permissions;
   posthog: typeof posthog;
+  taskSourceUtils: typeof taskSourceUtils;
   tasks: typeof tasks;
   waitlist: typeof waitlist;
   workspaces: typeof workspaces;
