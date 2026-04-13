@@ -1,16 +1,18 @@
 import Link from "next/link"
 import { Logo } from "@/components/logo"
-import { FaXTwitter, FaDiscord, FaYoutube, FaInstagram, FaRedditAlien } from "react-icons/fa6"
+import { FaXTwitter, FaDiscord, FaYoutube, FaInstagram, FaRedditAlien, FaGithub, FaTiktok } from "react-icons/fa6"
 import type { ReactNode } from "react"
 
 type FooterLink = { label: string; href: string; icon?: ReactNode }
 
 const socialLinks: FooterLink[] = [
-  { label: "Twitter", href: "https://x.com/clovr_dev", icon: <FaXTwitter size={13} /> },
-  { label: "Discord", href: "https://discord.gg/P7MwTrgH5a", icon: <FaDiscord size={13} /> },
-  { label: "YouTube", href: "https://www.youtube.com/@useclovr", icon: <FaYoutube size={13} /> },
-  { label: "Instagram", href: "https://www.instagram.com/clovrlabs/", icon: <FaInstagram size={13} /> },
-  { label: "Reddit", href: "https://reddit.com/r/clovr", icon: <FaRedditAlien size={13} /> },
+  { label: "X", href: "https://x.com/mediandotsh", icon: <FaXTwitter size={16} /> },
+  { label: "GitHub", href: "https://github.com/mediansh", icon: <FaGithub size={16} /> },
+  { label: "Instagram", href: "https://www.instagram.com/clovrlabs/", icon: <FaInstagram size={16} /> },
+  { label: "TikTok", href: "https://www.tiktok.com/@clovrlabs", icon: <FaTiktok size={16} /> },
+  { label: "YouTube", href: "https://www.youtube.com/@clovrlabs", icon: <FaYoutube size={16} /> },
+  { label: "Discord", href: "https://clovrlabs.co/discord", icon: <FaDiscord size={16} /> },
+  { label: "Reddit", href: "https://www.reddit.com/r/Clovr/", icon: <FaRedditAlien size={16} /> },
 ]
 
 const links: Record<string, FooterLink[]> = {
@@ -52,37 +54,20 @@ export function LandingFooter() {
                 <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/60">
                   {heading}
                 </p>
-                {heading === "Socials" ? (
-                  <ul className="mt-3 space-y-2">
-                    {items.map((item) => (
-                      <li key={item.label}>
-                        <a
-                          href={item.href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 text-[13px] text-[#3f3f46] transition-colors hover:text-[#71717a]"
-                        >
-                          {item.icon}
-                          {item.label}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <ul className="mt-3 flex flex-col gap-2">
-                    {items.map((item) => (
-                      <li key={item.label}>
-                        <Link
-                          href={item.href}
-                          {...(item.href.startsWith("http") || item.href.startsWith("mailto") ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                          className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-                        >
-                          {item.label}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                <ul className="mt-3 flex flex-col gap-2">
+                  {items.map((item) => (
+                    <li key={item.label}>
+                      <Link
+                        href={item.href}
+                        {...(item.href.startsWith("http") || item.href.startsWith("mailto") ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                        className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        {item.icon}
+                        {item.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
               </div>
             ))}
           </div>
