@@ -6,12 +6,17 @@ import {
   InstagramLogo,
   TiktokLogo,
   YoutubeLogo,
-  DiscordLogo,
   RedditLogo,
 } from "@phosphor-icons/react"
-import type { Icon } from "@phosphor-icons/react"
+import { DiscordLogoIcon } from "@/components/icons/discord-logo"
+import type { ComponentType } from "react"
 
-const links = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type IconComponent = ComponentType<any>
+
+type FooterLink = { label: string; href: string; icon?: IconComponent }
+
+const links: Record<string, FooterLink[]> = {
   Product: [
     { label: "Features", href: "#features" },
     { label: "Integrations", href: "#integrations" },
@@ -28,9 +33,9 @@ const links = {
     { label: "Instagram", href: "https://www.instagram.com/clovrlabs/", icon: InstagramLogo },
     { label: "TikTok", href: "https://www.tiktok.com/@clovrlabs", icon: TiktokLogo },
     { label: "YouTube", href: "https://www.youtube.com/@clovrlabs", icon: YoutubeLogo },
-    { label: "Discord", href: "https://clovrlabs.co/discord", icon: DiscordLogo },
+    { label: "Discord", href: "https://clovrlabs.co/discord", icon: DiscordLogoIcon },
     { label: "Reddit", href: "https://www.reddit.com/r/Clovr/", icon: RedditLogo },
-  ] as { label: string; href: string; icon: Icon }[],
+  ],
   Company: [
     { label: "Sign in", href: "/sign-in" },
     { label: "Get started", href: "/sign-up" },
@@ -60,7 +65,7 @@ export function LandingFooter() {
                 </p>
                 <ul className="mt-3 flex flex-col gap-2">
                   {items.map((item) => {
-                    const IconComponent = "icon" in item ? (item as { icon: Icon }).icon : null
+                    const IconComponent = item.icon
                     return (
                       <li key={item.label}>
                         <Link
