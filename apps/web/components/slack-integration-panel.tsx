@@ -334,6 +334,7 @@ export function SlackIntegrationPanel() {
   /* ── Connected state ── */
   if (integration) {
     return (
+      <div className="h-full overflow-y-auto">
       <Stagger className="mx-auto w-full max-w-lg px-6 py-6">
         <div className="flex flex-col gap-3">
           <motion.div variants={fadeUp}>
@@ -685,6 +686,7 @@ export function SlackIntegrationPanel() {
           </DialogContent>
         </Dialog>
       </Stagger>
+      </div>
     )
   }
 
