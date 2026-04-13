@@ -127,10 +127,13 @@ function getCanonicalTaskSourceKey(source: {
   author: string
 }) {
   const normalizedUrl = source.url.trim()
-  if (
-    normalizedUrl &&
-    (source.platform === "linear" || source.platform === "github")
-  ) {
+  // For Linear, use author (issue identifier) as the key to prevent duplicates
+  // when URLs change (e.g., issue moved between projects). The identifier is stable.
+  if (source.platform === "linear") {
+    return `linear:${source.author.trim()}`
+  }
+  // For GitHub, use URL as the key since URLs are stable for issues/PRs
+  if (normalizedUrl && source.platform === "github") {
     return `${source.platform}:${normalizedUrl}`
   }
 
@@ -1387,17 +1390,16 @@ export const saveLinearTaskLink = internalMutation({
       }
       const existing = task.sources ?? (task.source ? [task.source] : [])
       const canonicalUrl = canonicalSource.url
-      const filtered = canonicalUrl
-        ? existing.filter(
-            (s) => !(s.platform === "linear" && s.url.trim() === canonicalUrl)
-          )
-        : existing.filter(
-            (s) =>
-              !(
-                s.platform === "linear" &&
-                s.author === canonicalSource.author
-              )
-          )
+      // Filter out any existing Linear source that matches by URL OR author
+      // to prevent duplicates when issue URLs change (e.g., moved between projects)
+      const filtered = existing.filter((s) => {
+        if (s.platform !== "linear") return true
+        // Remove if URL matches (when both have URLs)
+        if (canonicalUrl && s.url.trim() === canonicalUrl) return false
+        // Remove if author/identifier matches
+        if (s.author === canonicalSource.author) return false
+        return true
+      })
       const next = [...filtered, canonicalSource]
       await ctx.db.patch(task._id, {
         sources: next.length > 0 ? next : undefined,
