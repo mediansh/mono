@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { withAxiom, logger } from "@/lib/logger"
+import { checkRateLimit, getRequestIp } from "@/lib/rate-limit"
 
 const errorReportSchema = z.object({
   source: z.enum([
@@ -21,6 +22,24 @@ const errorReportSchema = z.object({
 
 export const POST = withAxiom(async (request: Request) => {
   const { userId } = await auth()
+  const ip = getRequestIp(request)
+  const rateLimit = checkRateLimit({
+    key: `error-report:${userId ?? "anonymous"}:${ip}`,
+    limit: 30,
+    windowMs: 60_000,
+  })
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many error reports. Try again shortly." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(rateLimit.retryAfterSeconds),
+        },
+      }
+    )
+  }
 
   try {
     const body = await request.json()
