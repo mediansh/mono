@@ -19,10 +19,9 @@ import {
   Lightning,
   Robot,
   Users,
-  GithubLogo,
-  DiscordLogo,
-  XLogo,
 } from "@phosphor-icons/react"
+import { FaGithub, FaDiscord, FaXTwitter } from "react-icons/fa6"
+import { SiLinear } from "react-icons/si"
 import {
   AreaChart,
   Area,
@@ -106,10 +105,11 @@ const EVENT_CONFIG: Record<
   feedback_processed: { icon: ChatCircleDots, label: "Feedback", color: "text-purple-500" },
 }
 
-const SOURCE_ICONS: Record<string, typeof DiscordLogo> = {
-  discord: DiscordLogo,
-  github: GithubLogo,
-  x: XLogo,
+const SOURCE_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+  discord: FaDiscord,
+  github: FaGithub,
+  x: FaXTwitter,
+  linear: SiLinear,
 }
 
 const HOUR = 3600000
