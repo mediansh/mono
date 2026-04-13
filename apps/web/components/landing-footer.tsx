@@ -59,7 +59,7 @@ export function LandingFooter() {
                     <li key={item.label}>
                       <Link
                         href={item.href}
-                        {...(item.href.startsWith("http") || item.href.startsWith("mailto") ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                        {...(item.href.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                         className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
                       >
                         {item.icon}
