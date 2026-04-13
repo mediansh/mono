@@ -299,16 +299,17 @@ export default function LogsPage() {
     return <LogsSkeleton />
   }
 
-  const allEvents = USE_MOCK_DATA ? MOCK_EVENTS : (results as LogEvent[])
-  const events = allEvents.filter((e) => {
-    if (filter === "all") return true
-    if (filter === "tasks") return e.type.startsWith("task")
-    if (filter === "ai") return e.source === "ai" || e.type === "tasks_generated_ai" || e.type === "feedback_processed"
-    if (filter === "webhooks") return e.type.startsWith("webhook")
-    if (filter === "integrations") return e.type.startsWith("integration")
-    if (filter === "members") return e.type.startsWith("member")
-    return true
-  })
+  const events = USE_MOCK_DATA
+    ? MOCK_EVENTS.filter((e) => {
+        if (filter === "all") return true
+        if (filter === "tasks") return e.type.startsWith("task") || e.type === "feedback_processed"
+        if (filter === "ai") return e.source === "ai" || e.type === "tasks_generated_ai" || e.type === "feedback_processed"
+        if (filter === "webhooks") return e.type.startsWith("webhook")
+        if (filter === "integrations") return e.type.startsWith("integration")
+        if (filter === "members") return e.type.startsWith("member") || e.type === "labels_saved"
+        return true
+      })
+    : (results as LogEvent[])
   const activityData = USE_MOCK_DATA
     ? MOCK_ACTIVITY
     : (dashboard?.activityData ?? [
