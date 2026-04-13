@@ -221,7 +221,7 @@ export const POST = withAxiom(async (request: Request) => {
         ? availableLabels.join(", ")
         : "No predefined labels available."
 
-    const model = "anthropic/claude-haiku-4.5"
+    const model = "anthropic/claude-sonnet-4.6"
     const generationMode = getTaskGenerationMode(prompt)
     const allowMultipleTasks = generationMode !== "single"
     const result = await generateText({
@@ -337,7 +337,7 @@ export const POST = withAxiom(async (request: Request) => {
         distinctId: userId,
         event: "llm_generation",
         properties: {
-          model: "anthropic/claude-haiku-4.5",
+          model: "anthropic/claude-sonnet-4.6",
           feature: "task_generation",
           duration_ms: durationMs,
           success: false,
