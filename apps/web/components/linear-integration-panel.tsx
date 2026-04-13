@@ -502,8 +502,14 @@ export function LinearIntegrationPanel() {
             </div>
 
             {isLoadingWorkflowStates ? (
-              <div className="px-3.5 py-6 text-[12px] text-muted-foreground">
-                Loading workflow states...
+              <div className="divide-y divide-border/50 py-1">
+                {TASK_STATUSES.map((status) => (
+                  <div key={status} className="flex items-center gap-3 px-3.5 py-2">
+                    <div className="h-4 w-24 shrink-0 rounded-[4px] bg-muted/40" />
+                    <div className="h-3 w-3 shrink-0 rounded-[4px] bg-muted/30" />
+                    <div className="h-8 flex-1 rounded-[4px] bg-muted/30" />
+                  </div>
+                ))}
               </div>
             ) : workflowStates.length > 0 ? (
               <>
