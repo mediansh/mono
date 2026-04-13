@@ -952,6 +952,9 @@ export const handleRequestAction = internalMutation({
       updatedAt: Date.now(),
     })
 
+    await queueLinearSync(ctx, args.taskId)
+    await queueGitHubSync(ctx, args.taskId)
+
     const logType =
       args.nextStatus === "todo" ? "request_accepted" : "request_denied"
     const logMessage =
