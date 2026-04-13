@@ -827,6 +827,24 @@ export const processFeedbackWindow = internalAction({
         !classification.isProductFeedback ||
         classification.relevantMessageIds.length === 0
       ) {
+        // Log AI cost even when no actionable feedback is found
+        const classifierCost = getAiCostForTokens({
+          model: "anthropic/claude-haiku-4.5",
+          inputTokens: classifierResult.usage?.inputTokens,
+          outputTokens: classifierResult.usage?.outputTokens,
+        })
+
+        if (classifierCost > 0) {
+          await ctx.runMutation(internal.logs.recordWorkspaceLog, {
+            workspaceId: feedbackWindow.integration.workspaceId,
+            category: "tasks",
+            type: "feedback_processed",
+            message: "Processed Discord messages (no actionable feedback)",
+            source: "discord",
+            cost: classifierCost,
+          })
+        }
+
         await ctx.runMutation(markFeedbackWindowProcessedInternalMutation, {
           integrationId: args.integrationId,
           lastProcessedMessageId: latestPendingMessage.messageId,
@@ -964,6 +982,18 @@ export const processFeedbackWindow = internalAction({
         })
 
       if (!extracted) {
+        // Log AI cost even when extraction fails
+        if (totalAiCost > 0) {
+          await ctx.runMutation(internal.logs.recordWorkspaceLog, {
+            workspaceId: feedbackWindow.integration.workspaceId,
+            category: "tasks",
+            type: "feedback_processed",
+            message: "Processed Discord messages (no actionable feedback)",
+            source: "discord",
+            cost: totalAiCost,
+          })
+        }
+
         await ctx.runMutation(markFeedbackWindowProcessedInternalMutation, {
           integrationId: args.integrationId,
           lastProcessedMessageId: latestPendingMessage.messageId,
@@ -1036,6 +1066,16 @@ export const processFeedbackWindow = internalAction({
 
         createdTaskCount = result.createdTaskIds.length
         updatedTaskCount = result.updatedTaskIds.length
+      } else if (totalAiCost > 0) {
+        // Log AI cost when extractor returns no actions
+        await ctx.runMutation(internal.logs.recordWorkspaceLog, {
+          workspaceId: feedbackWindow.integration.workspaceId,
+          category: "tasks",
+          type: "feedback_processed",
+          message: "Processed Discord messages (no actionable feedback)",
+          source: "discord",
+          cost: totalAiCost,
+        })
       }
 
       await ctx.runMutation(markFeedbackWindowProcessedInternalMutation, {
