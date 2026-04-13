@@ -808,6 +808,23 @@ export const createTask = mutation({
       await logTaskCreated(ctx, createdTasks[0])
       await queueLinearSync(ctx, createdTasks[0]._id)
       await queueGitHubSync(ctx, createdTasks[0]._id)
+
+      if (createdTasks[0].status === "requests") {
+        await ctx.scheduler.runAfter(
+          0,
+          internal.slack.queueFeatureRequestNotification,
+          {
+            workspaceId: args.workspaceId,
+            taskId: createdTasks[0]._id,
+            taskTitle: createdTasks[0].title,
+            taskCode: createdTasks[0].taskCode,
+            taskDescription: createdTasks[0].description,
+            taskPriority: createdTasks[0].priority,
+            taskLabels: createdTasks[0].labels,
+            sourceAuthor: createdTasks[0].source?.author,
+          }
+        )
+      }
     }
     return createdTasks[0]
   },
@@ -1273,6 +1290,11 @@ async function queueSlackNotificationForStatusChange(
       status: "pending",
       createdAt: Date.now(),
     })
+    await ctx.scheduler.runAfter(
+      0,
+      internal.slack.sendPendingNotifications,
+      { integrationId: integration._id }
+    )
   }
 
   if (
@@ -1293,6 +1315,11 @@ async function queueSlackNotificationForStatusChange(
       status: "pending",
       createdAt: Date.now(),
     })
+    await ctx.scheduler.runAfter(
+      0,
+      internal.slack.sendPendingNotifications,
+      { integrationId: integration._id }
+    )
   }
 }
 
