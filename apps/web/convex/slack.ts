@@ -819,6 +819,7 @@ export const slackEventsWebhook = httpAction(async (ctx, request) => {
       event.type === "message" &&
       !event.subtype &&
       !event.bot_id &&
+      event.channel &&
       event.user &&
       event.text &&
       event.ts &&
@@ -1221,9 +1222,8 @@ export const sendSlackNotification = internalAction({
       return
     }
 
-    const token = await decryptSecret(integration.accessTokenEncrypted)
-
     try {
+      const token = await decryptSecret(integration.accessTokenEncrypted)
       let slackResponse: { ok: boolean; ts?: string; error?: string }
 
       if (notification.type === "feature_request") {
