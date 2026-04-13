@@ -1114,14 +1114,33 @@ export const queueFeatureRequestNotification = internalMutation({
     sourceAuthor: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    console.log("[slack] queueFeatureRequestNotification called", {
+      workspaceId: args.workspaceId,
+      taskCode: args.taskCode,
+    })
+
     const integration = await ctx.db
       .query("slackWorkspaceIntegrations")
       .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
       .unique()
 
-    if (!integration || !integration.notificationChannelId) {
+    if (!integration) {
+      console.log("[slack] No Slack integration found for workspace", args.workspaceId)
       return
     }
+
+    if (!integration.notificationChannelId) {
+      console.log("[slack] No notification channel configured", {
+        integrationId: integration._id,
+      })
+      return
+    }
+
+    console.log("[slack] Inserting feature_request notification", {
+      integrationId: integration._id,
+      channelId: integration.notificationChannelId,
+      taskCode: args.taskCode,
+    })
 
     await ctx.db.insert("slackPendingNotifications", {
       workspaceId: args.workspaceId,
@@ -1155,11 +1174,18 @@ export const sendPendingNotifications = internalAction({
     integrationId: v.id("slackWorkspaceIntegrations"),
   },
   handler: async (ctx, args) => {
+    console.log("[slack] sendPendingNotifications called", {
+      integrationId: args.integrationId,
+    })
+
     const integration = await ctx.runQuery(
       internal.slack.getIntegrationInternal,
       { integrationId: args.integrationId }
     )
-    if (!integration) return
+    if (!integration) {
+      console.log("[slack] Integration not found in sender", args.integrationId)
+      return
+    }
 
     const token = await decryptSecret(integration.accessTokenEncrypted)
 
@@ -1167,6 +1193,11 @@ export const sendPendingNotifications = internalAction({
       internal.slack.getAllPendingSlackNotifications,
       { limit: 20 }
     )
+
+    console.log("[slack] Found pending notifications", {
+      total: notifications.length,
+      forThisIntegration: notifications.filter((n) => n.integrationId === args.integrationId).length,
+    })
 
     for (const notification of notifications) {
       if (notification.integrationId !== args.integrationId) continue
@@ -1281,6 +1312,11 @@ export const sendPendingNotifications = internalAction({
             }),
           })
           slackResponse = (await response.json()) as { ok: boolean; ts?: string; error?: string }
+          console.log("[slack] feature_request API response", {
+            ok: slackResponse.ok,
+            error: slackResponse.error,
+            channel: notification.channelId,
+          })
         } else if (notification.type === "request_received") {
           const response = await fetch("https://slack.com/api/chat.postMessage", {
             method: "POST",
