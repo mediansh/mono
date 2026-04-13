@@ -1239,23 +1239,31 @@ async function getSlackNotificationContext(
   const parsed = parseSlackPermalink(sourceUrl)
   if (!parsed) return null
 
-  // Find integration by looking at slackMessages for this channel
-  const message = await ctx.db
-    .query("slackMessages")
-    .withIndex("by_slack_message")
-    .filter((q) => q.eq(q.field("messageTs"), parsed.messageTs))
-    .first()
+  const integrations = await ctx.db
+    .query("slackWorkspaceIntegrations")
+    .collect()
 
-  if (!message) return null
+  for (const integration of integrations) {
+    const message = await ctx.db
+      .query("slackMessages")
+      .withIndex("by_slack_message", (q) =>
+        q
+          .eq("teamId", integration.teamId)
+          .eq("channelId", parsed.channelId)
+          .eq("messageTs", parsed.messageTs)
+      )
+      .unique()
 
-  const integration = await ctx.db.get(message.integrationId)
-  if (!integration) return null
+    if (!message) continue
 
-  return {
-    integration,
-    parsed,
-    respondChannelIds: [parsed.channelId],
+    return {
+      integration,
+      parsed,
+      respondChannelIds: [parsed.channelId],
+    }
   }
+
+  return null
 }
 
 async function queueSlackNotificationForStatusChange(
