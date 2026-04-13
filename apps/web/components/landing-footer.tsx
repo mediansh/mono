@@ -1,17 +1,17 @@
 import Link from "next/link"
 import { Logo } from "@/components/logo"
-import {
-  XLogo,
-  GithubLogo,
-  InstagramLogo,
-  TiktokLogo,
-  YoutubeLogo,
-  DiscordLogo,
-  RedditLogo,
-} from "@phosphor-icons/react"
-import type { Icon } from "@phosphor-icons/react"
+import { FaXTwitter, FaDiscord, FaYoutube, FaInstagram, FaRedditAlien } from "react-icons/fa6"
+import type { ReactNode } from "react"
 
-type FooterLink = { label: string; href: string; icon?: Icon }
+type FooterLink = { label: string; href: string; icon?: ReactNode }
+
+const socialLinks: FooterLink[] = [
+  { label: "Twitter", href: "https://x.com/clovr_dev", icon: <FaXTwitter size={13} /> },
+  { label: "Discord", href: "https://discord.gg/P7MwTrgH5a", icon: <FaDiscord size={13} /> },
+  { label: "YouTube", href: "https://www.youtube.com/@useclovr", icon: <FaYoutube size={13} /> },
+  { label: "Instagram", href: "https://www.instagram.com/clovrlabs/", icon: <FaInstagram size={13} /> },
+  { label: "Reddit", href: "https://reddit.com/r/clovr", icon: <FaRedditAlien size={13} /> },
+]
 
 const links: Record<string, FooterLink[]> = {
   Product: [
@@ -24,15 +24,7 @@ const links: Record<string, FooterLink[]> = {
     { label: "Changelog", href: "/changelog" },
     { label: "News", href: "/news" },
   ],
-  Socials: [
-    { label: "X", href: "https://x.com/mediandotsh", icon: XLogo },
-    { label: "GitHub", href: "https://github.com/mediansh", icon: GithubLogo },
-    { label: "Instagram", href: "https://www.instagram.com/clovrlabs/", icon: InstagramLogo },
-    { label: "TikTok", href: "https://www.tiktok.com/@clovrlabs", icon: TiktokLogo },
-    { label: "YouTube", href: "https://www.youtube.com/@clovrlabs", icon: YoutubeLogo },
-    { label: "Discord", href: "https://clovrlabs.co/discord", icon: DiscordLogo },
-    { label: "Reddit", href: "https://www.reddit.com/r/Clovr/", icon: RedditLogo },
-  ],
+  Socials: socialLinks,
   Company: [
     { label: "Sign in", href: "/sign-in" },
     { label: "Get started", href: "/sign-up" },
@@ -60,20 +52,37 @@ export function LandingFooter() {
                 <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/60">
                   {heading}
                 </p>
-                <ul className="mt-3 flex flex-col gap-2">
-                  {items.map((item) => (
-                    <li key={item.label}>
-                      <Link
-                        href={item.href}
-                        {...(item.href.startsWith("http") || item.href.startsWith("mailto") ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                        className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-                      >
-                        {item.icon && <item.icon weight="fill" size={16} />}
-                        {item.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
+                {heading === "Socials" ? (
+                  <ul className="mt-3 space-y-2">
+                    {items.map((item) => (
+                      <li key={item.label}>
+                        <a
+                          href={item.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-[13px] text-[#3f3f46] transition-colors hover:text-[#71717a]"
+                        >
+                          {item.icon}
+                          {item.label}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <ul className="mt-3 flex flex-col gap-2">
+                    {items.map((item) => (
+                      <li key={item.label}>
+                        <Link
+                          href={item.href}
+                          {...(item.href.startsWith("http") || item.href.startsWith("mailto") ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                          className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                        >
+                          {item.label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             ))}
           </div>
