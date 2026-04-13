@@ -11,7 +11,7 @@ const socialLinks: FooterLink[] = [
   { label: "Instagram", href: "https://www.instagram.com/clovrlabs/", icon: <FaInstagram size={16} /> },
   { label: "TikTok", href: "https://www.tiktok.com/@clovrlabs", icon: <FaTiktok size={16} /> },
   { label: "YouTube", href: "https://www.youtube.com/@clovrlabs", icon: <FaYoutube size={16} /> },
-  { label: "Discord", href: "https://clovrlabs.co/discord", icon: <FaDiscord size={16} /> },
+  { label: "Discord", href: "https://discord.com/invite/P7MwTrgH5a", icon: <FaDiscord size={16} /> },
   { label: "Reddit", href: "https://www.reddit.com/r/Clovr/", icon: <FaRedditAlien size={16} /> },
 ]
 

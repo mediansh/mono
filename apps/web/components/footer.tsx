@@ -20,7 +20,7 @@ const footerLinks = [
   {
     title: "Integrations",
     links: [
-      { label: "Discord", href: "#" },
+      { label: "Discord", href: "https://discord.com/invite/P7MwTrgH5a", external: true },
       { label: "X / Twitter", href: "#" },
       { label: "GitHub", href: "#" },
       { label: "Linear", href: "#" },
@@ -51,7 +51,7 @@ const footerLinks = [
     title: "Connect",
     links: [
       { label: "X", href: "#", external: true },
-      { label: "Discord", href: "#", external: true },
+      { label: "Discord", href: "https://discord.com/invite/P7MwTrgH5a", external: true },
       { label: "GitHub", href: "#", external: true },
       { label: "Talk to us", href: "#", external: true },
     ],
