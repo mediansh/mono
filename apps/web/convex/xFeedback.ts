@@ -1,5 +1,4 @@
 import { generateText, Output } from "ai"
-import { google } from "@ai-sdk/google"
 import { trackLLMGeneration, trackFeedbackProcessing } from "./posthog"
 import { safeTrackAiUsage } from "../lib/billing/autumn"
 import { getAiCostForTokens } from "../lib/billing/config"
@@ -697,7 +696,7 @@ export const processFeedbackWindow = internalAction({
 
       const classifierStart = Date.now()
       const classifierResult = await generateText({
-        model: google("gemma-3-27b-it"),
+        model: "anthropic/claude-haiku-4.5",
         system: classifierSystemParts.join(" "),
         prompt: [
           `Workspace name: ${feedbackWindow.integration.workspaceName}`,
@@ -712,7 +711,7 @@ export const processFeedbackWindow = internalAction({
 
       await trackLLMGeneration({
         distinctId: feedbackWindow.integration.workspaceId,
-        model: "google/gemma-3-27b-it",
+        model: "anthropic/claude-haiku-4.5",
         feature: "x_feedback_classifier",
         inputTokens: classifierResult.usage?.inputTokens,
         outputTokens: classifierResult.usage?.outputTokens,
@@ -727,7 +726,7 @@ export const processFeedbackWindow = internalAction({
       await safeTrackAiUsage({
         workspaceId: feedbackWindow.integration.workspaceId,
         workspaceName: feedbackWindow.integration.workspaceName,
-        model: "google/gemma-3-27b-it",
+        model: "anthropic/claude-haiku-4.5",
         inputTokens: classifierResult.usage?.inputTokens,
         outputTokens: classifierResult.usage?.outputTokens,
         properties: {
@@ -816,7 +815,7 @@ export const processFeedbackWindow = internalAction({
 
       const extractorStart = Date.now()
       const extractorResult = await generateText({
-        model: "anthropic/claude-haiku-4.5",
+        model: "anthropic/claude-sonnet-4.6",
         output: Output.object({ schema: extractedFeedbackTasksSchema }),
         system: extractorSystemParts.join(" "),
         prompt: [
@@ -837,7 +836,7 @@ export const processFeedbackWindow = internalAction({
 
       await trackLLMGeneration({
         distinctId: feedbackWindow.integration.workspaceId,
-        model: "anthropic/claude-haiku-4.5",
+        model: "anthropic/claude-sonnet-4.6",
         feature: "x_feedback_extractor",
         inputTokens: extractorResult.usage?.inputTokens,
         outputTokens: extractorResult.usage?.outputTokens,
@@ -852,7 +851,7 @@ export const processFeedbackWindow = internalAction({
       await safeTrackAiUsage({
         workspaceId: feedbackWindow.integration.workspaceId,
         workspaceName: feedbackWindow.integration.workspaceName,
-        model: "anthropic/claude-haiku-4.5",
+        model: "anthropic/claude-sonnet-4.6",
         inputTokens: extractorResult.usage?.inputTokens,
         outputTokens: extractorResult.usage?.outputTokens,
         properties: {
@@ -863,12 +862,12 @@ export const processFeedbackWindow = internalAction({
 
       const totalAiCost =
         getAiCostForTokens({
-          model: "google/gemma-3-27b-it",
+          model: "anthropic/claude-haiku-4.5",
           inputTokens: classifierResult.usage?.inputTokens,
           outputTokens: classifierResult.usage?.outputTokens,
         }) +
         getAiCostForTokens({
-          model: "anthropic/claude-haiku-4.5",
+          model: "anthropic/claude-sonnet-4.6",
           inputTokens: extractorResult.usage?.inputTokens,
           outputTokens: extractorResult.usage?.outputTokens,
         })
