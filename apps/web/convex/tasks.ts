@@ -636,6 +636,24 @@ async function applyFeedbackTaskOperations(
   for (const task of createdTasks) {
     await queueLinearSync(ctx, task._id)
     await queueGitHubSync(ctx, task._id)
+
+    // Queue feature request notification to Slack if the task lands in "requests"
+    if (task.status === "requests") {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.slack.queueFeatureRequestNotification,
+        {
+          workspaceId,
+          taskId: task._id,
+          taskTitle: task.title,
+          taskCode: task.taskCode,
+          taskDescription: task.description,
+          taskPriority: task.priority,
+          taskLabels: task.labels,
+          sourceAuthor: task.source?.author,
+        }
+      )
+    }
   }
 
   return {
@@ -924,6 +942,38 @@ export const createTasksFromFeedbackInternal = internalMutation({
   },
 })
 
+export const createTasksFromSlackFeedbackInternal = internalMutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    operations: v.array(
+      v.union(
+        v.object({
+          action: v.literal("create"),
+          task: taskInputValidator,
+        }),
+        v.object({
+          action: v.literal("update"),
+          taskCode: v.string(),
+          title: v.string(),
+          description: v.optional(v.string()),
+          priority: v.optional(taskPriorityValidator),
+          labels: v.array(v.string()),
+        })
+      )
+    ),
+    cost: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    return await applyFeedbackTaskOperations(
+      ctx,
+      args.workspaceId,
+      args.operations,
+      "slack",
+      args.cost
+    )
+  },
+})
+
 export const getTaskSnapshotForDiscord = query({
   args: {
     botSecret: v.string(),
@@ -1134,6 +1184,118 @@ async function queueDiscordNotificationForStatusChange(
   }
 }
 
+function parseSlackPermalink(
+  url: string
+): { channelId: string; messageTs: string } | null {
+  // Format: https://slack.com/archives/C12345/p1234567890123456
+  const match = url.match(/slack\.com\/archives\/([A-Z0-9]+)\/p(\d+)/)
+  if (!match?.[1] || !match[2]) return null
+  // Convert p-format timestamp back to ts format (insert dot before last 6 digits)
+  const raw = match[2]
+  const ts =
+    raw.length > 6 ? `${raw.slice(0, raw.length - 6)}.${raw.slice(raw.length - 6)}` : raw
+  return { channelId: match[1], messageTs: ts }
+}
+
+function shouldRespondInSlackChannel(
+  integration: {
+    respondForMe?: boolean
+    respondForMeMode?: "off" | "all" | "specific"
+    respondForMeChannelIds?: string[]
+  },
+  channelIds: string[]
+): boolean {
+  const mode = integration.respondForMeMode
+  if (mode === "off") return false
+  if (mode === "all") return true
+  if (mode === "specific")
+    return channelIds.some((channelId) =>
+      (integration.respondForMeChannelIds ?? []).includes(channelId)
+    )
+  return integration.respondForMe ?? false
+}
+
+async function getSlackNotificationContext(
+  ctx: MutationCtx,
+  sourceUrl: string
+) {
+  const parsed = parseSlackPermalink(sourceUrl)
+  if (!parsed) return null
+
+  // Find integration by looking at slackMessages for this channel
+  const message = await ctx.db
+    .query("slackMessages")
+    .withIndex("by_slack_message")
+    .filter((q) => q.eq(q.field("messageTs"), parsed.messageTs))
+    .first()
+
+  if (!message) return null
+
+  const integration = await ctx.db.get(message.integrationId)
+  if (!integration) return null
+
+  return {
+    integration,
+    parsed,
+    respondChannelIds: [parsed.channelId],
+  }
+}
+
+async function queueSlackNotificationForStatusChange(
+  ctx: MutationCtx,
+  task: Doc<"tasks">,
+  taskId: Id<"tasks">,
+  nextStatus: Doc<"tasks">["status"]
+) {
+  if (task.source?.platform !== "slack" || !task.source.url) {
+    return
+  }
+
+  const notificationContext = await getSlackNotificationContext(
+    ctx,
+    task.source.url
+  )
+  if (!notificationContext) return
+
+  const { integration, parsed, respondChannelIds } = notificationContext
+  if (!shouldRespondInSlackChannel(integration, respondChannelIds)) return
+
+  if (nextStatus === "shipped" && task.status !== "shipped") {
+    await ctx.db.insert("slackPendingNotifications", {
+      workspaceId: task.workspaceId,
+      integrationId: integration._id,
+      taskId,
+      type: "request_shipped",
+      channelId: parsed.channelId,
+      threadTs: parsed.messageTs,
+      taskTitle: task.title,
+      taskCode: task.taskCode,
+      status: "pending",
+      createdAt: Date.now(),
+    })
+  }
+
+  if (
+    task.status === "requests" &&
+    (nextStatus === "todo" ||
+      nextStatus === "in_progress" ||
+      nextStatus === "ready")
+  ) {
+    await ctx.db.insert("slackPendingNotifications", {
+      workspaceId: task.workspaceId,
+      integrationId: integration._id,
+      taskId,
+      type: "request_received",
+      channelId: parsed.channelId,
+      threadTs: parsed.messageTs,
+      taskTitle: task.title,
+      taskCode: task.taskCode,
+      status: "pending",
+      createdAt: Date.now(),
+    })
+  }
+}
+
 export const updateTask = mutation({
   args: {
     taskId: v.id("tasks"),
@@ -1208,10 +1370,16 @@ export const updateTask = mutation({
       await queueGitHubSync(ctx, args.taskId)
     }
 
-    // Queue Discord notifications for status transitions on tasks with a Discord source
+    // Queue notifications for status transitions on tasks with a Discord/Slack source
     if (args.status !== undefined && args.status !== task.status) {
       await logTaskMoved(ctx, task, args.status)
       await queueDiscordNotificationForStatusChange(
+        ctx,
+        task,
+        args.taskId,
+        args.status
+      )
+      await queueSlackNotificationForStatusChange(
         ctx,
         task,
         args.taskId,
@@ -1284,7 +1452,7 @@ export const reorderTasks = mutation({
 
     await insertWorkspaceLogs(ctx, taskMoveLogs)
 
-    // Queue Discord notifications for status transitions
+    // Queue notifications for status transitions
     for (const change of args.changes) {
       const task = tasksBeforeUpdate.get(change.taskId)
       if (!task || change.status === task.status) {
@@ -1292,6 +1460,12 @@ export const reorderTasks = mutation({
       }
 
       await queueDiscordNotificationForStatusChange(
+        ctx,
+        task,
+        change.taskId,
+        change.status
+      )
+      await queueSlackNotificationForStatusChange(
         ctx,
         task,
         change.taskId,
@@ -1380,9 +1554,15 @@ export const bulkUpdateTasks = mutation({
         })
       }
 
-      // Queue Discord notifications for status transitions
+      // Queue notifications for status transitions
       if (args.status !== undefined && args.status !== task.status) {
         await queueDiscordNotificationForStatusChange(
+          ctx,
+          task,
+          taskId,
+          args.status
+        )
+        await queueSlackNotificationForStatusChange(
           ctx,
           task,
           taskId,

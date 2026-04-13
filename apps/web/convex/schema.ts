@@ -56,6 +56,112 @@ export default defineSchema({
     .index("by_workspace", ["workspaceId"])
     .index("by_workspace_status", ["workspaceId", "status"]),
 
+  slackOAuthStates: defineTable({
+    workspaceId: v.id("workspaces"),
+    initiatedByUserId: v.string(),
+    state: v.string(),
+    redirectUrl: v.string(),
+    expiresAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_state", ["state"])
+    .index("by_workspace", ["workspaceId"]),
+
+  slackWorkspaceIntegrations: defineTable({
+    workspaceId: v.id("workspaces"),
+    teamId: v.string(),
+    teamName: v.string(),
+    botUserId: v.string(),
+    accessTokenEncrypted: v.string(),
+    connectedAt: v.number(),
+    connectedByUserId: v.string(),
+    feedbackCollectionEnabled: v.optional(v.boolean()),
+    feedbackChannelId: v.optional(v.string()),
+    notificationChannelId: v.optional(v.string()),
+    lastProcessedMessageId: v.optional(v.string()),
+    lastProcessedMessageCreatedAt: v.optional(v.number()),
+    lastProcessedAt: v.optional(v.number()),
+    feedbackProcessingState: v.optional(
+      v.union(v.literal("idle"), v.literal("scheduled"), v.literal("running"))
+    ),
+    feedbackProcessingWorkId: v.optional(v.string()),
+    feedbackProcessingNeedsRerun: v.optional(v.boolean()),
+    feedbackProcessingQueuedAt: v.optional(v.number()),
+    feedbackProcessingStartedAt: v.optional(v.number()),
+    feedbackProcessingCompletedAt: v.optional(v.number()),
+    feedbackProcessingLastError: v.optional(v.string()),
+    additionalContext: v.optional(v.string()),
+    respondForMe: v.optional(v.boolean()),
+    respondForMeMode: v.optional(
+      v.union(v.literal("off"), v.literal("all"), v.literal("specific"))
+    ),
+    respondForMeChannelIds: v.optional(v.array(v.string())),
+    teamChannels: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          name: v.string(),
+          isPrivate: v.boolean(),
+        })
+      )
+    ),
+  })
+    .index("by_workspace", ["workspaceId"])
+    .index("by_team", ["teamId"]),
+
+  slackMessages: defineTable({
+    workspaceId: v.id("workspaces"),
+    integrationId: v.id("slackWorkspaceIntegrations"),
+    teamId: v.string(),
+    channelId: v.string(),
+    channelName: v.optional(v.string()),
+    threadTs: v.optional(v.string()),
+    messageTs: v.string(),
+    permalink: v.optional(v.string()),
+    authorId: v.string(),
+    authorUsername: v.string(),
+    content: v.string(),
+    messageCreatedAt: v.number(),
+    receivedAt: v.number(),
+  })
+    .index("by_slack_message", ["teamId", "channelId", "messageTs"])
+    .index("by_integration_created_at", ["integrationId", "messageCreatedAt"])
+    .index("by_workspace_channel_created_at", [
+      "workspaceId",
+      "channelId",
+      "messageCreatedAt",
+    ]),
+
+  slackPendingNotifications: defineTable({
+    workspaceId: v.id("workspaces"),
+    integrationId: v.id("slackWorkspaceIntegrations"),
+    taskId: v.id("tasks"),
+    type: v.union(
+      v.literal("request_received"),
+      v.literal("request_shipped"),
+      v.literal("feature_request")
+    ),
+    channelId: v.string(),
+    threadTs: v.optional(v.string()),
+    taskTitle: v.string(),
+    taskCode: v.string(),
+    taskDescription: v.optional(v.string()),
+    taskPriority: v.optional(v.string()),
+    taskLabels: v.optional(v.array(v.string())),
+    sourceAuthor: v.optional(v.string()),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("sent"),
+      v.literal("failed")
+    ),
+    createdAt: v.number(),
+    sentAt: v.optional(v.number()),
+    slackMessageTs: v.optional(v.string()),
+  })
+    .index("by_integration_status", ["integrationId", "status"])
+    .index("by_status", ["status"])
+    .index("by_task", ["taskId"]),
+
   discordPairingCodes: defineTable({
     code: v.string(),
     guildId: v.string(),
@@ -432,6 +538,7 @@ export default defineSchema({
     source: v.optional(
       v.union(
         v.literal("discord"),
+        v.literal("slack"),
         v.literal("github"),
         v.literal("linear"),
         v.literal("x"),
