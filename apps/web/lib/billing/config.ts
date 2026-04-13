@@ -13,12 +13,12 @@ export const AI_TOKEN_PRICING_PER_MILLION: Record<
   { input: number; output: number }
 > = {
   "anthropic/claude-haiku-4.5": {
-    input: 0.8,
-    output: 4,
+    input: 2,
+    output: 8,
   },
   "anthropic/claude-sonnet-4.6": {
-    input: 3,
-    output: 15,
+    input: 5.5,
+    output: 22,
   },
 }
 
