@@ -109,7 +109,7 @@ type WorkspaceTaskLog = {
   category: "tasks"
   type: "task_moved" | "task_updated" | "task_deleted"
   message: string
-  source?: "discord" | "github" | "linear" | "x" | "cli" | "manual"
+  source?: "discord" | "slack" | "github" | "linear" | "x" | "cli" | "manual"
 }
 
 const TASK_STATUS_LABELS = {
@@ -136,6 +136,7 @@ function getWorkspaceLogSource(
 ) {
   if (
     platform === "discord" ||
+    platform === "slack" ||
     platform === "github" ||
     platform === "linear" ||
     platform === "x" ||
