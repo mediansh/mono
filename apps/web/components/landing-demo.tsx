@@ -313,21 +313,26 @@ function ListGroup({
   label,
   tasks,
   collapsed,
+  onToggle,
   extraHeader,
   children,
 }: {
   status: ColumnStatus
   label: string
   tasks: MockTask[]
-  collapsed?: boolean
+  collapsed: boolean
+  onToggle: () => void
   extraHeader?: React.ReactNode
   children?: React.ReactNode
 }) {
   return (
     <div className="mb-1.5 overflow-hidden rounded-[4px] ring-1 ring-[#2E2E2E]">
-      <div className="flex items-center gap-2.5 bg-[#1E1E1E] px-3 py-1.5">
+      <button
+        onClick={onToggle}
+        className="flex w-full cursor-pointer items-center gap-2.5 bg-[#1E1E1E] px-3 py-1.5 text-left transition-colors hover:bg-[#252525]"
+      >
         <span
-          className="text-[10px] text-[#9B9D9E]/60"
+          className="text-[10px] text-[#9B9D9E]/60 transition-transform"
           style={{
             display: "inline-block",
             transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)",
@@ -344,36 +349,92 @@ function ListGroup({
         </span>
         {extraHeader}
         <Plus size={14} className="ml-auto text-[#9B9D9E]/40" />
-      </div>
-      {!collapsed && children}
+      </button>
+      <AnimatePresence initial={false}>
+        {!collapsed && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+            className="overflow-hidden"
+          >
+            {children}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
 
 function ListView() {
+  const [collapsed, setCollapsed] = useState<Set<ColumnStatus>>(new Set())
+  const toggle = (status: ColumnStatus) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev)
+      if (next.has(status)) next.delete(status)
+      else next.add(status)
+      return next
+    })
+  const isCollapsed = (s: ColumnStatus) => collapsed.has(s)
+
   return (
     <div className="scrollbar-hide flex-1 overflow-y-auto px-4 pt-1 pb-4">
       <ListGroup
         status="requests"
         label="Requests"
         tasks={REQUESTS}
+        collapsed={isCollapsed("requests")}
+        onToggle={() => toggle("requests")}
         extraHeader={<span className="ml-1 text-[11px] text-[#9B9D9E]/50">from users</span>}
       >
         <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2">
           {REQUESTS.map((t) => <RequestCard key={t.id} task={t} />)}
         </div>
       </ListGroup>
-      <ListGroup status="todo" label="Todo" tasks={TODO}>
+      <ListGroup
+        status="todo"
+        label="Todo"
+        tasks={TODO}
+        collapsed={isCollapsed("todo")}
+        onToggle={() => toggle("todo")}
+      >
         {TODO.map((t) => <ListRow key={t.id} task={t} status="todo" />)}
       </ListGroup>
-      <ListGroup status="in_progress" label="In Progress" tasks={IN_PROGRESS}>
+      <ListGroup
+        status="in_progress"
+        label="In Progress"
+        tasks={IN_PROGRESS}
+        collapsed={isCollapsed("in_progress")}
+        onToggle={() => toggle("in_progress")}
+      >
         {IN_PROGRESS.map((t) => <ListRow key={t.id} task={t} status="in_progress" />)}
       </ListGroup>
-      <ListGroup status="ready" label="Ready" tasks={READY}>
+      <ListGroup
+        status="ready"
+        label="Ready"
+        tasks={READY}
+        collapsed={isCollapsed("ready")}
+        onToggle={() => toggle("ready")}
+      >
         {READY.map((t) => <ListRow key={t.id} task={t} status="ready" />)}
       </ListGroup>
-      <ListGroup status="shipped" label="Shipped" tasks={SHIPPED} collapsed />
-      <ListGroup status="archive" label="Archive" tasks={ARCHIVED}>
+      <ListGroup
+        status="shipped"
+        label="Shipped"
+        tasks={SHIPPED}
+        collapsed={isCollapsed("shipped")}
+        onToggle={() => toggle("shipped")}
+      >
+        {SHIPPED.map((t) => <ListRow key={t.id} task={t} status="shipped" />)}
+      </ListGroup>
+      <ListGroup
+        status="archive"
+        label="Archive"
+        tasks={ARCHIVED}
+        collapsed={isCollapsed("archive")}
+        onToggle={() => toggle("archive")}
+      >
         {ARCHIVED.map((t) => <ListRow key={t.id} task={t} status="archive" />)}
       </ListGroup>
     </div>
@@ -409,6 +470,9 @@ function BoardView() {
       </Column>
       <Column status="shipped" label="Shipped" count={SHIPPED.length}>
         {SHIPPED.map((t) => <KanbanCard key={t.id} task={t} />)}
+      </Column>
+      <Column status="archive" label="Archive" count={ARCHIVED.length}>
+        {ARCHIVED.map((t) => <KanbanCard key={t.id} task={t} />)}
       </Column>
     </div>
   )
