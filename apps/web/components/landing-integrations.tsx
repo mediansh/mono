@@ -128,7 +128,9 @@ export function LandingIntegrations() {
         >
           <div className="relative" style={{ width: orbitSize, height: orbitSize }}>
             {/* Dashed orbit ring */}
-            <svg
+            <motion.svg
+              animate={{ rotate: 360 }}
+              transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
               className="pointer-events-none absolute inset-0 h-full w-full text-foreground/15"
               viewBox="0 0 100 100"
               preserveAspectRatio="none"
@@ -143,7 +145,7 @@ export function LandingIntegrations() {
                 strokeDasharray="1 1.2"
                 vectorEffect="non-scaling-stroke"
               />
-            </svg>
+            </motion.svg>
 
             {/* Orbiting integration icons */}
             {integrations.map((integration, i) => {
