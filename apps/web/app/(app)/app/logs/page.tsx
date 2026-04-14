@@ -21,8 +21,8 @@ import {
   Users,
 } from "@phosphor-icons/react"
 import { FaXTwitter, FaDiscord, FaGithub, FaSlack } from "react-icons/fa6"
+import { FaTerminal } from "react-icons/fa6"
 import { SiLinear } from "react-icons/si"
-import { CliIcon } from "@/components/brand-icons"
 import {
   AreaChart,
   Area,
@@ -145,7 +145,7 @@ const SOURCE_ICONS: Record<string, React.ComponentType<{ size?: number; classNam
   github: FaGithub,
   x: FaXTwitter,
   linear: SiLinear,
-  cli: CliIcon,
+  cli: FaTerminal,
 }
 
 const HOUR = 3600000
