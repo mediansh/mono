@@ -168,7 +168,7 @@ function PriorityIcon({ priority }: { priority: Priority }) {
     case "low":
       return <CellSignalLow size={12} className="text-blue-400" />
     case "none":
-      return <Minus size={12} className="text-muted-foreground" />
+      return <Minus size={12} className="text-[#9B9D9E]" />
   }
 }
 
