@@ -151,34 +151,52 @@ export function LandingIntegrations() {
               const x = orbitSize / 2 + orbitRadius * Math.cos(angle)
               const y = orbitSize / 2 + orbitRadius * Math.sin(angle)
               return (
-                <motion.div
+                <div
                   key={integration.name}
-                  initial={{ opacity: 0, scale: 0.5 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4, delay: 0.2 + i * 0.07, ease }}
-                  className="absolute flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-xl border border-foreground/[0.1] bg-background sm:rounded-2xl"
-                  style={{ left: x, top: y, width: satelliteSize, height: satelliteSize }}
+                  className="absolute z-10"
+                  style={{
+                    left: x - satelliteSize / 2,
+                    top: y - satelliteSize / 2,
+                    width: satelliteSize,
+                    height: satelliteSize,
+                  }}
                 >
-                  <integration.icon size={isDesktop ? 22 : 18} />
-                </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4, delay: 0.2 + i * 0.07, ease }}
+                    className="flex h-full w-full items-center justify-center rounded-xl border border-foreground/[0.1] bg-background sm:rounded-2xl"
+                  >
+                    <integration.icon size={isDesktop ? 22 : 18} />
+                  </motion.div>
+                </div>
               )
             })}
 
             {/* Center — Median logo */}
+            <div
+              className="absolute z-10"
+              style={{
+                left: orbitSize / 2 - centerSize / 2,
+                top: orbitSize / 2 - centerSize / 2,
+                width: centerSize,
+                height: centerSize,
+              }}
+            >
             <motion.div
               initial={{ opacity: 0, scale: 0.5 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.1, ease }}
-              className="absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-xl border border-foreground/[0.15] bg-background sm:rounded-2xl"
-              style={{ width: centerSize, height: centerSize }}
+              className="flex h-full w-full items-center justify-center rounded-xl border border-foreground/[0.15] bg-background sm:rounded-2xl"
             >
               <svg viewBox="0 0 300 300" fill="currentColor" style={{ width: centerSize * 0.5, height: centerSize * 0.5 }}>
                 <path d="M253.339 0H46.4123C20.7798 0 0 21.304 0 47.7159V107.267C0 111.503 2.98631 114.12 7.09249 112.874L238.283 52.6993C244.256 51.0797 247.74 55.6894 245.998 61.6694L185.649 292.649C184.529 297.135 187.267 300 191.746 300H252.095C278.1 300 300 277.699 300 252.409V47.7159C300 21.304 279.096 0 253.339 0Z" />
                 <path d="M0 139.531V253.526C0 278.942 20.6553 299.996 46.4123 299.996H159.768C164.247 299.996 166.362 296.259 165.118 291.898L147.822 229.232C147.076 226.865 147.2 224.747 148.445 222.38L203.691 111.251C206.802 105.021 199.336 100.412 194.857 105.146L53.8781 244.93C49.8963 249.166 43.5504 244.307 45.7901 238.701L72.1692 160.212C73.538 155.727 71.6715 151.367 66.321 150.37L7.71464 134.299C3.11074 132.679 0 135.171 0 139.531Z" />
               </svg>
             </motion.div>
+            </div>
           </div>
         </motion.div>
 
