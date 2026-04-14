@@ -7,7 +7,7 @@ import {
   Plugs,
   Terminal,
 } from "@phosphor-icons/react"
-import { FaXTwitter, FaDiscord, FaGithub } from "react-icons/fa6"
+import { FaXTwitter, FaDiscord, FaGithub, FaSlack } from "react-icons/fa6"
 import { SiLinear } from "react-icons/si"
 
 type BrandIconProps = { size?: number }
@@ -61,6 +61,12 @@ const integrations = [
     capabilities: ["Mention monitoring", "Auto task creation", "OAuth connect"],
   },
   {
+    name: "Slack",
+    icon: ({ size = 20 }: BrandIconProps) => <FaSlack size={size} />,
+    description: "Pull feedback from channels and push task updates to your workspace. Stay aligned without leaving Slack.",
+    capabilities: ["Channel ingest", "Task notifications", "Slash commands"],
+  },
+  {
     name: "CLI",
     icon: ({ size = 20 }: BrandIconProps) => <Terminal size={size} />,
     description: "Manage tasks straight from your terminal. Built for developers who live in the command line.",
@@ -100,7 +106,7 @@ export function LandingIntegrations() {
           </p>
         </motion.div>
 
-        {/* Integration icon strip */}
+        {/* Integration orbit */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -108,23 +114,44 @@ export function LandingIntegrations() {
           transition={{ duration: 0.5, ease }}
           className="relative mx-auto mb-20 flex items-center justify-center py-4"
         >
-          <div className="relative flex items-center gap-3 sm:gap-10">
-            {/* Connecting line — sits behind icons, spans between first and last */}
-            <div className="pointer-events-none absolute top-1/2 right-[20px] left-[20px] h-px -translate-y-1/2 bg-foreground/[0.08] sm:right-[32px] sm:left-[32px]" />
+          <div className="relative h-[300px] w-[300px] sm:h-[420px] sm:w-[420px]">
+            {/* Dashed orbit ring */}
+            <svg
+              className="pointer-events-none absolute inset-0 h-full w-full text-foreground/15"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+            >
+              <circle
+                cx="50"
+                cy="50"
+                r="38.3"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="0.3"
+                strokeDasharray="1 1.2"
+                vectorEffect="non-scaling-stroke"
+              />
+            </svg>
 
-            {/* Left integrations (Discord, GitHub) */}
-            {integrations.slice(0, 2).map((integration, i) => (
-              <motion.div
-                key={integration.name}
-                initial={{ opacity: 0, scale: 0.5 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: 0.15 + i * 0.08, ease }}
-                className="relative z-10 flex h-11 w-11 items-center justify-center rounded-xl border border-foreground/[0.1] bg-background sm:h-16 sm:w-16 sm:rounded-2xl"
-              >
-                <integration.icon size={20} />
-              </motion.div>
-            ))}
+            {/* Orbiting integration icons */}
+            {integrations.map((integration, i) => {
+              const angle = (360 / integrations.length) * i - 90
+              return (
+                <motion.div
+                  key={integration.name}
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4, delay: 0.2 + i * 0.07, ease }}
+                  className="absolute top-1/2 left-1/2 flex h-11 w-11 items-center justify-center rounded-xl border border-foreground/[0.1] bg-background sm:h-16 sm:w-16 sm:rounded-2xl [--orbit-radius:115px] sm:[--orbit-radius:165px]"
+                  style={{
+                    transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(calc(-1 * var(--orbit-radius))) rotate(${-angle}deg)`,
+                  }}
+                >
+                  <integration.icon size={20} />
+                </motion.div>
+              )
+            })}
 
             {/* Center — Median logo */}
             <motion.div
@@ -132,39 +159,20 @@ export function LandingIntegrations() {
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.1, ease }}
-              className="relative z-10 flex h-14 w-14 items-center justify-center rounded-xl border border-foreground/[0.15] bg-background sm:h-24 sm:w-24 sm:rounded-2xl"
+              className="absolute top-1/2 left-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-xl border border-foreground/[0.15] bg-background sm:h-24 sm:w-24 sm:rounded-2xl"
             >
               <svg viewBox="0 0 300 300" fill="currentColor" className="h-7 w-7 sm:h-12 sm:w-12">
                 <path d="M253.339 0H46.4123C20.7798 0 0 21.304 0 47.7159V107.267C0 111.503 2.98631 114.12 7.09249 112.874L238.283 52.6993C244.256 51.0797 247.74 55.6894 245.998 61.6694L185.649 292.649C184.529 297.135 187.267 300 191.746 300H252.095C278.1 300 300 277.699 300 252.409V47.7159C300 21.304 279.096 0 253.339 0Z" />
                 <path d="M0 139.531V253.526C0 278.942 20.6553 299.996 46.4123 299.996H159.768C164.247 299.996 166.362 296.259 165.118 291.898L147.822 229.232C147.076 226.865 147.2 224.747 148.445 222.38L203.691 111.251C206.802 105.021 199.336 100.412 194.857 105.146L53.8781 244.93C49.8963 249.166 43.5504 244.307 45.7901 238.701L72.1692 160.212C73.538 155.727 71.6715 151.367 66.321 150.37L7.71464 134.299C3.11074 132.679 0 135.171 0 139.531Z" />
               </svg>
             </motion.div>
-
-            {/* Right integrations (Linear, X) */}
-            {integrations.slice(2, 4).map((integration, i) => (
-              <motion.div
-                key={integration.name}
-                initial={{ opacity: 0, scale: 0.5 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: 0.35 + i * 0.08, ease }}
-                className="relative z-10 flex h-11 w-11 items-center justify-center rounded-xl border border-foreground/[0.1] bg-background sm:h-16 sm:w-16 sm:rounded-2xl"
-              >
-                <integration.icon size={20} />
-              </motion.div>
-            ))}
           </div>
         </motion.div>
 
         {/* Integration cards grid */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {integrations.slice(0, 3).map((integration, i) => (
+          {integrations.map((integration, i) => (
             <IntegrationCard key={integration.name} integration={integration} delay={i * 0.08} />
-          ))}
-        </div>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:mx-auto lg:max-w-[calc(66.666%+8px)]">
-          {integrations.slice(3).map((integration, i) => (
-            <IntegrationCard key={integration.name} integration={integration} delay={(i + 3) * 0.08} />
           ))}
         </div>
       </div>
