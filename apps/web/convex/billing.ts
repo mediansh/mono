@@ -105,6 +105,7 @@ type WorkspaceBillingDashboard = {
     price: number
     aiBudget: number
     eventLimit: number
+    trialDays: number
     features: string[]
     eligibility: {
       attachAction: "activate" | "upgrade" | "downgrade" | "purchase" | "none"
@@ -516,6 +517,7 @@ export const getWorkspaceBillingDashboard = action({
           price: planCopy.price,
           aiBudget: planCopy.aiBudget,
           eventLimit: planCopy.eventLimit,
+          trialDays: planCopy.trialDays,
           features: planCopy.features,
           eligibility: {
             attachAction: normalizeAttachAction(

@@ -9,6 +9,7 @@ import { CreditCardIcon } from "@hugeicons/core-free-icons"
 import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
 import { useInstantNavigation } from "@/hooks/use-instant-navigation"
+import { STARTER_TRIAL_DAYS } from "@/lib/billing/config"
 
 const EXEMPT_PATHS = ["/app/billing", "/app/setup", "/app/settings"]
 
@@ -73,7 +74,7 @@ export function PlanGuard({ children }: { children: React.ReactNode }) {
           <div>
             <h2 className="text-[14px] font-semibold">Choose a plan to continue</h2>
             <p className="mt-1 text-[12px] text-muted-foreground">
-              You need an active plan to use Median. Pick the plan that works best for your team.
+              You need an active plan to use Median. Start with a {STARTER_TRIAL_DAYS}-day free trial on Starter.
             </p>
           </div>
           <button

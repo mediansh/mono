@@ -45,7 +45,7 @@ export function LandingCta() {
           Ready to close the feedback loop?
         </h2>
         <p className="mt-3 text-muted-foreground sm:text-lg">
-          Get started in minutes. No credit card required.
+          Get started in minutes with a 7-day free trial on Starter.
         </p>
 
         <div className="mt-8 flex items-center justify-center gap-3">
