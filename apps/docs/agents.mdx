@@ -21,30 +21,13 @@ Any string works as an agent name. Unrecognized agents get a default icon.
 
 ## Workflow
 
-```bash
-# Check assigned tasks
-mdn tasks --agent claude-code
-
-# Pick up a task
-mdn status MED-42 in_progress --agent claude-code
-
-# Do the work...
-
-# Mark as ready
-mdn status MED-42 ready --agent claude-code
-
-# Create follow-up tasks
-mdn create --title "Add tests for auth module" --agent claude-code
-```
+No repository-specific task command hooks are required.
 
 ## Auto-setup
 
-Running `mdn setup` writes agent instructions to `CLAUDE.md` and `AGENTS.md` in your project directory so agents know how to use Median automatically.
+Use the `AGENTS.md` and `CLAUDE.md` files in the project directory for agent guidance.
 
 ## JSON output
 
 For agents that need structured data:
-
-```bash
-mdn tasks --status todo --json
-```
+No structured command output is required.
