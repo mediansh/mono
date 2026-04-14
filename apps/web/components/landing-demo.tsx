@@ -530,12 +530,8 @@ function SidebarSubItem({
 }
 
 export function LandingDemo() {
-  const [mac, setMac] = useState(true)
   const [view, setView] = useState<"board" | "list">("board")
   const [isMobile, setIsMobile] = useState(false)
-  useEffect(() => {
-    setMac(/Mac|iPhone/.test(navigator.userAgent))
-  }, [])
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)")
     const update = () => setIsMobile(mq.matches)
@@ -567,7 +563,7 @@ export function LandingDemo() {
                   <MagnifyingGlass size={15} />
                   <span className="text-[13px]">Search</span>
                   <kbd className="ml-auto rounded-[3px] border border-[#2A2A2A] px-1 py-px font-mono text-[10px] text-[#F7F7F4]/40">
-                    {mac ? "⌘K" : "Ctrl+K"}
+                    ⌘K
                   </kbd>
                 </div>
                 <div className="flex items-center gap-2 rounded-[4px] bg-[#F7F7F4] px-2 py-1 text-[#141414] ring-1 ring-[#F7F7F4]/10">
