@@ -407,10 +407,10 @@ export function LandingDemo() {
               {/* Toolbar */}
               <div className="flex items-center gap-2 px-4 pt-3 pb-2">
                 <div className="flex items-center gap-0.5 rounded-[4px] bg-[#1E1E1E]/60 p-0.5 ring-1 ring-[#2A2A2A]">
-                  <div className="flex size-6 items-center justify-center rounded-[4px] bg-[#2A2A2A] text-[#F7F7F4]">
+                  <div className="flex size-6 items-center justify-center rounded-[4px] text-[#F7F7F4]/50">
                     <ListBullets size={14} />
                   </div>
-                  <div className="flex size-6 items-center justify-center rounded-[4px] text-[#F7F7F4]/50">
+                  <div className="flex size-6 items-center justify-center rounded-[4px] bg-[#2A2A2A] text-[#F7F7F4]">
                     <SquaresFour size={14} />
                   </div>
                 </div>
