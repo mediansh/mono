@@ -159,17 +159,6 @@ function PriorityIcon({ priority }: { priority: Priority }) {
   }
 }
 
-function LinearBadge() {
-  return (
-    <span
-      className="flex size-5 shrink-0 items-center justify-center rounded-[4px] bg-[#141414] text-[#F7F7F4]/80 ring-1 ring-[#2E2E2E]"
-      title="Synced with Linear"
-    >
-      <LinearIcon size={10} />
-    </span>
-  )
-}
-
 function TaskLabel({ label }: { label: LabelName }) {
   const color = LABEL_COLORS[label]
   return (
@@ -189,11 +178,8 @@ function RequestCard({ task }: { task: MockTask }) {
         <p className="mb-2 text-[12px] leading-snug font-medium text-[#F7F7F4]/90">
           {task.title}
         </p>
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-1.5">
-            {task.labels?.map((l) => <TaskLabel key={l} label={l} />)}
-          </div>
-          <LinearBadge />
+        <div className="mb-2 flex items-center gap-1.5">
+          {task.labels?.map((l) => <TaskLabel key={l} label={l} />)}
         </div>
       </div>
       <div className="flex items-center justify-between border-t border-[#2E2E2E] px-2.5 py-1">
@@ -224,12 +210,9 @@ function KanbanCard({ task }: { task: MockTask }) {
         <p className="mb-2 line-clamp-2 pr-5 text-[12px] leading-snug font-medium text-[#F7F7F4]/90">
           {task.title}
         </p>
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-1.5">
-            {task.priority && <PriorityIcon priority={task.priority} />}
-            {task.labels?.map((l) => <TaskLabel key={l} label={l} />)}
-          </div>
-          <LinearBadge />
+        <div className="mb-2 flex items-center gap-1.5">
+          {task.priority && <PriorityIcon priority={task.priority} />}
+          {task.labels?.map((l) => <TaskLabel key={l} label={l} />)}
         </div>
       </div>
       <div className="flex items-center justify-between border-t border-[#2E2E2E] px-2.5 py-1">
