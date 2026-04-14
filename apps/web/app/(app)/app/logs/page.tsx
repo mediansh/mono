@@ -24,6 +24,7 @@ import {
   SlackLogo,
   XLogo,
 } from "@phosphor-icons/react"
+import { SiLinear } from "react-icons/si"
 import {
   AreaChart,
   Area,
@@ -140,11 +141,12 @@ const EVENT_CONFIG: Record<
   feedback_processed: { icon: ChatCircleDots, label: "Feedback", color: "text-purple-500" },
 }
 
-const SOURCE_ICONS: Record<string, typeof DiscordLogo> = {
+const SOURCE_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
   discord: DiscordLogo,
   slack: SlackLogo,
   github: GithubLogo,
   x: XLogo,
+  linear: SiLinear,
 }
 
 const HOUR = 3600000
