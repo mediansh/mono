@@ -15,6 +15,7 @@ export const trackIntegrationEvent = internalAction({
     workspaceName: v.optional(v.string()),
     source: v.union(
       v.literal("discord"),
+      v.literal("slack"),
       v.literal("github"),
       v.literal("linear"),
       v.literal("x")

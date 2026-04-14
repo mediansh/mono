@@ -5,5 +5,6 @@ const app: ReturnType<typeof defineApp> = defineApp()
 
 app.use(workpool, { name: "discordFeedbackWorkpool" })
 app.use(workpool, { name: "xFeedbackWorkpool" })
+app.use(workpool, { name: "slackFeedbackWorkpool" })
 
 export default app

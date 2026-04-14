@@ -23,7 +23,7 @@ export function trackTaskCreated(props: {
   labelCount: number
   hasDescription: boolean
   hasAttachments: boolean
-  source: "manual" | "ai" | "discord" | "x" | "linear" | "github" | "cli"
+  source: "manual" | "ai" | "discord" | "slack" | "x" | "linear" | "github" | "cli"
 }) {
   capture("task_created", props)
 }
@@ -147,19 +147,19 @@ export function trackLabelsSaved(props: {
 // ── Integration Events ───────────────────────────────────
 
 export function trackIntegrationConnected(props: {
-  platform: "discord" | "linear" | "github" | "x"
+  platform: "discord" | "slack" | "linear" | "github" | "x"
 }) {
   capture("integration_connected", props)
 }
 
 export function trackIntegrationDisconnected(props: {
-  platform: "discord" | "linear" | "github" | "x"
+  platform: "discord" | "slack" | "linear" | "github" | "x"
 }) {
   capture("integration_disconnected", props)
 }
 
 export function trackIntegrationSettingsChanged(props: {
-  platform: "discord" | "linear" | "github" | "x"
+  platform: "discord" | "slack" | "linear" | "github" | "x"
   setting: string
 }) {
   capture("integration_settings_changed", props)

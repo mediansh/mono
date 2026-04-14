@@ -74,7 +74,7 @@ export async function trackLLMGeneration(props: {
 
 export async function trackFeedbackProcessing(props: {
   distinctId: string
-  platform: "discord" | "x"
+  platform: "discord" | "slack" | "x"
   integrationId: string
   workspaceId: string
   messageCount: number
