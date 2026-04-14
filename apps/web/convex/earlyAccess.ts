@@ -49,10 +49,11 @@ export const currentUserRedemption = query({
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) return null
-    return await ctx.db
+    const redemption = await ctx.db
       .query("earlyAccessRedemptions")
       .withIndex("by_user", (q) => q.eq("userId", identity.subject))
       .unique()
+    return redemption
   },
 })
 
@@ -87,7 +88,6 @@ export const redeemCode = mutation({
       redeemedByUserId: identity.subject,
       redeemedAt: now,
     })
-
     const redemptionId = await ctx.db.insert("earlyAccessRedemptions", {
       userId: identity.subject,
       codeId: codeRow._id,
@@ -96,7 +96,6 @@ export const redeemCode = mutation({
       name: profile.name,
       redeemedAt: now,
     })
-
     return { redemptionId, alreadyRedeemed: false }
   },
 })
@@ -169,9 +168,9 @@ export const getWorkspaceForAttach = internalQuery({
     userId: v.string(),
   },
   handler: async (ctx, args) => {
-    const workspace = await ctx.db.get(args.workspaceId)
-    if (!workspace || workspace.ownerId !== args.userId) return null
-    return workspace
+    const ws = await ctx.db.get(args.workspaceId)
+    if (!ws || ws.ownerId !== args.userId) return null
+    return ws
   },
 })
 
@@ -198,27 +197,6 @@ export const markScaleRemoved = internalMutation({
   },
 })
 
-export const markCodeVoided = internalMutation({
-  args: {
-    codeId: v.id("earlyAccessCodes"),
-    userId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.codeId, {
-      voidedAt: Date.now(),
-      voidedByUserId: args.userId,
-    })
-  },
-})
-
-export const adminGetCode = internalQuery({
-  args: { codeId: v.id("earlyAccessCodes") },
-  handler: async (ctx, args) => {
-    await requireAdmin(ctx)
-    return await ctx.db.get(args.codeId)
-  },
-})
-
 export const adminListCodes = query({
   args: {},
   handler: async (ctx) => {
@@ -242,8 +220,7 @@ export const adminCreateCode = mutation({
   handler: async (ctx, args) => {
     const identity = await requireAdmin(ctx)
     const count = Math.max(1, Math.min(args.count ?? 1, 50))
-    const createdCodes: string[] = []
-
+    const ids: string[] = []
     for (let i = 0; i < count; i++) {
       let code = generateCode()
       for (let attempt = 0; attempt < 5; attempt++) {
@@ -254,41 +231,27 @@ export const adminCreateCode = mutation({
         if (!collision) break
         code = generateCode()
       }
-
       await ctx.db.insert("earlyAccessCodes", {
         code,
         createdByUserId: identity.subject,
         createdAt: Date.now(),
         note: args.note,
       })
-      createdCodes.push(code)
+      ids.push(code)
     }
-
-    return createdCodes
+    return ids
   },
 })
 
-export const adminVoidCode = action({
+export const adminVoidCode = mutation({
   args: { codeId: v.id("earlyAccessCodes") },
   handler: async (ctx, args) => {
-    const identity = await ctx.runQuery(
-      internal.admins.requireAdminIdentity,
-      {}
-    )
-    const row = await ctx.runQuery(internal.earlyAccess.adminGetCode, {
-      codeId: args.codeId,
+    await requireAdmin(ctx)
+    const row = await ctx.db.get(args.codeId)
+    if (!row || row.voidedAt) return
+    await ctx.db.patch(args.codeId, {
+      voidedAt: Date.now(),
     })
-
-    if (!row || row.voidedAt) {
-      return { voided: false, alreadyVoided: true }
-    }
-
-    await ctx.runMutation(internal.earlyAccess.markCodeVoided, {
-      codeId: args.codeId,
-      userId: identity.subject,
-    })
-
-    return { voided: true }
   },
 })
 
@@ -301,7 +264,6 @@ export const adminSetEnabled = mutation({
       .withIndex("by_key", (q) => q.eq("key", EARLY_ACCESS_ENABLED_KEY))
       .unique()
     const value = args.enabled ? "true" : "false"
-
     if (row) {
       await ctx.db.patch(row._id, { value })
     } else {
@@ -320,9 +282,7 @@ export const adminRemoveScalePlan = action({
       internal.earlyAccess.adminGetRedemption,
       { redemptionId: args.redemptionId }
     )
-    if (!redemption) {
-      throw new Error("Redemption not found")
-    }
+    if (!redemption) throw new Error("Redemption not found")
     if (!redemption.workspaceId || !redemption.scaleAttachedAt) {
       throw new Error("No Scale plan is attached for this user")
     }
@@ -338,7 +298,6 @@ export const adminRemoveScalePlan = action({
     await ctx.runMutation(internal.earlyAccess.markScaleRemoved, {
       redemptionId: redemption._id,
     })
-
     return { removed: true }
   },
 })
@@ -347,6 +306,7 @@ export const adminGetRedemption = internalQuery({
   args: { redemptionId: v.id("earlyAccessRedemptions") },
   handler: async (ctx, args) => {
     await requireAdmin(ctx)
-    return await ctx.db.get(args.redemptionId)
+    const row = await ctx.db.get(args.redemptionId)
+    return row
   },
 })

@@ -16,7 +16,8 @@ export function EarlyAccessGuard({ children }: { children: React.ReactNode }) {
   const isEarlyAccessPage = pathname === "/app/early-access"
   const loading =
     enabled === undefined || redemption === undefined || isAdmin === undefined
-  const needsCode = enabled === true && redemption === null && isAdmin === false
+  const needsCode =
+    enabled === true && redemption === null && isAdmin === false
 
   useEffect(() => {
     if (loading) return

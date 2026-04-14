@@ -19,11 +19,9 @@ import {
   Lightning,
   Robot,
   Users,
-  GithubLogo,
-  DiscordLogo,
-  SlackLogo,
-  XLogo,
 } from "@phosphor-icons/react"
+import { FaXTwitter, FaDiscord, FaGithub, FaSlack } from "react-icons/fa6"
+import { FaTerminal } from "react-icons/fa6"
 import { SiLinear } from "react-icons/si"
 import {
   AreaChart,
@@ -142,11 +140,12 @@ const EVENT_CONFIG: Record<
 }
 
 const SOURCE_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
-  discord: DiscordLogo,
-  slack: SlackLogo,
-  github: GithubLogo,
-  x: XLogo,
+  discord: FaDiscord,
+  slack: FaSlack,
+  github: FaGithub,
+  x: FaXTwitter,
   linear: SiLinear,
+  cli: FaTerminal,
 }
 
 const HOUR = 3600000
@@ -428,9 +427,24 @@ export default function LogsPage() {
           <div className="h-[160px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={webhooksByPlatform} margin={{ top: 4, right: 4, left: 4, bottom: 16 }} barGap={2}>
+                <defs>
+                  <pattern
+                    id="barCursorStripes"
+                    patternUnits="userSpaceOnUse"
+                    width="6"
+                    height="6"
+                    patternTransform="rotate(45)"
+                  >
+                    <rect width="6" height="6" fill="rgba(155,157,158,0.06)" />
+                    <line x1="0" y1="0" x2="0" y2="6" stroke="rgba(155,157,158,0.16)" strokeWidth="2" />
+                  </pattern>
+                </defs>
                 <XAxis dataKey="platform" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
                 <YAxis hide />
-                <RechartsTooltip content={<ChartTooltip />} />
+                <RechartsTooltip
+                  content={<ChartTooltip />}
+                  cursor={{ fill: "url(#barCursorStripes)" }}
+                />
                 <Bar dataKey="processed" name="Processed" fill="var(--chart-3)" radius={[2, 2, 0, 0]} barSize={18} />
                 <Bar dataKey="errors" name="Errors" fill="var(--chart-5)" radius={[2, 2, 0, 0]} barSize={18} />
               </BarChart>

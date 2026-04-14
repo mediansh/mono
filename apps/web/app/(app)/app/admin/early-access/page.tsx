@@ -49,7 +49,7 @@ export default function AdminEarlyAccessPage() {
 
   const setEnabled = useMutation(api.earlyAccess.adminSetEnabled)
   const createCode = useMutation(api.earlyAccess.adminCreateCode)
-  const voidCode = useAction(api.earlyAccess.adminVoidCode)
+  const voidCode = useMutation(api.earlyAccess.adminVoidCode)
   const removeScale = useAction(api.earlyAccess.adminRemoveScalePlan)
 
   const [togglingEnabled, setTogglingEnabled] = useState(false)
@@ -286,27 +286,26 @@ export default function AdminEarlyAccessPage() {
               No redemptions yet.
             </div>
           )}
-          {redemptions?.map((redemption) => {
-            const hasScale =
-              !!redemption.scaleAttachedAt && !redemption.scaleRemovedAt
+          {redemptions?.map((r) => {
+            const hasScale = !!r.scaleAttachedAt && !r.scaleRemovedAt
             return (
               <div
-                key={redemption._id}
+                key={r._id}
                 className="flex items-center gap-2 border-b border-sidebar-border px-3 py-2 text-[12px] last:border-b-0"
               >
                 <div className="flex-1 truncate">
-                  <div className="font-medium">{redemption.name ?? "—"}</div>
+                  <div className="font-medium">{r.name ?? "—"}</div>
                   <div className="text-[11px] text-muted-foreground">
-                    {redemption.email ?? redemption.userId}
+                    {r.email ?? r.userId}
                   </div>
                 </div>
                 <div className="w-28 font-mono text-[11px] text-muted-foreground">
-                  {redemption.code}
+                  {r.code}
                 </div>
                 <div className="w-28 text-muted-foreground">
                   {hasScale
                     ? "Active"
-                    : redemption.scaleRemovedAt
+                    : r.scaleRemovedAt
                       ? "Removed"
                       : "Not attached"}
                 </div>
@@ -314,12 +313,12 @@ export default function AdminEarlyAccessPage() {
                   {hasScale && (
                     <button
                       type="button"
-                      onClick={() => handleRemoveScale(redemption._id)}
-                      disabled={pendingId === redemption._id}
+                      onClick={() => handleRemoveScale(r._id)}
+                      disabled={pendingId === r._id}
                       className="flex size-7 items-center justify-center rounded-[4px] text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-destructive disabled:opacity-50"
                       aria-label="Remove Scale plan"
                     >
-                      {pendingId === redemption._id ? (
+                      {pendingId === r._id ? (
                         <Spinner />
                       ) : (
                         <UserMinus size={13} />

@@ -14,19 +14,8 @@ const CODE_LENGTH = 8
 function Spinner() {
   return (
     <svg className="size-4 animate-spin" viewBox="0 0 24 24" fill="none">
-      <circle
-        className="opacity-25"
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        strokeWidth="4"
-      />
-      <path
-        className="opacity-75"
-        fill="currentColor"
-        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-      />
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
     </svg>
   )
 }
@@ -36,6 +25,7 @@ export default function EarlyAccessPage() {
   const { signOut } = useClerk()
   const enabled = useQuery(api.earlyAccess.isEnabled)
   const redemption = useQuery(api.earlyAccess.currentUserRedemption)
+  const isAdmin = useQuery(api.admins.isCurrentUserAdmin)
   const redeem = useMutation(api.earlyAccess.redeemCode)
 
   const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(""))
@@ -44,10 +34,10 @@ export default function EarlyAccessPage() {
   const inputsRef = useRef<Array<HTMLInputElement | null>>([])
 
   useEffect(() => {
-    if (enabled === false || redemption) {
+    if (enabled === false || redemption || isAdmin === true) {
       navigate("/app")
     }
-  }, [enabled, redemption, navigate])
+  }, [enabled, redemption, isAdmin, navigate])
 
   useEffect(() => {
     inputsRef.current[0]?.focus()
@@ -63,7 +53,6 @@ export default function EarlyAccessPage() {
       })
       return
     }
-
     const chars = clean.split("")
     setDigits((prev) => {
       const next = [...prev]
@@ -80,10 +69,7 @@ export default function EarlyAccessPage() {
     if (error) setError("")
   }
 
-  function handleKeyDown(
-    index: number,
-    e: React.KeyboardEvent<HTMLInputElement>
-  ) {
+  function handleKeyDown(index: number, e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Backspace" && !digits[index] && index > 0) {
       inputsRef.current[index - 1]?.focus()
       setDigits((prev) => {
@@ -100,7 +86,8 @@ export default function EarlyAccessPage() {
 
   function handlePaste(e: React.ClipboardEvent<HTMLInputElement>) {
     e.preventDefault()
-    setDigit(0, e.clipboardData.getData("text"))
+    const text = e.clipboardData.getData("text")
+    setDigit(0, text)
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -110,7 +97,6 @@ export default function EarlyAccessPage() {
       setError("Please enter the full code")
       return
     }
-
     setLoading(true)
     setError("")
     try {
@@ -122,7 +108,7 @@ export default function EarlyAccessPage() {
     }
   }
 
-  if (enabled === undefined || redemption === undefined) {
+  if (enabled === undefined || redemption === undefined || isAdmin === undefined) {
     return (
       <div className="flex min-h-svh items-center justify-center bg-background">
         <div className="size-5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-foreground" />
@@ -130,7 +116,7 @@ export default function EarlyAccessPage() {
     )
   }
 
-  if (!enabled || redemption) return null
+  if (!enabled || redemption || isAdmin) return null
 
   return (
     <div className="flex min-h-svh items-center justify-center bg-background p-4">
@@ -147,9 +133,7 @@ export default function EarlyAccessPage() {
         </div>
 
         <div className="rounded-[4px] bg-card p-5 ring-1 ring-border">
-          <h1 className="text-center text-[15px] font-semibold">
-            Enter your access code
-          </h1>
+          <h1 className="text-center text-[15px] font-semibold">Enter your access code</h1>
           <p className="mt-1 text-center text-[13px] text-muted-foreground">
             Median is in early access. Enter your invite code to continue.
           </p>
@@ -170,7 +154,7 @@ export default function EarlyAccessPage() {
                   onChange={(e) => setDigit(i, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(i, e)}
                   onPaste={handlePaste}
-                  className="h-10 w-full rounded-[4px] bg-background text-center text-[14px] font-medium uppercase ring-1 ring-border transition-all outline-none focus:ring-foreground/30"
+                  className="h-10 w-full rounded-[4px] bg-background text-center text-[14px] font-medium uppercase ring-1 ring-border outline-none transition-all focus:ring-foreground/30"
                 />
               ))}
             </div>

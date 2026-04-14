@@ -3,16 +3,12 @@
 import Link from "next/link"
 import { useQuery } from "convex/react"
 import { motion } from "motion/react"
-import { Article, ArrowUpRight, Key, Megaphone } from "@phosphor-icons/react"
+import { Article, Key, Megaphone, ArrowUpRight } from "@phosphor-icons/react"
 import { api } from "@/convex/_generated/api"
 
 const fadeUp = {
   hidden: { opacity: 0, y: 8 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] as const },
-  },
+  show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] as const } },
 }
 
 export default function AdminOverviewPage() {
@@ -21,19 +17,12 @@ export default function AdminOverviewPage() {
   const earlyAccessCodes = useQuery(api.earlyAccess.adminListCodes)
   const earlyAccessEnabled = useQuery(api.earlyAccess.isEnabled)
 
-  const blogDraftCount =
-    blogPosts?.filter((p) => p.status === "draft").length ?? 0
-  const blogPublishedCount =
-    blogPosts?.filter((p) => p.status === "published").length ?? 0
-  const changelogDraftCount =
-    changelog?.filter((p) => p.status === "draft").length ?? 0
-  const changelogPublishedCount =
-    changelog?.filter((p) => p.status === "published").length ?? 0
-  const earlyAccessRedeemed =
-    earlyAccessCodes?.filter((code) => code.redeemedByUserId).length ?? 0
-  const earlyAccessUnused =
-    earlyAccessCodes?.filter((code) => !code.redeemedByUserId && !code.voidedAt)
-      .length ?? 0
+  const blogDraftCount = blogPosts?.filter((p) => p.status === "draft").length ?? 0
+  const blogPublishedCount = blogPosts?.filter((p) => p.status === "published").length ?? 0
+  const changelogDraftCount = changelog?.filter((p) => p.status === "draft").length ?? 0
+  const changelogPublishedCount = changelog?.filter((p) => p.status === "published").length ?? 0
+  const earlyAccessRedeemed = earlyAccessCodes?.filter((c) => c.redeemedByUserId).length ?? 0
+  const earlyAccessUnused = earlyAccessCodes?.filter((c) => !c.redeemedByUserId).length ?? 0
 
   return (
     <motion.div
@@ -43,11 +32,9 @@ export default function AdminOverviewPage() {
       className="mx-auto max-w-3xl px-8 py-10"
     >
       <motion.div variants={fadeUp} className="mb-8">
-        <h1 className="text-[15px] leading-tight font-semibold">
-          Admin overview
-        </h1>
+        <h1 className="text-[15px] font-semibold leading-tight">Admin overview</h1>
         <p className="mt-1 text-[12px] text-muted-foreground">
-          Manage blog posts, changelog entries, and early access.
+          Manage blog posts and changelog entries.
         </p>
       </motion.div>
 
@@ -112,20 +99,16 @@ function AdminCard({
           </div>
           <ArrowUpRight
             size={14}
-            className="text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+            className="text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
           />
         </div>
-        <h2 className="text-[13px] leading-tight font-semibold">{title}</h2>
-        <p className="mt-0.5 text-[11px] leading-tight text-muted-foreground">
-          {description}
-        </p>
+        <h2 className="text-[13px] font-semibold leading-tight">{title}</h2>
+        <p className="mt-0.5 text-[11px] leading-tight text-muted-foreground">{description}</p>
         <div className="mt-4 flex gap-4">
           {stats.map((stat) => (
             <div key={stat.label}>
-              <div className="text-[15px] leading-tight font-semibold">
-                {stat.value}
-              </div>
-              <div className="text-[10px] tracking-wide text-muted-foreground uppercase">
+              <div className="text-[15px] font-semibold leading-tight">{stat.value}</div>
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
                 {stat.label}
               </div>
             </div>

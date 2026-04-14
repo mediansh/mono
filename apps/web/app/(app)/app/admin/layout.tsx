@@ -8,30 +8,10 @@ import { Article, Key, Megaphone, ShieldCheck } from "@phosphor-icons/react"
 import { api } from "@/convex/_generated/api"
 
 const adminNav = [
-  {
-    label: "Overview",
-    href: "/app/admin",
-    icon: ShieldCheck,
-    match: "exact" as const,
-  },
-  {
-    label: "Blog",
-    href: "/app/admin/blog",
-    icon: Article,
-    match: "prefix" as const,
-  },
-  {
-    label: "Changelog",
-    href: "/app/admin/changelog",
-    icon: Megaphone,
-    match: "prefix" as const,
-  },
-  {
-    label: "Early access",
-    href: "/app/admin/early-access",
-    icon: Key,
-    match: "prefix" as const,
-  },
+  { label: "Overview", href: "/app/admin", icon: ShieldCheck, match: "exact" as const },
+  { label: "Blog", href: "/app/admin/blog", icon: Article, match: "prefix" as const },
+  { label: "Changelog", href: "/app/admin/changelog", icon: Megaphone, match: "prefix" as const },
+  { label: "Early access", href: "/app/admin/early-access", icon: Key, match: "prefix" as const },
 ]
 
 export default function AdminLayout({
@@ -67,17 +47,16 @@ export default function AdminLayout({
 
   return (
     <div className="flex h-screen overflow-hidden">
+      {/* Admin sub-sidebar */}
       <div className="flex w-52 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
-        <div className="px-3 pt-3 pb-1">
+        <div className="px-3 pb-1 pt-3">
           <h1 className="text-[13px] font-semibold">Admin</h1>
         </div>
 
         <nav className="flex flex-col gap-0.5 p-1.5">
           {adminNav.map((item) => {
             const isActive =
-              item.match === "exact"
-                ? pathname === item.href
-                : pathname.startsWith(item.href)
+              item.match === "exact" ? pathname === item.href : pathname.startsWith(item.href)
             return (
               <Link
                 key={item.href}
@@ -92,9 +71,7 @@ export default function AdminLayout({
                   size={15}
                   weight={isActive ? "fill" : "regular"}
                   className={
-                    isActive
-                      ? "text-foreground"
-                      : "text-muted-foreground group-hover:text-foreground"
+                    isActive ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
                   }
                 />
                 <span>{item.label}</span>
