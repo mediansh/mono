@@ -11,10 +11,13 @@ export function EarlyAccessGuard({ children }: { children: React.ReactNode }) {
   const { replace } = useInstantNavigation()
   const enabled = useQuery(api.earlyAccess.isEnabled)
   const redemption = useQuery(api.earlyAccess.currentUserRedemption)
+  const isAdmin = useQuery(api.admins.isCurrentUserAdmin)
 
   const isEarlyAccessPage = pathname === "/app/early-access"
-  const loading = enabled === undefined || redemption === undefined
-  const needsCode = enabled === true && redemption === null
+  const loading =
+    enabled === undefined || redemption === undefined || isAdmin === undefined
+  const needsCode =
+    enabled === true && redemption === null && isAdmin === false
 
   useEffect(() => {
     if (loading) return

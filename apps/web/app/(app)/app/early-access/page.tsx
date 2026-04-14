@@ -25,6 +25,7 @@ export default function EarlyAccessPage() {
   const { signOut } = useClerk()
   const enabled = useQuery(api.earlyAccess.isEnabled)
   const redemption = useQuery(api.earlyAccess.currentUserRedemption)
+  const isAdmin = useQuery(api.admins.isCurrentUserAdmin)
   const redeem = useMutation(api.earlyAccess.redeemCode)
 
   const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(""))
@@ -33,10 +34,10 @@ export default function EarlyAccessPage() {
   const inputsRef = useRef<Array<HTMLInputElement | null>>([])
 
   useEffect(() => {
-    if (enabled === false || redemption) {
+    if (enabled === false || redemption || isAdmin === true) {
       navigate("/app")
     }
-  }, [enabled, redemption, navigate])
+  }, [enabled, redemption, isAdmin, navigate])
 
   useEffect(() => {
     inputsRef.current[0]?.focus()
@@ -107,7 +108,7 @@ export default function EarlyAccessPage() {
     }
   }
 
-  if (enabled === undefined || redemption === undefined) {
+  if (enabled === undefined || redemption === undefined || isAdmin === undefined) {
     return (
       <div className="flex min-h-svh items-center justify-center bg-background">
         <div className="size-5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-foreground" />
@@ -115,7 +116,7 @@ export default function EarlyAccessPage() {
     )
   }
 
-  if (!enabled || redemption) return null
+  if (!enabled || redemption || isAdmin) return null
 
   return (
     <div className="flex min-h-svh items-center justify-center bg-background p-4">
