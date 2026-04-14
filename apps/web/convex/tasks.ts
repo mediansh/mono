@@ -1234,36 +1234,34 @@ function shouldRespondInSlackChannel(
 
 async function getSlackNotificationContext(
   ctx: MutationCtx,
+  workspaceId: Id<"workspaces">,
   sourceUrl: string
 ) {
   const parsed = parseSlackPermalink(sourceUrl)
   if (!parsed) return null
 
-  const integrations = await ctx.db
+  const integration = await ctx.db
     .query("slackWorkspaceIntegrations")
-    .collect()
+    .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
+    .unique()
+  if (!integration) return null
 
-  for (const integration of integrations) {
-    const message = await ctx.db
-      .query("slackMessages")
-      .withIndex("by_slack_message", (q) =>
-        q
-          .eq("teamId", integration.teamId)
-          .eq("channelId", parsed.channelId)
-          .eq("messageTs", parsed.messageTs)
-      )
-      .unique()
+  const message = await ctx.db
+    .query("slackMessages")
+    .withIndex("by_slack_message", (q) =>
+      q
+        .eq("teamId", integration.teamId)
+        .eq("channelId", parsed.channelId)
+        .eq("messageTs", parsed.messageTs)
+    )
+    .unique()
+  if (!message) return null
 
-    if (!message) continue
-
-    return {
-      integration,
-      parsed,
-      respondChannelIds: [parsed.channelId],
-    }
+  return {
+    integration,
+    parsed,
+    respondChannelIds: [parsed.channelId],
   }
-
-  return null
 }
 
 async function queueSlackNotificationForStatusChange(
@@ -1278,6 +1276,7 @@ async function queueSlackNotificationForStatusChange(
 
   const notificationContext = await getSlackNotificationContext(
     ctx,
+    task.workspaceId,
     task.source.url
   )
   if (!notificationContext) return
