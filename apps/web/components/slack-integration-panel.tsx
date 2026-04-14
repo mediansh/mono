@@ -867,8 +867,8 @@ export function SlackIntegrationPanel() {
           className="rounded-[4px] bg-card ring-1 ring-border"
         >
           <div className="flex items-center gap-3 p-3.5">
-            <div className="flex size-8 items-center justify-center rounded-[4px] bg-[#4A154B]/10">
-              <SlackBrandIcon size={20} className="text-[#4A154B]" />
+            <div className="flex size-8 items-center justify-center rounded-[4px] bg-muted ring-1 ring-border">
+              <SlackBrandIcon size={18} />
             </div>
             <div className="flex-1">
               <h3 className="text-[13px] font-medium">Not connected</h3>
