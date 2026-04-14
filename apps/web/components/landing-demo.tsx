@@ -23,8 +23,6 @@ import {
   CellSignalLow,
   WarningCircle,
   Minus,
-  Sparkle,
-  Funnel,
 } from "@phosphor-icons/react"
 import { Logo } from "@/components/logo"
 import {
@@ -501,15 +499,6 @@ export function LandingDemo() {
                 </Column>
               </div>
 
-              {/* Floating actions (bottom-right) */}
-              <div className="pointer-events-none absolute right-4 bottom-4 flex flex-col gap-1.5">
-                <div className="flex size-7 items-center justify-center rounded-[4px] bg-[#1E1E1E] text-[#F7F7F4]/70 ring-1 ring-[#2A2A2A]">
-                  <Sparkle size={14} weight="fill" />
-                </div>
-                <div className="flex size-7 items-center justify-center rounded-[4px] bg-[#1E1E1E] text-[#F7F7F4]/70 ring-1 ring-[#2A2A2A]">
-                  <Funnel size={14} />
-                </div>
-              </div>
             </main>
           </div>
 
