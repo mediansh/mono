@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, type ReactNode } from "react"
-import { usePaginatedQuery, useQuery } from "convex/react"
+import { useConvex, usePaginatedQuery } from "convex/react"
 import { motion } from "motion/react"
 import {
   ClockCounterClockwise,
@@ -19,8 +19,11 @@ import {
   Lightning,
   Robot,
   Users,
+  GithubLogo,
+  DiscordLogo,
+  SlackLogo,
+  XLogo,
 } from "@phosphor-icons/react"
-import { FaGithub, FaDiscord, FaXTwitter } from "react-icons/fa6"
 import { SiLinear } from "react-icons/si"
 import {
   AreaChart,
@@ -80,8 +83,41 @@ interface LogEvent {
   type: EventType
   message: string
   timestamp: number
-  source?: "discord" | "github" | "linear" | "x" | "cli" | "manual" | "ai"
+  source?: "discord" | "slack" | "github" | "linear" | "x" | "cli" | "manual" | "ai"
   cost?: number
+}
+
+type LogsDashboard = {
+  counts: {
+    all: number
+    tasks: number
+    ai: number
+    webhooks: number
+    integrations: number
+    members: number
+  }
+  activityData: Array<{ day: string; tasks: number; webhooks: number; events: number }>
+  sourceDistribution: Array<{ name: string; value: number }>
+  webhooksByPlatform: Array<{
+    platform: string
+    received: number
+    processed: number
+    errors: number
+  }>
+}
+
+const EMPTY_DASHBOARD: LogsDashboard = {
+  counts: {
+    all: 0,
+    tasks: 0,
+    ai: 0,
+    webhooks: 0,
+    integrations: 0,
+    members: 0,
+  },
+  activityData: [],
+  sourceDistribution: [],
+  webhooksByPlatform: [],
 }
 
 const EVENT_CONFIG: Record<
@@ -106,9 +142,10 @@ const EVENT_CONFIG: Record<
 }
 
 const SOURCE_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
-  discord: FaDiscord,
-  github: FaGithub,
-  x: FaXTwitter,
+  discord: DiscordLogo,
+  slack: SlackLogo,
+  github: GithubLogo,
+  x: XLogo,
   linear: SiLinear,
 }
 
@@ -142,10 +179,11 @@ const FILTER_OPTIONS: { value: FilterType; label: string }[] = [
 
 const SOURCE_COLORS: Record<string, string> = {
   Discord: "var(--chart-1)",
-  GitHub: "var(--chart-2)",
-  Linear: "var(--chart-3)",
-  X: "var(--chart-4)",
-  CLI: "var(--chart-5)",
+  Slack: "var(--chart-2)",
+  GitHub: "var(--chart-3)",
+  Linear: "var(--chart-4)",
+  X: "var(--chart-5)",
+  CLI: "var(--chart-6)",
 }
 
 function formatCurrency(amount: number) {
@@ -220,73 +258,47 @@ function LogsSkeleton() {
 
 const PAGE_SIZE = 20
 
-// ── Mock data for local preview (remove before shipping) ──
-const USE_MOCK_DATA = false
-
-const NOW = Date.now()
-const MOCK_EVENTS: LogEvent[] = [
-  { _id: "m1",  type: "webhook_received",        message: "Pull request #42 opened by @alice",                source: "github",  timestamp: NOW - 2 * MIN,  cost: 0 },
-  { _id: "m2",  type: "feedback_processed",       message: "New feedback from #general channel",               source: "discord", timestamp: NOW - 5 * MIN,  cost: 0.003 },
-  { _id: "m3",  type: "task_created",             message: "MED-98 Create onboarding flow",                    source: "linear",  timestamp: NOW - 8 * MIN },
-  { _id: "m4",  type: "webhook_received",         message: "New mention from @median_hq",                      source: "x",       timestamp: NOW - 12 * MIN },
-  { _id: "m5",  type: "task_moved",               message: "MED-91 moved to In Review",                       source: "linear",  timestamp: NOW - 18 * MIN },
-  { _id: "m6",  type: "webhook_received",         message: "Issue #87 commented by @bob",                      source: "github",  timestamp: NOW - 25 * MIN },
-  { _id: "m7",  type: "integration_connected",    message: "Discord bot reconnected to #product-feedback",     source: "discord", timestamp: NOW - 32 * MIN },
-  { _id: "m8",  type: "tasks_generated_ai",       message: "Generated 5 tasks from product brief",            source: "ai",      timestamp: NOW - 40 * MIN, cost: 0.012 },
-  { _id: "m9",  type: "webhook_received",         message: "New DM reply from @median_hq",                     source: "x",       timestamp: NOW - 50 * MIN },
-  { _id: "m10", type: "task_updated",             message: "MED-85 priority changed to Urgent",                source: "linear",  timestamp: NOW - 1 * HOUR },
-  { _id: "m11", type: "webhook_received",         message: "Push to main by @charlie (3 commits)",             source: "github",  timestamp: NOW - 1.2 * HOUR },
-  { _id: "m12", type: "feedback_processed",       message: "Bug report from #bug-reports",                     source: "discord", timestamp: NOW - 1.5 * HOUR, cost: 0.002 },
-  { _id: "m13", type: "member_joined",            message: "dave@example.com joined the workspace",            source: "manual",  timestamp: NOW - 2 * HOUR },
-  { _id: "m14", type: "webhook_received",         message: "Deployment triggered via webhook",                 source: "github",  timestamp: NOW - 2.5 * HOUR },
-  { _id: "m15", type: "task_created",             message: "MED-102 Fix auth token refresh",                   source: "linear",  timestamp: NOW - 3 * HOUR },
-  { _id: "m16", type: "webhook_received",         message: "New follower interaction from @median_hq",         source: "x",       timestamp: NOW - 3.5 * HOUR },
-  { _id: "m17", type: "integration_disconnected", message: "Linear sync paused — rate limit hit",              source: "linear",  timestamp: NOW - 4 * HOUR },
-  { _id: "m18", type: "webhook_error",            message: "Discord webhook failed — 503 Service Unavailable", source: "discord", timestamp: NOW - 5 * HOUR },
-  { _id: "m19", type: "task_deleted",             message: "MED-77 removed (duplicate)",                       source: "manual",  timestamp: NOW - 6 * HOUR },
-  { _id: "m20", type: "labels_saved",             message: "Added labels: urgent, backend, auth",              source: "manual",  timestamp: NOW - 8 * HOUR },
-]
-
-const MOCK_ACTIVITY = [
-  { day: "Mon", tasks: 12, webhooks: 8,  events: 22 },
-  { day: "Tue", tasks: 18, webhooks: 14, events: 35 },
-  { day: "Wed", tasks: 9,  webhooks: 11, events: 24 },
-  { day: "Thu", tasks: 22, webhooks: 19, events: 45 },
-  { day: "Fri", tasks: 15, webhooks: 7,  events: 28 },
-  { day: "Sat", tasks: 3,  webhooks: 2,  events: 6 },
-  { day: "Sun", tasks: 5,  webhooks: 4,  events: 10 },
-]
-
-const MOCK_SOURCE_DISTRIBUTION = [
-  { name: "Discord", value: 34, color: SOURCE_COLORS.Discord },
-  { name: "GitHub",  value: 28, color: SOURCE_COLORS.GitHub },
-  { name: "Linear",  value: 22, color: SOURCE_COLORS.Linear },
-  { name: "X",       value: 12, color: SOURCE_COLORS.X },
-  { name: "CLI",     value: 4,  color: SOURCE_COLORS.CLI },
-]
-
-const MOCK_WEBHOOKS = [
-  { platform: "Discord", received: 34, processed: 31, errors: 3 },
-  { platform: "GitHub",  received: 28, processed: 27, errors: 1 },
-  { platform: "Linear",  received: 22, processed: 22, errors: 0 },
-  { platform: "X",       received: 12, processed: 11, errors: 1 },
-]
-
 export default function LogsPage() {
+  const convex = useConvex()
   const { currentWorkspace } = useWorkspace()
   const [filter, setFilter] = useState<FilterType>("all")
+  const [dashboard, setDashboard] = useState<LogsDashboard | undefined>()
 
   useEffect(() => {
     document.title = "Logs — Median"
   }, [])
+  useEffect(() => {
+    if (!currentWorkspace) {
+      setDashboard(undefined)
+      return
+    }
 
-  const dashboard = useQuery(
-    api.logs.getWorkspaceLogDashboard,
-    currentWorkspace && !USE_MOCK_DATA ? { workspaceId: currentWorkspace._id } : "skip"
-  )
+    let cancelled = false
+    setDashboard(undefined)
+
+    void convex
+      .query(api.logs.getWorkspaceLogDashboard, {
+        workspaceId: currentWorkspace._id,
+      })
+      .then((result) => {
+        if (!cancelled) {
+          setDashboard(result as LogsDashboard)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setDashboard(EMPTY_DASHBOARD)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [convex, currentWorkspace])
+
   const { results, status, loadMore } = usePaginatedQuery(
     api.logs.listWorkspaceLogs,
-    currentWorkspace && !USE_MOCK_DATA
+    currentWorkspace
       ? {
           workspaceId: currentWorkspace._id,
           filter,
@@ -295,51 +307,44 @@ export default function LogsPage() {
     { initialNumItems: PAGE_SIZE }
   )
 
-  if (!USE_MOCK_DATA && (dashboard === undefined || status === "LoadingFirstPage")) {
+  if (dashboard === undefined || status === "LoadingFirstPage") {
     return <LogsSkeleton />
   }
 
-  const events = USE_MOCK_DATA
-    ? MOCK_EVENTS.filter((e) => {
-        if (filter === "all") return true
-        if (filter === "tasks") return e.type.startsWith("task") || e.type === "feedback_processed"
-        if (filter === "ai") return e.source === "ai" || e.type === "tasks_generated_ai" || e.type === "feedback_processed"
-        if (filter === "webhooks") return e.type.startsWith("webhook")
-        if (filter === "integrations") return e.type.startsWith("integration")
-        if (filter === "members") return e.type.startsWith("member") || e.type === "labels_saved"
-        return true
-      })
-    : (results as LogEvent[])
-  const activityData = USE_MOCK_DATA
-    ? MOCK_ACTIVITY
-    : (dashboard?.activityData ?? [
-        { day: "Mon", tasks: 0, webhooks: 0, events: 0 },
-        { day: "Tue", tasks: 0, webhooks: 0, events: 0 },
-        { day: "Wed", tasks: 0, webhooks: 0, events: 0 },
-        { day: "Thu", tasks: 0, webhooks: 0, events: 0 },
-        { day: "Fri", tasks: 0, webhooks: 0, events: 0 },
-        { day: "Sat", tasks: 0, webhooks: 0, events: 0 },
-        { day: "Sun", tasks: 0, webhooks: 0, events: 0 },
-      ])
-  const sourceDistribution = (USE_MOCK_DATA
-    ? MOCK_SOURCE_DISTRIBUTION
-    : (dashboard?.sourceDistribution.map((entry: { name: string; value: number }) => ({
-        ...entry,
-        color: SOURCE_COLORS[entry.name] ?? "var(--chart-1)",
-      })) ??
-      Object.entries(SOURCE_COLORS).map(([name, color]) => ({
-        name,
-        value: 0,
-        color,
-      })))) as { name: string; value: number; color: string }[]
-  const webhooksByPlatform = USE_MOCK_DATA
-    ? MOCK_WEBHOOKS
-    : (dashboard?.webhooksByPlatform ?? [
-        { platform: "Discord", received: 0, processed: 0, errors: 0 },
-        { platform: "GitHub", received: 0, processed: 0, errors: 0 },
-        { platform: "Linear", received: 0, processed: 0, errors: 0 },
-        { platform: "X", received: 0, processed: 0, errors: 0 },
-      ])
+  const events = results as LogEvent[]
+  const activityData =
+    dashboard?.activityData.length
+      ? dashboard.activityData
+      : [
+      { day: "Mon", tasks: 0, webhooks: 0, events: 0 },
+      { day: "Tue", tasks: 0, webhooks: 0, events: 0 },
+      { day: "Wed", tasks: 0, webhooks: 0, events: 0 },
+      { day: "Thu", tasks: 0, webhooks: 0, events: 0 },
+      { day: "Fri", tasks: 0, webhooks: 0, events: 0 },
+      { day: "Sat", tasks: 0, webhooks: 0, events: 0 },
+      { day: "Sun", tasks: 0, webhooks: 0, events: 0 },
+    ]
+  const sourceDistribution =
+    dashboard?.sourceDistribution.length
+      ? dashboard.sourceDistribution.map((entry: { name: string; value: number }) => ({
+          ...entry,
+          color: SOURCE_COLORS[entry.name] ?? "var(--chart-1)",
+        }))
+      : Object.entries(SOURCE_COLORS).map(([name, color]) => ({
+          name,
+          value: 0,
+          color,
+        }))
+  const webhooksByPlatform =
+    dashboard?.webhooksByPlatform.length
+      ? dashboard.webhooksByPlatform
+      : [
+      { platform: "Discord", received: 0, processed: 0, errors: 0 },
+      { platform: "Slack", received: 0, processed: 0, errors: 0 },
+      { platform: "GitHub", received: 0, processed: 0, errors: 0 },
+      { platform: "Linear", received: 0, processed: 0, errors: 0 },
+      { platform: "X", received: 0, processed: 0, errors: 0 },
+    ]
 
   return (
     <Stagger className="h-full overflow-y-auto">
@@ -425,7 +430,7 @@ export default function LogsPage() {
               <BarChart data={webhooksByPlatform} margin={{ top: 4, right: 4, left: 4, bottom: 16 }} barGap={2}>
                 <XAxis dataKey="platform" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
                 <YAxis hide />
-                <RechartsTooltip content={<ChartTooltip />} cursor={false} />
+                <RechartsTooltip content={<ChartTooltip />} />
                 <Bar dataKey="processed" name="Processed" fill="var(--chart-3)" radius={[2, 2, 0, 0]} barSize={18} />
                 <Bar dataKey="errors" name="Errors" fill="var(--chart-5)" radius={[2, 2, 0, 0]} barSize={18} />
               </BarChart>

@@ -169,6 +169,15 @@ export function LandingHero() {
           <span className="relative z-10 text-foreground">Learn more</span>
         </button>
       </motion.div>
+
+      <motion.p
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.75, ease }}
+        className="mt-4 text-xs text-muted-foreground"
+      >
+        Start with a 7-day free trial on the Starter plan. Cancel anytime.
+      </motion.p>
     </section>
   )
 }

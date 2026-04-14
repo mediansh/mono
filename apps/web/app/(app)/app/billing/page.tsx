@@ -60,6 +60,7 @@ type BillingPlan = {
   price: number
   aiBudget: number
   eventLimit: number
+  trialDays: number
   features: string[]
   eligibility: {
     attachAction: "activate" | "upgrade" | "downgrade" | "purchase" | "none"
@@ -608,13 +609,25 @@ export default function BillingPage() {
                     </div>
                   )}
                   <div className="mb-3">
-                    <h4 className="text-[13px] font-semibold">{plan.name}</h4>
+                    <div className="flex items-center gap-1.5">
+                      <h4 className="text-[13px] font-semibold">{plan.name}</h4>
+                      {plan.trialDays > 0 && (
+                        <span className="rounded-full bg-foreground/10 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-foreground/70">
+                          {plan.trialDays}-day trial
+                        </span>
+                      )}
+                    </div>
                     <div className="mt-1 flex items-baseline gap-0.5">
                       <span className="text-[22px] font-bold tracking-tight">
                         ${plan.price}
                       </span>
                       <span className="text-[11px] text-muted-foreground">/month</span>
                     </div>
+                    {plan.trialDays > 0 && !isCurrent && (
+                      <p className="mt-1 text-[10px] text-muted-foreground">
+                        Free for {plan.trialDays} days
+                      </p>
+                    )}
                   </div>
                   <div className="mb-4 flex-1 space-y-2">
                     {plan.features.map((feature) => (

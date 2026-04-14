@@ -145,7 +145,14 @@ function PlanCard({
 
       <div className="relative flex flex-col p-6">
         {/* Plan name */}
-        <h3 className="text-lg font-semibold">{copy.name}</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-lg font-semibold">{copy.name}</h3>
+          {copy.trialDays > 0 && (
+            <span className="rounded-full bg-foreground/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-foreground/70">
+              {copy.trialDays}-day free trial
+            </span>
+          )}
+        </div>
 
         {/* Price */}
         <div className="mt-2 flex items-baseline gap-1">
@@ -154,6 +161,11 @@ function PlanCard({
           </span>
           <span className="text-sm text-muted-foreground">/month</span>
         </div>
+        {copy.trialDays > 0 && (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Free for {copy.trialDays} days, then ${copy.price}/month
+          </p>
+        )}
 
         {/* CTA */}
         <Link

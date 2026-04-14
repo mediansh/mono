@@ -124,6 +124,7 @@ import {
   trackColumnToggled,
   trackNewTaskModalOpened,
 } from "@/lib/analytics"
+import { useIsMobile } from "@workspace/ui/hooks/use-mobile"
 
 interface Task extends Omit<TaskDoc, "attachments"> {
   id: string
@@ -3177,11 +3178,11 @@ function ColumnBoardView({
     handleClearSelection()
   }, [selectedTaskIds, onBulkDeleteTasks, handleClearSelection])
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 5 },
-    })
-  )
+  const isMobile = useIsMobile()
+  const pointerSensor = useSensor(PointerSensor, {
+    activationConstraint: { distance: 5 },
+  })
+  const sensors = useSensors(...(isMobile ? [] : [pointerSensor]))
 
   const tasksByColumn = useMemo(() => {
     const map: Record<Status, Task[]> = {
@@ -3706,11 +3707,11 @@ function ListView({
     handleClearSelection()
   }, [selectedTaskIds, onBulkDeleteTasks, handleClearSelection])
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 5 },
-    })
-  )
+  const isMobile = useIsMobile()
+  const pointerSensor = useSensor(PointerSensor, {
+    activationConstraint: { distance: 5 },
+  })
+  const sensors = useSensors(...(isMobile ? [] : [pointerSensor]))
 
   const tasksByColumn = useMemo(() => {
     const map: Record<Status, Task[]> = {

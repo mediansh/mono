@@ -22,6 +22,8 @@ export const AI_TOKEN_PRICING_PER_MILLION: Record<
   },
 }
 
+export const STARTER_TRIAL_DAYS = 7
+
 export const AUTUMN_BILLING_PLANS = [
   {
     id: "starter",
@@ -29,6 +31,7 @@ export const AUTUMN_BILLING_PLANS = [
     price: 4.99,
     aiBudget: 5,
     eventLimit: 500,
+    trialDays: STARTER_TRIAL_DAYS,
   },
   {
     id: "plus",
@@ -96,18 +99,24 @@ export function getPlanCopy(planId: string, price?: number | null) {
       price: price ?? 0,
       aiBudget: 0,
       eventLimit: 0,
+      trialDays: 0,
       features: [],
     }
   }
 
   const displayPrice = price ?? fallbackPlan.price
 
+  const trialDays =
+    "trialDays" in fallbackPlan ? (fallbackPlan as { trialDays?: number }).trialDays ?? 0 : 0
+
   return {
     name: fallbackPlan.name,
     price: displayPrice,
     aiBudget: fallbackPlan.aiBudget,
     eventLimit: fallbackPlan.eventLimit,
+    trialDays,
     features: [
+      ...(trialDays > 0 ? [`${trialDays}-day free trial`] : []),
       `$${fallbackPlan.aiBudget} AI budget / month`,
       `${fallbackPlan.eventLimit.toLocaleString()} events included, then $0.015/event`,
       "Overages auto-charged",
