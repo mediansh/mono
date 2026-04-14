@@ -130,7 +130,8 @@ export function LandingIntegrations() {
             {/* Dashed orbit ring */}
             <motion.svg
               animate={{ rotate: 360 }}
-              transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
+              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+              style={{ transformOrigin: "center" }}
               className="pointer-events-none absolute inset-0 h-full w-full text-foreground/15"
               viewBox="0 0 100 100"
               preserveAspectRatio="none"
