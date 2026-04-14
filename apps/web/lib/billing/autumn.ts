@@ -223,10 +223,12 @@ export async function loadWorkspaceBillingSnapshot(args: {
   console.info("[billing] Loading billing snapshot", {
     customerId,
     workspaceId: args.workspaceId,
-    subscriptions: customer.subscriptions?.map((s: { planId: string; status: string }) => ({
-      planId: s.planId,
-      status: s.status,
-    })),
+    subscriptions: customer.subscriptions?.map(
+      (s: { planId: string; status: string }) => ({
+        planId: s.planId,
+        status: s.status,
+      })
+    ),
     balanceKeys: Object.keys(customer.balances ?? {}),
   })
 
@@ -250,9 +252,9 @@ export async function loadWorkspaceBillingSnapshot(args: {
       offset: 0,
       customRange: {
         start:
-          customer.subscriptions.find((subscription) => subscription.status === "active")
-            ?.currentPeriodStart ??
-          Date.now() - 30 * 24 * 60 * 60 * 1000,
+          customer.subscriptions.find(
+            (subscription) => subscription.status === "active"
+          )?.currentPeriodStart ?? Date.now() - 30 * 24 * 60 * 60 * 1000,
         end: Date.now(),
       },
     }),
@@ -293,5 +295,37 @@ export async function attachWorkspacePlan(args: {
     planId: args.planId,
     successUrl: args.successUrl,
     redirectMode: "if_required",
+  })
+}
+
+export async function attachComplimentaryWorkspacePlan(args: {
+  workspaceId: string
+  workspaceName?: string | null
+  email?: string | null
+  planId: string
+}) {
+  await ensureAutumnCustomer(args)
+  return await getAutumnClient().billing.attach({
+    customerId: getAutumnCustomerId(args.workspaceId),
+    planId: args.planId,
+    redirectMode: "if_required",
+    customize: {
+      freeTrial: {
+        durationLength: 1,
+        durationType: "year",
+        cardRequired: false,
+      },
+    },
+  })
+}
+
+export async function cancelWorkspacePlan(args: {
+  workspaceId: string
+  planId: string
+}) {
+  return await getAutumnClient().billing.update({
+    customerId: getAutumnCustomerId(args.workspaceId),
+    planId: args.planId,
+    cancelAction: "cancel_immediately",
   })
 }

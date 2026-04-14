@@ -1,5 +1,6 @@
 import { v } from "convex/values"
 import {
+  internalQuery,
   internalMutation,
   mutation,
   query,
@@ -10,7 +11,10 @@ import { requireIdentity } from "./permissions"
 
 type ConvexCtx = QueryCtx | MutationCtx
 
-export async function isAdmin(ctx: ConvexCtx, userId: string): Promise<boolean> {
+export async function isAdmin(
+  ctx: ConvexCtx,
+  userId: string
+): Promise<boolean> {
   const row = await ctx.db
     .query("admins")
     .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -113,5 +117,12 @@ export const seedAdmin = internalMutation({
       addedAt: Date.now(),
       note: args.note ?? "Seeded via CLI",
     })
+  },
+})
+
+export const requireAdminIdentity = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    return await requireAdmin(ctx)
   },
 })
