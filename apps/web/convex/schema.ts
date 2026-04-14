@@ -659,6 +659,36 @@ export default defineSchema({
     note: v.optional(v.string()),
   }).index("by_user", ["userId"]),
 
+  earlyAccessCodes: defineTable({
+    code: v.string(),
+    createdByUserId: v.string(),
+    createdAt: v.number(),
+    note: v.optional(v.string()),
+    redeemedByUserId: v.optional(v.string()),
+    redeemedAt: v.optional(v.number()),
+  })
+    .index("by_code", ["code"])
+    .index("by_redeemed_by", ["redeemedByUserId"]),
+
+  earlyAccessRedemptions: defineTable({
+    userId: v.string(),
+    codeId: v.id("earlyAccessCodes"),
+    code: v.string(),
+    email: v.optional(v.string()),
+    name: v.optional(v.string()),
+    redeemedAt: v.number(),
+    workspaceId: v.optional(v.id("workspaces")),
+    scaleAttachedAt: v.optional(v.number()),
+    scaleRemovedAt: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_workspace", ["workspaceId"]),
+
+  appSettings: defineTable({
+    key: v.string(),
+    value: v.string(),
+  }).index("by_key", ["key"]),
+
   blogPosts: defineTable({
     slug: v.string(),
     title: v.string(),

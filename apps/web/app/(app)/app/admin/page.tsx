@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useQuery } from "convex/react"
 import { motion } from "motion/react"
-import { Article, Megaphone, ArrowUpRight } from "@phosphor-icons/react"
+import { Article, Key, Megaphone, ArrowUpRight } from "@phosphor-icons/react"
 import { api } from "@/convex/_generated/api"
 
 const fadeUp = {
@@ -14,11 +14,15 @@ const fadeUp = {
 export default function AdminOverviewPage() {
   const blogPosts = useQuery(api.blogPosts.list, {})
   const changelog = useQuery(api.changelogEntries.list, {})
+  const earlyAccessCodes = useQuery(api.earlyAccess.adminListCodes)
+  const earlyAccessEnabled = useQuery(api.earlyAccess.isEnabled)
 
   const blogDraftCount = blogPosts?.filter((p) => p.status === "draft").length ?? 0
   const blogPublishedCount = blogPosts?.filter((p) => p.status === "published").length ?? 0
   const changelogDraftCount = changelog?.filter((p) => p.status === "draft").length ?? 0
   const changelogPublishedCount = changelog?.filter((p) => p.status === "published").length ?? 0
+  const earlyAccessRedeemed = earlyAccessCodes?.filter((c) => c.redeemedByUserId).length ?? 0
+  const earlyAccessUnused = earlyAccessCodes?.filter((c) => !c.redeemedByUserId).length ?? 0
 
   return (
     <motion.div
@@ -53,6 +57,16 @@ export default function AdminOverviewPage() {
           stats={[
             { label: "Published", value: changelogPublishedCount },
             { label: "Drafts", value: changelogDraftCount },
+          ]}
+        />
+        <AdminCard
+          href="/app/admin/early-access"
+          icon={<Key size={16} weight="fill" />}
+          title="Early access"
+          description={earlyAccessEnabled ? "Gate enabled." : "Gate disabled."}
+          stats={[
+            { label: "Redeemed", value: earlyAccessRedeemed },
+            { label: "Unused", value: earlyAccessUnused },
           ]}
         />
       </div>

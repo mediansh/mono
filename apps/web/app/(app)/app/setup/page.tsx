@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { useMutation } from "convex/react"
+import { useAction, useMutation } from "convex/react"
 import { Image as ImageIcon } from "@phosphor-icons/react"
 import { motion } from "motion/react"
 import { Facehash } from "facehash"
@@ -24,6 +24,7 @@ function Spinner() {
 export default function WorkspaceSetupPage() {
   const { navigate } = useInstantNavigation()
   const generateUploadUrl = useMutation(api.workspaces.generateUploadUrl)
+  const attachScalePlan = useAction(api.earlyAccess.attachScaleForCurrentUser)
   const { createWorkspaceOptimistic } = useWorkspaceOptimisticMutations()
   const { workspaces, isLoading } = useWorkspace()
 
@@ -57,12 +58,17 @@ export default function WorkspaceSetupPage() {
         const data = await result.json()
         iconId = data.storageId
       }
-      await createWorkspaceOptimistic({
+      const workspaceId = await createWorkspaceOptimistic({
         name: name.trim(),
         iconId: iconId as any,
         iconUrl: iconPreview,
       })
       trackWorkspaceCreated({ hasLogo: !!iconId })
+      try {
+        await attachScalePlan({ workspaceId })
+      } catch (planError) {
+        console.error("[early-access] Failed to attach Scale plan", planError)
+      }
       navigate("/app")
     } catch {
       setError("Failed to create workspace. Please try again.")

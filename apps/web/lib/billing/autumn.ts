@@ -295,3 +295,36 @@ export async function attachWorkspacePlan(args: {
     redirectMode: "if_required",
   })
 }
+
+export async function attachComplimentaryWorkspacePlan(args: {
+  workspaceId: string
+  workspaceName?: string | null
+  email?: string | null
+  planId: string
+  trialDays?: number
+}) {
+  await ensureAutumnCustomer(args)
+  return await getAutumnClient().billing.attach({
+    customerId: getAutumnCustomerId(args.workspaceId),
+    planId: args.planId,
+    redirectMode: "if_required",
+    customize: {
+      freeTrial: {
+        durationLength: args.trialDays ?? 1800,
+        durationType: "day",
+        cardRequired: false,
+      },
+    },
+  })
+}
+
+export async function cancelWorkspacePlan(args: {
+  workspaceId: string
+  planId: string
+}) {
+  return await getAutumnClient().billing.update({
+    customerId: getAutumnCustomerId(args.workspaceId),
+    planId: args.planId,
+    cancelAction: "cancel_immediately",
+  })
+}
