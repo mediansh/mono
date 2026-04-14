@@ -181,7 +181,7 @@ const SOURCE_COLORS: Record<string, string> = {
   GitHub: "var(--chart-3)",
   Linear: "var(--chart-4)",
   X: "var(--chart-5)",
-  CLI: "var(--chart-1)",
+  CLI: "var(--chart-6)",
 }
 
 function formatCurrency(amount: number) {
@@ -338,6 +338,7 @@ export default function LogsPage() {
       ? dashboard.webhooksByPlatform
       : [
       { platform: "Discord", received: 0, processed: 0, errors: 0 },
+      { platform: "Slack", received: 0, processed: 0, errors: 0 },
       { platform: "GitHub", received: 0, processed: 0, errors: 0 },
       { platform: "Linear", received: 0, processed: 0, errors: 0 },
       { platform: "X", received: 0, processed: 0, errors: 0 },
