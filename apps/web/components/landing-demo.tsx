@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { motion } from "motion/react"
+import { motion, AnimatePresence } from "motion/react"
 import {
   MagnifyingGlass,
   PenNib,
@@ -15,6 +15,8 @@ import {
   SpinnerGap,
   Circle,
   SealCheck,
+  Rocket,
+  Archive,
   Plus,
   CheckCircle,
   XCircle,
@@ -144,6 +146,17 @@ const SHIPPED: MockTask[] = [
   },
 ]
 
+const ARCHIVED: MockTask[] = [
+  {
+    id: "a1",
+    code: "MED-07",
+    title: "Database performance optimization",
+    date: "Apr 4",
+    priority: "low",
+    labels: ["improvement"],
+  },
+]
+
 function PriorityIcon({ priority }: { priority: Priority }) {
   switch (priority) {
     case "urgent":
@@ -225,16 +238,22 @@ function KanbanCard({ task }: { task: MockTask }) {
   )
 }
 
-function StatusIcon({ status }: { status: "todo" | "in_progress" | "ready" | "shipped" }) {
+type ColumnStatus = "requests" | "todo" | "in_progress" | "ready" | "shipped" | "archive"
+
+function StatusIcon({ status, size = 14 }: { status: ColumnStatus; size?: number }) {
   switch (status) {
+    case "requests":
+      return <SpinnerGap size={size} className="text-[#9B9D9E]" />
     case "todo":
-      return <Circle size={14} className="text-[#9B9D9E]" />
+      return <Circle size={size} className="text-[#9B9D9E]" />
     case "in_progress":
-      return <SpinnerGap size={14} className="text-yellow-500" />
+      return <SpinnerGap size={size} className="text-yellow-500" />
     case "ready":
-      return <SealCheck size={14} weight="fill" className="text-emerald-500" />
+      return <SealCheck size={size} weight="fill" className="text-emerald-500" />
     case "shipped":
-      return <SealCheck size={14} weight="fill" className="text-blue-500" />
+      return <Rocket size={size} weight="fill" className="text-blue-500" />
+    case "archive":
+      return <Archive size={size} className="text-[#9B9D9E]" />
   }
 }
 
@@ -244,7 +263,7 @@ function Column({
   count,
   children,
 }: {
-  status: "todo" | "in_progress" | "ready" | "shipped"
+  status: ColumnStatus
   label: string
   count: number
   children: React.ReactNode
@@ -262,6 +281,135 @@ function Column({
         <Plus size={14} className="ml-auto text-[#9B9D9E]/40" />
       </div>
       <div className="flex flex-col gap-2 p-2">{children}</div>
+    </div>
+  )
+}
+
+function ListRow({ task, status }: { task: MockTask; status: ColumnStatus }) {
+  return (
+    <div className="flex cursor-pointer items-center gap-3 border-b border-[#2E2E2E] px-3 py-2 transition-colors last:border-b-0 hover:bg-[#1E1E1E]/60">
+      <span className="hidden w-14 shrink-0 font-mono text-[11px] text-[#9B9D9E]/60 tabular-nums sm:inline">
+        {task.code}
+      </span>
+      <span className="flex size-3 shrink-0 items-center justify-center">
+        {task.priority ? <PriorityIcon priority={task.priority} /> : <Minus size={12} className="text-[#9B9D9E]/60" />}
+      </span>
+      <span className="flex size-3 shrink-0 items-center justify-center">
+        <StatusIcon status={status} size={12} />
+      </span>
+      <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-[#F7F7F4]/90">
+        {task.title}
+      </span>
+      <div className="hidden shrink-0 items-center gap-1.5 sm:flex">
+        {task.labels?.map((l) => <TaskLabel key={l} label={l} />)}
+        <span className="ml-1 text-[10px] text-[#9B9D9E]/60">{task.date}</span>
+      </div>
+    </div>
+  )
+}
+
+function ListGroup({
+  status,
+  label,
+  tasks,
+  collapsed,
+  extraHeader,
+  children,
+}: {
+  status: ColumnStatus
+  label: string
+  tasks: MockTask[]
+  collapsed?: boolean
+  extraHeader?: React.ReactNode
+  children?: React.ReactNode
+}) {
+  return (
+    <div className="mb-1.5 overflow-hidden rounded-[4px] ring-1 ring-[#2E2E2E]">
+      <div className="flex items-center gap-2.5 bg-[#1E1E1E] px-3 py-1.5">
+        <span
+          className="text-[10px] text-[#9B9D9E]/60"
+          style={{
+            display: "inline-block",
+            transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)",
+          }}
+        >
+          ▼
+        </span>
+        <StatusIcon status={status} />
+        <span className="text-[13px] font-semibold tracking-tight text-[#F7F7F4]">
+          {label}
+        </span>
+        <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-[#2A2A2A] px-1.5 text-[10px] font-medium text-[#9B9D9E]">
+          {tasks.length}
+        </span>
+        {extraHeader}
+        <Plus size={14} className="ml-auto text-[#9B9D9E]/40" />
+      </div>
+      {!collapsed && children}
+    </div>
+  )
+}
+
+function ListView() {
+  return (
+    <div className="scrollbar-hide flex-1 overflow-y-auto px-4 pt-1 pb-4">
+      <ListGroup
+        status="requests"
+        label="Requests"
+        tasks={REQUESTS}
+        extraHeader={<span className="ml-1 text-[11px] text-[#9B9D9E]/50">from users</span>}
+      >
+        <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2">
+          {REQUESTS.map((t) => <RequestCard key={t.id} task={t} />)}
+        </div>
+      </ListGroup>
+      <ListGroup status="todo" label="Todo" tasks={TODO}>
+        {TODO.map((t) => <ListRow key={t.id} task={t} status="todo" />)}
+      </ListGroup>
+      <ListGroup status="in_progress" label="In Progress" tasks={IN_PROGRESS}>
+        {IN_PROGRESS.map((t) => <ListRow key={t.id} task={t} status="in_progress" />)}
+      </ListGroup>
+      <ListGroup status="ready" label="Ready" tasks={READY}>
+        {READY.map((t) => <ListRow key={t.id} task={t} status="ready" />)}
+      </ListGroup>
+      <ListGroup status="shipped" label="Shipped" tasks={SHIPPED} collapsed />
+      <ListGroup status="archive" label="Archive" tasks={ARCHIVED}>
+        {ARCHIVED.map((t) => <ListRow key={t.id} task={t} status="archive" />)}
+      </ListGroup>
+    </div>
+  )
+}
+
+function BoardView() {
+  return (
+    <div className="scrollbar-hide flex flex-1 gap-2 overflow-x-auto px-4 pt-1 pb-4">
+      <div className="flex h-full w-[230px] shrink-0 flex-col overflow-hidden rounded-[4px] ring-1 ring-[#2E2E2E]">
+        <div className="flex items-center gap-2 bg-[#1E1E1E] px-3 py-1.5 shadow-[inset_0_-1px_0_#2E2E2E]">
+          <StatusIcon status="requests" />
+          <span className="text-[13px] font-semibold tracking-tight text-[#F7F7F4]">
+            Requests
+          </span>
+          <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-[#2A2A2A] px-1.5 text-[10px] font-medium text-[#9B9D9E]">
+            {REQUESTS.length}
+          </span>
+          <span className="ml-1 text-[11px] text-[#9B9D9E]/50">from users</span>
+        </div>
+        <div className="flex flex-col gap-2 p-2">
+          {REQUESTS.map((t) => <RequestCard key={t.id} task={t} />)}
+        </div>
+      </div>
+      <Column status="todo" label="Todo" count={TODO.length}>
+        {TODO.map((t) => <KanbanCard key={t.id} task={t} />)}
+      </Column>
+      <Column status="in_progress" label="In Progress" count={IN_PROGRESS.length}>
+        {IN_PROGRESS.map((t) => <KanbanCard key={t.id} task={t} />)}
+      </Column>
+      <Column status="ready" label="Ready" count={READY.length}>
+        {READY.map((t) => <KanbanCard key={t.id} task={t} />)}
+      </Column>
+      <Column status="shipped" label="Shipped" count={SHIPPED.length}>
+        {SHIPPED.map((t) => <KanbanCard key={t.id} task={t} />)}
+      </Column>
     </div>
   )
 }
@@ -319,6 +467,7 @@ function SidebarSubItem({
 
 export function LandingDemo() {
   const [mac, setMac] = useState(true)
+  const [view, setView] = useState<"board" | "list">("board")
   useEffect(() => {
     setMac(/Mac|iPhone/.test(navigator.userAgent))
   }, [])
@@ -407,72 +556,50 @@ export function LandingDemo() {
               {/* Toolbar */}
               <div className="flex items-center gap-2 px-4 pt-3 pb-2">
                 <div className="flex items-center gap-0.5 rounded-[4px] bg-[#1E1E1E]/60 p-0.5 ring-1 ring-[#2A2A2A]">
-                  <div className="flex size-6 items-center justify-center rounded-[4px] text-[#F7F7F4]/50">
+                  <button
+                    onClick={() => setView("list")}
+                    className={`flex size-6 cursor-pointer items-center justify-center rounded-[4px] transition-colors ${
+                      view === "list"
+                        ? "bg-[#2A2A2A] text-[#F7F7F4]"
+                        : "text-[#F7F7F4]/50 hover:text-[#F7F7F4]"
+                    }`}
+                    aria-label="List view"
+                  >
                     <ListBullets size={14} />
-                  </div>
-                  <div className="flex size-6 items-center justify-center rounded-[4px] bg-[#2A2A2A] text-[#F7F7F4]">
+                  </button>
+                  <button
+                    onClick={() => setView("board")}
+                    className={`flex size-6 cursor-pointer items-center justify-center rounded-[4px] transition-colors ${
+                      view === "board"
+                        ? "bg-[#2A2A2A] text-[#F7F7F4]"
+                        : "text-[#F7F7F4]/50 hover:text-[#F7F7F4]"
+                    }`}
+                    aria-label="Board view"
+                  >
                     <SquaresFour size={14} />
-                  </div>
+                  </button>
                 </div>
               </div>
 
-              {/* Board */}
-              <div className="scrollbar-hide flex flex-1 gap-2 overflow-x-auto px-4 pt-1 pb-4">
-                {/* Requests */}
-                <div className="flex h-full w-[230px] shrink-0 flex-col overflow-hidden rounded-[4px] ring-1 ring-[#2E2E2E]">
-                  <div className="flex items-center gap-2 bg-[#1E1E1E] px-3 py-1.5 shadow-[inset_0_-1px_0_#2E2E2E]">
-                    <SpinnerGap size={14} className="text-[#9B9D9E]" />
-                    <span className="text-[13px] font-semibold tracking-tight text-[#F7F7F4]">
-                      Requests
-                    </span>
-                    <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-[#2A2A2A] px-1.5 text-[10px] font-medium text-[#9B9D9E]">
-                      {REQUESTS.length}
-                    </span>
-                    <span className="ml-1 text-[11px] text-[#9B9D9E]/50">
-                      from users
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-2 p-2">
-                    {REQUESTS.map((t) => (
-                      <RequestCard key={t.id} task={t} />
-                    ))}
-                  </div>
-                </div>
-
-                <Column status="todo" label="Todo" count={TODO.length}>
-                  {TODO.map((t) => (
-                    <KanbanCard key={t.id} task={t} />
-                  ))}
-                </Column>
-
-                <Column
-                  status="in_progress"
-                  label="In Progress"
-                  count={IN_PROGRESS.length}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={view}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
+                  className="flex min-h-0 flex-1 flex-col"
                 >
-                  {IN_PROGRESS.map((t) => (
-                    <KanbanCard key={t.id} task={t} />
-                  ))}
-                </Column>
-
-                <Column status="ready" label="Ready" count={READY.length}>
-                  {READY.map((t) => (
-                    <KanbanCard key={t.id} task={t} />
-                  ))}
-                </Column>
-
-                <Column status="shipped" label="Shipped" count={SHIPPED.length}>
-                  {SHIPPED.map((t) => (
-                    <KanbanCard key={t.id} task={t} />
-                  ))}
-                </Column>
-              </div>
-
+                  {view === "board" ? <BoardView /> : <ListView />}
+                </motion.div>
+              </AnimatePresence>
             </main>
           </div>
 
-          {/* Edge fade on right to suggest overflow */}
-          <div className="pointer-events-none absolute top-0 right-0 bottom-0 w-24 bg-gradient-to-l from-[#141414] to-transparent" />
+          {/* Edge fade on right (only in board view where columns overflow) */}
+          {view === "board" && (
+            <div className="pointer-events-none absolute top-0 right-0 bottom-0 w-24 bg-gradient-to-l from-[#141414] to-transparent" />
+          )}
         </div>
       </motion.div>
     </section>
