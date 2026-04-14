@@ -7,8 +7,9 @@ import {
   Cube,
   CheckCircle,
   XCircle,
+  Terminal,
 } from "@phosphor-icons/react"
-import { FaXTwitter, FaDiscord, FaGithub } from "react-icons/fa6"
+import { FaXTwitter, FaDiscord, FaGithub, FaSlack } from "react-icons/fa6"
 import { SiLinear } from "react-icons/si"
 import { Logo } from "@/components/logo"
 
@@ -124,44 +125,62 @@ function SparkGraphic() {
 }
 
 function CubesGraphic() {
-  const satellite =
-    "flex h-10 w-10 items-center justify-center rounded-lg border border-foreground/[0.1] bg-foreground/[0.03] text-foreground/70"
+  const satellites = [
+    { Icon: FaGithub },
+    { Icon: SiLinear },
+    { Icon: FaXTwitter },
+    { Icon: Terminal },
+    { Icon: FaSlack },
+    { Icon: FaDiscord },
+  ]
+  const size = 200
+  const radius = 76
+  const center = size / 2
 
   return (
     <div className="flex h-full items-center justify-center">
-      <div className="relative grid grid-cols-3 grid-rows-3 place-items-center gap-2" style={{ width: 168, height: 168 }}>
-        {/* Top center — GitHub */}
-        <div />
-        <div className={satellite}>
-          <FaGithub size={16} />
-        </div>
-        <div />
+      <div className="relative" style={{ width: size, height: size }}>
+        {/* Dashed orbit ring */}
+        <svg
+          className="pointer-events-none absolute inset-0 h-full w-full text-foreground/[0.12]"
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+        >
+          <circle
+            cx="50"
+            cy="50"
+            r="38"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="0.4"
+            strokeDasharray="1 1.3"
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
 
-        {/* Middle row — Discord, Median, Linear */}
-        <div className={satellite}>
-          <FaDiscord size={16} />
-        </div>
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-foreground/[0.15] bg-foreground/[0.05] text-foreground">
+        {/* Orbiting integration icons */}
+        {satellites.map(({ Icon }, i) => {
+          const angle = ((2 * Math.PI) / satellites.length) * i - Math.PI / 2
+          const x = center + radius * Math.cos(angle)
+          const y = center + radius * Math.sin(angle)
+          return (
+            <div
+              key={i}
+              className="absolute flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-lg border border-foreground/[0.1] bg-foreground/[0.03] text-foreground/70"
+              style={{ left: x, top: y }}
+            >
+              <Icon size={14} />
+            </div>
+          )
+        })}
+
+        {/* Center — Median logo */}
+        <div
+          className="absolute flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-xl border border-foreground/[0.15] bg-foreground/[0.05] text-foreground"
+          style={{ left: center, top: center }}
+        >
           <Logo symbolOnly className="text-[18px]" />
         </div>
-        <div className={satellite}>
-          <SiLinear size={16} />
-        </div>
-
-        {/* Bottom center — X */}
-        <div />
-        <div className={satellite}>
-          <FaXTwitter size={16} />
-        </div>
-        <div />
-
-        {/* Dashed connecting lines (absolute over the grid) */}
-        {/* Vertical */}
-        <div className="absolute top-[52px] left-1/2 h-5 w-px -translate-x-1/2 border-l border-dashed border-foreground/[0.08]" />
-        <div className="absolute bottom-[52px] left-1/2 h-5 w-px -translate-x-1/2 border-l border-dashed border-foreground/[0.08]" />
-        {/* Horizontal */}
-        <div className="absolute top-1/2 left-[52px] h-px w-5 -translate-y-1/2 border-t border-dashed border-foreground/[0.08]" />
-        <div className="absolute top-1/2 right-[52px] h-px w-5 -translate-y-1/2 border-t border-dashed border-foreground/[0.08]" />
       </div>
     </div>
   )
