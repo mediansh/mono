@@ -310,7 +310,7 @@ export async function attachComplimentaryWorkspacePlan(args: {
     redirectMode: "if_required",
     customize: {
       freeTrial: {
-        durationLength: args.trialDays ?? 3650,
+        durationLength: args.trialDays ?? 1800,
         durationType: "day",
         cardRequired: false,
       },
