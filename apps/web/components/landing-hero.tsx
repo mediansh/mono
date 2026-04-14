@@ -68,7 +68,7 @@ export function LandingHero() {
   const outline = isDark ? outlineStyles.dark : outlineStyles.light
 
   return (
-    <section className="flex flex-col items-center px-4 pt-36 pb-8">
+    <section className="flex flex-col items-center px-4 pt-36 pb-16">
       {/* Heading */}
       <motion.h1
         initial={{ opacity: 0, y: 20 }}

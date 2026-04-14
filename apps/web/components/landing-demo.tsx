@@ -356,7 +356,7 @@ export function LandingDemo() {
                 </div>
               </div>
 
-              <div className="mt-3 flex flex-col gap-0.5">
+              <div className="mt-1 flex flex-col gap-0.5">
                 <SidebarItem
                   icon={<House size={15} weight="fill" />}
                   label="Home"
