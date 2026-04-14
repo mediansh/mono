@@ -404,7 +404,7 @@ export function LandingFeatures() {
               />
 
               {/* Graphic area */}
-              <div className="relative h-48 text-foreground">
+              <div className="relative h-60 text-foreground">
                 <feature.graphic />
               </div>
 
