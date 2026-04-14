@@ -22,6 +22,7 @@ import {
 } from "@phosphor-icons/react"
 import { FaXTwitter, FaDiscord, FaGithub, FaSlack } from "react-icons/fa6"
 import { SiLinear } from "react-icons/si"
+import { CliIcon } from "@/components/brand-icons"
 import {
   AreaChart,
   Area,
@@ -144,6 +145,7 @@ const SOURCE_ICONS: Record<string, React.ComponentType<{ size?: number; classNam
   github: FaGithub,
   x: FaXTwitter,
   linear: SiLinear,
+  cli: CliIcon,
 }
 
 const HOUR = 3600000
@@ -255,6 +257,95 @@ function LogsSkeleton() {
 
 const PAGE_SIZE = 20
 
+const MOCK_EVENTS: LogEvent[] = [
+  {
+    _id: "mock-discord-1",
+    type: "webhook_received",
+    message: "New message in #feedback channel — \"login button is broken\"",
+    timestamp: Date.now() - 2 * MIN,
+    source: "discord",
+  },
+  {
+    _id: "mock-slack-1",
+    type: "webhook_received",
+    message: "Reaction added in #product — thread promoted to task",
+    timestamp: Date.now() - 7 * MIN,
+    source: "slack",
+  },
+  {
+    _id: "mock-github-1",
+    type: "webhook_received",
+    message: "Issue #482 opened — \"Crash on mobile safari\"",
+    timestamp: Date.now() - 14 * MIN,
+    source: "github",
+  },
+  {
+    _id: "mock-linear-1",
+    type: "webhook_received",
+    message: "MED-203 status changed to In Review",
+    timestamp: Date.now() - 22 * MIN,
+    source: "linear",
+  },
+  {
+    _id: "mock-x-1",
+    type: "webhook_received",
+    message: "Mention received from @acmeuser — feature request",
+    timestamp: Date.now() - 38 * MIN,
+    source: "x",
+  },
+  {
+    _id: "mock-discord-2",
+    type: "task_created",
+    message: "Task created from Discord message — \"Dark mode inconsistency\"",
+    timestamp: Date.now() - 1 * HOUR,
+    source: "discord",
+  },
+  {
+    _id: "mock-slack-2",
+    type: "feedback_processed",
+    message: "Feedback bundle processed — 4 items from #customer-feedback",
+    timestamp: Date.now() - 2 * HOUR,
+    source: "slack",
+    cost: 0.0184,
+  },
+  {
+    _id: "mock-github-2",
+    type: "task_moved",
+    message: "HLL-91 moved to \"In Progress\" via PR link",
+    timestamp: Date.now() - 3 * HOUR,
+    source: "github",
+  },
+  {
+    _id: "mock-linear-2",
+    type: "integration_connected",
+    message: "Linear workspace \"clovrai\" connected",
+    timestamp: Date.now() - 5 * HOUR,
+    source: "linear",
+  },
+  {
+    _id: "mock-x-2",
+    type: "tasks_generated_ai",
+    message: "3 tasks generated from X mentions",
+    timestamp: Date.now() - 8 * HOUR,
+    source: "x",
+    cost: 0.0421,
+  },
+  {
+    _id: "mock-cli-1",
+    type: "task_created",
+    message: "Task created via CLI — \"Add rate limit headers\"",
+    timestamp: Date.now() - 12 * HOUR,
+    source: "cli",
+  },
+  {
+    _id: "mock-github-3",
+    type: "webhook_error",
+    message: "GitHub webhook delivery failed — 401 unauthorized",
+    timestamp: Date.now() - 20 * HOUR,
+    source: "github",
+  },
+]
+
 export default function LogsPage() {
   const convex = useConvex()
   const { currentWorkspace } = useWorkspace()
@@ -308,7 +399,11 @@ export default function LogsPage() {
     return <LogsSkeleton />
   }
 
-  const events = results as LogEvent[]
+  const realEvents = results as LogEvent[]
+  const events =
+    process.env.NODE_ENV === "development"
+      ? [...MOCK_EVENTS, ...realEvents]
+      : realEvents
   const activityData =
     dashboard?.activityData.length
       ? dashboard.activityData
