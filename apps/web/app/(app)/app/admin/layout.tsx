@@ -4,13 +4,14 @@ import { useEffect } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useQuery } from "convex/react"
-import { Article, Megaphone, ShieldCheck } from "@phosphor-icons/react"
+import { Article, Key, Megaphone, ShieldCheck } from "@phosphor-icons/react"
 import { api } from "@/convex/_generated/api"
 
 const adminNav = [
   { label: "Overview", href: "/app/admin", icon: ShieldCheck, match: "exact" as const },
   { label: "Blog", href: "/app/admin/blog", icon: Article, match: "prefix" as const },
   { label: "Changelog", href: "/app/admin/changelog", icon: Megaphone, match: "prefix" as const },
+  { label: "Early access", href: "/app/admin/early-access", icon: Key, match: "prefix" as const },
 ]
 
 export default function AdminLayout({

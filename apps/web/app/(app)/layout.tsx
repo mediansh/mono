@@ -7,6 +7,7 @@ import { PageTransition } from "@/components/page-transition"
 import { RoutePrefetch } from "@/components/route-prefetch"
 import { WorkspaceProvider } from "@/components/workspace-provider"
 import { WorkspaceGuard } from "@/components/workspace-guard"
+import { EarlyAccessGuard } from "@/components/early-access-guard"
 import { WorkspaceQueryPreloader } from "@/components/workspace-query-preloader"
 import { PlanGuard } from "@/components/plan-guard"
 import { QuotaBanner } from "@/components/quota-banner"
@@ -24,14 +25,17 @@ export default function AppLayout({
 }>) {
   const pathname = usePathname()
   const isSetup = pathname === "/app/setup"
+  const isEarlyAccess = pathname === "/app/early-access"
+  const isStandalone = isSetup || isEarlyAccess
 
   return (
     <WorkspaceProvider>
       <RoutePrefetch routes={appRoutes} />
       <WorkspaceQueryPreloader />
       {process.env.NODE_ENV === "development" && <DevErrorTrigger target="app" />}
+      <EarlyAccessGuard>
       <WorkspaceGuard>
-        {isSetup ? (
+        {isStandalone ? (
           children
         ) : (
           <SidebarProvider>
@@ -53,6 +57,7 @@ export default function AppLayout({
           </SidebarProvider>
         )}
       </WorkspaceGuard>
+      </EarlyAccessGuard>
     </WorkspaceProvider>
   )
 }
