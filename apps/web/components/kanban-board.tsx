@@ -979,8 +979,15 @@ function RequestsGroup({
       </button>
 
       {/* Cards — no drag, no sortable context */}
-      {!collapsed && (
-        <div>
+      <AnimatePresence initial={false}>
+        {!collapsed && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
+            className="overflow-hidden"
+          >
           <div className="grid grid-cols-1 gap-2 px-3 py-3 sm:grid-cols-2 lg:grid-cols-3">
             {visibleTasks.map((task) => (
               <RequestRow
@@ -1017,8 +1024,9 @@ function RequestsGroup({
               </button>
             </div>
           )}
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   )
 }
@@ -1677,8 +1685,15 @@ function ListGroup({
       </button>
 
       {/* Rows */}
-      {!collapsed && (
-        <div>
+      <AnimatePresence initial={false}>
+        {!collapsed && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
+            className="overflow-hidden"
+          >
           <SortableContext
             items={taskIds}
             strategy={verticalListSortingStrategy}
@@ -1738,8 +1753,9 @@ function ListGroup({
                   )
                 })}
           </SortableContext>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   )
 }
