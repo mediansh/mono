@@ -18,11 +18,81 @@ import {
 } from "./_generated/server"
 
 const FEEDBACK_WINDOW_LIMIT = 100
-const FEEDBACK_CONTEXT_LIMIT = 25
-const EXISTING_TASK_CONTEXT_LIMIT = 50
+const FEEDBACK_CONTEXT_LIMIT = 10
+const RELEVANT_MESSAGE_LIMIT = 10
+const TASK_CONTEXT_FETCH_LIMIT = 100
+const EXISTING_TASK_CONTEXT_LIMIT = 12
 const FEEDBACK_PROCESSING_DEBOUNCE_MS = 2_000
 const FEEDBACK_PROCESSING_RETRY_DELAY_MS = 5_000
 const DEFAULT_WORKPOOL_PARALLELISM = 8
+const MAX_MESSAGE_CONTENT_CHARS = 280
+const MAX_TASK_DESCRIPTION_CHARS = 220
+const MAX_LOCATION_TEXT_CHARS = 80
+const MAX_ADDITIONAL_CONTEXT_CHARS = 500
+const MAX_SEARCH_TERMS = 18
+
+const TASK_MATCH_STOP_WORDS = new Set([
+  "about",
+  "after",
+  "all",
+  "also",
+  "and",
+  "any",
+  "are",
+  "but",
+  "can",
+  "cant",
+  "could",
+  "did",
+  "does",
+  "dont",
+  "for",
+  "from",
+  "get",
+  "got",
+  "had",
+  "has",
+  "have",
+  "hey",
+  "how",
+  "into",
+  "its",
+  "just",
+  "like",
+  "maybe",
+  "more",
+  "not",
+  "now",
+  "our",
+  "out",
+  "pls",
+  "please",
+  "really",
+  "same",
+  "should",
+  "some",
+  "still",
+  "than",
+  "that",
+  "the",
+  "their",
+  "them",
+  "there",
+  "they",
+  "this",
+  "too",
+  "use",
+  "using",
+  "very",
+  "was",
+  "were",
+  "what",
+  "when",
+  "with",
+  "would",
+  "you",
+  "your",
+])
 
 type FeedbackMessage = {
   _id: Id<"discordMessages">
@@ -113,10 +183,11 @@ type ProcessFeedbackWindowResult =
 
 const feedbackClassificationSchema = z.object({
   isProductFeedback: z.boolean(),
+  needsTaskAction: z.boolean(),
   confidence: z.number().min(0).max(1),
   summary: z.string().min(1).nullable(),
   reason: z.string().min(1),
-  relevantMessageIds: z.array(z.string()).max(25),
+  relevantMessageIds: z.array(z.string()).max(RELEVANT_MESSAGE_LIMIT),
 })
 
 const extractedFeedbackTasksSchema = z.object({
@@ -279,6 +350,160 @@ function normalizeDiscordId(id: string) {
   return id.trim().replace(/\D/g, "")
 }
 
+function truncateText(text: string | null | undefined, maxChars: number) {
+  const normalized = (text ?? "").replace(/\s+/g, " ").trim()
+  if (!normalized) {
+    return ""
+  }
+
+  if (normalized.length <= maxChars) {
+    return normalized
+  }
+
+  return `${normalized.slice(0, maxChars - 1).trimEnd()}…`
+}
+
+function getAdditionalContext(context: string | null) {
+  const value = truncateText(context, MAX_ADDITIONAL_CONTEXT_CHARS)
+  return value || null
+}
+
+function tokenizeTaskMatchTerms(text: string | null | undefined) {
+  const normalized = truncateText(text, 400).toLowerCase()
+  if (!normalized) {
+    return []
+  }
+
+  return Array.from(
+    new Set(
+      (normalized.match(/[a-z0-9][a-z0-9_-]*/g) ?? []).filter(
+        (term) => term.length >= 3 && !TASK_MATCH_STOP_WORDS.has(term)
+      )
+    )
+  )
+}
+
+function collectRelevantTaskTerms(messages: FeedbackMessage[]) {
+  const counts = new Map<string, number>()
+
+  for (const message of messages) {
+    const parts = [
+      message.content,
+      message.threadTitle,
+      message.forumTitle,
+      message.channelName,
+      message.parentChannelName,
+    ]
+
+    for (const part of parts) {
+      for (const term of tokenizeTaskMatchTerms(part)) {
+        counts.set(term, (counts.get(term) ?? 0) + 1)
+      }
+    }
+  }
+
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, MAX_SEARCH_TERMS)
+    .map(([term]) => term)
+}
+
+function parseDiscordPermalink(url: string | null) {
+  if (!url) {
+    return null
+  }
+
+  const match = url.match(/discord\.com\/channels\/(\d+)\/(\d+)\/(\d+)/)
+  if (!match?.[1] || !match[2] || !match[3]) {
+    return null
+  }
+
+  return {
+    guildId: match[1],
+    channelId: match[2],
+    messageId: match[3],
+  }
+}
+
+function selectRelevantTasks(
+  tasks: TaskSnapshot[],
+  relevantMessages: FeedbackMessage[]
+) {
+  if (tasks.length === 0 || relevantMessages.length === 0) {
+    return []
+  }
+
+  const exactSourceUrls = new Set(
+    relevantMessages.map((message) => message.permalink).filter(Boolean)
+  )
+  const relevantChannelIds = new Set(
+    relevantMessages.flatMap((message) =>
+      [
+        message.channelId,
+        message.parentChannelId,
+        message.threadId,
+        message.forumChannelId,
+      ].filter(Boolean)
+    )
+  )
+  const relevantGuildIds = new Set(
+    relevantMessages
+      .map((message) => parseDiscordPermalink(message.permalink)?.guildId)
+      .filter(Boolean)
+  )
+  const relevantTerms = collectRelevantTaskTerms(relevantMessages)
+
+  return tasks
+    .map((task) => {
+      let score = 0
+
+      if (exactSourceUrls.has(task.sourceUrl ?? "")) {
+        score += 100
+      }
+
+      const parsedSource = parseDiscordPermalink(task.sourceUrl)
+      if (parsedSource) {
+        if (relevantChannelIds.has(parsedSource.channelId)) {
+          score += 16
+        }
+        if (relevantGuildIds.has(parsedSource.guildId)) {
+          score += 4
+        }
+      }
+
+      if (task.status !== "shipped") {
+        score += 2
+      }
+
+      const taskTerms = new Set([
+        ...tokenizeTaskMatchTerms(task.title),
+        ...tokenizeTaskMatchTerms(task.description),
+        ...task.labels.flatMap((label) => tokenizeTaskMatchTerms(label)),
+      ])
+      for (const term of relevantTerms) {
+        if (taskTerms.has(term)) {
+          score += 3
+        }
+      }
+
+      return { task, score }
+    })
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score
+      }
+
+      if (a.task.status !== b.task.status) {
+        return a.task.status === "shipped" ? 1 : -1
+      }
+
+      return a.task.taskCode.localeCompare(b.task.taskCode)
+    })
+    .slice(0, EXISTING_TASK_CONTEXT_LIMIT)
+    .map((entry) => entry.task)
+}
+
 function isMessageAfterCursor(
   message: { messageId: string; messageCreatedAt: number },
   cursor: { messageId: string | null; messageCreatedAt: number | null }
@@ -309,17 +534,23 @@ function formatTranscript(
         ? "NEW"
         : "CONTEXT"
       const locationParts = [
-        message.forumTitle ? `forum:${message.forumTitle}` : null,
-        message.threadTitle ? `thread:${message.threadTitle}` : null,
-        message.parentChannelName
-          ? `parent_channel:${message.parentChannelName}`
+        message.forumTitle
+          ? `forum:${truncateText(message.forumTitle, MAX_LOCATION_TEXT_CHARS)}`
           : null,
-        message.channelName ? `channel:${message.channelName}` : null,
+        message.threadTitle
+          ? `thread:${truncateText(message.threadTitle, MAX_LOCATION_TEXT_CHARS)}`
+          : null,
+        message.parentChannelName
+          ? `parent_channel:${truncateText(message.parentChannelName, MAX_LOCATION_TEXT_CHARS)}`
+          : null,
+        message.channelName
+          ? `channel:${truncateText(message.channelName, MAX_LOCATION_TEXT_CHARS)}`
+          : null,
       ].filter(Boolean)
       const locationPrefix =
         locationParts.length > 0 ? ` [${locationParts.join(" | ")}]` : ""
       const content =
-        message.content ||
+        truncateText(message.content, MAX_MESSAGE_CONTENT_CHARS) ||
         (message.threadTitle
           ? "(no body text; use the thread title as the post title)"
           : "(no body text)")
@@ -330,15 +561,17 @@ function formatTranscript(
 
 function formatExistingTasks(tasks: TaskSnapshot[]) {
   if (tasks.length === 0) {
-    return "No existing tasks."
+    return "No likely matching existing tasks."
   }
 
   return tasks
     .map((task) =>
       [
-        `${task.taskCode} | ${task.status} | ${task.priority} | ${task.title}`,
+        `${task.taskCode} | ${task.status} | ${task.priority} | ${truncateText(task.title, 140)}`,
         task.labels.length > 0 ? `labels: ${task.labels.join(", ")}` : null,
-        task.description ? `description: ${task.description}` : null,
+        task.description
+          ? `description: ${truncateText(task.description, MAX_TASK_DESCRIPTION_CHARS)}`
+          : null,
       ]
         .filter(Boolean)
         .join(" | ")
@@ -743,31 +976,27 @@ export const processFeedbackWindow = internalAction({
         pendingNonAdminMessages.map((message) => message.messageId)
       )
       const transcript = formatTranscript(contextMessages, pendingMessageIds)
-      const existingTasks = await ctx.runQuery(
-        getTaskSnapshotForDiscordInternalQuery,
-        {
-          workspaceId: feedbackWindow.integration.workspaceId,
-          limit: EXISTING_TASK_CONTEXT_LIMIT,
-        }
-      )
-
       const classifierSystemParts: string[] = [
         "You classify Discord conversations for a product team.",
         `The only product that matters is ${feedbackWindow.integration.workspaceName}`,
         "Return isProductFeedback=true only when the newest messages contain concrete product feedback, a bug report, a feature request, workflow friction, or an actionable complaint about the actual product.",
         "Reject off-topic chat, memes, introductions, hiring talk, agency requests, feedback about unrelated tools, and generic conversation that is not about the product itself.",
         "Use the recent context only to interpret what the new messages refer to.",
-        "If the new messages add detail, scope, reproduction steps, or acceptance criteria to an existing open task, that is still product feedback. A later step can update the existing task instead of creating a new one.",
+        "Return needsTaskAction=true only when the NEW messages contain enough specific, non-duplicate information to justify creating a task or materially updating one.",
+        "Return needsTaskAction=false for +1s, me-too replies, generic agreement, thanks, status checks, bumps, or restatements that add no meaningful new detail.",
         "Forum and thread metadata may appear inline as forum/thread/channel labels; use that metadata, especially when a forum post body is empty.",
         "Only include relevantMessageIds from NEW messages.",
         "Each message has an [id:XXXXXXX] tag. Use the numeric ID from that tag as the relevantMessageId, NOT the timestamp.",
         "Return valid JSON only. No markdown. No code fences. No commentary.",
-        'Use this exact JSON shape: {"isProductFeedback":false,"confidence":0.0,"summary":null,"reason":"...","relevantMessageIds":["123456789"]}',
+        'Use this exact JSON shape: {"isProductFeedback":false,"needsTaskAction":false,"confidence":0.0,"summary":null,"reason":"...","relevantMessageIds":["123456789"]}',
       ]
 
-      if (feedbackWindow.integration.additionalContext) {
+      const additionalContext = getAdditionalContext(
+        feedbackWindow.integration.additionalContext
+      )
+      if (additionalContext) {
         classifierSystemParts.push(
-          `Additional product context from the workspace owner: ${feedbackWindow.integration.additionalContext}`
+          `Additional product context from the workspace owner: ${additionalContext}`
         )
       }
 
@@ -778,8 +1007,6 @@ export const processFeedbackWindow = internalAction({
         prompt: [
           `Workspace name: ${feedbackWindow.integration.workspaceName}`,
           `Guild: ${feedbackWindow.integration.guildName}`,
-          "Existing task context:",
-          formatExistingTasks(existingTasks),
           "Conversation transcript:",
           transcript,
         ].join("\n\n"),
@@ -819,12 +1046,14 @@ export const processFeedbackWindow = internalAction({
       logInfo("Discord feedback classified", {
         integrationId: args.integrationId,
         isProductFeedback: classification.isProductFeedback,
+        needsTaskAction: classification.needsTaskAction,
         confidence: classification.confidence,
         relevantMessageCount: classification.relevantMessageIds.length,
       })
 
       if (
         !classification.isProductFeedback ||
+        !classification.needsTaskAction ||
         classification.relevantMessageIds.length === 0
       ) {
         // Log AI cost even when no actionable feedback is found
@@ -855,7 +1084,9 @@ export const processFeedbackWindow = internalAction({
           skipped: false,
           createdTaskCount: 0,
           updatedTaskCount: 0,
-          reason: "not_product_feedback",
+          reason: classification.isProductFeedback
+            ? "not_actionable"
+            : "not_product_feedback",
         }
       }
 
@@ -874,6 +1105,20 @@ export const processFeedbackWindow = internalAction({
         matchedRelevantMessages.length > 0
           ? matchedRelevantMessages
           : pendingNonAdminMessages
+      const relevantMessagesForExtraction = relevantMessages.slice(
+        -RELEVANT_MESSAGE_LIMIT
+      )
+      const existingTasks = await ctx.runQuery(
+        getTaskSnapshotForDiscordInternalQuery,
+        {
+          workspaceId: feedbackWindow.integration.workspaceId,
+          limit: TASK_CONTEXT_FETCH_LIMIT,
+        }
+      )
+      const relevantTasks = selectRelevantTasks(
+        existingTasks,
+        relevantMessagesForExtraction
+      )
 
       const labelsText =
         feedbackWindow.integration.availableLabels.length > 0
@@ -900,9 +1145,9 @@ export const processFeedbackWindow = internalAction({
         'Return valid structured output only with action items shaped like {"action":"create",...} or {"action":"update","taskCode":"MDN-123",...}.',
       ]
 
-      if (feedbackWindow.integration.additionalContext) {
+      if (additionalContext) {
         extractorSystemParts.push(
-          `Additional product context from the workspace owner: ${feedbackWindow.integration.additionalContext}`
+          `Additional product context from the workspace owner: ${additionalContext}`
         )
       }
 
@@ -913,21 +1158,27 @@ export const processFeedbackWindow = internalAction({
         system: extractorSystemParts.join(" "),
         prompt: [
           `Classifier summary: ${classification.summary ?? classification.reason}`,
-          "Existing task context:",
-          formatExistingTasks(existingTasks),
+          "Likely matching existing tasks:",
+          formatExistingTasks(relevantTasks),
           "Relevant feedback messages:",
-          relevantMessages
+          relevantMessagesForExtraction
             .map((message) =>
               [
                 `- ${new Date(message.messageCreatedAt).toISOString()}`,
-                message.forumTitle ? `forum=${message.forumTitle}` : null,
-                message.threadTitle ? `thread=${message.threadTitle}` : null,
-                message.parentChannelName
-                  ? `parent_channel=${message.parentChannelName}`
+                message.forumTitle
+                  ? `forum=${truncateText(message.forumTitle, MAX_LOCATION_TEXT_CHARS)}`
                   : null,
-                message.channelName ? `channel=${message.channelName}` : null,
+                message.threadTitle
+                  ? `thread=${truncateText(message.threadTitle, MAX_LOCATION_TEXT_CHARS)}`
+                  : null,
+                message.parentChannelName
+                  ? `parent_channel=${truncateText(message.parentChannelName, MAX_LOCATION_TEXT_CHARS)}`
+                  : null,
+                message.channelName
+                  ? `channel=${truncateText(message.channelName, MAX_LOCATION_TEXT_CHARS)}`
+                  : null,
                 `${message.authorUsername}: ${
-                  message.content ||
+                  truncateText(message.content, MAX_MESSAGE_CONTENT_CHARS) ||
                   (message.threadTitle
                     ? "(no body text; rely on the thread title)"
                     : "(no body text)")
@@ -952,8 +1203,8 @@ export const processFeedbackWindow = internalAction({
         success: true,
         metadata: {
           integration_id: args.integrationId,
-          relevant_message_count: relevantMessages.length,
-          existing_task_count: existingTasks.length,
+          relevant_message_count: relevantMessagesForExtraction.length,
+          existing_task_count: relevantTasks.length,
         },
       })
 
@@ -1013,10 +1264,15 @@ export const processFeedbackWindow = internalAction({
 
       if (extracted.actions.length > 0) {
         const authors = Array.from(
-          new Set(relevantMessages.map((message) => message.authorUsername))
+          new Set(
+            relevantMessagesForExtraction.map(
+              (message) => message.authorUsername
+            )
+          )
         )
         const sourceUrl =
-          relevantMessages[relevantMessages.length - 1]?.permalink
+          relevantMessagesForExtraction[relevantMessagesForExtraction.length - 1]
+            ?.permalink
         const createdAtLabel = formatCreatedAtLabel(
           latestPendingMessage.messageCreatedAt
         )
