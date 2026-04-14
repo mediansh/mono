@@ -33,6 +33,8 @@ function requireSlackBotSecret(botSecret: string) {
   }
 }
 
+const SLACK_NOTIFICATION_CLAIM_TIMEOUT_MS = 1000 * 60 * 5
+
 // ── Encryption helpers (AES-GCM, same pattern as X) ─────
 
 function binaryStringToBytes(str: string) {
@@ -98,9 +100,7 @@ async function decryptSecret(value: string) {
     throw new Error("Invalid encrypted Slack token payload")
   }
   const key = await importAesKey()
-  const iv = decodeBase64(
-    ivEncoded.replace(/-/g, "+").replace(/_/g, "/")
-  )
+  const iv = decodeBase64(ivEncoded.replace(/-/g, "+").replace(/_/g, "/"))
   const payload = decodeBase64(
     payloadEncoded.replace(/-/g, "+").replace(/_/g, "/")
   )
@@ -152,9 +152,15 @@ async function verifySlackRequest(
     ["sign"]
   )
   const sigBytes = new Uint8Array(
-    await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(sigBasestring))
+    await crypto.subtle.sign(
+      "HMAC",
+      key,
+      new TextEncoder().encode(sigBasestring)
+    )
   )
-  const mySignature = `v0=${Array.from(sigBytes).map((b) => b.toString(16).padStart(2, "0")).join("")}`
+  const mySignature = `v0=${Array.from(sigBytes)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")}`
 
   return timingSafeEqualString(mySignature, signature)
 }
@@ -187,7 +193,8 @@ export const getWorkspaceSlackIntegration = query({
         teamId: integration.teamId,
         teamName: integration.teamName,
         connectedAt: integration.connectedAt,
-        feedbackCollectionEnabled: integration.feedbackCollectionEnabled ?? false,
+        feedbackCollectionEnabled:
+          integration.feedbackCollectionEnabled ?? false,
         feedbackChannelId: integration.feedbackChannelId ?? null,
         notificationChannelId: integration.notificationChannelId ?? null,
         additionalContext: integration.additionalContext ?? "",
@@ -567,11 +574,9 @@ export const syncChannelsAction = internalMutation({
 
     if (!integration) return
 
-    await ctx.scheduler.runAfter(
-      0,
-      internal.slack.fetchAndSyncChannels,
-      { integrationId: integration._id }
-    )
+    await ctx.scheduler.runAfter(0, internal.slack.fetchAndSyncChannels, {
+      integrationId: integration._id,
+    })
   },
 })
 
@@ -832,6 +837,9 @@ export const slackEventsWebhook = httpAction(async (ctx, request) => {
       )
 
       let authorUsername = event.user
+      const channelName = integration?.teamChannels?.find(
+        (channel) => channel.id === event.channel
+      )?.name
       if (integration) {
         try {
           const token = await decryptSecret(integration.accessTokenEncrypted)
@@ -864,6 +872,7 @@ export const slackEventsWebhook = httpAction(async (ctx, request) => {
       await ctx.runMutation(internal.slack.recordInboundMessage, {
         teamId,
         channelId: event.channel!,
+        channelName,
         threadTs: event.thread_ts,
         messageTs: event.ts,
         authorId: event.user,
@@ -981,18 +990,14 @@ export const handleRequestAction = internalMutation({
       .first()
 
     if (integration) {
-      await ctx.scheduler.runAfter(
-        0,
-        internal.slack.updateSlackMessage,
-        {
-          integrationId: integration._id,
-          channelId: args.channelId,
-          messageTs: args.messageTs,
-          taskId: args.taskId,
-          action: args.nextStatus === "todo" ? "accepted" : "denied",
-          actorName: args.actorName,
-        }
-      )
+      await ctx.scheduler.runAfter(0, internal.slack.updateSlackMessage, {
+        integrationId: integration._id,
+        channelId: args.channelId,
+        messageTs: args.messageTs,
+        taskId: args.taskId,
+        action: args.nextStatus === "todo" ? "accepted" : "denied",
+        actorName: args.actorName,
+      })
     }
   },
 })
@@ -1083,9 +1088,36 @@ export const markSlackNotificationSent = internalMutation({
 
     await ctx.db.patch(args.notificationId, {
       status: args.status,
+      sendingStartedAt: undefined,
       sentAt: args.status === "sent" ? Date.now() : undefined,
       slackMessageTs: args.slackMessageTs,
     })
+  },
+})
+
+export const recoverStaleNotificationClaim = internalMutation({
+  args: {
+    notificationId: v.id("slackPendingNotifications"),
+    sendingStartedAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const notification = await ctx.db.get(args.notificationId)
+    if (
+      !notification ||
+      notification.status !== "sending" ||
+      notification.sendingStartedAt !== args.sendingStartedAt
+    ) {
+      return false
+    }
+
+    await ctx.db.patch(args.notificationId, {
+      status: "pending",
+      sendingStartedAt: undefined,
+    })
+    await ctx.scheduler.runAfter(0, internal.slack.sendSlackNotification, {
+      notificationId: args.notificationId,
+    })
+    return true
   },
 })
 
@@ -1133,7 +1165,10 @@ export const queueFeatureRequestNotification = internalMutation({
       .unique()
 
     if (!integration) {
-      console.log("[slack] No Slack integration found for workspace", args.workspaceId)
+      console.log(
+        "[slack] No Slack integration found for workspace",
+        args.workspaceId
+      )
       return
     }
 
@@ -1167,11 +1202,9 @@ export const queueFeatureRequestNotification = internalMutation({
     })
 
     // Trigger sending this specific notification
-    await ctx.scheduler.runAfter(
-      0,
-      internal.slack.sendSlackNotification,
-      { notificationId }
-    )
+    await ctx.scheduler.runAfter(0, internal.slack.sendSlackNotification, {
+      notificationId,
+    })
   },
 })
 
@@ -1183,11 +1216,35 @@ export const claimNotification = internalMutation({
   },
   handler: async (ctx, args) => {
     const notification = await ctx.db.get(args.notificationId)
-    if (!notification || notification.status !== "pending") {
+    if (!notification) {
       return null
     }
-    // Atomically claim it so no other sender picks it up
-    await ctx.db.patch(args.notificationId, { status: "sent" })
+
+    const now = Date.now()
+    const hasStaleSendingClaim =
+      notification.status === "sending" &&
+      (notification.sendingStartedAt ?? 0) <=
+        now - SLACK_NOTIFICATION_CLAIM_TIMEOUT_MS
+
+    if (notification.status !== "pending" && !hasStaleSendingClaim) {
+      return null
+    }
+
+    // Atomically claim it so no other sender picks it up, while leaving a recovery
+    // path if the action dies before Slack acknowledges the send.
+    await ctx.db.patch(args.notificationId, {
+      status: "sending",
+      sendingStartedAt: now,
+    })
+    await ctx.scheduler.runAfter(
+      SLACK_NOTIFICATION_CLAIM_TIMEOUT_MS,
+      internal.slack.recoverStaleNotificationClaim,
+      {
+        notificationId: args.notificationId,
+        sendingStartedAt: now,
+      }
+    )
+
     return {
       _id: notification._id,
       integrationId: notification.integrationId,
@@ -1338,7 +1395,11 @@ export const sendSlackNotification = internalAction({
             text: `New feature request: ${notification.taskTitle}`,
           }),
         })
-        slackResponse = (await response.json()) as { ok: boolean; ts?: string; error?: string }
+        slackResponse = (await response.json()) as {
+          ok: boolean
+          ts?: string
+          error?: string
+        }
       } else if (notification.type === "request_received") {
         const response = await fetch("https://slack.com/api/chat.postMessage", {
           method: "POST",
@@ -1352,7 +1413,11 @@ export const sendSlackNotification = internalAction({
             text: `:white_check_mark: Got it — we're on it. Tracking as *${notification.taskCode}*.`,
           }),
         })
-        slackResponse = (await response.json()) as { ok: boolean; ts?: string; error?: string }
+        slackResponse = (await response.json()) as {
+          ok: boolean
+          ts?: string
+          error?: string
+        }
       } else if (notification.type === "request_shipped") {
         const response = await fetch("https://slack.com/api/chat.postMessage", {
           method: "POST",
@@ -1366,8 +1431,16 @@ export const sendSlackNotification = internalAction({
             text: `:rocket: This should be resolved now — shipped in *${notification.taskCode}*.`,
           }),
         })
-        slackResponse = (await response.json()) as { ok: boolean; ts?: string; error?: string }
+        slackResponse = (await response.json()) as {
+          ok: boolean
+          ts?: string
+          error?: string
+        }
       } else {
+        await ctx.runMutation(internal.slack.markSlackNotificationSent, {
+          notificationId: notification._id,
+          status: "failed",
+        })
         return
       }
 

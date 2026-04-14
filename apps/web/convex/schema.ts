@@ -151,10 +151,12 @@ export default defineSchema({
     sourceAuthor: v.optional(v.string()),
     status: v.union(
       v.literal("pending"),
+      v.literal("sending"),
       v.literal("sent"),
       v.literal("failed")
     ),
     createdAt: v.number(),
+    sendingStartedAt: v.optional(v.number()),
     sentAt: v.optional(v.number()),
     slackMessageTs: v.optional(v.string()),
   })

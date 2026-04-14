@@ -3,14 +3,13 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { useMutation, useQuery } from "convex/react"
 import { motion } from "motion/react"
-import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  InformationCircleIcon,
-  Link01Icon,
-  Unlink01Icon,
-  SentIcon,
-  TextIcon,
-} from "@hugeicons/core-free-icons"
+  Info,
+  LinkBreak,
+  LinkSimple,
+  PaperPlaneTilt,
+  TextT,
+} from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
@@ -43,15 +42,33 @@ function formatTimestamp(timestamp: number) {
   }).format(timestamp)
 }
 
-function SlackBrandIcon({ size = 20, className }: { size?: number; className?: string }) {
+function SlackBrandIcon({
+  size = 20,
+  className,
+}: {
+  size?: number
+  className?: string
+}) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+    >
       <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z" />
     </svg>
   )
 }
 
-function Stagger({ children, className }: { children: ReactNode; className?: string }) {
+function Stagger({
+  children,
+  className,
+}: {
+  children: ReactNode
+  className?: string
+}) {
   return (
     <motion.div
       initial="hidden"
@@ -66,7 +83,11 @@ function Stagger({ children, className }: { children: ReactNode; className?: str
 
 const fadeUp = {
   hidden: { opacity: 0, y: 8 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] as const } },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] as const },
+  },
 }
 
 function SlackIntegrationSkeleton() {
@@ -142,7 +163,8 @@ export function SlackIntegrationPanel() {
                   : "off"
                 : current.integration.respondForMeMode),
             respondForMeChannelIds:
-              args.respondForMeChannelIds ?? current.integration.respondForMeChannelIds,
+              args.respondForMeChannelIds ??
+              current.integration.respondForMeChannelIds,
           },
         }
       }
@@ -151,10 +173,13 @@ export function SlackIntegrationPanel() {
 
   // Settings state
   const [additionalContext, setAdditionalContext] = useState("")
-  const [feedbackCollectionEnabled, setFeedbackCollectionEnabled] = useState(false)
+  const [feedbackCollectionEnabled, setFeedbackCollectionEnabled] =
+    useState(false)
   const [feedbackChannelId, setFeedbackChannelId] = useState("")
   const [notificationChannelId, setNotificationChannelId] = useState("")
-  const [respondForMeMode, setRespondForMeMode] = useState<"off" | "all" | "specific">("off")
+  const [respondForMeMode, setRespondForMeMode] = useState<
+    "off" | "all" | "specific"
+  >("off")
   const [respondChannelIds, setRespondChannelIds] = useState<string[]>([])
   const [channelSearch, setChannelSearch] = useState("")
   const [settingsInitialized, setSettingsInitialized] = useState(false)
@@ -227,7 +252,10 @@ export function SlackIntegrationPanel() {
         workspaceId: currentWorkspace._id,
         respondForMeMode: mode,
       })
-      trackIntegrationSettingsChanged({ platform: "slack", setting: "respond_mode" })
+      trackIntegrationSettingsChanged({
+        platform: "slack",
+        setting: "respond_mode",
+      })
     } catch {
       setRespondForMeMode(previousMode)
       toast.error("Failed to update setting.")
@@ -243,7 +271,10 @@ export function SlackIntegrationPanel() {
         workspaceId: currentWorkspace._id,
         feedbackCollectionEnabled: enabled,
       })
-      trackIntegrationSettingsChanged({ platform: "slack", setting: "feedback_collection" })
+      trackIntegrationSettingsChanged({
+        platform: "slack",
+        setting: "feedback_collection",
+      })
     } catch {
       setFeedbackCollectionEnabled(previous)
       toast.error("Failed to update setting.")
@@ -312,7 +343,11 @@ export function SlackIntegrationPanel() {
       })
       window.location.href = result.authorizeUrl
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to start Slack authorization.")
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to start Slack authorization."
+      )
       setIsConnecting(false)
     }
   }
@@ -325,7 +360,9 @@ export function SlackIntegrationPanel() {
       trackIntegrationDisconnected({ platform: "slack" })
       toast.success("Slack workspace disconnected.")
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to disconnect Slack.")
+      toast.error(
+        error instanceof Error ? error.message : "Failed to disconnect Slack."
+      )
     } finally {
       setIsDisconnecting(false)
     }
@@ -335,357 +372,465 @@ export function SlackIntegrationPanel() {
   if (integration) {
     return (
       <div className="h-full overflow-y-auto">
-      <Stagger className="mx-auto w-full max-w-lg px-6 py-6">
-        <div className="flex flex-col gap-3">
-          <motion.div variants={fadeUp}>
-            <h2 className="text-[14px] font-semibold tracking-tight">Slack</h2>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">
-              Manage the Slack workspace connected to this workspace.
-            </p>
-          </motion.div>
-
-          {/* Connection status card */}
-          <motion.div variants={fadeUp} className="rounded-[4px] ring-1 ring-border bg-card">
-            <div className="flex items-center gap-3 p-3.5">
-              <div className="flex size-8 items-center justify-center rounded-[4px] bg-[#4A154B]/10">
-                <SlackBrandIcon size={20} className="text-[#4A154B]" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-[13px] font-medium">{integration.teamName}</h3>
-                <p className="text-[11px] text-muted-foreground">
-                  Connected {formatTimestamp(integration.connectedAt)}
-                </p>
-              </div>
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-600">
-                <span className="size-1.5 bg-emerald-500" />
-                Connected
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between border-t border-border bg-muted/30 px-3.5 py-2">
-              <p className="text-[11px] text-muted-foreground">
-                Automations from this Slack workspace are routed to {workspace.name}.
+        <Stagger className="mx-auto w-full max-w-lg px-6 py-6">
+          <div className="flex flex-col gap-3">
+            <motion.div variants={fadeUp}>
+              <h2 className="text-[14px] font-semibold tracking-tight">
+                Slack
+              </h2>
+              <p className="mt-0.5 text-[12px] text-muted-foreground">
+                Manage the Slack workspace connected to this workspace.
               </p>
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                onClick={() => setDisconnectOpen(true)}
-              >
-                <HugeiconsIcon icon={Unlink01Icon} size={13} strokeWidth={1.8} />
-                Disconnect
-              </Button>
-            </div>
-          </motion.div>
+            </motion.div>
 
-          {/* Feature request notifications */}
-          <motion.div variants={fadeUp} className="rounded-[4px] ring-1 ring-border bg-card">
-            <div className="flex items-center gap-3 border-b border-border px-3.5 py-2.5">
-              <HugeiconsIcon icon={SentIcon} size={15} strokeWidth={1.8} className="text-muted-foreground" />
-              <div className="flex-1">
-                <h3 className="text-[13px] font-medium">Feature request notifications</h3>
-                <p className="text-[11px] text-muted-foreground">
-                  Send new feature requests to a Slack channel with accept/deny buttons.
-                </p>
-              </div>
-            </div>
-            <div className="p-3.5">
-              <label className="mb-1.5 block text-[12px] font-medium">Notification channel</label>
-              {teamChannels.length === 0 ? (
-                <div className="flex items-center gap-2 text-[11px] text-muted-foreground/60">
-                  <svg className="size-3.5 animate-spin" viewBox="0 0 16 16" fill="none">
-                    <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="2" opacity="0.25" />
-                    <path d="M14 8a6 6 0 0 0-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
-                  Syncing channels from Slack...
-                </div>
-              ) : (
-                <select
-                  value={notificationChannelId}
-                  onChange={(e) => handleNotificationChannelChange(e.target.value)}
-                  className="h-8 w-full rounded-[4px] border border-border bg-background px-2 text-[12px] text-foreground"
-                >
-                  <option value="">Disabled — no notifications</option>
-                  {teamChannels.map((ch) => (
-                    <option key={ch.id} value={ch.id}>
-                      #{ch.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-              <p className="mt-1.5 text-[11px] text-muted-foreground/60">
-                When a new feature request arrives, a message with accept and deny buttons will be posted here.
-              </p>
-            </div>
-          </motion.div>
-
-          {/* Feedback collection */}
-          <motion.div variants={fadeUp} className="rounded-[4px] ring-1 ring-border bg-card">
-            <div className="flex items-center gap-3 border-b border-border px-3.5 py-2.5">
-              <HugeiconsIcon icon={InformationCircleIcon} size={15} strokeWidth={1.8} className="text-muted-foreground" />
-              <div className="flex-1">
-                <h3 className="text-[13px] font-medium">Feedback collection</h3>
-                <p className="text-[11px] text-muted-foreground">
-                  Scan Slack messages for product feedback and automatically create tasks.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleFeedbackCollectionToggle(!feedbackCollectionEnabled)}
-                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-                  feedbackCollectionEnabled ? "bg-foreground" : "bg-muted-foreground/30"
-                }`}
-              >
-                <span
-                  className={`inline-block size-3.5 rounded-full bg-background transition-transform ${
-                    feedbackCollectionEnabled ? "translate-x-[18px]" : "translate-x-[3px]"
-                  }`}
-                />
-              </button>
-            </div>
-
-            {feedbackCollectionEnabled ? (
-              <div className="flex flex-col gap-3 p-3.5">
-                <div>
-                  <label className="mb-1.5 block text-[12px] font-medium">Feedback channel</label>
-                  {teamChannels.length === 0 ? (
-                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground/60">
-                      <svg className="size-3.5 animate-spin" viewBox="0 0 16 16" fill="none">
-                        <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="2" opacity="0.25" />
-                        <path d="M14 8a6 6 0 0 0-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                      </svg>
-                      Syncing channels from Slack...
-                    </div>
-                  ) : (
-                    <select
-                      value={feedbackChannelId}
-                      onChange={(e) => handleFeedbackChannelChange(e.target.value)}
-                      className="h-8 w-full rounded-[4px] border border-border bg-background px-2 text-[12px] text-foreground"
-                    >
-                      <option value="">All channels</option>
-                      {teamChannels.map((ch) => (
-                        <option key={ch.id} value={ch.id}>
-                          #{ch.name}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                  <p className="mt-1 text-[11px] text-muted-foreground/60">
-                    Limit feedback scanning to a specific channel, or scan all channels.
-                  </p>
-                </div>
-              </div>
-            ) : null}
-          </motion.div>
-
-          {/* Additional context */}
-          {feedbackCollectionEnabled ? (
+            {/* Connection status card */}
             <motion.div
               variants={fadeUp}
-              className="rounded-[4px] ring-1 ring-border bg-card"
+              className="rounded-[4px] bg-card ring-1 ring-border"
+            >
+              <div className="flex items-center gap-3 p-3.5">
+                <div className="flex size-8 items-center justify-center rounded-[4px] bg-[#4A154B]/10">
+                  <SlackBrandIcon size={20} className="text-[#4A154B]" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-[13px] font-medium">
+                    {integration.teamName}
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    Connected {formatTimestamp(integration.connectedAt)}
+                  </p>
+                </div>
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-600">
+                  <span className="size-1.5 bg-emerald-500" />
+                  Connected
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between border-t border-border bg-muted/30 px-3.5 py-2">
+                <p className="text-[11px] text-muted-foreground">
+                  Automations from this Slack workspace are routed to{" "}
+                  {workspace.name}.
+                </p>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setDisconnectOpen(true)}
+                >
+                  <LinkBreak size={13} />
+                  Disconnect
+                </Button>
+              </div>
+            </motion.div>
+
+            {/* Feature request notifications */}
+            <motion.div
+              variants={fadeUp}
+              className="rounded-[4px] bg-card ring-1 ring-border"
             >
               <div className="flex items-center gap-3 border-b border-border px-3.5 py-2.5">
-                <HugeiconsIcon icon={TextIcon} size={15} strokeWidth={1.8} className="text-muted-foreground" />
+                <PaperPlaneTilt size={15} className="text-muted-foreground" />
                 <div className="flex-1">
-                  <h3 className="text-[13px] font-medium">Additional context</h3>
+                  <h3 className="text-[13px] font-medium">
+                    Feature request notifications
+                  </h3>
                   <p className="text-[11px] text-muted-foreground">
-                    Describe your product so the AI can better classify feedback.
+                    Send new feature requests to a Slack channel with
+                    accept/deny buttons.
                   </p>
                 </div>
               </div>
-              <div className="p-5">
-                <Textarea
-                  value={additionalContext}
-                  onChange={handleContextChange}
-                  placeholder="e.g. Median is a project management tool for small teams. Key features include task boards, Slack integration, and AI-powered feedback triage..."
-                  rows={4}
-                  className="resize-none text-[13px]"
-                />
-                <p className="mt-2 text-[11px] text-muted-foreground/60">
-                  This context is passed to the AI when scanning messages. Changes save automatically.
+              <div className="p-3.5">
+                <label className="mb-1.5 block text-[12px] font-medium">
+                  Notification channel
+                </label>
+                {teamChannels.length === 0 ? (
+                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground/60">
+                    <svg
+                      className="size-3.5 animate-spin"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                    >
+                      <circle
+                        cx="8"
+                        cy="8"
+                        r="6"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        opacity="0.25"
+                      />
+                      <path
+                        d="M14 8a6 6 0 0 0-6-6"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                    Syncing channels from Slack...
+                  </div>
+                ) : (
+                  <select
+                    value={notificationChannelId}
+                    onChange={(e) =>
+                      handleNotificationChannelChange(e.target.value)
+                    }
+                    className="h-8 w-full rounded-[4px] border border-border bg-background px-2 text-[12px] text-foreground"
+                  >
+                    <option value="">Disabled — no notifications</option>
+                    {teamChannels.map((ch) => (
+                      <option key={ch.id} value={ch.id}>
+                        #{ch.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <p className="mt-1.5 text-[11px] text-muted-foreground/60">
+                  When a new feature request arrives, a message with accept and
+                  deny buttons will be posted here.
                 </p>
               </div>
             </motion.div>
-          ) : null}
 
-          {/* Respond for me */}
-          {feedbackCollectionEnabled ? (
+            {/* Feedback collection */}
             <motion.div
               variants={fadeUp}
-              className="rounded-[4px] ring-1 ring-border bg-card"
+              className="rounded-[4px] bg-card ring-1 ring-border"
             >
               <div className="flex items-center gap-3 border-b border-border px-3.5 py-2.5">
-                <HugeiconsIcon icon={SentIcon} size={15} strokeWidth={1.8} className="text-muted-foreground" />
+                <Info size={15} className="text-muted-foreground" />
                 <div className="flex-1">
-                  <h3 className="text-[13px] font-medium">Respond for me</h3>
+                  <h3 className="text-[13px] font-medium">
+                    Feedback collection
+                  </h3>
                   <p className="text-[11px] text-muted-foreground">
-                    Automatically reply in Slack when a request is received and when the change ships.
+                    Scan Slack messages for product feedback and automatically
+                    create tasks.
                   </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleFeedbackCollectionToggle(!feedbackCollectionEnabled)
+                  }
+                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
+                    feedbackCollectionEnabled
+                      ? "bg-foreground"
+                      : "bg-muted-foreground/30"
+                  }`}
+                >
+                  <span
+                    className={`inline-block size-3.5 rounded-full bg-background transition-transform ${
+                      feedbackCollectionEnabled
+                        ? "translate-x-[18px]"
+                        : "translate-x-[3px]"
+                    }`}
+                  />
+                </button>
               </div>
 
-              <div className="flex flex-col gap-0.5 px-3.5 py-3">
-                {(["off", "all", "specific"] as const).map((mode) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    onClick={() => handleRespondModeChange(mode)}
-                    className="flex items-center gap-3 rounded-[4px] px-2 py-2 text-left text-[13px] transition-colors hover:bg-muted/50"
-                  >
-                    <span
-                      className={`flex size-4 shrink-0 items-center justify-center rounded-full border ${
-                        respondForMeMode === mode
-                          ? "border-foreground bg-foreground"
-                          : "border-muted-foreground/40"
-                      }`}
-                    >
-                      {respondForMeMode === mode ? (
-                        <span className="size-1.5 rounded-full bg-background" />
-                      ) : null}
-                    </span>
-                    <span className={respondForMeMode === mode ? "text-foreground" : "text-muted-foreground"}>
-                      {mode === "off" && "Off"}
-                      {mode === "all" && "All channels"}
-                      {mode === "specific" && "Specific channels only"}
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              {respondForMeMode === "specific" ? (
-                <div className="border-t border-border">
-                  {teamChannels.length === 0 ? (
-                    <div className="px-3.5 py-3">
+              {feedbackCollectionEnabled ? (
+                <div className="flex flex-col gap-3 p-3.5">
+                  <div>
+                    <label className="mb-1.5 block text-[12px] font-medium">
+                      Feedback channel
+                    </label>
+                    {teamChannels.length === 0 ? (
                       <div className="flex items-center gap-2 text-[11px] text-muted-foreground/60">
-                        <svg className="size-3.5 animate-spin" viewBox="0 0 16 16" fill="none">
-                          <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="2" opacity="0.25" />
-                          <path d="M14 8a6 6 0 0 0-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                        <svg
+                          className="size-3.5 animate-spin"
+                          viewBox="0 0 16 16"
+                          fill="none"
+                        >
+                          <circle
+                            cx="8"
+                            cy="8"
+                            r="6"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            opacity="0.25"
+                          />
+                          <path
+                            d="M14 8a6 6 0 0 0-6-6"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                          />
                         </svg>
                         Syncing channels from Slack...
                       </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col">
-                      {teamChannels.length > 8 ? (
-                        <div className="px-3.5 pt-2.5 pb-1">
-                          <Input
-                            value={channelSearch}
-                            onChange={(event) => setChannelSearch(event.target.value)}
-                            placeholder="Filter channels..."
-                            className="h-7 text-xs"
-                          />
-                        </div>
-                      ) : null}
-
-                      <div className="max-h-56 overflow-y-auto px-1.5 py-1.5">
-                        {filteredChannels.length === 0 ? (
-                          <p className="px-3 py-2 text-[11px] text-muted-foreground/50">
-                            No channels match &ldquo;{channelSearch}&rdquo;
-                          </p>
-                        ) : (
-                          filteredChannels.map((ch) => {
-                            const isSelected = respondChannelIds.includes(ch.id)
-                            return (
-                              <button
-                                key={ch.id}
-                                type="button"
-                                onClick={() => handleToggleChannel(ch.id)}
-                                className="flex w-full items-center gap-2.5 rounded-sm px-2.5 py-1.5 text-left text-[12px] transition-colors hover:bg-muted/50"
-                              >
-                                <span
-                                  className={`flex size-3.5 shrink-0 items-center justify-center rounded-[3px] border transition-colors ${
-                                    isSelected
-                                      ? "border-foreground bg-foreground"
-                                      : "border-muted-foreground/30"
-                                  }`}
-                                >
-                                  {isSelected ? (
-                                    <svg
-                                      width="10"
-                                      height="10"
-                                      viewBox="0 0 10 10"
-                                      fill="none"
-                                      className="text-background"
-                                    >
-                                      <path
-                                        d="M2.5 5L4.5 7L7.5 3"
-                                        stroke="currentColor"
-                                        strokeWidth="1.5"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                      />
-                                    </svg>
-                                  ) : null}
-                                </span>
-                                <span className="text-muted-foreground/50">#</span>
-                                <span
-                                  className={
-                                    isSelected
-                                      ? "text-foreground"
-                                      : "text-muted-foreground"
-                                  }
-                                >
-                                  {ch.name}
-                                </span>
-                              </button>
-                            )
-                          })
-                        )}
-                      </div>
-
-                      {respondChannelIds.length > 0 ? (
-                        <div className="border-t border-border px-3.5 py-1.5">
-                          <p className="text-[11px] text-muted-foreground/60">
-                            {respondChannelIds.length} channel{respondChannelIds.length !== 1 ? "s" : ""} selected
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="border-t border-border px-3.5 py-1.5">
-                          <p className="text-[11px] text-muted-foreground/60">
-                            Select the channels where Median should auto-reply.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                    ) : (
+                      <select
+                        value={feedbackChannelId}
+                        onChange={(e) =>
+                          handleFeedbackChannelChange(e.target.value)
+                        }
+                        className="h-8 w-full rounded-[4px] border border-border bg-background px-2 text-[12px] text-foreground"
+                      >
+                        <option value="">All channels</option>
+                        {teamChannels.map((ch) => (
+                          <option key={ch.id} value={ch.id}>
+                            #{ch.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    <p className="mt-1 text-[11px] text-muted-foreground/60">
+                      Limit feedback scanning to a specific channel, or scan all
+                      channels.
+                    </p>
+                  </div>
                 </div>
               ) : null}
             </motion.div>
-          ) : null}
-        </div>
 
-        <Dialog open={disconnectOpen} onOpenChange={setDisconnectOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Disconnect Slack</DialogTitle>
-              <DialogDescription>
-                This will disconnect{" "}
-                <span className="font-medium text-foreground">{integration.teamName}</span>{" "}
-                from{" "}
-                <span className="font-medium text-foreground">{workspace.name}</span>.
-                Slack automations will stop routing to this workspace.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setDisconnectOpen(false)}
-                className="flex h-8 flex-1 items-center justify-center rounded-[4px] border border-border text-[13px] font-medium transition-colors hover:bg-muted"
+            {/* Additional context */}
+            {feedbackCollectionEnabled ? (
+              <motion.div
+                variants={fadeUp}
+                className="rounded-[4px] bg-card ring-1 ring-border"
               >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={isDisconnecting}
-                onClick={handleDisconnect}
-                className="flex h-8 flex-1 items-center justify-center rounded-[4px] bg-destructive text-[13px] font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:opacity-50"
+                <div className="flex items-center gap-3 border-b border-border px-3.5 py-2.5">
+                  <TextT size={15} className="text-muted-foreground" />
+                  <div className="flex-1">
+                    <h3 className="text-[13px] font-medium">
+                      Additional context
+                    </h3>
+                    <p className="text-[11px] text-muted-foreground">
+                      Describe your product so the AI can better classify
+                      feedback.
+                    </p>
+                  </div>
+                </div>
+                <div className="p-5">
+                  <Textarea
+                    value={additionalContext}
+                    onChange={handleContextChange}
+                    placeholder="e.g. Median is a project management tool for small teams. Key features include task boards, Slack integration, and AI-powered feedback triage..."
+                    rows={4}
+                    className="resize-none text-[13px]"
+                  />
+                  <p className="mt-2 text-[11px] text-muted-foreground/60">
+                    This context is passed to the AI when scanning messages.
+                    Changes save automatically.
+                  </p>
+                </div>
+              </motion.div>
+            ) : null}
+
+            {/* Respond for me */}
+            {feedbackCollectionEnabled ? (
+              <motion.div
+                variants={fadeUp}
+                className="rounded-[4px] bg-card ring-1 ring-border"
               >
-                {isDisconnecting ? "Disconnecting..." : "Disconnect"}
-              </button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </Stagger>
+                <div className="flex items-center gap-3 border-b border-border px-3.5 py-2.5">
+                  <PaperPlaneTilt size={15} className="text-muted-foreground" />
+                  <div className="flex-1">
+                    <h3 className="text-[13px] font-medium">Respond for me</h3>
+                    <p className="text-[11px] text-muted-foreground">
+                      Automatically reply in Slack when a request is received
+                      and when the change ships.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-0.5 px-3.5 py-3">
+                  {(["off", "all", "specific"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => handleRespondModeChange(mode)}
+                      className="flex items-center gap-3 rounded-[4px] px-2 py-2 text-left text-[13px] transition-colors hover:bg-muted/50"
+                    >
+                      <span
+                        className={`flex size-4 shrink-0 items-center justify-center rounded-full border ${
+                          respondForMeMode === mode
+                            ? "border-foreground bg-foreground"
+                            : "border-muted-foreground/40"
+                        }`}
+                      >
+                        {respondForMeMode === mode ? (
+                          <span className="size-1.5 rounded-full bg-background" />
+                        ) : null}
+                      </span>
+                      <span
+                        className={
+                          respondForMeMode === mode
+                            ? "text-foreground"
+                            : "text-muted-foreground"
+                        }
+                      >
+                        {mode === "off" && "Off"}
+                        {mode === "all" && "All channels"}
+                        {mode === "specific" && "Specific channels only"}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                {respondForMeMode === "specific" ? (
+                  <div className="border-t border-border">
+                    {teamChannels.length === 0 ? (
+                      <div className="px-3.5 py-3">
+                        <div className="flex items-center gap-2 text-[11px] text-muted-foreground/60">
+                          <svg
+                            className="size-3.5 animate-spin"
+                            viewBox="0 0 16 16"
+                            fill="none"
+                          >
+                            <circle
+                              cx="8"
+                              cy="8"
+                              r="6"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              opacity="0.25"
+                            />
+                            <path
+                              d="M14 8a6 6 0 0 0-6-6"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                          Syncing channels from Slack...
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col">
+                        {teamChannels.length > 8 ? (
+                          <div className="px-3.5 pt-2.5 pb-1">
+                            <Input
+                              value={channelSearch}
+                              onChange={(event) =>
+                                setChannelSearch(event.target.value)
+                              }
+                              placeholder="Filter channels..."
+                              className="h-7 text-xs"
+                            />
+                          </div>
+                        ) : null}
+
+                        <div className="max-h-56 overflow-y-auto px-1.5 py-1.5">
+                          {filteredChannels.length === 0 ? (
+                            <p className="px-3 py-2 text-[11px] text-muted-foreground/50">
+                              No channels match &ldquo;{channelSearch}&rdquo;
+                            </p>
+                          ) : (
+                            filteredChannels.map((ch) => {
+                              const isSelected = respondChannelIds.includes(
+                                ch.id
+                              )
+                              return (
+                                <button
+                                  key={ch.id}
+                                  type="button"
+                                  onClick={() => handleToggleChannel(ch.id)}
+                                  className="flex w-full items-center gap-2.5 rounded-sm px-2.5 py-1.5 text-left text-[12px] transition-colors hover:bg-muted/50"
+                                >
+                                  <span
+                                    className={`flex size-3.5 shrink-0 items-center justify-center rounded-[3px] border transition-colors ${
+                                      isSelected
+                                        ? "border-foreground bg-foreground"
+                                        : "border-muted-foreground/30"
+                                    }`}
+                                  >
+                                    {isSelected ? (
+                                      <svg
+                                        width="10"
+                                        height="10"
+                                        viewBox="0 0 10 10"
+                                        fill="none"
+                                        className="text-background"
+                                      >
+                                        <path
+                                          d="M2.5 5L4.5 7L7.5 3"
+                                          stroke="currentColor"
+                                          strokeWidth="1.5"
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                        />
+                                      </svg>
+                                    ) : null}
+                                  </span>
+                                  <span className="text-muted-foreground/50">
+                                    #
+                                  </span>
+                                  <span
+                                    className={
+                                      isSelected
+                                        ? "text-foreground"
+                                        : "text-muted-foreground"
+                                    }
+                                  >
+                                    {ch.name}
+                                  </span>
+                                </button>
+                              )
+                            })
+                          )}
+                        </div>
+
+                        {respondChannelIds.length > 0 ? (
+                          <div className="border-t border-border px-3.5 py-1.5">
+                            <p className="text-[11px] text-muted-foreground/60">
+                              {respondChannelIds.length} channel
+                              {respondChannelIds.length !== 1 ? "s" : ""}{" "}
+                              selected
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="border-t border-border px-3.5 py-1.5">
+                            <p className="text-[11px] text-muted-foreground/60">
+                              Select the channels where Median should
+                              auto-reply.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+              </motion.div>
+            ) : null}
+          </div>
+
+          <Dialog open={disconnectOpen} onOpenChange={setDisconnectOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Disconnect Slack</DialogTitle>
+                <DialogDescription>
+                  This will disconnect{" "}
+                  <span className="font-medium text-foreground">
+                    {integration.teamName}
+                  </span>{" "}
+                  from{" "}
+                  <span className="font-medium text-foreground">
+                    {workspace.name}
+                  </span>
+                  . Slack automations will stop routing to this workspace.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDisconnectOpen(false)}
+                  className="flex h-8 flex-1 items-center justify-center rounded-[4px] border border-border text-[13px] font-medium transition-colors hover:bg-muted"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isDisconnecting}
+                  onClick={handleDisconnect}
+                  className="text-destructive-foreground flex h-8 flex-1 items-center justify-center rounded-[4px] bg-destructive text-[13px] font-medium transition-colors hover:bg-destructive/90 disabled:opacity-50"
+                >
+                  {isDisconnecting ? "Disconnecting..." : "Disconnect"}
+                </button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </Stagger>
       </div>
     )
   }
@@ -697,12 +842,16 @@ export function SlackIntegrationPanel() {
         <motion.div variants={fadeUp}>
           <h2 className="text-[14px] font-semibold tracking-tight">Slack</h2>
           <p className="mt-0.5 text-[12px] text-muted-foreground">
-            Connect a Slack workspace to receive feedback and send notifications.
+            Connect a Slack workspace to receive feedback and send
+            notifications.
           </p>
         </motion.div>
 
         {/* Connection card */}
-        <motion.div variants={fadeUp} className="rounded-[4px] ring-1 ring-border bg-card">
+        <motion.div
+          variants={fadeUp}
+          className="rounded-[4px] bg-card ring-1 ring-border"
+        >
           <div className="flex items-center gap-3 p-3.5">
             <div className="flex size-8 items-center justify-center rounded-[4px] bg-[#4A154B]/10">
               <SlackBrandIcon size={20} className="text-[#4A154B]" />
@@ -722,7 +871,7 @@ export function SlackIntegrationPanel() {
               disabled={isConnecting}
               className="h-9 w-full bg-[#4A154B] text-white hover:bg-[#4A154B]/90"
             >
-              <HugeiconsIcon icon={Link01Icon} size={15} strokeWidth={1.8} />
+              <LinkSimple size={15} />
               {isConnecting ? "Connecting..." : "Connect to Slack"}
             </Button>
           </div>
@@ -735,13 +884,22 @@ export function SlackIntegrationPanel() {
         </motion.div>
 
         {/* Info card */}
-        <motion.div variants={fadeUp} className="flex items-start gap-2.5 rounded-[4px] ring-1 ring-border bg-card px-3.5 py-3">
-          <HugeiconsIcon icon={InformationCircleIcon} size={14} strokeWidth={1.8} className="mt-0.5 shrink-0 text-muted-foreground" />
+        <motion.div
+          variants={fadeUp}
+          className="flex items-start gap-2.5 rounded-[4px] bg-card px-3.5 py-3 ring-1 ring-border"
+        >
+          <Info size={14} className="mt-0.5 shrink-0 text-muted-foreground" />
           <div className="min-w-0 flex-1">
-            <p className="text-[12px] font-medium">What does this integration do?</p>
+            <p className="text-[12px] font-medium">
+              What does this integration do?
+            </p>
             <ul className="mt-1.5 flex flex-col gap-1 text-[11px] text-muted-foreground">
-              <li>Scan Slack messages for product feedback and auto-create tasks</li>
-              <li>Send feature request notifications with accept/deny buttons</li>
+              <li>
+                Scan Slack messages for product feedback and auto-create tasks
+              </li>
+              <li>
+                Send feature request notifications with accept/deny buttons
+              </li>
               <li>Auto-reply when feedback is acknowledged or shipped</li>
             </ul>
           </div>
