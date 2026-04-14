@@ -19,7 +19,8 @@ The root dev command now starts:
 2. Create a Clerk app and add your publishable/secret keys.
 3. In Clerk, create a JWT template named `convex`.
 4. Set `CLERK_JWT_ISSUER_DOMAIN` to your Clerk issuer domain.
-5. Run `pnpm dev` and finish the Convex CLI prompts in the Convex task tab.
+5. Add `ANTHROPIC_API_KEY` to `apps/web/.env.local` for AI features.
+6. Run `pnpm dev` and finish the Convex CLI prompts in the Convex task tab.
 
 ## X integration env
 

@@ -5,6 +5,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
+import { AI_MODEL_IDS, AI_MODELS, hasAnthropicApiKey } from "@/lib/ai"
 import { withAxiom, logger } from "@/lib/logger"
 import { getPostHogServerClient } from "@/lib/posthog-server"
 import { checkRateLimit, getRequestIp } from "@/lib/rate-limit"
@@ -124,10 +125,10 @@ export const POST = withAxiom(async (request: Request) => {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  if (!process.env.AI_GATEWAY_API_KEY) {
-    logger.error("Missing AI_GATEWAY_API_KEY", { userId })
+  if (!hasAnthropicApiKey()) {
+    logger.error("Missing ANTHROPIC_API_KEY", { userId })
     return NextResponse.json(
-      { error: "Missing AI_GATEWAY_API_KEY." },
+      { error: "Missing ANTHROPIC_API_KEY." },
       { status: 500 }
     )
   }
@@ -221,11 +222,11 @@ export const POST = withAxiom(async (request: Request) => {
         ? availableLabels.join(", ")
         : "No predefined labels available."
 
-    const model = "anthropic/claude-sonnet-4.6"
+    const model = AI_MODEL_IDS.taskGeneration
     const generationMode = getTaskGenerationMode(prompt)
     const allowMultipleTasks = generationMode !== "single"
     const result = await generateText({
-      model,
+      model: AI_MODELS.taskGeneration,
       system: [
         "You generate actionable task objects for a project management app.",
         `Workspace: ${workspaceName}.`,
@@ -337,7 +338,7 @@ export const POST = withAxiom(async (request: Request) => {
         distinctId: userId,
         event: "llm_generation",
         properties: {
-          model: "anthropic/claude-sonnet-4.6",
+          model: AI_MODEL_IDS.taskGeneration,
           feature: "task_generation",
           duration_ms: durationMs,
           success: false,

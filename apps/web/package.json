@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.69",
     "@ai-sdk/google": "^2.0.12",
     "@axiomhq/js": "^1.5.0",
     "@axiomhq/logging": "^0.2.0",
