@@ -43,8 +43,6 @@ const LABEL_COLORS: Record<LabelName, string> = {
   improvement: "#06b6d4",
 }
 
-type Source = "discord" | "slack" | "linear" | "x" | "github" | "cli"
-
 type MockTask = {
   id: string
   code: string
@@ -52,7 +50,6 @@ type MockTask = {
   date: string
   priority?: Priority
   labels?: LabelName[]
-  sources?: Source[]
 }
 
 const REQUESTS: MockTask[] = [
@@ -62,7 +59,6 @@ const REQUESTS: MockTask[] = [
     title: "Database performance optimization",
     date: "Apr 9",
     labels: ["improvement"],
-    sources: ["slack"],
   },
   {
     id: "r2",
@@ -70,7 +66,6 @@ const REQUESTS: MockTask[] = [
     title: "Client feedback on dashboard redesign",
     date: "Apr 9",
     labels: ["feature"],
-    sources: ["discord"],
   },
 ]
 
@@ -164,22 +159,15 @@ function PriorityIcon({ priority }: { priority: Priority }) {
   }
 }
 
-function SourceIcon({ source }: { source: Source }) {
-  const cls = "text-muted-foreground/70"
-  switch (source) {
-    case "discord":
-      return <span className={cls}><DiscordIcon size={11} /></span>
-    case "slack":
-      return <span className={cls}><SlackIcon size={11} /></span>
-    case "linear":
-      return <span className={cls}><LinearIcon size={11} /></span>
-    case "x":
-      return <span className={cls}><XIcon size={11} /></span>
-    case "github":
-      return <span className={cls}><GitHubIcon size={11} /></span>
-    case "cli":
-      return <span className={cls}><CliIcon size={11} /></span>
-  }
+function LinearBadge() {
+  return (
+    <span
+      className="flex size-5 shrink-0 items-center justify-center rounded-[4px] bg-[#141414] text-[#F7F7F4]/80 ring-1 ring-[#2E2E2E]"
+      title="Synced with Linear"
+    >
+      <LinearIcon size={10} />
+    </span>
+  )
 }
 
 function TaskLabel({ label }: { label: LabelName }) {
@@ -205,9 +193,7 @@ function RequestCard({ task }: { task: MockTask }) {
           <div className="flex flex-wrap items-center gap-1.5">
             {task.labels?.map((l) => <TaskLabel key={l} label={l} />)}
           </div>
-          <div className="flex items-center gap-1">
-            {task.sources?.map((s) => <SourceIcon key={s} source={s} />)}
-          </div>
+          <LinearBadge />
         </div>
       </div>
       <div className="flex items-center justify-between border-t border-[#2E2E2E] px-2.5 py-1">
@@ -243,6 +229,7 @@ function KanbanCard({ task }: { task: MockTask }) {
             {task.priority && <PriorityIcon priority={task.priority} />}
             {task.labels?.map((l) => <TaskLabel key={l} label={l} />)}
           </div>
+          <LinearBadge />
         </div>
       </div>
       <div className="flex items-center justify-between border-t border-[#2E2E2E] px-2.5 py-1">
