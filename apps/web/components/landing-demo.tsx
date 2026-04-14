@@ -532,9 +532,19 @@ function SidebarSubItem({
 export function LandingDemo() {
   const [mac, setMac] = useState(true)
   const [view, setView] = useState<"board" | "list">("board")
+  const [isMobile, setIsMobile] = useState(false)
   useEffect(() => {
     setMac(/Mac|iPhone/.test(navigator.userAgent))
   }, [])
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)")
+    const update = () => setIsMobile(mq.matches)
+    update()
+    mq.addEventListener("change", update)
+    return () => mq.removeEventListener("change", update)
+  }, [])
+
+  const effectiveView = isMobile ? "board" : view
 
   return (
     <section className="px-4 pb-24">
@@ -617,8 +627,8 @@ export function LandingDemo() {
 
             {/* Main (inset panel) */}
             <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-[4px] bg-[#181818] ring-1 ring-[#2A2A2A]">
-              {/* Toolbar */}
-              <div className="flex items-center gap-2 px-4 pt-3 pb-2">
+              {/* Toolbar — toggle hidden on mobile (board-only) */}
+              <div className="hidden items-center gap-2 px-4 pt-3 pb-2 md:flex">
                 <div className="flex items-center gap-0.5 rounded-[4px] bg-[#1E1E1E]/60 p-0.5 ring-1 ring-[#2A2A2A]">
                   <button
                     onClick={() => setView("list")}
@@ -647,19 +657,19 @@ export function LandingDemo() {
 
               <AnimatePresence mode="wait">
                 <motion.div
-                  key={view}
+                  key={effectiveView}
                   initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -4 }}
                   transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
                   className="flex min-h-0 flex-1 flex-col"
                 >
-                  {view === "board" ? <BoardView /> : <ListView />}
+                  {effectiveView === "board" ? <BoardView /> : <ListView />}
                 </motion.div>
               </AnimatePresence>
 
               {/* Right-edge fade (board overflow) */}
-              {view === "board" && (
+              {effectiveView === "board" && (
                 <div className="pointer-events-none absolute top-0 right-0 bottom-0 w-20 bg-gradient-to-l from-[#181818] to-transparent" />
               )}
               {/* Bottom fade so content doesn't cut harshly */}
