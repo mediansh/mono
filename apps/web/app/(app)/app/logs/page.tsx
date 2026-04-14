@@ -19,11 +19,8 @@ import {
   Lightning,
   Robot,
   Users,
-  GithubLogo,
-  DiscordLogo,
-  SlackLogo,
-  XLogo,
 } from "@phosphor-icons/react"
+import { FaXTwitter, FaDiscord, FaGithub, FaSlack } from "react-icons/fa6"
 import { SiLinear } from "react-icons/si"
 import {
   AreaChart,
@@ -142,10 +139,10 @@ const EVENT_CONFIG: Record<
 }
 
 const SOURCE_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
-  discord: DiscordLogo,
-  slack: SlackLogo,
-  github: GithubLogo,
-  x: XLogo,
+  discord: FaDiscord,
+  slack: FaSlack,
+  github: FaGithub,
+  x: FaXTwitter,
   linear: SiLinear,
 }
 
