@@ -666,6 +666,7 @@ export default defineSchema({
     note: v.optional(v.string()),
     redeemedByUserId: v.optional(v.string()),
     redeemedAt: v.optional(v.number()),
+    voidedAt: v.optional(v.number()),
   })
     .index("by_code", ["code"])
     .index("by_redeemed_by", ["redeemedByUserId"]),

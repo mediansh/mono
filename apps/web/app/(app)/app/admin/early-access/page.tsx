@@ -3,14 +3,7 @@
 import { useState } from "react"
 import { useAction, useMutation, useQuery } from "convex/react"
 import { motion } from "motion/react"
-import {
-  Check,
-  Copy,
-  Key,
-  Plus,
-  Trash,
-  UserMinus,
-} from "@phosphor-icons/react"
+import { Check, Copy, Key, Plus, Trash, UserMinus } from "@phosphor-icons/react"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
 
@@ -26,10 +19,27 @@ const fadeUp = {
 function Spinner() {
   return (
     <svg className="size-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+      />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+      />
     </svg>
   )
+}
+
+function getCodeStatus(code: { redeemedByUserId?: string; voidedAt?: number }) {
+  if (code.voidedAt) return "Voided"
+  if (code.redeemedByUserId) return "Redeemed"
+  return "Unused"
 }
 
 export default function AdminEarlyAccessPage() {
@@ -39,7 +49,7 @@ export default function AdminEarlyAccessPage() {
 
   const setEnabled = useMutation(api.earlyAccess.adminSetEnabled)
   const createCode = useMutation(api.earlyAccess.adminCreateCode)
-  const deleteCode = useMutation(api.earlyAccess.adminDeleteCode)
+  const voidCode = useMutation(api.earlyAccess.adminVoidCode)
   const removeScale = useAction(api.earlyAccess.adminRemoveScalePlan)
 
   const [togglingEnabled, setTogglingEnabled] = useState(false)
@@ -76,13 +86,13 @@ export default function AdminEarlyAccessPage() {
     }
   }
 
-  async function handleDelete(codeId: Id<"earlyAccessCodes">) {
+  async function handleVoid(codeId: Id<"earlyAccessCodes">) {
     setPendingId(codeId)
     setError("")
     try {
-      await deleteCode({ codeId })
+      await voidCode({ codeId })
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to delete code")
+      setError(e instanceof Error ? e.message : "Failed to void code")
     } finally {
       setPendingId(null)
     }
@@ -115,13 +125,15 @@ export default function AdminEarlyAccessPage() {
       className="mx-auto max-w-3xl px-8 py-10"
     >
       <motion.div variants={fadeUp} className="mb-6">
-        <h1 className="text-[15px] font-semibold leading-tight">Early access</h1>
+        <h1 className="text-[15px] leading-tight font-semibold">
+          Early access
+        </h1>
         <p className="mt-1 text-[12px] text-muted-foreground">
-          Gate new sign-ups behind an access code and grant Scale plans to early users.
+          Gate new sign-ups behind an access code and grant Scale plans to early
+          users.
         </p>
       </motion.div>
 
-      {/* Toggle */}
       <motion.div
         variants={fadeUp}
         className="mb-5 flex items-center justify-between rounded-[6px] border border-sidebar-border bg-sidebar/30 p-4"
@@ -145,12 +157,14 @@ export default function AdminEarlyAccessPage() {
       </motion.div>
 
       {error && (
-        <motion.p variants={fadeUp} className="mb-3 text-[12px] text-destructive">
+        <motion.p
+          variants={fadeUp}
+          className="mb-3 text-[12px] text-destructive"
+        >
           {error}
         </motion.p>
       )}
 
-      {/* Create codes */}
       <motion.div
         variants={fadeUp}
         className="mb-6 rounded-[6px] border border-sidebar-border bg-sidebar/30 p-4"
@@ -172,7 +186,9 @@ export default function AdminEarlyAccessPage() {
             min={1}
             max={50}
             value={count}
-            onChange={(e) => setCount(Math.max(1, Math.min(50, Number(e.target.value) || 1)))}
+            onChange={(e) =>
+              setCount(Math.max(1, Math.min(50, Number(e.target.value) || 1)))
+            }
             className="h-9 w-20 rounded-[4px] bg-background px-3 text-[13px] ring-1 ring-border outline-none focus:ring-foreground/30"
           />
           <button
@@ -187,21 +203,26 @@ export default function AdminEarlyAccessPage() {
         </div>
       </motion.div>
 
-      {/* Codes list */}
       <motion.div variants={fadeUp} className="mb-8">
-        <h2 className="mb-2 text-[12px] font-medium text-muted-foreground">Codes</h2>
+        <h2 className="mb-2 text-[12px] font-medium text-muted-foreground">
+          Codes
+        </h2>
         <div className="overflow-hidden rounded-[6px] border border-sidebar-border">
-          <div className="flex items-center gap-2 border-b border-sidebar-border bg-sidebar/50 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          <div className="flex items-center gap-2 border-b border-sidebar-border bg-sidebar/50 px-3 py-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
             <div className="w-28">Code</div>
             <div className="flex-1">Note</div>
             <div className="w-32">Status</div>
             <div className="w-16" />
           </div>
           {codes === undefined && (
-            <div className="px-3 py-4 text-[12px] text-muted-foreground">Loading…</div>
+            <div className="px-3 py-4 text-[12px] text-muted-foreground">
+              Loading…
+            </div>
           )}
           {codes?.length === 0 && (
-            <div className="px-3 py-4 text-[12px] text-muted-foreground">No codes yet.</div>
+            <div className="px-3 py-4 text-[12px] text-muted-foreground">
+              No codes yet.
+            </div>
           )}
           {codes?.map((code) => (
             <div
@@ -220,18 +241,20 @@ export default function AdminEarlyAccessPage() {
                 )}
                 <span>{code.code}</span>
               </button>
-              <div className="flex-1 truncate text-muted-foreground">{code.note ?? "—"}</div>
+              <div className="flex-1 truncate text-muted-foreground">
+                {code.note ?? "—"}
+              </div>
               <div className="w-32 text-muted-foreground">
-                {code.redeemedByUserId ? "Redeemed" : "Unused"}
+                {getCodeStatus(code)}
               </div>
               <div className="flex w-16 justify-end">
-                {!code.redeemedByUserId && (
+                {!code.voidedAt && (
                   <button
                     type="button"
-                    onClick={() => handleDelete(code._id)}
+                    onClick={() => handleVoid(code._id)}
                     disabled={pendingId === code._id}
                     className="flex size-7 items-center justify-center rounded-[4px] text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-destructive disabled:opacity-50"
-                    aria-label="Delete code"
+                    aria-label="Void code"
                   >
                     {pendingId === code._id ? <Spinner /> : <Trash size={13} />}
                   </button>
@@ -242,18 +265,21 @@ export default function AdminEarlyAccessPage() {
         </div>
       </motion.div>
 
-      {/* Redemptions */}
       <motion.div variants={fadeUp}>
-        <h2 className="mb-2 text-[12px] font-medium text-muted-foreground">Early access users</h2>
+        <h2 className="mb-2 text-[12px] font-medium text-muted-foreground">
+          Early access users
+        </h2>
         <div className="overflow-hidden rounded-[6px] border border-sidebar-border">
-          <div className="flex items-center gap-2 border-b border-sidebar-border bg-sidebar/50 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          <div className="flex items-center gap-2 border-b border-sidebar-border bg-sidebar/50 px-3 py-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
             <div className="flex-1">User</div>
             <div className="w-28">Code</div>
             <div className="w-28">Scale plan</div>
             <div className="w-16" />
           </div>
           {redemptions === undefined && (
-            <div className="px-3 py-4 text-[12px] text-muted-foreground">Loading…</div>
+            <div className="px-3 py-4 text-[12px] text-muted-foreground">
+              Loading…
+            </div>
           )}
           {redemptions?.length === 0 && (
             <div className="px-3 py-4 text-[12px] text-muted-foreground">
@@ -269,11 +295,19 @@ export default function AdminEarlyAccessPage() {
               >
                 <div className="flex-1 truncate">
                   <div className="font-medium">{r.name ?? "—"}</div>
-                  <div className="text-[11px] text-muted-foreground">{r.email ?? r.userId}</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {r.email ?? r.userId}
+                  </div>
                 </div>
-                <div className="w-28 font-mono text-[11px] text-muted-foreground">{r.code}</div>
+                <div className="w-28 font-mono text-[11px] text-muted-foreground">
+                  {r.code}
+                </div>
                 <div className="w-28 text-muted-foreground">
-                  {hasScale ? "Active" : r.scaleRemovedAt ? "Removed" : "Not attached"}
+                  {hasScale
+                    ? "Active"
+                    : r.scaleRemovedAt
+                      ? "Removed"
+                      : "Not attached"}
                 </div>
                 <div className="flex w-16 justify-end">
                   {hasScale && (
@@ -284,7 +318,11 @@ export default function AdminEarlyAccessPage() {
                       className="flex size-7 items-center justify-center rounded-[4px] text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-destructive disabled:opacity-50"
                       aria-label="Remove Scale plan"
                     >
-                      {pendingId === r._id ? <Spinner /> : <UserMinus size={13} />}
+                      {pendingId === r._id ? (
+                        <Spinner />
+                      ) : (
+                        <UserMinus size={13} />
+                      )}
                     </button>
                   )}
                 </div>

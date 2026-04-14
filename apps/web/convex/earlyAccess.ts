@@ -27,7 +27,10 @@ function generateCode(): string {
 }
 
 function normalizeCode(input: string): string {
-  return input.trim().toUpperCase().replace(/[^A-Z0-9]/g, "")
+  return input
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
 }
 
 export const isEnabled = query({
@@ -73,7 +76,7 @@ export const redeemCode = mutation({
       .query("earlyAccessCodes")
       .withIndex("by_code", (q) => q.eq("code", normalized))
       .unique()
-    if (!codeRow) {
+    if (!codeRow || codeRow.voidedAt) {
       throw new Error("Invalid early access code")
     }
     if (codeRow.redeemedByUserId) {
@@ -107,6 +110,13 @@ export const attachScaleForCurrentUser = action({
     if (!redemption) return { attached: false }
     if (redemption.scaleAttachedAt && !redemption.scaleRemovedAt) {
       return { attached: true, alreadyAttached: true }
+    }
+
+    const code = await ctx.runQuery(internal.earlyAccess.getCodeForRedemption, {
+      codeId: redemption.codeId,
+    })
+    if (!code || code.voidedAt) {
+      return { attached: false, voided: true }
     }
 
     const workspace = await ctx.runQuery(
@@ -145,6 +155,13 @@ export const getRedemptionForCurrentUser = internalQuery({
   },
 })
 
+export const getCodeForRedemption = internalQuery({
+  args: { codeId: v.id("earlyAccessCodes") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.codeId)
+  },
+})
+
 export const getWorkspaceForAttach = internalQuery({
   args: {
     workspaceId: v.id("workspaces"),
@@ -180,8 +197,6 @@ export const markScaleRemoved = internalMutation({
   },
 })
 
-// ---------- Admin ----------
-
 export const adminListCodes = query({
   args: {},
   handler: async (ctx) => {
@@ -208,7 +223,6 @@ export const adminCreateCode = mutation({
     const ids: string[] = []
     for (let i = 0; i < count; i++) {
       let code = generateCode()
-      // Avoid (extremely unlikely) collision
       for (let attempt = 0; attempt < 5; attempt++) {
         const collision = await ctx.db
           .query("earlyAccessCodes")
@@ -229,16 +243,15 @@ export const adminCreateCode = mutation({
   },
 })
 
-export const adminDeleteCode = mutation({
+export const adminVoidCode = mutation({
   args: { codeId: v.id("earlyAccessCodes") },
   handler: async (ctx, args) => {
     await requireAdmin(ctx)
     const row = await ctx.db.get(args.codeId)
-    if (!row) return
-    if (row.redeemedByUserId) {
-      throw new Error("Cannot delete a redeemed code")
-    }
-    await ctx.db.delete(args.codeId)
+    if (!row || row.voidedAt) return
+    await ctx.db.patch(args.codeId, {
+      voidedAt: Date.now(),
+    })
   },
 })
 

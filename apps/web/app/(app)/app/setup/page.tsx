@@ -15,8 +15,19 @@ import { trackWorkspaceCreated } from "@/lib/analytics"
 function Spinner() {
   return (
     <svg className="size-4 animate-spin" viewBox="0 0 24 24" fill="none">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+      />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+      />
     </svg>
   )
 }
@@ -38,8 +49,14 @@ export default function WorkspaceSetupPage() {
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    if (!file.type.startsWith("image/")) { setError("Please upload an image file"); return }
-    if (file.size > 5 * 1024 * 1024) { setError("Image must be under 5MB"); return }
+    if (!file.type.startsWith("image/")) {
+      setError("Please upload an image file")
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Image must be under 5MB")
+      return
+    }
     setIconFile(file)
     setIconPreview(URL.createObjectURL(file))
     if (error) setError("")
@@ -47,14 +64,21 @@ export default function WorkspaceSetupPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!name.trim()) { setError("Workspace name is required"); return }
+    if (!name.trim()) {
+      setError("Workspace name is required")
+      return
+    }
     setLoading(true)
     setError("")
     try {
       let iconId: string | undefined
       if (iconFile) {
         const uploadUrl = await generateUploadUrl()
-        const result = await fetch(uploadUrl, { method: "POST", headers: { "Content-Type": iconFile.type }, body: iconFile })
+        const result = await fetch(uploadUrl, {
+          method: "POST",
+          headers: { "Content-Type": iconFile.type },
+          body: iconFile,
+        })
         const data = await result.json()
         iconId = data.storageId
       }
@@ -94,42 +118,61 @@ export default function WorkspaceSetupPage() {
         transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
         className="w-full max-w-[340px]"
       >
-        {/* Logo */}
         <div className="mb-8 flex justify-center">
           <Logo symbolOnly className="size-9" />
         </div>
 
-        {/* Card */}
         <div className="rounded-[4px] bg-card p-5 ring-1 ring-border">
-          <h1 className="text-center text-[15px] font-semibold">Create your workspace</h1>
+          <h1 className="text-center text-[15px] font-semibold">
+            Create your workspace
+          </h1>
           <p className="mt-1 text-center text-[13px] text-muted-foreground">
             Name your workspace to get started
           </p>
 
           <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-3">
-            {/* Logo upload */}
             <div className="flex flex-col gap-1">
               <label className="text-[13px] font-medium">
-                Logo <span className="font-normal text-muted-foreground">(optional)</span>
+                Logo{" "}
+                <span className="font-normal text-muted-foreground">
+                  (optional)
+                </span>
               </label>
-              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="group flex size-12 items-center justify-center overflow-hidden rounded-[4px] bg-background ring-1 ring-border transition-colors hover:bg-accent"
               >
                 {iconPreview ? (
-                  <img src={iconPreview} alt="Workspace logo" className="size-full object-cover" />
+                  <img
+                    src={iconPreview}
+                    alt="Workspace logo"
+                    className="size-full object-cover"
+                  />
                 ) : name.trim() ? (
                   <Facehash name={name.trim()} size={48} />
                 ) : (
-                  <ImageIcon size={16} className="text-muted-foreground transition-colors group-hover:text-foreground" />
+                  <ImageIcon
+                    size={16}
+                    className="text-muted-foreground transition-colors group-hover:text-foreground"
+                  />
                 )}
               </button>
               {iconPreview && (
                 <button
                   type="button"
-                  onClick={() => { setIconFile(null); setIconPreview(null); if (fileInputRef.current) fileInputRef.current.value = "" }}
+                  onClick={() => {
+                    setIconFile(null)
+                    setIconPreview(null)
+                    if (fileInputRef.current) fileInputRef.current.value = ""
+                  }}
                   className="w-fit text-[11px] text-muted-foreground transition-colors hover:text-foreground"
                 >
                   Remove
@@ -137,17 +180,24 @@ export default function WorkspaceSetupPage() {
               )}
             </div>
 
-            {/* Name */}
             <div className="flex flex-col gap-1">
-              <label htmlFor="workspace-name" className="text-[13px] font-medium">Workspace name</label>
+              <label
+                htmlFor="workspace-name"
+                className="text-[13px] font-medium"
+              >
+                Workspace name
+              </label>
               <input
                 id="workspace-name"
                 type="text"
                 placeholder="My Workspace"
                 value={name}
-                onChange={(e) => { setName(e.target.value); if (error) setError("") }}
+                onChange={(e) => {
+                  setName(e.target.value)
+                  if (error) setError("")
+                }}
                 autoFocus
-                className="h-9 rounded-[4px] bg-background px-3 text-[13px] ring-1 ring-border outline-none transition-all placeholder:text-muted-foreground focus:ring-foreground/30"
+                className="h-9 rounded-[4px] bg-background px-3 text-[13px] ring-1 ring-border transition-all outline-none placeholder:text-muted-foreground focus:ring-foreground/30"
               />
             </div>
 

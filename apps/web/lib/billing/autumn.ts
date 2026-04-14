@@ -223,10 +223,12 @@ export async function loadWorkspaceBillingSnapshot(args: {
   console.info("[billing] Loading billing snapshot", {
     customerId,
     workspaceId: args.workspaceId,
-    subscriptions: customer.subscriptions?.map((s: { planId: string; status: string }) => ({
-      planId: s.planId,
-      status: s.status,
-    })),
+    subscriptions: customer.subscriptions?.map(
+      (s: { planId: string; status: string }) => ({
+        planId: s.planId,
+        status: s.status,
+      })
+    ),
     balanceKeys: Object.keys(customer.balances ?? {}),
   })
 
@@ -250,9 +252,9 @@ export async function loadWorkspaceBillingSnapshot(args: {
       offset: 0,
       customRange: {
         start:
-          customer.subscriptions.find((subscription) => subscription.status === "active")
-            ?.currentPeriodStart ??
-          Date.now() - 30 * 24 * 60 * 60 * 1000,
+          customer.subscriptions.find(
+            (subscription) => subscription.status === "active"
+          )?.currentPeriodStart ?? Date.now() - 30 * 24 * 60 * 60 * 1000,
         end: Date.now(),
       },
     }),
@@ -301,7 +303,6 @@ export async function attachComplimentaryWorkspacePlan(args: {
   workspaceName?: string | null
   email?: string | null
   planId: string
-  trialDays?: number
 }) {
   await ensureAutumnCustomer(args)
   return await getAutumnClient().billing.attach({
@@ -310,8 +311,8 @@ export async function attachComplimentaryWorkspacePlan(args: {
     redirectMode: "if_required",
     customize: {
       freeTrial: {
-        durationLength: args.trialDays ?? 1800,
-        durationType: "day",
+        durationLength: 1,
+        durationType: "year",
         cardRequired: false,
       },
     },

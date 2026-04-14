@@ -27,8 +27,6 @@ export function WorkspaceGuard({ children }: { children: React.ReactNode }) {
     }
   }, [hasWorkspaces, isLoading, isSetupPage, isEarlyAccessPage, replace])
 
-  // While loading, render children immediately — the sidebar is static
-  // and the board already handles its own loading skeleton
   if (isLoading) {
     return <>{children}</>
   }
