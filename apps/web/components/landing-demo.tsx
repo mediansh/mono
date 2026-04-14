@@ -288,21 +288,21 @@ function Column({
 function ListRow({ task, status }: { task: MockTask; status: ColumnStatus }) {
   return (
     <div className="flex cursor-pointer items-center gap-3 border-b border-[#2E2E2E] px-3 py-2 transition-colors last:border-b-0 hover:bg-[#1E1E1E]/60">
-      <span className="hidden w-14 shrink-0 font-mono text-[11px] text-[#9B9D9E]/60 tabular-nums sm:inline">
+      <span className="w-14 shrink-0 font-mono text-[11px] text-[#9B9D9E]/60 tabular-nums">
         {task.code}
       </span>
-      <span className="flex size-3 shrink-0 items-center justify-center">
+      <span className="flex size-3.5 shrink-0 items-center justify-center">
         {task.priority ? <PriorityIcon priority={task.priority} /> : <Minus size={12} className="text-[#9B9D9E]/60" />}
       </span>
-      <span className="flex size-3 shrink-0 items-center justify-center">
-        <StatusIcon status={status} size={12} />
+      <span className="flex size-3.5 shrink-0 items-center justify-center">
+        <StatusIcon status={status} size={13} />
       </span>
-      <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-[#F7F7F4]/90">
+      <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-[#F7F7F4]/90">
         {task.title}
       </span>
-      <div className="hidden shrink-0 items-center gap-1.5 sm:flex">
+      <div className="flex shrink-0 items-center gap-1.5">
         {task.labels?.map((l) => <TaskLabel key={l} label={l} />)}
-        <span className="ml-1 text-[10px] text-[#9B9D9E]/60">{task.date}</span>
+        <span className="ml-1 text-[11px] text-[#9B9D9E]/60">{task.date}</span>
       </div>
     </div>
   )
@@ -480,10 +480,10 @@ export function LandingDemo() {
         transition={{ duration: 0.7, delay: 0.8, ease: [0.25, 0.1, 0.25, 1] }}
         className="mx-auto max-w-6xl"
       >
-        <div className="relative overflow-hidden rounded-2xl border border-foreground/10 bg-[#141414] shadow-2xl">
-          <div className="flex h-[520px] min-h-0 md:h-[600px]">
+        <div className="relative overflow-hidden rounded-2xl border border-foreground/10 bg-[#141414] p-1.5 shadow-2xl">
+          <div className="flex h-[520px] min-h-0 gap-1.5 md:h-[600px]">
             {/* Sidebar */}
-            <aside className="flex w-[200px] shrink-0 flex-col border-r border-[#2A2A2A] bg-[#141414] p-1.5 select-none">
+            <aside className="flex w-[200px] shrink-0 flex-col bg-[#141414] select-none">
               <div className="flex items-center gap-1.5 px-1 py-0.5">
                 <Logo symbolOnly className="size-6" />
               </div>
@@ -551,8 +551,8 @@ export function LandingDemo() {
               </div>
             </aside>
 
-            {/* Main */}
-            <main className="flex min-w-0 flex-1 flex-col bg-[#181818]">
+            {/* Main (inset panel) */}
+            <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-[4px] bg-[#181818] ring-1 ring-[#2A2A2A]">
               {/* Toolbar */}
               <div className="flex items-center gap-2 px-4 pt-3 pb-2">
                 <div className="flex items-center gap-0.5 rounded-[4px] bg-[#1E1E1E]/60 p-0.5 ring-1 ring-[#2A2A2A]">
@@ -593,13 +593,17 @@ export function LandingDemo() {
                   {view === "board" ? <BoardView /> : <ListView />}
                 </motion.div>
               </AnimatePresence>
+
+              {/* Right-edge fade (board overflow) */}
+              {view === "board" && (
+                <div className="pointer-events-none absolute top-0 right-0 bottom-0 w-20 bg-gradient-to-l from-[#181818] to-transparent" />
+              )}
+              {/* Bottom fade so content doesn't cut harshly */}
+              <div className="pointer-events-none absolute right-0 bottom-0 left-0 h-16 bg-gradient-to-t from-[#181818] to-transparent" />
+              {/* Bottom drawer handle, like the real dashboard */}
+              <div className="pointer-events-none absolute bottom-1.5 left-1/2 h-1 w-8 -translate-x-1/2 rounded-full bg-[#2A2A2A]" />
             </main>
           </div>
-
-          {/* Edge fade on right (only in board view where columns overflow) */}
-          {view === "board" && (
-            <div className="pointer-events-none absolute top-0 right-0 bottom-0 w-24 bg-gradient-to-l from-[#141414] to-transparent" />
-          )}
         </div>
       </motion.div>
     </section>
