@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, type ReactNode } from "react"
-import { usePaginatedQuery, useQuery } from "convex/react"
+import { useConvex, usePaginatedQuery } from "convex/react"
 import { motion } from "motion/react"
 import {
   ClockCounterClockwise,
@@ -84,6 +84,39 @@ interface LogEvent {
   timestamp: number
   source?: "discord" | "slack" | "github" | "linear" | "x" | "cli" | "manual" | "ai"
   cost?: number
+}
+
+type LogsDashboard = {
+  counts: {
+    all: number
+    tasks: number
+    ai: number
+    webhooks: number
+    integrations: number
+    members: number
+  }
+  activityData: Array<{ day: string; tasks: number; webhooks: number; events: number }>
+  sourceDistribution: Array<{ name: string; value: number }>
+  webhooksByPlatform: Array<{
+    platform: string
+    received: number
+    processed: number
+    errors: number
+  }>
+}
+
+const EMPTY_DASHBOARD: LogsDashboard = {
+  counts: {
+    all: 0,
+    tasks: 0,
+    ai: 0,
+    webhooks: 0,
+    integrations: 0,
+    members: 0,
+  },
+  activityData: [],
+  sourceDistribution: [],
+  webhooksByPlatform: [],
 }
 
 const EVENT_CONFIG: Record<
@@ -224,17 +257,43 @@ function LogsSkeleton() {
 const PAGE_SIZE = 20
 
 export default function LogsPage() {
+  const convex = useConvex()
   const { currentWorkspace } = useWorkspace()
   const [filter, setFilter] = useState<FilterType>("all")
+  const [dashboard, setDashboard] = useState<LogsDashboard | undefined>()
 
   useEffect(() => {
     document.title = "Logs — Median"
   }, [])
+  useEffect(() => {
+    if (!currentWorkspace) {
+      setDashboard(undefined)
+      return
+    }
 
-  const dashboard = useQuery(
-    api.logs.getWorkspaceLogDashboard,
-    currentWorkspace ? { workspaceId: currentWorkspace._id } : "skip"
-  )
+    let cancelled = false
+    setDashboard(undefined)
+
+    void convex
+      .query(api.logs.getWorkspaceLogDashboard, {
+        workspaceId: currentWorkspace._id,
+      })
+      .then((result) => {
+        if (!cancelled) {
+          setDashboard(result as LogsDashboard)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setDashboard(EMPTY_DASHBOARD)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [convex, currentWorkspace])
+
   const { results, status, loadMore } = usePaginatedQuery(
     api.logs.listWorkspaceLogs,
     currentWorkspace
@@ -252,7 +311,9 @@ export default function LogsPage() {
 
   const events = results as LogEvent[]
   const activityData =
-    dashboard?.activityData ?? [
+    dashboard?.activityData.length
+      ? dashboard.activityData
+      : [
       { day: "Mon", tasks: 0, webhooks: 0, events: 0 },
       { day: "Tue", tasks: 0, webhooks: 0, events: 0 },
       { day: "Wed", tasks: 0, webhooks: 0, events: 0 },
@@ -262,17 +323,20 @@ export default function LogsPage() {
       { day: "Sun", tasks: 0, webhooks: 0, events: 0 },
     ]
   const sourceDistribution =
-    dashboard?.sourceDistribution.map((entry: { name: string; value: number }) => ({
-      ...entry,
-      color: SOURCE_COLORS[entry.name] ?? "var(--chart-1)",
-    })) ??
-    Object.entries(SOURCE_COLORS).map(([name, color]) => ({
-      name,
-      value: 0,
-      color,
-    }))
+    dashboard?.sourceDistribution.length
+      ? dashboard.sourceDistribution.map((entry: { name: string; value: number }) => ({
+          ...entry,
+          color: SOURCE_COLORS[entry.name] ?? "var(--chart-1)",
+        }))
+      : Object.entries(SOURCE_COLORS).map(([name, color]) => ({
+          name,
+          value: 0,
+          color,
+        }))
   const webhooksByPlatform =
-    dashboard?.webhooksByPlatform ?? [
+    dashboard?.webhooksByPlatform.length
+      ? dashboard.webhooksByPlatform
+      : [
       { platform: "Discord", received: 0, processed: 0, errors: 0 },
       { platform: "GitHub", received: 0, processed: 0, errors: 0 },
       { platform: "Linear", received: 0, processed: 0, errors: 0 },

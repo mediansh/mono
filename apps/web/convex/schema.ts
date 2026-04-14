@@ -643,7 +643,9 @@ export default defineSchema({
         })
       )
     ),
-  }).index("by_workspace", ["workspaceId"]),
+  })
+    .index("by_workspace", ["workspaceId"])
+    .index("by_workspace_status_order", ["workspaceId", "status", "order"]),
 
   waitlistEntries: defineTable({
     email: v.string(),

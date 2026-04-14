@@ -20,9 +20,9 @@ import {
 const FEEDBACK_WINDOW_LIMIT = 100
 const FEEDBACK_CONTEXT_LIMIT = 10
 const EXISTING_TASK_CONTEXT_LIMIT = 50
-const FEEDBACK_PROCESSING_DEBOUNCE_MS = 2_000
+const FEEDBACK_PROCESSING_DEBOUNCE_MS = 8_000
 const FEEDBACK_PROCESSING_RETRY_DELAY_MS = 5_000
-const DEFAULT_WORKPOOL_PARALLELISM = 8
+const DEFAULT_WORKPOOL_PARALLELISM = 2
 
 type FeedbackMessage = {
   _id: Id<"slackMessages">
@@ -458,9 +458,11 @@ export const scheduleFeedbackDetection = internalMutation({
       integration.feedbackProcessingState === "scheduled" ||
       integration.feedbackProcessingState === "running"
     ) {
-      await ctx.db.patch(args.integrationId, {
-        feedbackProcessingNeedsRerun: true,
-      })
+      if (integration.feedbackProcessingNeedsRerun !== true) {
+        await ctx.db.patch(args.integrationId, {
+          feedbackProcessingNeedsRerun: true,
+        })
+      }
       return { scheduled: false, reason: "already_active" }
     }
 

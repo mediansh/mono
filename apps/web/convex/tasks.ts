@@ -197,6 +197,72 @@ function sortTasks<
   })
 }
 
+const SNAPSHOT_TASK_STATUSES = [
+  "requests",
+  "todo",
+  "in_progress",
+  "ready",
+  "shipped",
+] as const
+
+async function getLimitedWorkspaceTasksForSnapshot(
+  ctx: QueryCtx,
+  workspaceId: Id<"workspaces">,
+  limit: number
+) {
+  if (limit <= 0) {
+    return [] as Doc<"tasks">[]
+  }
+
+  const tasks: Doc<"tasks">[] = []
+
+  for (const status of SNAPSHOT_TASK_STATUSES) {
+    if (tasks.length >= limit) {
+      break
+    }
+
+    const remaining = limit - tasks.length
+    const nextTasks = (await ctx.db
+      .query("tasks")
+      .withIndex("by_workspace_status_order", (q) =>
+        q.eq("workspaceId", workspaceId).eq("status", status)
+      )
+      .take(remaining)) as Doc<"tasks">[]
+
+    tasks.push(...nextTasks)
+  }
+
+  return tasks
+}
+
+function formatTaskSnapshot(task: Doc<"tasks">) {
+  return {
+    taskId: task._id,
+    taskCode: task.taskCode,
+    title: task.title,
+    description: task.description ?? null,
+    status: task.status,
+    priority: task.priority,
+    labels: task.labels,
+    sourceUrl: task.source?.url ?? null,
+  }
+}
+
+async function getWorkspaceTaskSnapshot(
+  ctx: QueryCtx,
+  workspaceId: Id<"workspaces">,
+  limit?: number
+) {
+  const cappedLimit = Math.min(limit ?? 50, 100)
+  const tasks = await getLimitedWorkspaceTasksForSnapshot(
+    ctx,
+    workspaceId,
+    cappedLimit
+  )
+
+  return tasks.map(formatTaskSnapshot)
+}
+
 async function getWorkspaceTasks(
   ctx: QueryCtx | MutationCtx,
   workspaceId: Id<"workspaces">
@@ -1004,22 +1070,7 @@ export const getTaskSnapshotForDiscord = query({
       throw new Error("Invalid Discord bot secret")
     }
 
-    const tasks = await getWorkspaceTasks(ctx, args.workspaceId)
-    const limit = Math.min(args.limit ?? 50, 100)
-
-    return tasks
-      .filter((task) => task.status !== "archive")
-      .slice(0, limit)
-      .map((task) => ({
-        taskId: task._id,
-        taskCode: task.taskCode,
-        title: task.title,
-        description: task.description ?? null,
-        status: task.status,
-        priority: task.priority,
-        labels: task.labels,
-        sourceUrl: task.source?.url ?? null,
-      }))
+    return await getWorkspaceTaskSnapshot(ctx, args.workspaceId, args.limit)
   },
 })
 
@@ -1029,22 +1080,7 @@ export const getTaskSnapshotForDiscordInternal = internalQuery({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const tasks = await getWorkspaceTasks(ctx, args.workspaceId)
-    const limit = Math.min(args.limit ?? 50, 100)
-
-    return tasks
-      .filter((task) => task.status !== "archive")
-      .slice(0, limit)
-      .map((task) => ({
-        taskId: task._id,
-        taskCode: task.taskCode,
-        title: task.title,
-        description: task.description ?? null,
-        status: task.status,
-        priority: task.priority,
-        labels: task.labels,
-        sourceUrl: task.source?.url ?? null,
-      }))
+    return await getWorkspaceTaskSnapshot(ctx, args.workspaceId, args.limit)
   },
 })
 
@@ -1054,22 +1090,7 @@ export const getTaskSnapshotForFeedbackInternal = internalQuery({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const tasks = await getWorkspaceTasks(ctx, args.workspaceId)
-    const limit = Math.min(args.limit ?? 50, 100)
-
-    return tasks
-      .filter((task) => task.status !== "archive")
-      .slice(0, limit)
-      .map((task) => ({
-        taskId: task._id,
-        taskCode: task.taskCode,
-        title: task.title,
-        description: task.description ?? null,
-        status: task.status,
-        priority: task.priority,
-        labels: task.labels,
-        sourceUrl: task.source?.url ?? null,
-      }))
+    return await getWorkspaceTaskSnapshot(ctx, args.workspaceId, args.limit)
   },
 })
 
