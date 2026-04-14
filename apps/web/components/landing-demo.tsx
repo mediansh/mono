@@ -449,9 +449,8 @@ export function LandingDemo() {
               {/* Board */}
               <div className="scrollbar-hide flex flex-1 gap-2 overflow-x-auto px-4 pt-1 pb-4">
                 {/* Requests */}
-                <div className="flex h-full w-[500px] shrink-0 flex-col overflow-hidden rounded-[4px] ring-1 ring-[#2E2E2E]">
-                  <div className="flex items-center gap-2.5 bg-[#1E1E1E] px-3 py-1.5">
-                    <span className="text-[10px] text-[#9B9D9E]/60">▼</span>
+                <div className="flex h-full w-[230px] shrink-0 flex-col overflow-hidden rounded-[4px] ring-1 ring-[#2E2E2E]">
+                  <div className="flex items-center gap-2 bg-[#1E1E1E] px-3 py-1.5 shadow-[inset_0_-1px_0_#2E2E2E]">
                     <SpinnerGap size={14} className="text-[#9B9D9E]" />
                     <span className="text-[13px] font-semibold tracking-tight text-[#F7F7F4]">
                       Requests
@@ -463,7 +462,7 @@ export function LandingDemo() {
                       from users
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 p-3">
+                  <div className="flex flex-col gap-2 p-2">
                     {REQUESTS.map((t) => (
                       <RequestCard key={t.id} task={t} />
                     ))}
