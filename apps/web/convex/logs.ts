@@ -288,6 +288,7 @@ export const getWorkspaceLogDashboard = query({
 
     const sourceCounts = {
       discord: 0,
+      slack: 0,
       github: 0,
       linear: 0,
       x: 0,
@@ -296,6 +297,7 @@ export const getWorkspaceLogDashboard = query({
 
     const webhookCounts = {
       discord: { processed: 0, errors: 0 },
+      slack: { processed: 0, errors: 0 },
       github: { processed: 0, errors: 0 },
       linear: { processed: 0, errors: 0 },
       x: { processed: 0, errors: 0 },
@@ -356,6 +358,7 @@ export const getWorkspaceLogDashboard = query({
       })),
       sourceDistribution: [
         { name: "Discord", value: sourceCounts.discord },
+        { name: "Slack", value: sourceCounts.slack },
         { name: "GitHub", value: sourceCounts.github },
         { name: "Linear", value: sourceCounts.linear },
         { name: "X", value: sourceCounts.x },
@@ -367,6 +370,12 @@ export const getWorkspaceLogDashboard = query({
           received: webhookCounts.discord.processed + webhookCounts.discord.errors,
           processed: webhookCounts.discord.processed,
           errors: webhookCounts.discord.errors,
+        },
+        {
+          platform: "Slack",
+          received: webhookCounts.slack.processed + webhookCounts.slack.errors,
+          processed: webhookCounts.slack.processed,
+          errors: webhookCounts.slack.errors,
         },
         {
           platform: "GitHub",

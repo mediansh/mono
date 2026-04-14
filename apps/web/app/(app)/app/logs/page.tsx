@@ -21,6 +21,7 @@ import {
   Users,
   GithubLogo,
   DiscordLogo,
+  SlackLogo,
   XLogo,
 } from "@phosphor-icons/react"
 import {
@@ -81,7 +82,7 @@ interface LogEvent {
   type: EventType
   message: string
   timestamp: number
-  source?: "discord" | "github" | "linear" | "x" | "cli" | "manual" | "ai"
+  source?: "discord" | "slack" | "github" | "linear" | "x" | "cli" | "manual" | "ai"
   cost?: number
 }
 
@@ -108,6 +109,7 @@ const EVENT_CONFIG: Record<
 
 const SOURCE_ICONS: Record<string, typeof DiscordLogo> = {
   discord: DiscordLogo,
+  slack: SlackLogo,
   github: GithubLogo,
   x: XLogo,
 }
@@ -142,10 +144,11 @@ const FILTER_OPTIONS: { value: FilterType; label: string }[] = [
 
 const SOURCE_COLORS: Record<string, string> = {
   Discord: "var(--chart-1)",
-  GitHub: "var(--chart-2)",
-  Linear: "var(--chart-3)",
-  X: "var(--chart-4)",
-  CLI: "var(--chart-5)",
+  Slack: "var(--chart-2)",
+  GitHub: "var(--chart-3)",
+  Linear: "var(--chart-4)",
+  X: "var(--chart-5)",
+  CLI: "var(--chart-1)",
 }
 
 function formatCurrency(amount: number) {
