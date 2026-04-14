@@ -1,5 +1,6 @@
 import { generateText, Output } from "ai"
 import { trackLLMGeneration, trackFeedbackProcessing } from "./posthog"
+import { AI_MODEL_IDS, AI_MODELS } from "../lib/ai"
 import { safeTrackAiUsage } from "../lib/billing/autumn"
 import { getAiCostForTokens } from "../lib/billing/config"
 import { Workpool, vOnCompleteArgs } from "@convex-dev/workpool"
@@ -696,7 +697,7 @@ export const processFeedbackWindow = internalAction({
 
       const classifierStart = Date.now()
       const classifierResult = await generateText({
-        model: "anthropic/claude-haiku-4.5",
+        model: AI_MODELS.feedbackClassifier,
         system: classifierSystemParts.join(" "),
         prompt: [
           `Workspace name: ${feedbackWindow.integration.workspaceName}`,
@@ -711,7 +712,7 @@ export const processFeedbackWindow = internalAction({
 
       await trackLLMGeneration({
         distinctId: feedbackWindow.integration.workspaceId,
-        model: "anthropic/claude-haiku-4.5",
+        model: AI_MODEL_IDS.feedbackClassifier,
         feature: "slack_feedback_classifier",
         inputTokens: classifierResult.usage?.inputTokens,
         outputTokens: classifierResult.usage?.outputTokens,
@@ -726,7 +727,7 @@ export const processFeedbackWindow = internalAction({
       await safeTrackAiUsage({
         workspaceId: feedbackWindow.integration.workspaceId,
         workspaceName: feedbackWindow.integration.workspaceName,
-        model: "anthropic/claude-haiku-4.5",
+        model: AI_MODEL_IDS.feedbackClassifier,
         inputTokens: classifierResult.usage?.inputTokens,
         outputTokens: classifierResult.usage?.outputTokens,
         properties: {
@@ -751,7 +752,7 @@ export const processFeedbackWindow = internalAction({
         classification.relevantMessageIds.length === 0
       ) {
         const classifierCost = getAiCostForTokens({
-          model: "anthropic/claude-haiku-4.5",
+          model: AI_MODEL_IDS.feedbackClassifier,
           inputTokens: classifierResult.usage?.inputTokens,
           outputTokens: classifierResult.usage?.outputTokens,
         })
@@ -820,7 +821,7 @@ export const processFeedbackWindow = internalAction({
 
       const extractorStart = Date.now()
       const extractorResult = await generateText({
-        model: "anthropic/claude-sonnet-4.6",
+        model: AI_MODELS.feedbackExtractor,
         output: Output.object({ schema: extractedFeedbackTasksSchema }),
         system: extractorSystemParts.join(" "),
         prompt: [
@@ -847,7 +848,7 @@ export const processFeedbackWindow = internalAction({
 
       await trackLLMGeneration({
         distinctId: feedbackWindow.integration.workspaceId,
-        model: "anthropic/claude-sonnet-4.6",
+        model: AI_MODEL_IDS.feedbackExtractor,
         feature: "slack_feedback_extractor",
         inputTokens: extractorResult.usage?.inputTokens,
         outputTokens: extractorResult.usage?.outputTokens,
@@ -863,7 +864,7 @@ export const processFeedbackWindow = internalAction({
       await safeTrackAiUsage({
         workspaceId: feedbackWindow.integration.workspaceId,
         workspaceName: feedbackWindow.integration.workspaceName,
-        model: "anthropic/claude-sonnet-4.6",
+        model: AI_MODEL_IDS.feedbackExtractor,
         inputTokens: extractorResult.usage?.inputTokens,
         outputTokens: extractorResult.usage?.outputTokens,
         properties: {
@@ -874,12 +875,12 @@ export const processFeedbackWindow = internalAction({
 
       const totalAiCost =
         getAiCostForTokens({
-          model: "anthropic/claude-haiku-4.5",
+          model: AI_MODEL_IDS.feedbackClassifier,
           inputTokens: classifierResult.usage?.inputTokens,
           outputTokens: classifierResult.usage?.outputTokens,
         }) +
         getAiCostForTokens({
-          model: "anthropic/claude-sonnet-4.6",
+          model: AI_MODEL_IDS.feedbackExtractor,
           inputTokens: extractorResult.usage?.inputTokens,
           outputTokens: extractorResult.usage?.outputTokens,
         })
