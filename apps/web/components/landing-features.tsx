@@ -313,7 +313,7 @@ const features = [
   {
     title: "Native integrations",
     description:
-      "Two-way sync with Linear, Discord, GitHub, and X. Changes flow both directions.",
+      "Two-way sync with Slack, Discord, GitHub, Linear, and X — plus a CLI. Changes flow both directions.",
     graphic: CubesGraphic,
   },
   {
