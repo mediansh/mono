@@ -176,13 +176,20 @@ const FILTER_OPTIONS: { value: FilterType; label: string }[] = [
   { value: "members", label: "Members" },
 ]
 
+// Hex literals mirror the dark-mode --chart-* values from globals.css.
+// The CSS-variable form failed to resolve for the CLI slice + legend
+// dot in the user's environment (the pie wedge rendered black, the
+// legend dot rendered colorless), so we trade theme-following colors
+// here for reliable rendering. Light-mode users get dark-mode-tuned
+// colors in this chart only — the surrounding area/bar charts still
+// follow the theme via var(--chart-*).
 const SOURCE_COLORS: Record<string, string> = {
-  Discord: "var(--chart-1)",
-  Slack: "var(--chart-2)",
-  GitHub: "var(--chart-3)",
-  Linear: "var(--chart-4)",
-  X: "var(--chart-5)",
-  CLI: "var(--chart-6)",
+  Discord: "#4499ff",
+  Slack: "#ff9944",
+  GitHub: "#44cc88",
+  Linear: "#bb66ff",
+  X: "#ff4488",
+  CLI: "#999999",
 }
 
 function formatCurrency(amount: number) {
@@ -311,39 +318,14 @@ export default function LogsPage() {
   }
 
   const events = results as LogEvent[]
-  const activityData =
-    dashboard?.activityData.length
-      ? dashboard.activityData
-      : [
-      { day: "Mon", tasks: 0, webhooks: 0, events: 0 },
-      { day: "Tue", tasks: 0, webhooks: 0, events: 0 },
-      { day: "Wed", tasks: 0, webhooks: 0, events: 0 },
-      { day: "Thu", tasks: 0, webhooks: 0, events: 0 },
-      { day: "Fri", tasks: 0, webhooks: 0, events: 0 },
-      { day: "Sat", tasks: 0, webhooks: 0, events: 0 },
-      { day: "Sun", tasks: 0, webhooks: 0, events: 0 },
-    ]
-  const sourceDistribution =
-    dashboard?.sourceDistribution.length
-      ? dashboard.sourceDistribution.map((entry: { name: string; value: number }) => ({
-          ...entry,
-          color: SOURCE_COLORS[entry.name] ?? "var(--chart-1)",
-        }))
-      : Object.entries(SOURCE_COLORS).map(([name, color]) => ({
-          name,
-          value: 0,
-          color,
-        }))
-  const webhooksByPlatform =
-    dashboard?.webhooksByPlatform.length
-      ? dashboard.webhooksByPlatform
-      : [
-      { platform: "Discord", received: 0, processed: 0, errors: 0 },
-      { platform: "Slack", received: 0, processed: 0, errors: 0 },
-      { platform: "GitHub", received: 0, processed: 0, errors: 0 },
-      { platform: "Linear", received: 0, processed: 0, errors: 0 },
-      { platform: "X", received: 0, processed: 0, errors: 0 },
-    ]
+  const activityData = dashboard?.activityData ?? []
+  const sourceDistribution = (dashboard?.sourceDistribution ?? []).map(
+    (entry: { name: string; value: number }) => ({
+      ...entry,
+      color: SOURCE_COLORS[entry.name] ?? "var(--chart-1)",
+    })
+  )
+  const webhooksByPlatform = dashboard?.webhooksByPlatform ?? []
 
   return (
     <Stagger className="h-full overflow-y-auto">

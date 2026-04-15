@@ -178,12 +178,20 @@ function BillingSkeleton() {
   return (
     <div className="mx-auto w-full max-w-4xl px-6 py-6">
       <div className="mb-6">
-        <div className="h-4 w-16 rounded-[4px] bg-muted/40" />
+        <div className="h-4 w-20 rounded-[4px] bg-muted/40" />
         <div className="mt-2 h-3 w-56 rounded-[4px] bg-muted/30" />
       </div>
-      <div className="mb-6 grid grid-cols-2 gap-3">
+      <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="rounded-[4px] p-3 ring-1 ring-border">
+            <div className="h-3 w-16 rounded-[3px] bg-muted/30" />
+            <div className="mt-2 h-4 w-20 rounded-[3px] bg-muted/40" />
+          </div>
+        ))}
+      </div>
+      <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-2">
         <div className="rounded-[4px] p-4 ring-1 ring-border">
-          <div className="mb-3 h-3.5 w-28 rounded-[4px] bg-muted/40" />
+          <div className="mb-3 h-3.5 w-24 rounded-[4px] bg-muted/40" />
           <div className="h-[180px] rounded-[4px] bg-muted/20" />
         </div>
         <div className="rounded-[4px] p-4 ring-1 ring-border">
@@ -191,16 +199,18 @@ function BillingSkeleton() {
           <div className="h-[180px] rounded-[4px] bg-muted/20" />
         </div>
       </div>
-      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, index) => (
-          <div key={index} className="rounded-[4px] p-4 ring-1 ring-border">
-            <div className="mb-2 h-4 w-16 rounded-[4px] bg-muted/40" />
-            <div className="mb-4 h-6 w-20 rounded-[4px] bg-muted/30" />
-            <div className="space-y-2">
-              <div className="h-3 w-full rounded-[4px] bg-muted/20" />
-              <div className="h-3 w-3/4 rounded-[4px] bg-muted/20" />
-              <div className="h-3 w-5/6 rounded-[4px] bg-muted/20" />
+      <div className="mb-3 h-3.5 w-16 rounded-[4px] bg-muted/40" />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="rounded-[4px] p-4 ring-1 ring-border">
+            <div className="h-3.5 w-20 rounded-[3px] bg-muted/40" />
+            <div className="mt-2 h-6 w-24 rounded-[3px] bg-muted/40" />
+            <div className="mt-4 space-y-2">
+              {Array.from({ length: 4 }).map((_, j) => (
+                <div key={j} className="h-3 w-full rounded-[3px] bg-muted/20" />
+              ))}
             </div>
+            <div className="mt-4 h-7 w-full rounded-[3px] bg-muted/30" />
           </div>
         ))}
       </div>
@@ -214,7 +224,6 @@ export default function BillingPage() {
   const openBillingPortal = useAction(api.billing.openWorkspaceBillingPortal)
   const attachBillingPlan = useAction(api.billing.attachWorkspaceBillingPlan)
   const setDisableOverages = useMutation(api.billing.setWorkspaceDisableOverages)
-  const [loading, setLoading] = useState(true)
   const [dashboard, setDashboard] = useState<BillingDashboard | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [managingBilling, setManagingBilling] = useState(false)
@@ -234,18 +243,17 @@ export default function BillingPage() {
       if (!currentWorkspace) {
         if (!cancelled) {
           setDashboard(null)
-          setLoading(false)
           setError(null)
         }
         return
       }
 
-      try {
-        if (!cancelled) {
-          setLoading(true)
-          setError(null)
-        }
+      if (!cancelled) {
+        setDashboard(null)
+        setError(null)
+      }
 
+      try {
         const nextDashboard = (await loadBillingDashboard({
           workspaceId: currentWorkspace._id,
         })) as BillingDashboard
@@ -260,10 +268,6 @@ export default function BillingPage() {
               ? nextError.message
               : "Unable to load billing data."
           )
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false)
         }
       }
     }
@@ -284,7 +288,12 @@ export default function BillingPage() {
   }
 
   async function handleManageBilling() {
-    if (!currentWorkspace || !dashboard?.canManageBilling || managingBilling) return
+    if (
+      !currentWorkspace ||
+      !dashboard?.canManageBilling ||
+      managingBilling
+    )
+      return
 
     try {
       setManagingBilling(true)
@@ -304,7 +313,11 @@ export default function BillingPage() {
   }
 
   function handleSwitchDisableOverages(nextValue: boolean) {
-    if (!currentWorkspace || !dashboard?.canManageBilling || disableOveragesPending)
+    if (
+      !currentWorkspace ||
+      !dashboard?.canManageBilling ||
+      disableOveragesPending
+    )
       return
 
     if (nextValue) {
@@ -354,7 +367,12 @@ export default function BillingPage() {
   }
 
   async function handleAttachPlan(planId: string) {
-    if (!currentWorkspace || !dashboard?.canManageBilling || pendingPlanId) return
+    if (
+      !currentWorkspace ||
+      !dashboard?.canManageBilling ||
+      pendingPlanId
+    )
+      return
 
     try {
       setPendingPlanId(planId)
@@ -382,7 +400,38 @@ export default function BillingPage() {
     }
   }
 
-  if (loading || !dashboard) {
+  if (error && !dashboard) {
+    return (
+      <Stagger className="h-full overflow-y-auto">
+        <div className="mx-auto w-full max-w-4xl px-6 py-6">
+          <motion.div variants={fadeUp} className="mb-6">
+            <div className="flex items-center gap-2">
+              <CreditCard
+                size={16}
+                weight="bold"
+                className="text-foreground"
+              />
+              <h2 className="text-[14px] font-semibold">Billing</h2>
+            </div>
+            <p className="mt-0.5 text-[12px] text-muted-foreground">
+              Usage, plans, and billing for your workspace.
+            </p>
+          </motion.div>
+          <motion.div
+            variants={fadeUp}
+            className="rounded-[4px] bg-destructive/5 p-4 ring-1 ring-destructive/20"
+          >
+            <p className="text-[13px] font-medium text-foreground">
+              Billing data is unavailable
+            </p>
+            <p className="mt-1 text-[12px] text-muted-foreground">{error}</p>
+          </motion.div>
+        </div>
+      </Stagger>
+    )
+  }
+
+  if (!dashboard) {
     return <BillingSkeleton />
   }
 
@@ -410,8 +459,11 @@ export default function BillingPage() {
           </div>
           <button
             onClick={() => void handleManageBilling()}
-            disabled={!dashboard.canManageBilling || managingBilling}
-            className="flex h-7 items-center gap-1.5 rounded-[4px] bg-card px-2.5 text-[12px] font-medium ring-1 ring-border transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={
+              !dashboard.canManageBilling ||
+              managingBilling
+            }
+            className="flex h-7 shrink-0 items-center gap-1.5 rounded-[4px] bg-card px-2.5 text-[12px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
           >
             Manage billing
             <ArrowUpRight size={11} weight="bold" />
@@ -679,7 +731,10 @@ export default function BillingPage() {
           <Switch
             checked={dashboard.disableOveragesWhenExhausted}
             onCheckedChange={handleSwitchDisableOverages}
-            disabled={!dashboard.canManageBilling || disableOveragesPending}
+            disabled={
+              !dashboard.canManageBilling ||
+              disableOveragesPending
+            }
             aria-label="Disable overages when plan limits are reached"
           />
         </motion.div>
