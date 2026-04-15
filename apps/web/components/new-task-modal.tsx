@@ -897,7 +897,7 @@ export function NewTaskModal({
                       <span className="text-[11px] text-red-500">{error}</span>
                     </div>
                   ) : null}
-                  <div className="flex flex-wrap items-center gap-2 border-t border-border px-4 pt-2.5 pb-3 md:justify-between">
+                  <div className="flex flex-wrap items-center gap-2 border-t border-border px-4 pt-2.5 pb-3">
                     {/* Metadata group — stays left-aligned on desktop */}
                     <div className="flex flex-wrap items-center gap-2">
                       {/* Status */}
@@ -1000,8 +1000,8 @@ export function NewTaskModal({
                       </DropdownMenu>
                     </div>
 
-                    {/* Action group — stays right-aligned on desktop, includes Create */}
-                    <div className="flex flex-wrap items-center gap-2 md:gap-1.5">
+                    {/* Action group — pushed to the right on desktop via ml-auto */}
+                    <div className="flex flex-wrap items-center gap-2 md:ml-auto md:gap-1.5">
                       {/* Attach */}
                       <input
                         ref={fileInputRef}
