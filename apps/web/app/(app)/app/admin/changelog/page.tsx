@@ -27,7 +27,7 @@ export default function AdminChangelogListPage() {
       initial="hidden"
       animate="show"
       variants={{ show: { transition: { staggerChildren: 0.04 } } }}
-      className="mx-auto max-w-3xl px-8 py-8"
+      className="mx-auto max-w-3xl px-4 py-6 md:px-8 md:py-8"
     >
       <motion.div variants={fadeUp} className="mb-6 flex items-center justify-between">
         <div>
