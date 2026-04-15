@@ -897,7 +897,7 @@ export function NewTaskModal({
                       <span className="text-[11px] text-red-500">{error}</span>
                     </div>
                   ) : null}
-                  <div className="flex flex-wrap items-center gap-2 border-t border-border px-4 pt-2.5 pb-3 md:flex-nowrap md:justify-between">
+                  <div className="flex flex-wrap items-center gap-2 border-t border-border px-4 pt-2.5 pb-3 md:grid md:grid-cols-[1fr_auto] md:gap-x-3">
                     {/* Metadata group */}
                     <div className="flex flex-wrap items-center gap-2">
                       {/* Status */}
