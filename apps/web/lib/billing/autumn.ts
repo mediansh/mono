@@ -1,4 +1,4 @@
-import { Autumn } from "autumn-js"
+import { Autumn, AutumnError } from "autumn-js"
 import {
   AUTUMN_AI_USAGE_FEATURE_ID,
   AUTUMN_EVENTS_FEATURE_ID,
@@ -49,6 +49,32 @@ export function getAutumnClient() {
   }
 
   return cachedClient
+}
+
+function getAutumnErrorCode(error: unknown): string | null {
+  if (!(error instanceof AutumnError)) {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(error.body) as { code?: unknown }
+    return typeof parsed.code === "string" ? parsed.code : null
+  } catch {
+    return null
+  }
+}
+
+function isMissingAutumnResourceError(error: unknown) {
+  if (!(error instanceof AutumnError) || error.statusCode !== 404) {
+    return false
+  }
+
+  const code = getAutumnErrorCode(error)
+  return (
+    code === "customer_not_found" ||
+    code === "plan_not_found" ||
+    code === "subscription_not_found"
+  )
 }
 
 export async function ensureAutumnCustomer(args: {
@@ -321,11 +347,32 @@ export async function attachComplimentaryWorkspacePlan(args: {
 
 export async function cancelWorkspacePlan(args: {
   workspaceId: string
+  workspaceName?: string | null
+  email?: string | null
   planId: string
 }) {
-  return await getAutumnClient().billing.update({
-    customerId: getAutumnCustomerId(args.workspaceId),
-    planId: args.planId,
-    cancelAction: "cancel_immediately",
+  await ensureAutumnCustomer({
+    workspaceId: args.workspaceId,
+    workspaceName: args.workspaceName,
+    email: args.email,
   })
+
+  try {
+    return await getAutumnClient().billing.update({
+      customerId: getAutumnCustomerId(args.workspaceId),
+      planId: args.planId,
+      cancelAction: "cancel_immediately",
+    })
+  } catch (error) {
+    if (isMissingAutumnResourceError(error)) {
+      console.warn("[billing] Workspace plan already missing in Autumn", {
+        workspaceId: args.workspaceId,
+        planId: args.planId,
+        errorCode: getAutumnErrorCode(error),
+      })
+      return null
+    }
+
+    throw error
+  }
 }
