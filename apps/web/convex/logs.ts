@@ -134,6 +134,23 @@ async function applyMetricIncrements(
   })
 }
 
+async function getWorkspaceCreationTimes(
+  ctx: Pick<MutationCtx, "db">,
+  workspaceIds: Id<"workspaces">[]
+) {
+  const creationTimes = new Map<Id<"workspaces">, number>()
+
+  for (const workspaceId of workspaceIds) {
+    const workspace = await ctx.db.get(workspaceId)
+    if (!workspace) {
+      throw new Error(`Cannot record log for missing workspace ${workspaceId}`)
+    }
+    creationTimes.set(workspaceId, workspace._creationTime)
+  }
+
+  return creationTimes
+}
+
 export async function insertWorkspaceLogs(
   ctx: Pick<MutationCtx, "db">,
   logs: WorkspaceLogInput[]
@@ -142,9 +159,24 @@ export async function insertWorkspaceLogs(
     return
   }
 
+  const workspaceCreationTimes = await getWorkspaceCreationTimes(
+    ctx,
+    Array.from(new Set(logs.map((log) => log.workspaceId)))
+  )
   const metricsByWorkspace = new Map<Id<"workspaces">, WorkspaceLogMetricsCounts>()
 
   for (const log of logs) {
+    const timestamp = log.timestamp ?? Date.now()
+    const workspaceCreatedAt = workspaceCreationTimes.get(log.workspaceId)
+    if (workspaceCreatedAt === undefined) {
+      throw new Error(`Missing workspace creation time for ${log.workspaceId}`)
+    }
+    if (timestamp < workspaceCreatedAt) {
+      throw new Error(
+        `Refusing to record log before workspace creation for ${log.workspaceId}`
+      )
+    }
+
     await ctx.db.insert("workspaceLogs", {
       workspaceId: log.workspaceId,
       category: log.category,
@@ -152,7 +184,7 @@ export async function insertWorkspaceLogs(
       message: log.message,
       source: log.source,
       cost: log.cost,
-      timestamp: log.timestamp ?? Date.now(),
+      timestamp,
     })
 
     const workspaceMetrics =
@@ -216,13 +248,14 @@ export const listWorkspaceLogs = query({
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
-    await requireWorkspaceAccess(ctx, args.workspaceId)
+    const { membership } = await requireWorkspaceAccess(ctx, args.workspaceId)
+    const visibleSince = membership._creationTime
 
     if (args.filter === "all") {
       return await ctx.db
         .query("workspaceLogs")
         .withIndex("by_workspace_timestamp", (q) =>
-          q.eq("workspaceId", args.workspaceId)
+          q.eq("workspaceId", args.workspaceId).gte("timestamp", visibleSince)
         )
         .order("desc")
         .paginate(args.paginationOpts)
@@ -232,7 +265,10 @@ export const listWorkspaceLogs = query({
       return await ctx.db
         .query("workspaceLogs")
         .withIndex("by_workspace_category_timestamp", (q) =>
-          q.eq("workspaceId", args.workspaceId).eq("category", "tasks")
+          q
+            .eq("workspaceId", args.workspaceId)
+            .eq("category", "tasks")
+            .gte("timestamp", visibleSince)
         )
         .filter((q) =>
           q.or(
@@ -249,7 +285,10 @@ export const listWorkspaceLogs = query({
     return await ctx.db
       .query("workspaceLogs")
       .withIndex("by_workspace_category_timestamp", (q) =>
-        q.eq("workspaceId", args.workspaceId).eq("category", category)
+        q
+          .eq("workspaceId", args.workspaceId)
+          .eq("category", category)
+          .gte("timestamp", visibleSince)
       )
       .order("desc")
       .paginate(args.paginationOpts)
@@ -261,19 +300,22 @@ export const getWorkspaceLogDashboard = query({
     workspaceId: v.id("workspaces"),
   },
   handler: async (ctx, args) => {
-    await requireWorkspaceAccess(ctx, args.workspaceId)
-
-    const metrics = await ctx.db
-      .query("workspaceLogMetrics")
-      .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
-      .unique()
+    const { membership } = await requireWorkspaceAccess(ctx, args.workspaceId)
+    const visibleSince = membership._creationTime
 
     const todayStart = startOfDay(Date.now())
     const weekStart = todayStart - 6 * 24 * 60 * 60 * 1000
+    const recentWindowStart = Math.max(weekStart, visibleSince)
     const recentLogs = await ctx.db
       .query("workspaceLogs")
       .withIndex("by_workspace_timestamp", (q) =>
-        q.eq("workspaceId", args.workspaceId).gte("timestamp", weekStart)
+        q.eq("workspaceId", args.workspaceId).gte("timestamp", recentWindowStart)
+      )
+      .collect()
+    const visibleLogs = await ctx.db
+      .query("workspaceLogs")
+      .withIndex("by_workspace_timestamp", (q) =>
+        q.eq("workspaceId", args.workspaceId).gte("timestamp", visibleSince)
       )
       .collect()
 
@@ -303,23 +345,31 @@ export const getWorkspaceLogDashboard = query({
       x: { processed: 0, errors: 0 },
     }
 
-    let aiCount = 0
+    const visibleCounts = {
+      all: 0,
+      tasks: 0,
+      ai: 0,
+      webhooks: 0,
+      integrations: 0,
+      members: 0,
+    }
 
-    for (const log of recentLogs) {
-      const bucketStart = startOfDay(log.timestamp)
-      const bucket = activityBuckets.get(bucketStart)
-      if (bucket) {
-        bucket.events += 1
-        if (log.category === "tasks") {
-          bucket.tasks += 1
-        }
-        if (log.category === "webhooks") {
-          bucket.webhooks += 1
-        }
+    for (const log of visibleLogs) {
+      visibleCounts.all += 1
+      if (log.category === "tasks") {
+        visibleCounts.tasks += 1
       }
-
+      if (log.category === "webhooks") {
+        visibleCounts.webhooks += 1
+      }
+      if (log.category === "integrations") {
+        visibleCounts.integrations += 1
+      }
+      if (log.category === "members") {
+        visibleCounts.members += 1
+      }
       if (AI_LOG_TYPES.has(log.type)) {
-        aiCount += 1
+        visibleCounts.ai += 1
       }
 
       if (log.source && log.source in sourceCounts) {
@@ -339,14 +389,30 @@ export const getWorkspaceLogDashboard = query({
       }
     }
 
+    for (const log of recentLogs) {
+      const bucketStart = startOfDay(log.timestamp)
+      const bucket = activityBuckets.get(bucketStart)
+      if (!bucket) {
+        continue
+      }
+
+      bucket.events += 1
+      if (log.category === "tasks") {
+        bucket.tasks += 1
+      }
+      if (log.category === "webhooks") {
+        bucket.webhooks += 1
+      }
+    }
+
     return {
       counts: {
-        all: metrics?.totalCount ?? 0,
-        tasks: metrics?.taskCount ?? 0,
-        ai: aiCount,
-        webhooks: metrics?.webhookCount ?? 0,
-        integrations: metrics?.integrationCount ?? 0,
-        members: metrics?.memberCount ?? 0,
+        all: visibleCounts.all,
+        tasks: visibleCounts.tasks,
+        ai: visibleCounts.ai,
+        webhooks: visibleCounts.webhooks,
+        integrations: visibleCounts.integrations,
+        members: visibleCounts.members,
       },
       activityData: Array.from(activityBuckets.entries()).map(([timestamp, counts]) => ({
         day: new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(
