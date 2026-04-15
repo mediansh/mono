@@ -286,7 +286,7 @@ export async function processDiscordFeedbackInBackground(args: { integrationId: 
       model: AI_MODELS.feedbackExtractor,
       system: extractorSystemParts.join(" "),
       prompt: [`Workspace name: ${feedbackWindow.integration.workspaceName}`, `Guild: ${feedbackWindow.integration.guildName}`, "Likely matching existing tasks:", formatExistingTasks(relevantExistingTasks), "Relevant Discord messages:", formatTranscript(relevantMessages, relevantMessageIds)].join("\n\n"),
-      experimental_output: Output.object({ schema: extractedFeedbackTasksSchema }),
+      output: Output.object({ schema: extractedFeedbackTasksSchema }),
     })
     const extractorDurationMs = Date.now() - extractorStart
     await trackLLMGeneration({ distinctId: feedbackWindow.integration.workspaceId, model: AI_MODEL_IDS.feedbackExtractor, feature: "discord_feedback_extractor", inputTokens: extractorResult.usage?.inputTokens, outputTokens: extractorResult.usage?.outputTokens, durationMs: extractorDurationMs, success: true, metadata: { integration_id: args.integrationId, relevant_message_count: relevantMessages.length } })
