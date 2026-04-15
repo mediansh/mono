@@ -1632,6 +1632,85 @@ export const recordInboundPostInternal = internalMutation({
   },
 })
 
+export const getPendingFeedbackWindow = query({
+  args: {
+    botSecret: v.string(),
+    integrationId: v.id("xWorkspaceIntegrations"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    if (args.botSecret !== getRequiredEnv("X_API_SECRET")) {
+      throw new Error("Invalid X bot secret")
+    }
+
+    const integration = await ctx.db.get(args.integrationId)
+    if (!integration) {
+      throw new Error("X integration not found")
+    }
+
+    const workspace = await ctx.db.get(integration.workspaceId)
+    if (!workspace) {
+      throw new Error("Workspace not found")
+    }
+
+    const posts = await ctx.db
+      .query("xPosts")
+      .withIndex("by_integration_created_at", (q) =>
+        q.eq("integrationId", args.integrationId)
+      )
+      .order("desc")
+      .take(Math.min(args.limit ?? 100, 100))
+
+    return {
+      integration: {
+        integrationId: integration._id,
+        workspaceId: integration.workspaceId,
+        workspaceName: workspace.name,
+        availableLabels: (workspace.labels ?? []).map((label) => label.name),
+        xUserId: integration.xUserId,
+        username: integration.username,
+        lastProcessedPostId: integration.lastProcessedPostId ?? null,
+        lastProcessedPostCreatedAt:
+          integration.lastProcessedPostCreatedAt ?? null,
+        additionalContext: integration.additionalContext ?? null,
+      },
+      posts: posts.reverse().map((post) => ({
+        _id: post._id,
+        postId: post.postId,
+        authorUsername: post.authorUsername,
+        content: post.content,
+        permalink: post.permalink,
+        postCreatedAt: post.postCreatedAt,
+      })),
+    }
+  },
+})
+
+export const markFeedbackWindowProcessed = mutation({
+  args: {
+    botSecret: v.string(),
+    integrationId: v.id("xWorkspaceIntegrations"),
+    lastProcessedPostId: v.string(),
+    lastProcessedPostCreatedAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    if (args.botSecret !== getRequiredEnv("X_API_SECRET")) {
+      throw new Error("Invalid X bot secret")
+    }
+
+    const integration = await ctx.db.get(args.integrationId)
+    if (!integration) {
+      throw new Error("X integration not found")
+    }
+
+    await ctx.db.patch(args.integrationId, {
+      lastProcessedPostId: args.lastProcessedPostId,
+      lastProcessedPostCreatedAt: args.lastProcessedPostCreatedAt,
+      lastProcessedAt: Date.now(),
+    })
+  },
+})
+
 export const xOAuthCallback = httpAction(async (ctx, request) => {
   const url = new URL(request.url)
   const requestToken = url.searchParams.get("oauth_token")

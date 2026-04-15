@@ -778,6 +778,84 @@ export const recordInboundMessage = internalMutation({
   },
 })
 
+export const getPendingFeedbackWindow = query({
+  args: {
+    botSecret: v.string(),
+    integrationId: v.id("slackWorkspaceIntegrations"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    requireSlackBotSecret(args.botSecret)
+
+    const integration = await ctx.db.get(args.integrationId)
+    if (!integration) {
+      throw new Error("Slack integration not found")
+    }
+
+    const workspace = await ctx.db.get(integration.workspaceId)
+    if (!workspace) {
+      throw new Error("Workspace not found")
+    }
+
+    const messages = await ctx.db
+      .query("slackMessages")
+      .withIndex("by_integration_created_at", (q) =>
+        q.eq("integrationId", args.integrationId)
+      )
+      .order("desc")
+      .take(Math.min(args.limit ?? 100, 100))
+
+    return {
+      integration: {
+        integrationId: integration._id,
+        workspaceId: integration.workspaceId,
+        workspaceName: workspace.name,
+        availableLabels: (workspace.labels ?? []).map((label) => label.name),
+        teamId: integration.teamId,
+        teamName: integration.teamName,
+        lastProcessedMessageId: integration.lastProcessedMessageId ?? null,
+        lastProcessedMessageCreatedAt:
+          integration.lastProcessedMessageCreatedAt ?? null,
+        additionalContext: integration.additionalContext ?? null,
+      },
+      messages: messages.reverse().map((message) => ({
+        _id: message._id,
+        channelId: message.channelId,
+        channelName: message.channelName ?? null,
+        threadTs: message.threadTs ?? null,
+        messageTs: message.messageTs,
+        authorUsername: message.authorUsername,
+        content: message.content,
+        permalink: message.permalink ?? null,
+        messageCreatedAt: message.messageCreatedAt,
+      })),
+    }
+  },
+})
+
+export const markFeedbackWindowProcessed = mutation({
+  args: {
+    botSecret: v.string(),
+    integrationId: v.id("slackWorkspaceIntegrations"),
+    lastProcessedMessageId: v.string(),
+    lastProcessedMessageCreatedAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    requireSlackBotSecret(args.botSecret)
+
+    const integration = await ctx.db.get(args.integrationId)
+    if (!integration) {
+      throw new Error("Slack integration not found")
+    }
+
+    await ctx.db.patch(args.integrationId, {
+      lastProcessedMessageId: args.lastProcessedMessageId,
+      lastProcessedMessageCreatedAt: args.lastProcessedMessageCreatedAt,
+      lastProcessedAt: Date.now(),
+    })
+  },
+})
+
 // ── Slack Events API webhook ────────────────────────────
 
 export const slackEventsWebhook = httpAction(async (ctx, request) => {
