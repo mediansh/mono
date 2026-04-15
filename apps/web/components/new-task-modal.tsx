@@ -754,59 +754,69 @@ export function NewTaskModal({
                 }
               }}
             >
-              {/* ── Header: segmented tab + Title + Meta + Send ── */}
-              <div className="relative px-5 pt-5 pb-0">
-                {/* Send button — creates the task (manual) or generates tasks (AI) */}
-                <button
-                  type="button"
-                  onClick={
-                    activeTab === "manual" ? handleCreate : handleGenerateTasks
-                  }
-                  disabled={
-                    activeTab === "manual"
-                      ? !title.trim() || !currentWorkspace
-                      : !aiPrompt.trim() || isGenerating
-                  }
-                  aria-label={
-                    activeTab === "manual" ? "Create task" : "Generate tasks"
-                  }
-                  className="absolute top-4 right-4 flex items-center justify-center rounded-[4px] bg-white p-1.5 ring-1 ring-white transition-colors hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {activeTab === "ai" && isGenerating ? (
-                    <SpinnerGap size={14} color="#000" className="animate-spin" />
-                  ) : (
-                    <PaperPlaneRight size={14} weight="fill" color="#000" />
-                  )}
-                </button>
+              {/* ── Header: segmented tab + Send + Title ── */}
+              <div className="px-5 pt-5 pb-0">
+                {/* Tab switcher and send button row */}
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <div className="inline-flex items-center gap-0.5 rounded-[6px] p-0.5 ring-1 ring-border">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("manual")}
+                      className={`flex items-center gap-1.5 rounded-[4px] px-2 py-1 text-[11px] font-medium transition-colors ${
+                        activeTab === "manual"
+                          ? "bg-accent text-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <PencilSimple size={12} />
+                      Manual
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab("ai")
+                        trackAIPromptTabSelected()
+                      }}
+                      className={`flex items-center gap-1.5 rounded-[4px] px-2 py-1 text-[11px] font-medium transition-colors ${
+                        activeTab === "ai"
+                          ? "bg-accent text-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <Sparkle size={12} />
+                      AI Prompt
+                    </button>
+                  </div>
 
-                {/* Segmented tab switcher */}
-                <div className="mb-3 inline-flex items-center gap-0.5 rounded-[6px] p-0.5 ring-1 ring-border">
+                  {/* Send button — creates the task (manual) or generates tasks (AI) */}
                   <button
                     type="button"
-                    onClick={() => setActiveTab("manual")}
-                    className={`flex items-center gap-1.5 rounded-[4px] px-2 py-1 text-[11px] font-medium transition-colors ${
+                    onClick={
                       activeTab === "manual"
-                        ? "bg-accent text-foreground"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
+                        ? handleCreate
+                        : handleGenerateTasks
+                    }
+                    disabled={
+                      activeTab === "manual"
+                        ? !title.trim() || !currentWorkspace
+                        : !aiPrompt.trim() || isGenerating
+                    }
+                    aria-label={
+                      activeTab === "manual"
+                        ? "Create task"
+                        : "Generate tasks"
+                    }
+                    className="flex items-center justify-center rounded-[4px] bg-white p-1.5 ring-1 ring-white transition-colors hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    <PencilSimple size={12} />
-                    Manual
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveTab("ai")
-                      trackAIPromptTabSelected()
-                    }}
-                    className={`flex items-center gap-1.5 rounded-[4px] px-2 py-1 text-[11px] font-medium transition-colors ${
-                      activeTab === "ai"
-                        ? "bg-accent text-foreground"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <Sparkle size={12} />
-                    AI Prompt
+                    {activeTab === "ai" && isGenerating ? (
+                      <SpinnerGap
+                        size={14}
+                        color="#000"
+                        className="animate-spin"
+                      />
+                    ) : (
+                      <PaperPlaneRight size={14} weight="fill" color="#000" />
+                    )}
                   </button>
                 </div>
 
@@ -819,7 +829,7 @@ export function NewTaskModal({
                     placeholder="Task title"
                     autoFocus
                     rows={1}
-                    className="block w-full resize-none overflow-hidden bg-transparent pr-8 text-[16px] leading-snug font-semibold tracking-tight break-words outline-none placeholder:text-muted-foreground/40"
+                    className="block w-full resize-none overflow-hidden bg-transparent text-[16px] leading-snug font-semibold tracking-tight break-words outline-none placeholder:text-muted-foreground/40"
                   />
                 ) : null}
               </div>
