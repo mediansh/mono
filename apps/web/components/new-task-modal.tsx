@@ -770,12 +770,12 @@ export function NewTaskModal({
                   aria-label={
                     activeTab === "manual" ? "Create task" : "Generate tasks"
                   }
-                  className="absolute top-4 right-4 flex items-center justify-center rounded-[4px] bg-white p-1.5 text-black ring-1 ring-white transition-colors hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="absolute top-4 right-4 flex items-center justify-center rounded-[4px] bg-white p-1.5 ring-1 ring-white transition-colors hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {activeTab === "ai" && isGenerating ? (
-                    <SpinnerGap size={14} className="animate-spin" />
+                    <SpinnerGap size={14} color="#000" className="animate-spin" />
                   ) : (
-                    <PaperPlaneRight size={14} weight="fill" />
+                    <PaperPlaneRight size={14} weight="fill" color="#000" />
                   )}
                 </button>
 
