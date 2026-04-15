@@ -865,12 +865,12 @@ export function NewTaskModal({
                     <span className="text-[11px] text-red-500">{error}</span>
                   </div>
                 ) : null}
-                <div className="flex items-center justify-between gap-2 border-t border-border px-4 pt-2.5 pb-3">
+                <div className="flex flex-col gap-2 border-t border-border px-4 pt-2.5 pb-3 sm:flex-row sm:items-center sm:justify-between">
                   {activeTab === "manual" ? (
                     <div className="flex flex-wrap items-center gap-2">
                       {/* Status */}
                       <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent">
+                        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
                           {getStatusIcon(status)}
                           <span>{statusLabel}</span>
                         </DropdownMenuTrigger>
@@ -892,7 +892,7 @@ export function NewTaskModal({
 
                       {/* Priority */}
                       <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent">
+                        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
                           {getPriorityIcon(priority)}
                           <span>{priorityLabel}</span>
                         </DropdownMenuTrigger>
@@ -914,7 +914,7 @@ export function NewTaskModal({
 
                       {/* Labels */}
                       <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent">
+                        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
                           {labels.length > 0 ? (
                             <div className="flex items-center gap-1.5">
                               <div className="flex -space-x-0.5">
@@ -973,7 +973,7 @@ export function NewTaskModal({
 
                   {/* Right side actions */}
                   {activeTab === "manual" ? (
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center justify-end gap-1.5">
                       <input
                         ref={fileInputRef}
                         type="file"
@@ -985,7 +985,7 @@ export function NewTaskModal({
                         onClick={() => fileInputRef.current?.click()}
                         disabled={uploading}
                         title="Attach files"
-                        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {uploading ? (
                           <SpinnerGap size={14} className="animate-spin" />
@@ -998,7 +998,7 @@ export function NewTaskModal({
                         type="button"
                         onClick={() => setCreateMore(!createMore)}
                         title="Keep the modal open after creating"
-                        className={`flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent ${
+                        className={`flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent ${
                           createMore ? "text-foreground" : "text-muted-foreground"
                         }`}
                       >
@@ -1014,7 +1014,7 @@ export function NewTaskModal({
                       <button
                         onClick={handleCreate}
                         disabled={!title.trim() || !currentWorkspace}
-                        className="flex items-center gap-1.5 rounded-[4px] bg-primary px-3 py-1.5 text-[11px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="flex items-center gap-1.5 rounded-[4px] bg-primary px-3 py-1.5 text-[11px] font-medium whitespace-nowrap text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         Create
                         <ArrowRight
