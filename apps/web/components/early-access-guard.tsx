@@ -30,10 +30,7 @@ export function EarlyAccessGuard({ children }: { children: React.ReactNode }) {
     }
   }, [loading, needsCode, isEarlyAccessPage, replace])
 
-  if (loading) {
-    if (isEarlyAccessPage) return <>{children}</>
-    return null
-  }
+  if (loading) return null
 
   if (needsCode && !isEarlyAccessPage) return null
   if (!needsCode && isEarlyAccessPage) return null

@@ -174,115 +174,48 @@ function ChartTooltip({
   )
 }
 
-// Mock dashboard renders instantly so the billing page is visible while
-// the slow Autumn-backed action loads in the background. Real data
-// replaces this once the action resolves.
-const MOCK_BILLING_DASHBOARD: BillingDashboard = {
-  currentPlanId: "starter",
-  currentPlanName: "Starter",
-  canManageBilling: true,
-  disableOveragesWhenExhausted: false,
-  monthLabel: new Date().toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-  }),
-  summary: {
-    aiBudget: 25,
-    aiSpend: 8.42,
-    aiRemaining: 16.58,
-    aiOverage: 0,
-    eventLimit: 10000,
-    eventUsage: 3284,
-    eventRemaining: 6716,
-    eventOverage: 0,
-    overageTotal: 0,
-  },
-  tokens: {
-    totalInput: 184320,
-    totalOutput: 42180,
-    days: Array.from({ length: 14 }, (_, i) => {
-      const date = new Date()
-      date.setDate(date.getDate() - (13 - i))
-      const cumulative = (i + 1) * 0.62
-      return {
-        timestamp: date.getTime(),
-        day: date.getDate().toString(),
-        input: cumulative,
-        output: 0,
-      }
-    }),
-  },
-  events: {
-    total: 3284,
-    days: Array.from({ length: 14 }, (_, i) => {
-      const date = new Date()
-      date.setDate(date.getDate() - (13 - i))
-      const cumulative = Math.round((i + 1) * 235)
-      return {
-        timestamp: date.getTime(),
-        day: date.getDate().toString(),
-        events: cumulative,
-      }
-    }),
-  },
-  plans: [
-    {
-      id: "starter",
-      name: "Starter",
-      price: 0,
-      aiBudget: 25,
-      eventLimit: 10000,
-      trialDays: 0,
-      features: [
-        "$25 AI generation budget",
-        "10,000 events per month",
-        "Up to 3 integrations",
-        "Community support",
-      ],
-      eligibility: { attachAction: "none", status: "active", canceling: false },
-    },
-    {
-      id: "pro",
-      name: "Pro",
-      price: 29,
-      aiBudget: 150,
-      eventLimit: 100000,
-      trialDays: 14,
-      features: [
-        "$150 AI generation budget",
-        "100,000 events per month",
-        "Unlimited integrations",
-        "Priority support",
-        "Advanced analytics",
-      ],
-      eligibility: {
-        attachAction: "upgrade",
-        status: null,
-        canceling: false,
-      },
-    },
-    {
-      id: "team",
-      name: "Team",
-      price: 99,
-      aiBudget: 500,
-      eventLimit: 500000,
-      trialDays: 14,
-      features: [
-        "$500 AI generation budget",
-        "500,000 events per month",
-        "Unlimited integrations",
-        "Dedicated support channel",
-        "SSO and audit logs",
-        "Custom retention",
-      ],
-      eligibility: {
-        attachAction: "upgrade",
-        status: null,
-        canceling: false,
-      },
-    },
-  ],
+function BillingSkeleton() {
+  return (
+    <div className="mx-auto w-full max-w-4xl px-6 py-6">
+      <div className="mb-6">
+        <div className="h-4 w-20 rounded-[4px] bg-muted/40" />
+        <div className="mt-2 h-3 w-56 rounded-[4px] bg-muted/30" />
+      </div>
+      <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="rounded-[4px] p-3 ring-1 ring-border">
+            <div className="h-3 w-16 rounded-[3px] bg-muted/30" />
+            <div className="mt-2 h-4 w-20 rounded-[3px] bg-muted/40" />
+          </div>
+        ))}
+      </div>
+      <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="rounded-[4px] p-4 ring-1 ring-border">
+          <div className="mb-3 h-3.5 w-24 rounded-[4px] bg-muted/40" />
+          <div className="h-[180px] rounded-[4px] bg-muted/20" />
+        </div>
+        <div className="rounded-[4px] p-4 ring-1 ring-border">
+          <div className="mb-3 h-3.5 w-28 rounded-[4px] bg-muted/40" />
+          <div className="h-[180px] rounded-[4px] bg-muted/20" />
+        </div>
+      </div>
+      <div className="mb-3 h-3.5 w-16 rounded-[4px] bg-muted/40" />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="rounded-[4px] p-4 ring-1 ring-border">
+            <div className="h-3.5 w-20 rounded-[3px] bg-muted/40" />
+            <div className="mt-2 h-6 w-24 rounded-[3px] bg-muted/40" />
+            <div className="mt-4 space-y-2">
+              {Array.from({ length: 4 }).map((_, j) => (
+                <div key={j} className="h-3 w-full rounded-[3px] bg-muted/20" />
+              ))}
+            </div>
+            <div className="mt-4 h-7 w-full rounded-[3px] bg-muted/30" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 export default function BillingPage() {
@@ -291,14 +224,7 @@ export default function BillingPage() {
   const openBillingPortal = useAction(api.billing.openWorkspaceBillingPortal)
   const attachBillingPlan = useAction(api.billing.attachWorkspaceBillingPlan)
   const setDisableOverages = useMutation(api.billing.setWorkspaceDisableOverages)
-  // Seed with mock data so the UI renders immediately while the slow
-  // Autumn-backed action loads. Replaced by real data when it arrives.
-  // isMockDashboard guards real billing actions (upgrade, manage portal,
-  // overage toggle) from firing against fabricated plan IDs.
-  const [dashboard, setDashboard] = useState<BillingDashboard>(
-    MOCK_BILLING_DASHBOARD
-  )
-  const [isMockDashboard, setIsMockDashboard] = useState(true)
+  const [dashboard, setDashboard] = useState<BillingDashboard | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [managingBilling, setManagingBilling] = useState(false)
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null)
@@ -316,19 +242,14 @@ export default function BillingPage() {
     async function fetchDashboard() {
       if (!currentWorkspace) {
         if (!cancelled) {
-          setDashboard(MOCK_BILLING_DASHBOARD)
-          setIsMockDashboard(true)
+          setDashboard(null)
           setError(null)
         }
         return
       }
 
-      // Reset to mock at the start of every fetch so workspace-switching
-      // can't leave the previous workspace's real figures (and enabled
-      // action buttons) on screen during the in-flight window.
       if (!cancelled) {
-        setDashboard(MOCK_BILLING_DASHBOARD)
-        setIsMockDashboard(true)
+        setDashboard(null)
         setError(null)
       }
 
@@ -339,7 +260,6 @@ export default function BillingPage() {
 
         if (!cancelled) {
           setDashboard(nextDashboard)
-          setIsMockDashboard(false)
         }
       } catch (nextError) {
         if (!cancelled) {
@@ -365,13 +285,11 @@ export default function BillingPage() {
       workspaceId: currentWorkspace._id,
     })) as BillingDashboard
     setDashboard(nextDashboard)
-    setIsMockDashboard(false)
   }
 
   async function handleManageBilling() {
     if (
       !currentWorkspace ||
-      isMockDashboard ||
       !dashboard?.canManageBilling ||
       managingBilling
     )
@@ -397,7 +315,6 @@ export default function BillingPage() {
   function handleSwitchDisableOverages(nextValue: boolean) {
     if (
       !currentWorkspace ||
-      isMockDashboard ||
       !dashboard?.canManageBilling ||
       disableOveragesPending
     )
@@ -452,7 +369,6 @@ export default function BillingPage() {
   async function handleAttachPlan(planId: string) {
     if (
       !currentWorkspace ||
-      isMockDashboard ||
       !dashboard?.canManageBilling ||
       pendingPlanId
     )
@@ -484,13 +400,7 @@ export default function BillingPage() {
     }
   }
 
-  // Render immediately with mock data; real data swaps in when the
-  // action resolves. Skeleton no longer blocks the page.
-
-  // If the real billing fetch failed and we only have mock data, don't
-  // render fabricated financial figures alongside an error banner —
-  // show an error-only state so the numbers can't be mistaken for real.
-  if (error && isMockDashboard) {
+  if (error && !dashboard) {
     return (
       <Stagger className="h-full overflow-y-auto">
         <div className="mx-auto w-full max-w-4xl px-6 py-6">
@@ -521,6 +431,10 @@ export default function BillingPage() {
     )
   }
 
+  if (!dashboard) {
+    return <BillingSkeleton />
+  }
+
   const currentPlan =
     dashboard.plans.find((plan) => plan.id === dashboard.currentPlanId) ?? null
   const aiBudgetUsed =
@@ -546,7 +460,6 @@ export default function BillingPage() {
           <button
             onClick={() => void handleManageBilling()}
             disabled={
-              isMockDashboard ||
               !dashboard.canManageBilling ||
               managingBilling
             }
@@ -730,7 +643,6 @@ export default function BillingPage() {
                 isCurrent ||
                 plan.eligibility.attachAction === "none" ||
                 !dashboard.canManageBilling ||
-                isMockDashboard ||
                 pendingPlanId !== null
 
               return (
@@ -820,7 +732,6 @@ export default function BillingPage() {
             checked={dashboard.disableOveragesWhenExhausted}
             onCheckedChange={handleSwitchDisableOverages}
             disabled={
-              isMockDashboard ||
               !dashboard.canManageBilling ||
               disableOveragesPending
             }
