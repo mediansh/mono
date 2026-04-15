@@ -109,11 +109,7 @@ export default function EarlyAccessPage() {
   }
 
   if (enabled === undefined || redemption === undefined || isAdmin === undefined) {
-    return (
-      <div className="flex min-h-svh items-center justify-center bg-background">
-        <div className="size-5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-foreground" />
-      </div>
-    )
+    return null
   }
 
   if (!enabled || redemption || isAdmin) return null
