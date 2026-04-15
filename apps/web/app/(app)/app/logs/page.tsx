@@ -455,22 +455,30 @@ export default function LogsPage() {
 
   const realEvents = results as LogEvent[]
   const events = realEvents.length > 0 ? realEvents : MOCK_EVENTS
-  const activityData =
-    dashboard?.activityData.length
-      ? dashboard.activityData
-      : MOCK_ACTIVITY
+
+  const realActivityHasData = dashboard?.activityData.some(
+    (d) => d.tasks > 0 || d.webhooks > 0 || d.events > 0
+  )
+  const activityData = realActivityHasData
+    ? dashboard!.activityData
+    : MOCK_ACTIVITY
+
+  const realSourceHasData = dashboard?.sourceDistribution.some(
+    (d) => d.value > 0
+  )
   const sourceDistribution = (
-    dashboard?.sourceDistribution.length
-      ? dashboard.sourceDistribution
-      : MOCK_SOURCE_DISTRIBUTION
+    realSourceHasData ? dashboard!.sourceDistribution : MOCK_SOURCE_DISTRIBUTION
   ).map((entry: { name: string; value: number }) => ({
     ...entry,
     color: SOURCE_COLORS[entry.name] ?? "var(--chart-1)",
   }))
-  const webhooksByPlatform =
-    dashboard?.webhooksByPlatform.length
-      ? dashboard.webhooksByPlatform
-      : MOCK_WEBHOOKS_BY_PLATFORM
+
+  const realWebhooksHaveData = dashboard?.webhooksByPlatform.some(
+    (d) => d.received > 0 || d.processed > 0 || d.errors > 0
+  )
+  const webhooksByPlatform = realWebhooksHaveData
+    ? dashboard!.webhooksByPlatform
+    : MOCK_WEBHOOKS_BY_PLATFORM
 
   return (
     <Stagger className="h-full overflow-y-auto">
