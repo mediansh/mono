@@ -897,9 +897,9 @@ export function NewTaskModal({
                       <span className="text-[11px] text-red-500">{error}</span>
                     </div>
                   ) : null}
-                  <div className="flex flex-wrap items-center gap-2 border-t border-border px-4 pt-2.5 pb-3 md:grid md:grid-cols-[1fr_auto] md:gap-x-3">
-                    {/* Metadata group */}
-                    <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2 border-t border-border px-4 pt-2.5 pb-3 md:flex-nowrap md:justify-between">
+                    {/* Metadata group — left side on desktop */}
+                    <div className="flex flex-wrap items-center gap-2 md:min-w-0">
                       {/* Status */}
                       <DropdownMenu>
                         <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
@@ -1000,8 +1000,8 @@ export function NewTaskModal({
                       </DropdownMenu>
                     </div>
 
-                    {/* Action group — sits on the right via parent's md:justify-between */}
-                    <div className="flex flex-wrap items-center gap-2 md:gap-1.5">
+                    {/* Action group — pinned right via parent's md:justify-between + md:shrink-0 here */}
+                    <div className="flex flex-wrap items-center gap-2 md:shrink-0 md:gap-1.5">
                       {/* Attach */}
                       <input
                         ref={fileInputRef}
