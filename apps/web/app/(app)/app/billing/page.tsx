@@ -293,9 +293,12 @@ export default function BillingPage() {
   const setDisableOverages = useMutation(api.billing.setWorkspaceDisableOverages)
   // Seed with mock data so the UI renders immediately while the slow
   // Autumn-backed action loads. Replaced by real data when it arrives.
+  // isMockDashboard guards real billing actions (upgrade, manage portal,
+  // overage toggle) from firing against fabricated plan IDs.
   const [dashboard, setDashboard] = useState<BillingDashboard>(
     MOCK_BILLING_DASHBOARD
   )
+  const [isMockDashboard, setIsMockDashboard] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [managingBilling, setManagingBilling] = useState(false)
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null)
@@ -314,6 +317,7 @@ export default function BillingPage() {
       if (!currentWorkspace) {
         if (!cancelled) {
           setDashboard(MOCK_BILLING_DASHBOARD)
+          setIsMockDashboard(true)
           setError(null)
         }
         return
@@ -330,6 +334,7 @@ export default function BillingPage() {
 
         if (!cancelled) {
           setDashboard(nextDashboard)
+          setIsMockDashboard(false)
         }
       } catch (nextError) {
         if (!cancelled) {
@@ -355,10 +360,17 @@ export default function BillingPage() {
       workspaceId: currentWorkspace._id,
     })) as BillingDashboard
     setDashboard(nextDashboard)
+    setIsMockDashboard(false)
   }
 
   async function handleManageBilling() {
-    if (!currentWorkspace || !dashboard?.canManageBilling || managingBilling) return
+    if (
+      !currentWorkspace ||
+      isMockDashboard ||
+      !dashboard?.canManageBilling ||
+      managingBilling
+    )
+      return
 
     try {
       setManagingBilling(true)
@@ -378,7 +390,12 @@ export default function BillingPage() {
   }
 
   function handleSwitchDisableOverages(nextValue: boolean) {
-    if (!currentWorkspace || !dashboard?.canManageBilling || disableOveragesPending)
+    if (
+      !currentWorkspace ||
+      isMockDashboard ||
+      !dashboard?.canManageBilling ||
+      disableOveragesPending
+    )
       return
 
     if (nextValue) {
@@ -428,7 +445,13 @@ export default function BillingPage() {
   }
 
   async function handleAttachPlan(planId: string) {
-    if (!currentWorkspace || !dashboard?.canManageBilling || pendingPlanId) return
+    if (
+      !currentWorkspace ||
+      isMockDashboard ||
+      !dashboard?.canManageBilling ||
+      pendingPlanId
+    )
+      return
 
     try {
       setPendingPlanId(planId)
@@ -459,6 +482,40 @@ export default function BillingPage() {
   // Render immediately with mock data; real data swaps in when the
   // action resolves. Skeleton no longer blocks the page.
 
+  // If the real billing fetch failed and we only have mock data, don't
+  // render fabricated financial figures alongside an error banner —
+  // show an error-only state so the numbers can't be mistaken for real.
+  if (error && isMockDashboard) {
+    return (
+      <Stagger className="h-full overflow-y-auto">
+        <div className="mx-auto w-full max-w-4xl px-6 py-6">
+          <motion.div variants={fadeUp} className="mb-6">
+            <div className="flex items-center gap-2">
+              <CreditCard
+                size={16}
+                weight="bold"
+                className="text-foreground"
+              />
+              <h2 className="text-[14px] font-semibold">Billing</h2>
+            </div>
+            <p className="mt-0.5 text-[12px] text-muted-foreground">
+              Usage, plans, and billing for your workspace.
+            </p>
+          </motion.div>
+          <motion.div
+            variants={fadeUp}
+            className="rounded-[4px] bg-destructive/5 p-4 ring-1 ring-destructive/20"
+          >
+            <p className="text-[13px] font-medium text-foreground">
+              Billing data is unavailable
+            </p>
+            <p className="mt-1 text-[12px] text-muted-foreground">{error}</p>
+          </motion.div>
+        </div>
+      </Stagger>
+    )
+  }
+
   const currentPlan =
     dashboard.plans.find((plan) => plan.id === dashboard.currentPlanId) ?? null
   const aiBudgetUsed =
@@ -483,7 +540,11 @@ export default function BillingPage() {
           </div>
           <button
             onClick={() => void handleManageBilling()}
-            disabled={!dashboard.canManageBilling || managingBilling}
+            disabled={
+              isMockDashboard ||
+              !dashboard.canManageBilling ||
+              managingBilling
+            }
             className="flex h-7 shrink-0 items-center gap-1.5 rounded-[4px] bg-card px-2.5 text-[12px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
           >
             Manage billing
@@ -664,6 +725,7 @@ export default function BillingPage() {
                 isCurrent ||
                 plan.eligibility.attachAction === "none" ||
                 !dashboard.canManageBilling ||
+                isMockDashboard ||
                 pendingPlanId !== null
 
               return (
@@ -752,7 +814,11 @@ export default function BillingPage() {
           <Switch
             checked={dashboard.disableOveragesWhenExhausted}
             onCheckedChange={handleSwitchDisableOverages}
-            disabled={!dashboard.canManageBilling || disableOveragesPending}
+            disabled={
+              isMockDashboard ||
+              !dashboard.canManageBilling ||
+              disableOveragesPending
+            }
             aria-label="Disable overages when plan limits are reached"
           />
         </motion.div>

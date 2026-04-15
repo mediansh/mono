@@ -457,10 +457,16 @@ export default function LogsPage() {
   }
 
   const realEvents = results as LogEvent[]
-  // Always surface mock events alongside real ones so every integration
-  // source icon (Discord, Slack, GitHub, Linear, X, CLI) is visible in
-  // the feed even when the workspace hasn't seen activity from them yet.
-  const events = [...MOCK_EVENTS, ...realEvents]
+  // Mock events act as an empty-state demo for the integration icons.
+  // Only render them when the workspace has no real activity AND the
+  // user is on the unfiltered view, so they don't pollute filtered
+  // results or hide the "No events match this filter" empty state.
+  const events =
+    realEvents.length > 0
+      ? realEvents
+      : filter === "all"
+        ? MOCK_EVENTS
+        : realEvents
 
   const realActivityHasData = dashboard?.activityData.some(
     (d) => d.tasks > 0 || d.webhooks > 0 || d.events > 0
