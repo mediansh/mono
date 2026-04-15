@@ -484,7 +484,7 @@ export default function BillingPage() {
           <button
             onClick={() => void handleManageBilling()}
             disabled={!dashboard.canManageBilling || managingBilling}
-            className="flex h-7 items-center gap-1.5 rounded-[4px] bg-card px-2.5 text-[12px] font-medium ring-1 ring-border transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-7 shrink-0 items-center gap-1.5 rounded-[4px] bg-card px-2.5 text-[12px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
           >
             Manage billing
             <ArrowUpRight size={11} weight="bold" />
