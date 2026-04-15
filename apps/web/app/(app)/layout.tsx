@@ -42,9 +42,11 @@ export default function AppLayout({
             <AppSidebar />
             <SidebarInset className="my-0">
               {/* Mobile header — visible only below md breakpoint */}
-              <header className="sticky top-0 z-30 flex h-11 items-center gap-2 border-b border-sidebar-border bg-sidebar px-2 md:hidden">
-                <SidebarTrigger />
-                <Separator orientation="vertical" className="h-4" />
+              <header className="sticky top-0 z-30 flex h-11 items-stretch gap-2 border-b border-sidebar-border bg-sidebar px-2 md:hidden">
+                <div className="flex items-center">
+                  <SidebarTrigger />
+                </div>
+                <Separator orientation="vertical" className="h-full" />
                 <Link href="/app" className="flex items-center">
                   <Logo symbolOnly className="size-5" />
                 </Link>
