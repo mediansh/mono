@@ -134,6 +134,23 @@ async function applyMetricIncrements(
   })
 }
 
+async function getWorkspaceCreationTimes(
+  ctx: Pick<MutationCtx, "db">,
+  workspaceIds: Id<"workspaces">[]
+) {
+  const creationTimes = new Map<Id<"workspaces">, number>()
+
+  for (const workspaceId of workspaceIds) {
+    const workspace = await ctx.db.get(workspaceId)
+    if (!workspace) {
+      throw new Error(`Cannot record log for missing workspace ${workspaceId}`)
+    }
+    creationTimes.set(workspaceId, workspace._creationTime)
+  }
+
+  return creationTimes
+}
+
 export async function insertWorkspaceLogs(
   ctx: Pick<MutationCtx, "db">,
   logs: WorkspaceLogInput[]
@@ -142,9 +159,24 @@ export async function insertWorkspaceLogs(
     return
   }
 
+  const workspaceCreationTimes = await getWorkspaceCreationTimes(
+    ctx,
+    Array.from(new Set(logs.map((log) => log.workspaceId)))
+  )
   const metricsByWorkspace = new Map<Id<"workspaces">, WorkspaceLogMetricsCounts>()
 
   for (const log of logs) {
+    const timestamp = log.timestamp ?? Date.now()
+    const workspaceCreatedAt = workspaceCreationTimes.get(log.workspaceId)
+    if (workspaceCreatedAt === undefined) {
+      throw new Error(`Missing workspace creation time for ${log.workspaceId}`)
+    }
+    if (timestamp < workspaceCreatedAt) {
+      throw new Error(
+        `Refusing to record log before workspace creation for ${log.workspaceId}`
+      )
+    }
+
     await ctx.db.insert("workspaceLogs", {
       workspaceId: log.workspaceId,
       category: log.category,
@@ -152,7 +184,7 @@ export async function insertWorkspaceLogs(
       message: log.message,
       source: log.source,
       cost: log.cost,
-      timestamp: log.timestamp ?? Date.now(),
+      timestamp,
     })
 
     const workspaceMetrics =
