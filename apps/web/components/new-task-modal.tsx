@@ -898,8 +898,8 @@ export function NewTaskModal({
                     </div>
                   ) : null}
                   <div className="flex flex-wrap items-center gap-2 border-t border-border px-4 pt-2.5 pb-3">
-                    {/* Metadata group — stays left-aligned on desktop */}
-                    <div className="flex flex-wrap items-center gap-2">
+                    {/* Metadata group — flex-1 on desktop pushes the action group to the right */}
+                    <div className="flex flex-wrap items-center gap-2 md:flex-1">
                       {/* Status */}
                       <DropdownMenu>
                         <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
