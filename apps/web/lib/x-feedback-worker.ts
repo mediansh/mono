@@ -138,6 +138,14 @@ export async function processXFeedbackInBackground(args: { integrationId: Id<"xW
     const extractorDurationMs = Date.now() - extractorStart
     await trackLLMGeneration({ distinctId: feedbackWindow.integration.workspaceId, model: AI_MODEL_IDS.feedbackExtractor, feature: "x_feedback_extractor", inputTokens: extractorResult.usage?.inputTokens, outputTokens: extractorResult.usage?.outputTokens, durationMs: extractorDurationMs, success: true, metadata: { integration_id: args.integrationId, relevant_post_count: relevantPosts.length } })
     await safeTrackAiUsage({ workspaceId: feedbackWindow.integration.workspaceId, workspaceName: feedbackWindow.integration.workspaceName, model: AI_MODEL_IDS.feedbackExtractor, inputTokens: extractorResult.usage?.inputTokens, outputTokens: extractorResult.usage?.outputTokens, properties: { feature: "x_feedback_extractor", integration_id: args.integrationId } })
+    if (!extractorResult.output) {
+      logger.warn("X feedback extractor produced no structured output", { integrationId: args.integrationId })
+      await client.x.markFeedbackWindowProcessed(botSecret, args.integrationId, latestPendingPost.postId, latestPendingPost.postCreatedAt)
+      await trackFeedbackProcessing({ distinctId: feedbackWindow.integration.workspaceId, platform: "x", integrationId: args.integrationId, workspaceId: feedbackWindow.integration.workspaceId, messageCount: pendingPosts.length, isProductFeedback: classification.isProductFeedback, confidence: classification.confidence, createdTaskCount: 0, updatedTaskCount: 0, classifierDurationMs, extractorDurationMs, totalDurationMs: Date.now() - processingStart })
+      await client.x.finalize(botSecret, args.integrationId, { kind: "success", reason: "no_structured_output" })
+      return
+    }
+
     const extracted = extractedFeedbackTasksSchema.parse(extractorResult.output)
     const operations: XFeedbackTaskOperation[] = extracted.actions.map((action) => action.action === "create" ? ({ action: "create", task: { title: action.title, description: action.description ?? undefined, status: "requests", priority: action.priority ?? "none", labels: action.labels.filter((label) => feedbackWindow.integration.availableLabels.includes(label)), source: relevantPosts[0] ? { platform: "x", url: relevantPosts[0].permalink, author: relevantPosts[0].authorUsername } : undefined, createdAtLabel: formatCreatedAtLabel(relevantPosts[0]?.postCreatedAt ?? latestPendingPost.postCreatedAt) } }) : ({ action: "update", taskCode: action.taskCode, title: action.title, description: action.description ?? undefined, priority: action.priority ?? undefined, labels: action.labels.filter((label) => feedbackWindow.integration.availableLabels.includes(label)) }))
     const classifierCost = getAiCostForTokens({ model: AI_MODEL_IDS.feedbackClassifier, inputTokens: classifierResult.usage?.inputTokens, outputTokens: classifierResult.usage?.outputTokens })
