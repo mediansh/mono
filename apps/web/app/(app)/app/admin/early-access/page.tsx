@@ -122,7 +122,7 @@ export default function AdminEarlyAccessPage() {
       initial="hidden"
       animate="show"
       variants={{ show: { transition: { staggerChildren: 0.05 } } }}
-      className="mx-auto max-w-3xl px-8 py-10"
+      className="mx-auto max-w-3xl px-4 py-6 md:px-8 md:py-10"
     >
       <motion.div variants={fadeUp} className="mb-6">
         <h1 className="text-[15px] leading-tight font-semibold">
@@ -207,7 +207,8 @@ export default function AdminEarlyAccessPage() {
         <h2 className="mb-2 text-[12px] font-medium text-muted-foreground">
           Codes
         </h2>
-        <div className="overflow-hidden rounded-[6px] border border-sidebar-border">
+        <div className="overflow-x-auto rounded-[6px] border border-sidebar-border">
+          <div className="min-w-[520px]">
           <div className="flex items-center gap-2 border-b border-sidebar-border bg-sidebar/50 px-3 py-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
             <div className="w-28">Code</div>
             <div className="flex-1">Note</div>
@@ -262,6 +263,7 @@ export default function AdminEarlyAccessPage() {
               </div>
             </div>
           ))}
+          </div>
         </div>
       </motion.div>
 
@@ -269,7 +271,8 @@ export default function AdminEarlyAccessPage() {
         <h2 className="mb-2 text-[12px] font-medium text-muted-foreground">
           Early access users
         </h2>
-        <div className="overflow-hidden rounded-[6px] border border-sidebar-border">
+        <div className="overflow-x-auto rounded-[6px] border border-sidebar-border">
+          <div className="min-w-[520px]">
           <div className="flex items-center gap-2 border-b border-sidebar-border bg-sidebar/50 px-3 py-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
             <div className="flex-1">User</div>
             <div className="w-28">Code</div>
@@ -329,6 +332,7 @@ export default function AdminEarlyAccessPage() {
               </div>
             )
           })}
+          </div>
         </div>
       </motion.div>
     </motion.div>

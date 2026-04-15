@@ -29,7 +29,7 @@ export default function AdminOverviewPage() {
       initial="hidden"
       animate="show"
       variants={{ show: { transition: { staggerChildren: 0.06 } } }}
-      className="mx-auto max-w-3xl px-8 py-10"
+      className="mx-auto max-w-3xl px-4 py-6 md:px-8 md:py-10"
     >
       <motion.div variants={fadeUp} className="mb-8">
         <h1 className="text-[15px] font-semibold leading-tight">Admin overview</h1>
