@@ -319,15 +319,20 @@ const FILTER_OPTIONS: { value: FilterType; label: string }[] = [
   { value: "members", label: "Members" },
 ]
 
-// CSS variables follow the active theme (light/dark) and stay
-// consistent with the area + bar charts that already reference them.
+// Hex literals mirror the dark-mode --chart-* values from globals.css.
+// The CSS-variable form failed to resolve for the CLI slice + legend
+// dot in the user's environment (the pie wedge rendered black, the
+// legend dot rendered colorless), so we trade theme-following colors
+// here for reliable rendering. Light-mode users get dark-mode-tuned
+// colors in this chart only — the surrounding area/bar charts still
+// follow the theme via var(--chart-*).
 const SOURCE_COLORS: Record<string, string> = {
-  Discord: "var(--chart-1)",
-  Slack: "var(--chart-2)",
-  GitHub: "var(--chart-3)",
-  Linear: "var(--chart-4)",
-  X: "var(--chart-5)",
-  CLI: "var(--chart-6)",
+  Discord: "#4499ff",
+  Slack: "#ff9944",
+  GitHub: "#44cc88",
+  Linear: "#bb66ff",
+  X: "#ff4488",
+  CLI: "#999999",
 }
 
 function formatCurrency(amount: number) {
