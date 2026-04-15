@@ -323,11 +323,16 @@ export default function BillingPage() {
         return
       }
 
-      try {
-        if (!cancelled) {
-          setError(null)
-        }
+      // Reset to mock at the start of every fetch so workspace-switching
+      // can't leave the previous workspace's real figures (and enabled
+      // action buttons) on screen during the in-flight window.
+      if (!cancelled) {
+        setDashboard(MOCK_BILLING_DASHBOARD)
+        setIsMockDashboard(true)
+        setError(null)
+      }
 
+      try {
         const nextDashboard = (await loadBillingDashboard({
           workspaceId: currentWorkspace._id,
         })) as BillingDashboard
