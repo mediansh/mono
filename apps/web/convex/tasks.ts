@@ -962,6 +962,44 @@ export const createTasksFromDiscordFeedback = mutation({
   },
 })
 
+export const applyDiscordFeedbackTaskOperations = mutation({
+  args: {
+    botSecret: v.string(),
+    workspaceId: v.id("workspaces"),
+    operations: v.array(
+      v.union(
+        v.object({
+          action: v.literal("create"),
+          task: taskInputValidator,
+        }),
+        v.object({
+          action: v.literal("update"),
+          taskCode: v.string(),
+          title: v.string(),
+          description: v.optional(v.string()),
+          priority: v.optional(taskPriorityValidator),
+          labels: v.array(v.string()),
+        })
+      )
+    ),
+    cost: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const configuredSecret = process.env.DISCORD_PAIRING_SECRET
+    if (!configuredSecret || args.botSecret !== configuredSecret) {
+      throw new Error("Invalid Discord bot secret")
+    }
+
+    return await applyFeedbackTaskOperations(
+      ctx,
+      args.workspaceId,
+      args.operations,
+      "discord",
+      args.cost
+    )
+  },
+})
+
 export const createTasksFromDiscordFeedbackInternal = internalMutation({
   args: {
     workspaceId: v.id("workspaces"),
@@ -1026,6 +1064,44 @@ export const createTasksFromFeedbackInternal = internalMutation({
   },
 })
 
+export const applyXFeedbackTaskOperations = mutation({
+  args: {
+    botSecret: v.string(),
+    workspaceId: v.id("workspaces"),
+    operations: v.array(
+      v.union(
+        v.object({
+          action: v.literal("create"),
+          task: taskInputValidator,
+        }),
+        v.object({
+          action: v.literal("update"),
+          taskCode: v.string(),
+          title: v.string(),
+          description: v.optional(v.string()),
+          priority: v.optional(taskPriorityValidator),
+          labels: v.array(v.string()),
+        })
+      )
+    ),
+    cost: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const configuredSecret = process.env.X_API_SECRET
+    if (!configuredSecret || args.botSecret !== configuredSecret) {
+      throw new Error("Invalid X bot secret")
+    }
+
+    return await applyFeedbackTaskOperations(
+      ctx,
+      args.workspaceId,
+      args.operations,
+      "x",
+      args.cost
+    )
+  },
+})
+
 export const createTasksFromSlackFeedbackInternal = internalMutation({
   args: {
     workspaceId: v.id("workspaces"),
@@ -1058,6 +1134,44 @@ export const createTasksFromSlackFeedbackInternal = internalMutation({
   },
 })
 
+export const applySlackFeedbackTaskOperations = mutation({
+  args: {
+    botSecret: v.string(),
+    workspaceId: v.id("workspaces"),
+    operations: v.array(
+      v.union(
+        v.object({
+          action: v.literal("create"),
+          task: taskInputValidator,
+        }),
+        v.object({
+          action: v.literal("update"),
+          taskCode: v.string(),
+          title: v.string(),
+          description: v.optional(v.string()),
+          priority: v.optional(taskPriorityValidator),
+          labels: v.array(v.string()),
+        })
+      )
+    ),
+    cost: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const configuredSecret = process.env.SLACK_BOT_SECRET
+    if (!configuredSecret || args.botSecret !== configuredSecret) {
+      throw new Error("Invalid Slack bot secret")
+    }
+
+    return await applyFeedbackTaskOperations(
+      ctx,
+      args.workspaceId,
+      args.operations,
+      "slack",
+      args.cost
+    )
+  },
+})
+
 export const getTaskSnapshotForDiscord = query({
   args: {
     botSecret: v.string(),
@@ -1068,6 +1182,38 @@ export const getTaskSnapshotForDiscord = query({
     const configuredSecret = process.env.DISCORD_PAIRING_SECRET
     if (!configuredSecret || args.botSecret !== configuredSecret) {
       throw new Error("Invalid Discord bot secret")
+    }
+
+    return await getWorkspaceTaskSnapshot(ctx, args.workspaceId, args.limit)
+  },
+})
+
+export const getTaskSnapshotForXFeedback = query({
+  args: {
+    botSecret: v.string(),
+    workspaceId: v.id("workspaces"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const configuredSecret = process.env.X_API_SECRET
+    if (!configuredSecret || args.botSecret !== configuredSecret) {
+      throw new Error("Invalid X bot secret")
+    }
+
+    return await getWorkspaceTaskSnapshot(ctx, args.workspaceId, args.limit)
+  },
+})
+
+export const getTaskSnapshotForSlackFeedback = query({
+  args: {
+    botSecret: v.string(),
+    workspaceId: v.id("workspaces"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const configuredSecret = process.env.SLACK_BOT_SECRET
+    if (!configuredSecret || args.botSecret !== configuredSecret) {
+      throw new Error("Invalid Slack bot secret")
     }
 
     return await getWorkspaceTaskSnapshot(ctx, args.workspaceId, args.limit)

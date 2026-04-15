@@ -384,6 +384,75 @@ export const getWorkspaceQuotaStatus = action({
   },
 })
 
+export const getWorkspaceQuotaStatusForDiscordFeedback = action({
+  args: {
+    botSecret: v.string(),
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args): Promise<WorkspaceQuotaStatus> => {
+    const configuredSecret = process.env.DISCORD_PAIRING_SECRET
+    if (!configuredSecret || args.botSecret !== configuredSecret) {
+      throw new Error("Invalid Discord bot secret")
+    }
+
+    const settings = await ctx.runQuery(internal.billing.getWorkspaceOverageSettings, {
+      workspaceId: args.workspaceId,
+    })
+
+    if (!settings) {
+      return { overagesDisabled: false, aiExhausted: false, eventsExhausted: false }
+    }
+
+    return await computeWorkspaceQuotaStatus(settings)
+  },
+})
+
+export const getWorkspaceQuotaStatusForXFeedback = action({
+  args: {
+    botSecret: v.string(),
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args): Promise<WorkspaceQuotaStatus> => {
+    const configuredSecret = process.env.X_API_SECRET
+    if (!configuredSecret || args.botSecret !== configuredSecret) {
+      throw new Error("Invalid X bot secret")
+    }
+
+    const settings = await ctx.runQuery(internal.billing.getWorkspaceOverageSettings, {
+      workspaceId: args.workspaceId,
+    })
+
+    if (!settings) {
+      return { overagesDisabled: false, aiExhausted: false, eventsExhausted: false }
+    }
+
+    return await computeWorkspaceQuotaStatus(settings)
+  },
+})
+
+export const getWorkspaceQuotaStatusForSlackFeedback = action({
+  args: {
+    botSecret: v.string(),
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args): Promise<WorkspaceQuotaStatus> => {
+    const configuredSecret = process.env.SLACK_BOT_SECRET
+    if (!configuredSecret || args.botSecret !== configuredSecret) {
+      throw new Error("Invalid Slack bot secret")
+    }
+
+    const settings = await ctx.runQuery(internal.billing.getWorkspaceOverageSettings, {
+      workspaceId: args.workspaceId,
+    })
+
+    if (!settings) {
+      return { overagesDisabled: false, aiExhausted: false, eventsExhausted: false }
+    }
+
+    return await computeWorkspaceQuotaStatus(settings)
+  },
+})
+
 export const getWorkspaceQuotaStatusInternal = internalAction({
   args: {
     workspaceId: v.id("workspaces"),
