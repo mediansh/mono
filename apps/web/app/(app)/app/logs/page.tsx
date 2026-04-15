@@ -151,6 +151,149 @@ const SOURCE_ICONS: Record<string, React.ComponentType<{ size?: number; classNam
 const HOUR = 3600000
 const MIN = 60000
 
+// ── Mock data (used when no real workspace activity exists yet) ──
+
+const MOCK_ACTIVITY: Array<{ day: string; tasks: number; webhooks: number; events: number }> = [
+  { day: "Mon", tasks: 12, webhooks: 18, events: 42 },
+  { day: "Tue", tasks: 24, webhooks: 31, events: 78 },
+  { day: "Wed", tasks: 38, webhooks: 27, events: 95 },
+  { day: "Thu", tasks: 29, webhooks: 44, events: 88 },
+  { day: "Fri", tasks: 51, webhooks: 38, events: 120 },
+  { day: "Sat", tasks: 8, webhooks: 12, events: 22 },
+  { day: "Sun", tasks: 14, webhooks: 9, events: 28 },
+]
+
+const MOCK_SOURCE_DISTRIBUTION: Array<{ name: string; value: number }> = [
+  { name: "Discord", value: 142 },
+  { name: "Slack", value: 89 },
+  { name: "GitHub", value: 67 },
+  { name: "Linear", value: 54 },
+  { name: "X", value: 23 },
+  { name: "CLI", value: 31 },
+]
+
+const MOCK_WEBHOOKS_BY_PLATFORM: Array<{
+  platform: string
+  received: number
+  processed: number
+  errors: number
+}> = [
+  { platform: "Discord", received: 58, processed: 55, errors: 3 },
+  { platform: "Slack", received: 42, processed: 41, errors: 1 },
+  { platform: "GitHub", received: 37, processed: 35, errors: 2 },
+  { platform: "Linear", received: 21, processed: 21, errors: 0 },
+  { platform: "X", received: 12, processed: 11, errors: 1 },
+]
+
+const MOCK_EVENTS: LogEvent[] = [
+  {
+    _id: "mock-1",
+    type: "task_created",
+    message: "Add OAuth login flow to onboarding",
+    timestamp: Date.now() - 3 * MIN,
+    source: "manual",
+  },
+  {
+    _id: "mock-2",
+    type: "tasks_generated_ai",
+    message: "Generated 4 tasks from AI prompt: \"Set up billing portal\"",
+    timestamp: Date.now() - 11 * MIN,
+    source: "ai",
+    cost: 0.0142,
+  },
+  {
+    _id: "mock-3",
+    type: "webhook_received",
+    message: "GitHub: pull_request opened in mediansh/web",
+    timestamp: Date.now() - 24 * MIN,
+    source: "github",
+  },
+  {
+    _id: "mock-4",
+    type: "task_moved",
+    message: "Moved \"Fix mobile sidebar\" to In progress",
+    timestamp: Date.now() - 42 * MIN,
+    source: "manual",
+  },
+  {
+    _id: "mock-5",
+    type: "request_accepted",
+    message: "Approved feature request from @harrison",
+    timestamp: Date.now() - 1 * HOUR,
+    source: "discord",
+  },
+  {
+    _id: "mock-6",
+    type: "webhook_received",
+    message: "Linear: issue MED-218 status changed to Done",
+    timestamp: Date.now() - 2 * HOUR,
+    source: "linear",
+  },
+  {
+    _id: "mock-7",
+    type: "feedback_processed",
+    message: "Processed 3 new feedback items from #product channel",
+    timestamp: Date.now() - 3 * HOUR,
+    source: "slack",
+    cost: 0.0089,
+  },
+  {
+    _id: "mock-8",
+    type: "task_updated",
+    message: "Updated description on \"Refactor billing webhook handler\"",
+    timestamp: Date.now() - 4 * HOUR,
+    source: "cli",
+  },
+  {
+    _id: "mock-9",
+    type: "labels_saved",
+    message: "Updated 2 workspace labels (added: design, removed: misc)",
+    timestamp: Date.now() - 6 * HOUR,
+    source: "manual",
+  },
+  {
+    _id: "mock-10",
+    type: "member_joined",
+    message: "Sarah Chen joined the workspace",
+    timestamp: Date.now() - 8 * HOUR,
+  },
+  {
+    _id: "mock-11",
+    type: "integration_connected",
+    message: "Connected GitHub integration to mediansh org",
+    timestamp: Date.now() - 11 * HOUR,
+    source: "github",
+  },
+  {
+    _id: "mock-12",
+    type: "webhook_error",
+    message: "X: signature verification failed (retrying)",
+    timestamp: Date.now() - 14 * HOUR,
+    source: "x",
+  },
+  {
+    _id: "mock-13",
+    type: "task_deleted",
+    message: "Deleted task \"Old onboarding draft\"",
+    timestamp: Date.now() - 18 * HOUR,
+    source: "manual",
+  },
+  {
+    _id: "mock-14",
+    type: "tasks_generated_ai",
+    message: "Generated 7 tasks from AI prompt: \"Plan Q2 marketing site refresh\"",
+    timestamp: Date.now() - 22 * HOUR,
+    source: "ai",
+    cost: 0.0231,
+  },
+  {
+    _id: "mock-15",
+    type: "request_denied",
+    message: "Denied access request from external user",
+    timestamp: Date.now() - 26 * HOUR,
+  },
+]
+
 // ── Helpers ──────────────────────────────────────────────
 
 function formatRelativeTime(timestamp: number) {
@@ -310,40 +453,24 @@ export default function LogsPage() {
     return <LogsSkeleton />
   }
 
-  const events = results as LogEvent[]
+  const realEvents = results as LogEvent[]
+  const events = realEvents.length > 0 ? realEvents : MOCK_EVENTS
   const activityData =
     dashboard?.activityData.length
       ? dashboard.activityData
-      : [
-      { day: "Mon", tasks: 0, webhooks: 0, events: 0 },
-      { day: "Tue", tasks: 0, webhooks: 0, events: 0 },
-      { day: "Wed", tasks: 0, webhooks: 0, events: 0 },
-      { day: "Thu", tasks: 0, webhooks: 0, events: 0 },
-      { day: "Fri", tasks: 0, webhooks: 0, events: 0 },
-      { day: "Sat", tasks: 0, webhooks: 0, events: 0 },
-      { day: "Sun", tasks: 0, webhooks: 0, events: 0 },
-    ]
-  const sourceDistribution =
+      : MOCK_ACTIVITY
+  const sourceDistribution = (
     dashboard?.sourceDistribution.length
-      ? dashboard.sourceDistribution.map((entry: { name: string; value: number }) => ({
-          ...entry,
-          color: SOURCE_COLORS[entry.name] ?? "var(--chart-1)",
-        }))
-      : Object.entries(SOURCE_COLORS).map(([name, color]) => ({
-          name,
-          value: 0,
-          color,
-        }))
+      ? dashboard.sourceDistribution
+      : MOCK_SOURCE_DISTRIBUTION
+  ).map((entry: { name: string; value: number }) => ({
+    ...entry,
+    color: SOURCE_COLORS[entry.name] ?? "var(--chart-1)",
+  }))
   const webhooksByPlatform =
     dashboard?.webhooksByPlatform.length
       ? dashboard.webhooksByPlatform
-      : [
-      { platform: "Discord", received: 0, processed: 0, errors: 0 },
-      { platform: "Slack", received: 0, processed: 0, errors: 0 },
-      { platform: "GitHub", received: 0, processed: 0, errors: 0 },
-      { platform: "Linear", received: 0, processed: 0, errors: 0 },
-      { platform: "X", received: 0, processed: 0, errors: 0 },
-    ]
+      : MOCK_WEBHOOKS_BY_PLATFORM
 
   return (
     <Stagger className="h-full overflow-y-auto">
