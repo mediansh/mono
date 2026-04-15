@@ -7,7 +7,6 @@ import { useMutation } from "convex/react"
 import { useUser } from "@clerk/nextjs"
 import { toast } from "sonner"
 import {
-  X,
   SpinnerGap,
   Circle,
   SealCheck,
@@ -22,7 +21,7 @@ import {
   Paperclip,
   PencilSimple,
   Sparkle,
-  ArrowRight,
+  PaperPlaneRight,
 } from "@phosphor-icons/react"
 import {
   DropdownMenu,
@@ -722,11 +721,6 @@ export function NewTaskModal({
 
   if (typeof document === "undefined") return null
 
-  const handleClose = () => {
-    onOpenChange(false)
-    resetForm()
-  }
-
   return createPortal(
     <AnimatePresence>
       {open && (
@@ -760,15 +754,29 @@ export function NewTaskModal({
                 }
               }}
             >
-              {/* ── Header: segmented tab + Title + Meta + Close ── */}
+              {/* ── Header: segmented tab + Title + Meta + Send ── */}
               <div className="relative px-5 pt-5 pb-0">
-                {/* Close button */}
+                {/* Send button — creates the task (manual) or generates tasks (AI) */}
                 <button
-                  onClick={handleClose}
-                  aria-label="Close"
-                  className="absolute top-4 right-4 rounded-[4px] p-1.5 text-muted-foreground/50 ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground"
+                  type="button"
+                  onClick={
+                    activeTab === "manual" ? handleCreate : handleGenerateTasks
+                  }
+                  disabled={
+                    activeTab === "manual"
+                      ? !title.trim() || !currentWorkspace
+                      : !aiPrompt.trim() || isGenerating
+                  }
+                  aria-label={
+                    activeTab === "manual" ? "Create task" : "Generate tasks"
+                  }
+                  className="absolute top-4 right-4 flex items-center justify-center rounded-[4px] bg-white p-1.5 text-black ring-1 ring-white transition-colors hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  <X size={14} weight="bold" />
+                  {activeTab === "ai" && isGenerating ? (
+                    <SpinnerGap size={14} className="animate-spin" />
+                  ) : (
+                    <PaperPlaneRight size={14} weight="fill" />
+                  )}
                 </button>
 
                 {/* Segmented tab switcher */}
@@ -859,196 +867,160 @@ export function NewTaskModal({
               )}
 
               {/* ── Bottom toolbar ── */}
-              <div>
-                {error ? (
-                  <div className="px-5 pt-2">
-                    <span className="text-[11px] text-red-500">{error}</span>
-                  </div>
-                ) : null}
-                <div className="flex flex-col gap-2 border-t border-border px-4 pt-2.5 pb-3 sm:flex-row sm:items-center sm:justify-between">
-                  {activeTab === "manual" ? (
-                    <div className="flex flex-wrap items-center gap-2">
-                      {/* Status */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
-                          {getStatusIcon(status)}
-                          <span>{statusLabel}</span>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent side="top" align="start">
-                          {STATUS_OPTIONS.map((opt) => (
-                            <DropdownMenuItem
-                              key={opt.id}
-                              onClick={() => setStatus(opt.id)}
-                              className={status === opt.id ? "font-medium" : ""}
-                            >
-                              <div className="flex items-center gap-2">
-                                {getStatusIcon(opt.id)}
-                                <span>{opt.label}</span>
-                              </div>
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-
-                      {/* Priority */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
-                          {getPriorityIcon(priority)}
-                          <span>{priorityLabel}</span>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent side="top" align="start">
-                          {PRIORITY_OPTIONS.map((opt) => (
-                            <DropdownMenuItem
-                              key={opt.id}
-                              onClick={() => setPriority(opt.id)}
-                              className={priority === opt.id ? "font-medium" : ""}
-                            >
-                              <div className="flex items-center gap-2">
-                                {getPriorityIcon(opt.id)}
-                                <span>{opt.label}</span>
-                              </div>
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-
-                      {/* Labels */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
-                          {labels.length > 0 ? (
-                            <div className="flex items-center gap-1.5">
-                              <div className="flex -space-x-0.5">
-                                {labels.map((label) => (
-                                  <div
-                                    key={label}
-                                    className="size-2 rounded-full ring-1 ring-background"
-                                    style={{
-                                      backgroundColor:
-                                        labelOptions.find((o) => o.id === label)
-                                          ?.color ?? "#888",
-                                    }}
-                                  />
-                                ))}
-                              </div>
-                              <span>
-                                {labels.length === 1
-                                  ? (labelOptions.find((o) => o.id === labels[0])
-                                      ?.label ?? labels[0])
-                                  : `${labels.length} labels`}
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1.5">
-                              <Tag size={12} className="text-muted-foreground" />
-                              <span className="text-muted-foreground">
-                                Labels
-                              </span>
-                            </div>
-                          )}
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          side="top"
-                          align="start"
-                          className="w-auto min-w-[180px]"
-                        >
-                          {labelOptions.map((opt) => (
-                            <DropdownMenuCheckboxItem
-                              key={opt.id}
-                              checked={labels.includes(opt.id)}
-                              onCheckedChange={() => toggleLabel(opt.id)}
-                            >
-                              <span
-                                className="inline-block size-2.5 shrink-0 rounded-full"
-                                style={{ backgroundColor: opt.color }}
-                              />
-                              {opt.label}
-                            </DropdownMenuCheckboxItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+              {activeTab === "manual" ? (
+                <div>
+                  {error ? (
+                    <div className="px-5 pt-2">
+                      <span className="text-[11px] text-red-500">{error}</span>
                     </div>
-                  ) : (
-                    <div />
-                  )}
+                  ) : null}
+                  <div className="flex flex-wrap items-center gap-2 border-t border-border px-4 pt-2.5 pb-3">
+                    {/* Status */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
+                        {getStatusIcon(status)}
+                        <span>{statusLabel}</span>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent side="top" align="start">
+                        {STATUS_OPTIONS.map((opt) => (
+                          <DropdownMenuItem
+                            key={opt.id}
+                            onClick={() => setStatus(opt.id)}
+                            className={status === opt.id ? "font-medium" : ""}
+                          >
+                            <div className="flex items-center gap-2">
+                              {getStatusIcon(opt.id)}
+                              <span>{opt.label}</span>
+                            </div>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
 
-                  {/* Right side actions */}
-                  {activeTab === "manual" ? (
-                    <div className="flex items-center justify-end gap-1.5">
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        multiple
-                        onChange={handleFileSelect}
-                        className="hidden"
-                      />
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={uploading}
-                        title="Attach files"
-                        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {uploading ? (
-                          <SpinnerGap size={14} className="animate-spin" />
+                    {/* Priority */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
+                        {getPriorityIcon(priority)}
+                        <span>{priorityLabel}</span>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent side="top" align="start">
+                        {PRIORITY_OPTIONS.map((opt) => (
+                          <DropdownMenuItem
+                            key={opt.id}
+                            onClick={() => setPriority(opt.id)}
+                            className={priority === opt.id ? "font-medium" : ""}
+                          >
+                            <div className="flex items-center gap-2">
+                              {getPriorityIcon(opt.id)}
+                              <span>{opt.label}</span>
+                            </div>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {/* Labels */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
+                        {labels.length > 0 ? (
+                          <div className="flex items-center gap-1.5">
+                            <div className="flex -space-x-0.5">
+                              {labels.map((label) => (
+                                <div
+                                  key={label}
+                                  className="size-2 rounded-full ring-1 ring-background"
+                                  style={{
+                                    backgroundColor:
+                                      labelOptions.find((o) => o.id === label)
+                                        ?.color ?? "#888",
+                                  }}
+                                />
+                              ))}
+                            </div>
+                            <span>
+                              {labels.length === 1
+                                ? (labelOptions.find((o) => o.id === labels[0])
+                                    ?.label ?? labels[0])
+                                : `${labels.length} labels`}
+                            </span>
+                          </div>
                         ) : (
-                          <Paperclip size={14} />
+                          <div className="flex items-center gap-1.5">
+                            <Tag size={12} className="text-muted-foreground" />
+                            <span className="text-muted-foreground">
+                              Labels
+                            </span>
+                          </div>
                         )}
-                        {uploading ? "Uploading..." : "Attach"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setCreateMore(!createMore)}
-                        title="Keep the modal open after creating"
-                        className={`flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent ${
-                          createMore ? "text-foreground" : "text-muted-foreground"
-                        }`}
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        side="top"
+                        align="start"
+                        className="w-auto min-w-[180px]"
                       >
-                        <span
-                          className={`inline-block size-2.5 rounded-full ring-1 transition-colors ${
-                            createMore
-                              ? "bg-primary ring-primary"
-                              : "ring-border"
-                          }`}
-                        />
-                        Create more
-                      </button>
-                      <button
-                        onClick={handleCreate}
-                        disabled={!title.trim() || !currentWorkspace}
-                        className="flex items-center gap-1.5 rounded-[4px] bg-primary px-3 py-1.5 text-[11px] font-medium whitespace-nowrap text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        Create
-                        <ArrowRight
-                          size={12}
-                          weight="bold"
-                          className="opacity-70"
-                        />
-                      </button>
-                    </div>
-                  ) : (
+                        {labelOptions.map((opt) => (
+                          <DropdownMenuCheckboxItem
+                            key={opt.id}
+                            checked={labels.includes(opt.id)}
+                            onCheckedChange={() => toggleLabel(opt.id)}
+                          >
+                            <span
+                              className="inline-block size-2.5 shrink-0 rounded-full"
+                              style={{ backgroundColor: opt.color }}
+                            />
+                            {opt.label}
+                          </DropdownMenuCheckboxItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {/* Attach */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      multiple
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
                     <button
-                      onClick={handleGenerateTasks}
-                      disabled={!aiPrompt.trim() || isGenerating}
-                      className="flex items-center gap-1.5 rounded-[4px] bg-primary px-3 py-1.5 text-[11px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                      title="Attach files"
+                      className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {isGenerating ? (
-                        <>
-                          <SpinnerGap size={12} className="animate-spin" />
-                          Generating…
-                        </>
+                      {uploading ? (
+                        <SpinnerGap size={14} className="animate-spin" />
                       ) : (
-                        <>
-                          Generate
-                          <Sparkle
-                            size={12}
-                            weight="fill"
-                            className="opacity-80"
-                          />
-                        </>
+                        <Paperclip size={14} />
                       )}
+                      {uploading ? "Uploading..." : "Attach"}
                     </button>
-                  )}
+
+                    {/* Create more */}
+                    <button
+                      type="button"
+                      onClick={() => setCreateMore(!createMore)}
+                      title="Keep the modal open after creating"
+                      className={`flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent ${
+                        createMore ? "text-foreground" : "text-muted-foreground"
+                      }`}
+                    >
+                      <span
+                        className={`inline-block size-2.5 rounded-full ring-1 transition-colors ${
+                          createMore
+                            ? "bg-primary ring-primary"
+                            : "ring-border"
+                        }`}
+                      />
+                      Create more
+                    </button>
+                  </div>
                 </div>
-              </div>
+              ) : error ? (
+                <div className="border-t border-border px-5 pt-2 pb-3">
+                  <span className="text-[11px] text-red-500">{error}</span>
+                </div>
+              ) : null}
             </motion.div>
           </div>
         </>
