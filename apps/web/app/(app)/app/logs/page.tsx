@@ -319,16 +319,15 @@ const FILTER_OPTIONS: { value: FilterType; label: string }[] = [
   { value: "members", label: "Members" },
 ]
 
-// Hex literals mirror --chart-* dark-mode values from globals.css so they
-// resolve identically in SVG fills and inline backgroundColor styles
-// across browsers (some mobile WebKit builds drop CSS vars in inline style).
+// CSS variables follow the active theme (light/dark) and stay
+// consistent with the area + bar charts that already reference them.
 const SOURCE_COLORS: Record<string, string> = {
-  Discord: "#4499ff",
-  Slack: "#ff9944",
-  GitHub: "#44cc88",
-  Linear: "#bb66ff",
-  X: "#ff4488",
-  CLI: "#999999",
+  Discord: "var(--chart-1)",
+  Slack: "var(--chart-2)",
+  GitHub: "var(--chart-3)",
+  Linear: "var(--chart-4)",
+  X: "var(--chart-5)",
+  CLI: "var(--chart-6)",
 }
 
 function formatCurrency(amount: number) {
