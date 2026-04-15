@@ -47,7 +47,7 @@ export default function AppLayout({
                   <SidebarTrigger />
                 </div>
                 <Separator orientation="vertical" className="h-full" />
-                <Link href="/app" className="flex items-center">
+                <Link href="/app" className="flex items-center pl-1.5">
                   <Logo symbolOnly className="size-5" />
                 </Link>
               </header>
