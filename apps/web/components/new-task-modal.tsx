@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import { createPortal } from "react-dom"
 import { AnimatePresence, motion } from "motion/react"
-import { useMutation } from "convex/react"
+import { useAction, useMutation } from "convex/react"
 import { useUser } from "@clerk/nextjs"
 import { toast } from "sonner"
 import {
@@ -176,6 +176,7 @@ export function NewTaskModal({
   const preservedPreviewUrlsRef = useRef(new Set<string>())
   const createTask = useMutation(api.tasks.createTask)
   const createTasks = useMutation(api.tasks.createTasks)
+  const generateAiTasks = useAction(api.taskGeneration.generateTasks)
 
   const generateUploadUrl = useMutation(api.workspaces.generateUploadUrl)
 
@@ -543,28 +544,17 @@ export function NewTaskModal({
 
     const genStart = Date.now()
     const toastId = toast.loading("Generating tasks...")
-    const controller = new AbortController()
-    const timeoutId = window.setTimeout(() => controller.abort(), 15000)
 
     try {
-      const response = await fetch("/api/tasks/generate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        signal: controller.signal,
-        body: JSON.stringify({
-          prompt,
-          workspaceId: workspace._id,
-        }),
+      const result = await generateAiTasks({
+        prompt,
+        workspaceId: workspace._id,
       })
 
-      const payload = await response.json()
-
-      if (!response.ok) {
-        if (response.status === 402 && payload?.code === "ai_budget_exhausted") {
+      if (!result.ok) {
+        if (result.code === "ai_budget_exhausted") {
           toast.error(
-            payload?.error ??
+            result.error ??
               "AI budget exhausted. Overages are disabled for this workspace.",
             {
               id: toastId,
@@ -578,12 +568,12 @@ export function NewTaskModal({
           )
           return
         }
-        throw new Error(payload?.error || "Task generation failed.")
+        throw new Error(result.error || "Task generation failed.")
       }
 
-      const generatedTasks = (
-        payload.tasks as GeneratedTaskPayload[] | undefined
-      )?.filter((task) => task.title?.trim())
+      const generatedTasks = result.tasks.filter((task) =>
+        task.title?.trim()
+      ) as GeneratedTaskPayload[]
 
       if (!generatedTasks || generatedTasks.length === 0) {
         throw new Error("No tasks were generated.")
@@ -596,8 +586,7 @@ export function NewTaskModal({
         { id: toastId }
       )
 
-      const generationCost =
-        typeof payload.cost === "number" ? payload.cost : undefined
+      const generationCost = result.cost
 
       const createdTasks = (await createTasks({
         workspaceId: workspace._id,
@@ -632,14 +621,9 @@ export function NewTaskModal({
       )
     } catch (err) {
       const message =
-        err instanceof DOMException && err.name === "AbortError"
-          ? "Task generation timed out. Try a shorter prompt."
-          : err instanceof Error
-            ? err.message
-            : "Task generation failed."
+        err instanceof Error ? err.message : "Task generation failed."
       toast.error(message, { id: toastId })
     } finally {
-      window.clearTimeout(timeoutId)
       setIsGenerating(false)
     }
   }
