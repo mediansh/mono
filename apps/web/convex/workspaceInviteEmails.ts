@@ -1,3 +1,5 @@
+"use node"
+
 import { Inbound } from "@inboundemail/sdk"
 import { v } from "convex/values"
 import { action } from "./_generated/server"
