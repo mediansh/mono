@@ -27,6 +27,9 @@ const feedbackClassificationSchema = z.object({
   relevantPostIds: z.array(z.string()).max(25),
 })
 
+const MAX_EXTRACTED_ACTIONS = 5
+const MAX_EXTRACTED_LABELS = 5
+
 const extractedFeedbackTasksSchema = z.object({
   actions: z.array(
     z.discriminatedUnion("action", [
@@ -35,7 +38,7 @@ const extractedFeedbackTasksSchema = z.object({
         title: z.string().min(1).max(140),
         description: z.string().max(2000).nullable(),
         priority: z.enum(["urgent", "high", "medium", "low", "none"]).nullable(),
-        labels: z.array(z.string()).max(5),
+        labels: z.array(z.string()),
       }),
       z.object({
         action: z.literal("update"),
@@ -43,10 +46,10 @@ const extractedFeedbackTasksSchema = z.object({
         title: z.string().min(1).max(140),
         description: z.string().max(2000).nullable(),
         priority: z.enum(["urgent", "high", "medium", "low", "none"]).nullable(),
-        labels: z.array(z.string()).max(5),
+        labels: z.array(z.string()),
       }),
     ])
-  ).max(5),
+  ),
 })
 
 function getRequiredEnv(name: string) { const value = process.env[name]; if (!value) throw new Error(`Missing required environment variable: ${name}`); return value }
@@ -147,7 +150,8 @@ export async function processXFeedbackInBackground(args: { integrationId: Id<"xW
     }
 
     const extracted = extractedFeedbackTasksSchema.parse(extractorResult.output)
-    const operations: XFeedbackTaskOperation[] = extracted.actions.map((action) => action.action === "create" ? ({ action: "create", task: { title: action.title, description: action.description ?? undefined, status: "requests", priority: action.priority ?? "none", labels: action.labels.filter((label) => feedbackWindow.integration.availableLabels.includes(label)), source: relevantPosts[0] ? { platform: "x", url: relevantPosts[0].permalink, author: relevantPosts[0].authorUsername } : undefined, createdAtLabel: formatCreatedAtLabel(relevantPosts[0]?.postCreatedAt ?? latestPendingPost.postCreatedAt) } }) : ({ action: "update", taskCode: action.taskCode, title: action.title, description: action.description ?? undefined, priority: action.priority ?? undefined, labels: action.labels.filter((label) => feedbackWindow.integration.availableLabels.includes(label)) }))
+    const limitedActions = extracted.actions.slice(0, MAX_EXTRACTED_ACTIONS)
+    const operations: XFeedbackTaskOperation[] = limitedActions.map((action) => action.action === "create" ? ({ action: "create", task: { title: action.title, description: action.description ?? undefined, status: "requests", priority: action.priority ?? "none", labels: action.labels.filter((label) => feedbackWindow.integration.availableLabels.includes(label)).slice(0, MAX_EXTRACTED_LABELS), source: relevantPosts[0] ? { platform: "x", url: relevantPosts[0].permalink, author: relevantPosts[0].authorUsername } : undefined, createdAtLabel: formatCreatedAtLabel(relevantPosts[0]?.postCreatedAt ?? latestPendingPost.postCreatedAt) } }) : ({ action: "update", taskCode: action.taskCode, title: action.title, description: action.description ?? undefined, priority: action.priority ?? undefined, labels: action.labels.filter((label) => feedbackWindow.integration.availableLabels.includes(label)).slice(0, MAX_EXTRACTED_LABELS) }))
     const classifierCost = getAiCostForTokens({ model: AI_MODEL_IDS.feedbackClassifier, inputTokens: classifierResult.usage?.inputTokens, outputTokens: classifierResult.usage?.outputTokens })
     const extractorCost = getAiCostForTokens({ model: AI_MODEL_IDS.feedbackExtractor, inputTokens: extractorResult.usage?.inputTokens, outputTokens: extractorResult.usage?.outputTokens })
     const totalAiCost = classifierCost + extractorCost
