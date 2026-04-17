@@ -31,6 +31,8 @@ const MAX_TASK_DESCRIPTION_CHARS = 220
 const MAX_LOCATION_TEXT_CHARS = 80
 const MAX_ADDITIONAL_CONTEXT_CHARS = 500
 const MAX_SEARCH_TERMS = 18
+const MAX_EXTRACTED_TASK_ACTIONS = 5
+const MAX_EXTRACTED_TASK_LABELS = 5
 
 const TASK_MATCH_STOP_WORDS = new Set([
   "about",
@@ -199,31 +201,29 @@ const feedbackClassificationSchema = z.object({
 })
 
 const extractedFeedbackTasksSchema = z.object({
-  actions: z
-    .array(
-      z.discriminatedUnion("action", [
-        z.object({
-          action: z.literal("create"),
-          title: z.string().min(1).max(140),
-          description: z.string().max(2000).nullable(),
-          priority: z
-            .enum(["urgent", "high", "medium", "low", "none"])
-            .nullable(),
-          labels: z.array(z.string()).max(5),
-        }),
-        z.object({
-          action: z.literal("update"),
-          taskCode: z.string().min(1),
-          title: z.string().min(1).max(140),
-          description: z.string().max(2000).nullable(),
-          priority: z
-            .enum(["urgent", "high", "medium", "low", "none"])
-            .nullable(),
-          labels: z.array(z.string()).max(5),
-        }),
-      ])
-    )
-    .max(5),
+  actions: z.array(
+    z.discriminatedUnion("action", [
+      z.object({
+        action: z.literal("create"),
+        title: z.string().min(1).max(140),
+        description: z.string().max(2000).nullable(),
+        priority: z
+          .enum(["urgent", "high", "medium", "low", "none"])
+          .nullable(),
+        labels: z.array(z.string()),
+      }),
+      z.object({
+        action: z.literal("update"),
+        taskCode: z.string().min(1),
+        title: z.string().min(1).max(140),
+        description: z.string().max(2000).nullable(),
+        priority: z
+          .enum(["urgent", "high", "medium", "low", "none"])
+          .nullable(),
+        labels: z.array(z.string()),
+      }),
+    ])
+  ),
 })
 
 function getFeedbackWorkpoolParallelism() {
@@ -1311,7 +1311,12 @@ export const processFeedbackWindow = internalAction({
       let createdTaskCount = 0
       let updatedTaskCount = 0
 
-      if (extracted.actions.length > 0) {
+      const extractedActions = extracted.actions.slice(
+        0,
+        MAX_EXTRACTED_TASK_ACTIONS
+      )
+
+      if (extractedActions.length > 0) {
         const authors = Array.from(
           new Set(
             relevantMessagesForExtraction.map(
@@ -1330,7 +1335,7 @@ export const processFeedbackWindow = internalAction({
           createTasksFromDiscordFeedbackInternalMutation,
           {
             workspaceId: feedbackWindow.integration.workspaceId,
-            operations: extracted.actions.map((action) =>
+            operations: extractedActions.map((action) =>
               action.action === "create"
                 ? {
                     action: "create" as const,
@@ -1339,11 +1344,13 @@ export const processFeedbackWindow = internalAction({
                       description: action.description ?? undefined,
                       status: "requests" as const,
                       priority: action.priority ?? "none",
-                      labels: action.labels.filter((label) =>
-                        feedbackWindow.integration.availableLabels.includes(
-                          label
-                        )
-                      ),
+                      labels: action.labels
+                        .slice(0, MAX_EXTRACTED_TASK_LABELS)
+                        .filter((label) =>
+                          feedbackWindow.integration.availableLabels.includes(
+                            label
+                          )
+                        ),
                       source: sourceUrl
                         ? {
                             platform: "discord" as const,
@@ -1360,9 +1367,13 @@ export const processFeedbackWindow = internalAction({
                     title: action.title,
                     description: action.description ?? undefined,
                     priority: action.priority ?? undefined,
-                    labels: action.labels.filter((label) =>
-                      feedbackWindow.integration.availableLabels.includes(label)
-                    ),
+                    labels: action.labels
+                      .slice(0, MAX_EXTRACTED_TASK_LABELS)
+                      .filter((label) =>
+                        feedbackWindow.integration.availableLabels.includes(
+                          label
+                        )
+                      ),
                   }
             ),
             cost: totalAiCost > 0 ? totalAiCost : undefined,
