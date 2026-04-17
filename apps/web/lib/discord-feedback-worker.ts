@@ -37,6 +37,9 @@ const feedbackClassificationSchema = z.object({
   relevantMessageIds: z.array(z.string()).max(RELEVANT_MESSAGE_LIMIT),
 })
 
+const MAX_EXTRACTED_ACTIONS = 5
+const MAX_EXTRACTED_LABELS = 5
+
 const extractedFeedbackTasksSchema = z.object({
   actions: z.array(
     z.discriminatedUnion("action", [
@@ -45,7 +48,7 @@ const extractedFeedbackTasksSchema = z.object({
         title: z.string().min(1).max(140),
         description: z.string().max(2000).nullable(),
         priority: z.enum(["urgent", "high", "medium", "low", "none"]).nullable(),
-        labels: z.array(z.string()).max(5),
+        labels: z.array(z.string()),
       }),
       z.object({
         action: z.literal("update"),
@@ -53,10 +56,10 @@ const extractedFeedbackTasksSchema = z.object({
         title: z.string().min(1).max(140),
         description: z.string().max(2000).nullable(),
         priority: z.enum(["urgent", "high", "medium", "low", "none"]).nullable(),
-        labels: z.array(z.string()).max(5),
+        labels: z.array(z.string()),
       }),
     ])
-  ).max(5),
+  ),
 })
 
 function getRequiredEnv(name: string) {
@@ -300,7 +303,8 @@ export async function processDiscordFeedbackInBackground(args: { integrationId: 
     }
 
     const extracted = extractedFeedbackTasksSchema.parse(extractorResult.output)
-    const operations: DiscordFeedbackTaskOperation[] = extracted.actions.map((action) => action.action === "create" ? ({ action: "create", task: { title: action.title, description: action.description ?? undefined, status: "requests", priority: action.priority ?? "none", labels: action.labels.filter((label) => feedbackWindow.integration.availableLabels.includes(label)), source: relevantMessages[0] ? { platform: "discord", url: relevantMessages[0].permalink, author: relevantMessages[0].authorUsername } : undefined, createdAtLabel: formatCreatedAtLabel(relevantMessages[0]?.messageCreatedAt ?? latestPendingMessage.messageCreatedAt) } }) : ({ action: "update", taskCode: action.taskCode, title: action.title, description: action.description ?? undefined, priority: action.priority ?? undefined, labels: action.labels.filter((label) => feedbackWindow.integration.availableLabels.includes(label)) }))
+    const limitedActions = extracted.actions.slice(0, MAX_EXTRACTED_ACTIONS)
+    const operations: DiscordFeedbackTaskOperation[] = limitedActions.map((action) => action.action === "create" ? ({ action: "create", task: { title: action.title, description: action.description ?? undefined, status: "requests", priority: action.priority ?? "none", labels: action.labels.filter((label) => feedbackWindow.integration.availableLabels.includes(label)).slice(0, MAX_EXTRACTED_LABELS), source: relevantMessages[0] ? { platform: "discord", url: relevantMessages[0].permalink, author: relevantMessages[0].authorUsername } : undefined, createdAtLabel: formatCreatedAtLabel(relevantMessages[0]?.messageCreatedAt ?? latestPendingMessage.messageCreatedAt) } }) : ({ action: "update", taskCode: action.taskCode, title: action.title, description: action.description ?? undefined, priority: action.priority ?? undefined, labels: action.labels.filter((label) => feedbackWindow.integration.availableLabels.includes(label)).slice(0, MAX_EXTRACTED_LABELS) }))
     const classifierCost = getAiCostForTokens({ model: AI_MODEL_IDS.feedbackClassifier, inputTokens: classifierResult.usage?.inputTokens, outputTokens: classifierResult.usage?.outputTokens })
     const extractorCost = getAiCostForTokens({ model: AI_MODEL_IDS.feedbackExtractor, inputTokens: extractorResult.usage?.inputTokens, outputTokens: extractorResult.usage?.outputTokens })
     const totalAiCost = classifierCost + extractorCost
