@@ -8,6 +8,11 @@ const bodySchema = z.object({
   integrationId: z.string().min(1),
 })
 
+/**
+ * Legacy fallback endpoint.
+ * Primary Slack feedback processing now runs directly inside Convex actions.
+ * Keep this route for rollback/debug scenarios only.
+ */
 export const POST = withAxiom(async (request: Request) => {
   const expectedSecret = process.env.SLACK_BOT_SECRET
   const providedSecret = request.headers.get("x-median-worker-secret")

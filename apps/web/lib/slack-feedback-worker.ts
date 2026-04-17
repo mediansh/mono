@@ -13,6 +13,11 @@ import {
 } from "@/lib/convex-worker-client"
 import { trackFeedbackProcessing, trackLLMGeneration } from "@/convex/posthog"
 
+/**
+ * Legacy external worker implementation.
+ * Primary Slack feedback processing now executes in Convex (`slackFeedback.processFeedbackWindow`).
+ * Keep this file for rollback parity.
+ */
 const FEEDBACK_WINDOW_LIMIT = 100
 const FEEDBACK_CONTEXT_LIMIT = 10
 const EXISTING_TASK_CONTEXT_LIMIT = 50

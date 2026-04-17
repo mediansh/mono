@@ -228,6 +228,15 @@ const createTasksFromSlackFeedbackInternalMutation = makeFunctionReference<
   }
 >("tasks:createTasksFromSlackFeedbackInternal")
 
+const getWorkspaceQuotaStatusForSlackFeedbackAction = makeFunctionReference<
+  "action",
+  {
+    botSecret: string
+    workspaceId: Id<"workspaces">
+  },
+  WorkspaceQuotaStatus
+>("billing:getWorkspaceQuotaStatusForSlackFeedback")
+
 function logInfo(message: string, details?: Record<string, unknown>) {
   if (details) {
     console.log("[convex:slack-feedback]", message, details)
@@ -249,16 +258,22 @@ function logError(
 }
 
 function getSlackFeedbackWorkerBaseUrl() {
-  const baseUrl =
+  const rawBaseUrl =
     process.env.APP_URL ??
     process.env.NEXT_PUBLIC_APP_URL ??
-    process.env.NEXT_PUBLIC_SITE_URL
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ??
+    process.env.VERCEL_URL
 
-  if (!baseUrl) {
+  if (!rawBaseUrl) {
     throw new Error(
-      "Missing APP_URL or NEXT_PUBLIC_APP_URL for Slack feedback worker handoff"
+      "Missing APP_URL/NEXT_PUBLIC_APP_URL/NEXT_PUBLIC_SITE_URL/VERCEL_URL for Slack feedback worker handoff"
     )
   }
+
+  const baseUrl = rawBaseUrl.startsWith("http")
+    ? rawBaseUrl
+    : `https://${rawBaseUrl}`
 
   return baseUrl.replace(/\/$/, "")
 }
@@ -533,6 +548,11 @@ export const markFeedbackProcessingPaused = internalMutation({
   },
 })
 
+/**
+ * Legacy delegated-processing finalizer.
+ * Primary Slack feedback processing now executes directly in Convex actions.
+ * Retained for rollback compatibility with external worker flow.
+ */
 export const finalizeDelegatedFeedbackProcessing = mutation({
   args: {
     botSecret: v.string(),
@@ -727,33 +747,350 @@ export const processFeedbackWindow = internalAction({
     try {
       const botSecret = process.env.SLACK_BOT_SECRET
       if (!botSecret) {
-        throw new Error("Missing SLACK_BOT_SECRET for Slack feedback handoff")
+        throw new Error("Missing SLACK_BOT_SECRET for Slack feedback processing")
       }
 
-      const response = await fetch(
-        `${getSlackFeedbackWorkerBaseUrl()}/api/internal/feedback/slack/process`,
+      const processingStart = Date.now()
+      const feedbackWindow = await ctx.runQuery(
+        getPendingFeedbackWindowInternalQuery,
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-median-worker-secret": botSecret,
-          },
-          body: JSON.stringify({
-            integrationId: args.integrationId,
-          }),
+          integrationId: args.integrationId,
+          limit: FEEDBACK_WINDOW_LIMIT,
+        }
+      )
+      const quotaStatus = await ctx.runAction(
+        getWorkspaceQuotaStatusForSlackFeedbackAction,
+        {
+          botSecret,
+          workspaceId: feedbackWindow.integration.workspaceId,
         }
       )
 
-      if (!response.ok) {
-        const responseText = await response.text()
-        throw new Error(
-          `Slack feedback worker handoff failed: ${response.status} ${responseText}`
+      if (quotaStatus.eventsExhausted) {
+        await ctx.runMutation(markFeedbackProcessingPausedMutation, {
+          integrationId: args.integrationId,
+          reason: "Paused — events exhausted (overages disabled)",
+        })
+        return { skipped: true, reason: "events_exhausted" }
+      }
+
+      const pendingMessages = feedbackWindow.messages.filter((message) =>
+        isMessageAfterCursor(message, {
+          messageId: feedbackWindow.integration.lastProcessedMessageId,
+          messageCreatedAt:
+            feedbackWindow.integration.lastProcessedMessageCreatedAt,
+        })
+      )
+      if (pendingMessages.length === 0) {
+        return {
+          skipped: false,
+          createdTaskCount: 0,
+          updatedTaskCount: 0,
+          reason: "no_pending_messages",
+        }
+      }
+
+      const latestPendingMessage = pendingMessages.at(-1)
+      if (!latestPendingMessage) {
+        return {
+          skipped: false,
+          createdTaskCount: 0,
+          updatedTaskCount: 0,
+          reason: "missing_latest_pending_message",
+        }
+      }
+
+      const contextMessages = feedbackWindow.messages.slice(-FEEDBACK_CONTEXT_LIMIT)
+      const pendingMessageIds = new Set(
+        pendingMessages.map((message) => message.messageTs)
+      )
+      const transcript = formatTranscript(contextMessages, pendingMessageIds)
+      const existingTasks = await ctx.runQuery(getTaskSnapshotForSlackInternalQuery, {
+        workspaceId: feedbackWindow.integration.workspaceId,
+        limit: EXISTING_TASK_CONTEXT_LIMIT,
+      })
+
+      const classifierSystemParts = [
+        "You classify Slack conversations for a product team.",
+        `The only product that matters is ${feedbackWindow.integration.workspaceName}`,
+        "Return isProductFeedback=true only when the newest messages contain concrete product feedback, a bug report, a feature request, workflow friction, or an actionable complaint about the actual product.",
+        "Reject off-topic chat, memes, introductions, hiring talk, agency requests, feedback about unrelated tools, and generic conversation that is not about the product itself.",
+        "Use the recent context only to interpret what the new messages refer to.",
+        "If the new messages add detail, scope, reproduction steps, or acceptance criteria to an existing open task, that is still product feedback.",
+        "Each message has an [id:XXXXXXX] tag. Use the message timestamp from that tag as the relevantMessageId.",
+        "Return valid JSON only. No markdown. No code fences. No commentary.",
+        'Use this exact JSON shape: {"isProductFeedback":false,"confidence":0.0,"summary":null,"reason":"...","relevantMessageIds":["1234567890.123456"]}',
+      ]
+      if (feedbackWindow.integration.additionalContext) {
+        classifierSystemParts.push(
+          `Additional product context from the workspace owner: ${feedbackWindow.integration.additionalContext}`
         )
       }
 
-      return { skipped: true, reason: "delegated" }
+      const classifierStart = Date.now()
+      const classifierResult = await generateText({
+        model: AI_MODELS.feedbackClassifier,
+        system: classifierSystemParts.join(" "),
+        prompt: [
+          `Workspace name: ${feedbackWindow.integration.workspaceName}`,
+          `Slack team: ${feedbackWindow.integration.teamName}`,
+          "Existing task context:",
+          formatExistingTasks(existingTasks),
+          "Conversation transcript:",
+          transcript,
+        ].join("\n\n"),
+      })
+      const classifierDurationMs = Date.now() - classifierStart
+
+      await trackLLMGeneration({
+        distinctId: feedbackWindow.integration.workspaceId,
+        model: AI_MODEL_IDS.feedbackClassifier,
+        feature: "slack_feedback_classifier",
+        inputTokens: classifierResult.usage?.inputTokens,
+        outputTokens: classifierResult.usage?.outputTokens,
+        durationMs: classifierDurationMs,
+        success: true,
+        metadata: {
+          integration_id: args.integrationId,
+          pending_message_count: pendingMessages.length,
+        },
+      })
+      await safeTrackAiUsage({
+        workspaceId: feedbackWindow.integration.workspaceId,
+        workspaceName: feedbackWindow.integration.workspaceName,
+        model: AI_MODEL_IDS.feedbackClassifier,
+        inputTokens: classifierResult.usage?.inputTokens,
+        outputTokens: classifierResult.usage?.outputTokens,
+        properties: {
+          feature: "slack_feedback_classifier",
+          integration_id: args.integrationId,
+        },
+      })
+
+      const classification = feedbackClassificationSchema.parse(
+        JSON.parse(extractJsonObject(classifierResult.text))
+      )
+
+      if (
+        !classification.isProductFeedback ||
+        classification.relevantMessageIds.length === 0
+      ) {
+        await ctx.runMutation(markFeedbackWindowProcessedInternalMutation, {
+          integrationId: args.integrationId,
+          lastProcessedMessageId: latestPendingMessage.messageTs,
+          lastProcessedMessageCreatedAt: latestPendingMessage.messageCreatedAt,
+        })
+        await trackFeedbackProcessing({
+          distinctId: feedbackWindow.integration.workspaceId,
+          platform: "slack",
+          integrationId: args.integrationId,
+          workspaceId: feedbackWindow.integration.workspaceId,
+          messageCount: pendingMessages.length,
+          isProductFeedback: classification.isProductFeedback,
+          confidence: classification.confidence,
+          createdTaskCount: 0,
+          updatedTaskCount: 0,
+          classifierDurationMs,
+          totalDurationMs: Date.now() - processingStart,
+        })
+        return {
+          skipped: false,
+          createdTaskCount: 0,
+          updatedTaskCount: 0,
+          reason: classification.isProductFeedback
+            ? "not_actionable"
+            : "not_product_feedback",
+        }
+      }
+
+      const relevantIds = new Set(classification.relevantMessageIds)
+      const matchedRelevantMessages = pendingMessages.filter((message) =>
+        relevantIds.has(message.messageTs)
+      )
+      const relevantMessages =
+        matchedRelevantMessages.length > 0
+          ? matchedRelevantMessages
+          : pendingMessages
+      const labelsText =
+        feedbackWindow.integration.availableLabels.length > 0
+          ? feedbackWindow.integration.availableLabels.join(", ")
+          : "No predefined labels."
+      const extractorSystemParts = [
+        "You turn product feedback into concise task requests for a task board.",
+        `The product is ${feedbackWindow.integration.workspaceName}.`,
+        "Only create or update tasks for actionable feedback about the real product. Ignore unrelated discussion.",
+        "Return between 0 and 5 actions total.",
+        "Each action must be distinct, concrete, and understandable without requiring the original Slack thread.",
+        "You can either create a new task or update an existing task.",
+        "Use update when the new feedback materially adds detail to an existing open task, such as reproduction steps, missing scope, edge cases, urgency, or acceptance criteria.",
+        "For update actions, use the existing taskCode and return the full revised title, description, priority, and labels after incorporating the new feedback.",
+        "Descriptions should summarize the user problem and expected outcome in plain text.",
+        `Allowed labels: ${labelsText}`,
+        "Only use labels from the allowed list. Use an empty array when none apply.",
+        'Return valid structured output only with action items shaped like {"action":"create",...} or {"action":"update","taskCode":"MDN-123",...}.',
+      ]
+      if (feedbackWindow.integration.additionalContext) {
+        extractorSystemParts.push(
+          `Additional product context from the workspace owner: ${feedbackWindow.integration.additionalContext}`
+        )
+      }
+      const relevantMessageSet = new Set(
+        relevantMessages.map((message) => message.messageTs)
+      )
+      const extractorStart = Date.now()
+      const extractorResult = await generateText({
+        model: AI_MODELS.feedbackExtractor,
+        system: extractorSystemParts.join(" "),
+        prompt: [
+          `Workspace name: ${feedbackWindow.integration.workspaceName}`,
+          `Slack team: ${feedbackWindow.integration.teamName}`,
+          "Existing task context:",
+          formatExistingTasks(existingTasks),
+          "Relevant Slack messages:",
+          formatTranscript(relevantMessages, relevantMessageSet),
+        ].join("\n\n"),
+        output: Output.object({ schema: extractedFeedbackTasksSchema }),
+      })
+      const extractorDurationMs = Date.now() - extractorStart
+
+      await trackLLMGeneration({
+        distinctId: feedbackWindow.integration.workspaceId,
+        model: AI_MODEL_IDS.feedbackExtractor,
+        feature: "slack_feedback_extractor",
+        inputTokens: extractorResult.usage?.inputTokens,
+        outputTokens: extractorResult.usage?.outputTokens,
+        durationMs: extractorDurationMs,
+        success: true,
+        metadata: {
+          integration_id: args.integrationId,
+          relevant_message_count: relevantMessages.length,
+        },
+      })
+      await safeTrackAiUsage({
+        workspaceId: feedbackWindow.integration.workspaceId,
+        workspaceName: feedbackWindow.integration.workspaceName,
+        model: AI_MODEL_IDS.feedbackExtractor,
+        inputTokens: extractorResult.usage?.inputTokens,
+        outputTokens: extractorResult.usage?.outputTokens,
+        properties: {
+          feature: "slack_feedback_extractor",
+          integration_id: args.integrationId,
+        },
+      })
+
+      if (!extractorResult.output) {
+        await ctx.runMutation(markFeedbackWindowProcessedInternalMutation, {
+          integrationId: args.integrationId,
+          lastProcessedMessageId: latestPendingMessage.messageTs,
+          lastProcessedMessageCreatedAt: latestPendingMessage.messageCreatedAt,
+        })
+        await trackFeedbackProcessing({
+          distinctId: feedbackWindow.integration.workspaceId,
+          platform: "slack",
+          integrationId: args.integrationId,
+          workspaceId: feedbackWindow.integration.workspaceId,
+          messageCount: pendingMessages.length,
+          isProductFeedback: classification.isProductFeedback,
+          confidence: classification.confidence,
+          createdTaskCount: 0,
+          updatedTaskCount: 0,
+          classifierDurationMs,
+          extractorDurationMs,
+          totalDurationMs: Date.now() - processingStart,
+        })
+        return {
+          skipped: false,
+          createdTaskCount: 0,
+          updatedTaskCount: 0,
+          reason: "no_structured_output",
+        }
+      }
+
+      const extracted = extractedFeedbackTasksSchema.parse(extractorResult.output)
+      const operations: SlackFeedbackTaskOperation[] = extracted.actions.map(
+        (action) =>
+          action.action === "create"
+            ? {
+                action: "create",
+                task: {
+                  title: action.title,
+                  description: action.description ?? undefined,
+                  status: "requests",
+                  priority: action.priority ?? "none",
+                  labels: action.labels.filter((label) =>
+                    feedbackWindow.integration.availableLabels.includes(label)
+                  ),
+                  source: relevantMessages[0]?.permalink
+                    ? {
+                        platform: "slack",
+                        url: relevantMessages[0].permalink,
+                        author: relevantMessages[0].authorUsername,
+                      }
+                    : undefined,
+                  createdAtLabel: formatCreatedAtLabel(
+                    relevantMessages[0]?.messageCreatedAt ??
+                      latestPendingMessage.messageCreatedAt
+                  ),
+                },
+              }
+            : {
+                action: "update",
+                taskCode: action.taskCode,
+                title: action.title,
+                description: action.description ?? undefined,
+                priority: action.priority ?? undefined,
+                labels: action.labels.filter((label) =>
+                  feedbackWindow.integration.availableLabels.includes(label)
+                ),
+              }
+      )
+      const classifierCost = getAiCostForTokens({
+        model: AI_MODEL_IDS.feedbackClassifier,
+        inputTokens: classifierResult.usage?.inputTokens,
+        outputTokens: classifierResult.usage?.outputTokens,
+      })
+      const extractorCost = getAiCostForTokens({
+        model: AI_MODEL_IDS.feedbackExtractor,
+        inputTokens: extractorResult.usage?.inputTokens,
+        outputTokens: extractorResult.usage?.outputTokens,
+      })
+      const totalAiCost = classifierCost + extractorCost
+      const taskResult =
+        operations.length > 0
+          ? await ctx.runMutation(createTasksFromSlackFeedbackInternalMutation, {
+              workspaceId: feedbackWindow.integration.workspaceId,
+              operations,
+              cost: totalAiCost > 0 ? totalAiCost : undefined,
+            })
+          : { createdTaskIds: [], updatedTaskIds: [] }
+      await ctx.runMutation(markFeedbackWindowProcessedInternalMutation, {
+        integrationId: args.integrationId,
+        lastProcessedMessageId: latestPendingMessage.messageTs,
+        lastProcessedMessageCreatedAt: latestPendingMessage.messageCreatedAt,
+      })
+      await trackFeedbackProcessing({
+        distinctId: feedbackWindow.integration.workspaceId,
+        platform: "slack",
+        integrationId: args.integrationId,
+        workspaceId: feedbackWindow.integration.workspaceId,
+        messageCount: pendingMessages.length,
+        isProductFeedback: classification.isProductFeedback,
+        confidence: classification.confidence,
+        createdTaskCount: taskResult.createdTaskIds.length,
+        updatedTaskCount: taskResult.updatedTaskIds.length,
+        classifierDurationMs,
+        extractorDurationMs,
+        totalDurationMs: Date.now() - processingStart,
+      })
+
+      return {
+        skipped: false,
+        createdTaskCount: taskResult.createdTaskIds.length,
+        updatedTaskCount: taskResult.updatedTaskIds.length,
+        reason: operations.length > 0 ? "processed" : "no_task_operations",
+      }
     } catch (error) {
-      logError("Failed to hand off Slack feedback window", error, {
+      logError("Failed to process Slack feedback window", error, {
         integrationId: args.integrationId,
       })
       throw error

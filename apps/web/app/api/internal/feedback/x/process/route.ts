@@ -8,6 +8,11 @@ const bodySchema = z.object({
   integrationId: z.string().min(1),
 })
 
+/**
+ * Legacy fallback endpoint.
+ * Primary X feedback processing now runs directly inside Convex actions.
+ * Keep this route for rollback/debug scenarios only.
+ */
 export const POST = withAxiom(async (request: Request) => {
   const expectedSecret = process.env.X_API_SECRET
   const providedSecret = request.headers.get("x-median-worker-secret")
