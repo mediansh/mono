@@ -24,6 +24,8 @@ const EXISTING_TASK_CONTEXT_LIMIT = 50
 const FEEDBACK_PROCESSING_DEBOUNCE_MS = 8_000
 const FEEDBACK_PROCESSING_RETRY_DELAY_MS = 5_000
 const DEFAULT_WORKPOOL_PARALLELISM = 2
+const MAX_EXTRACTED_TASK_ACTIONS = 5
+const MAX_EXTRACTED_TASK_LABELS = 5
 
 type FeedbackMessage = {
   _id: Id<"slackMessages">
@@ -112,31 +114,29 @@ const feedbackClassificationSchema = z.object({
 })
 
 const extractedFeedbackTasksSchema = z.object({
-  actions: z
-    .array(
-      z.discriminatedUnion("action", [
-        z.object({
-          action: z.literal("create"),
-          title: z.string().min(1).max(140),
-          description: z.string().max(2000).nullable(),
-          priority: z
-            .enum(["urgent", "high", "medium", "low", "none"])
-            .nullable(),
-          labels: z.array(z.string()).max(5),
-        }),
-        z.object({
-          action: z.literal("update"),
-          taskCode: z.string().min(1),
-          title: z.string().min(1).max(140),
-          description: z.string().max(2000).nullable(),
-          priority: z
-            .enum(["urgent", "high", "medium", "low", "none"])
-            .nullable(),
-          labels: z.array(z.string()).max(5),
-        }),
-      ])
-    )
-    .max(5),
+  actions: z.array(
+    z.discriminatedUnion("action", [
+      z.object({
+        action: z.literal("create"),
+        title: z.string().min(1).max(140),
+        description: z.string().max(2000).nullable(),
+        priority: z
+          .enum(["urgent", "high", "medium", "low", "none"])
+          .nullable(),
+        labels: z.array(z.string()),
+      }),
+      z.object({
+        action: z.literal("update"),
+        taskCode: z.string().min(1),
+        title: z.string().min(1).max(140),
+        description: z.string().max(2000).nullable(),
+        priority: z
+          .enum(["urgent", "high", "medium", "low", "none"])
+          .nullable(),
+        labels: z.array(z.string()),
+      }),
+    ])
+  ),
 })
 
 function getFeedbackWorkpoolParallelism() {
@@ -914,7 +914,12 @@ export const processFeedbackWindow = internalAction({
       let createdTaskCount = 0
       let updatedTaskCount = 0
 
-      if (extracted.actions.length > 0) {
+      const extractedActions = extracted.actions.slice(
+        0,
+        MAX_EXTRACTED_TASK_ACTIONS
+      )
+
+      if (extractedActions.length > 0) {
         const authors = Array.from(
           new Set(relevantMessages.map((message) => message.authorUsername))
         )
@@ -928,7 +933,7 @@ export const processFeedbackWindow = internalAction({
           createTasksFromSlackFeedbackInternalMutation,
           {
             workspaceId: feedbackWindow.integration.workspaceId,
-            operations: extracted.actions.map((action) =>
+            operations: extractedActions.map((action) =>
               action.action === "create"
                 ? {
                     action: "create" as const,
@@ -937,11 +942,13 @@ export const processFeedbackWindow = internalAction({
                       description: action.description ?? undefined,
                       status: "requests" as const,
                       priority: action.priority ?? "none",
-                      labels: action.labels.filter((label) =>
-                        feedbackWindow.integration.availableLabels.includes(
-                          label
-                        )
-                      ),
+                      labels: action.labels
+                        .slice(0, MAX_EXTRACTED_TASK_LABELS)
+                        .filter((label) =>
+                          feedbackWindow.integration.availableLabels.includes(
+                            label
+                          )
+                        ),
                       source: sourceUrl
                         ? {
                             platform: "slack" as const,
@@ -958,9 +965,13 @@ export const processFeedbackWindow = internalAction({
                     title: action.title,
                     description: action.description ?? undefined,
                     priority: action.priority ?? undefined,
-                    labels: action.labels.filter((label) =>
-                      feedbackWindow.integration.availableLabels.includes(label)
-                    ),
+                    labels: action.labels
+                      .slice(0, MAX_EXTRACTED_TASK_LABELS)
+                      .filter((label) =>
+                        feedbackWindow.integration.availableLabels.includes(
+                          label
+                        )
+                      ),
                   }
             ),
             cost: totalAiCost > 0 ? totalAiCost : undefined,
