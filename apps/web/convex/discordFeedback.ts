@@ -308,6 +308,15 @@ const createTasksFromDiscordFeedbackInternalMutation = makeFunctionReference<
   }
 >("tasks:createTasksFromDiscordFeedbackInternal")
 
+const getWorkspaceQuotaStatusForDiscordFeedbackAction = makeFunctionReference<
+  "action",
+  {
+    botSecret: string
+    workspaceId: Id<"workspaces">
+  },
+  WorkspaceQuotaStatus
+>("billing:getWorkspaceQuotaStatusForDiscordFeedback")
+
 function logInfo(message: string, details?: Record<string, unknown>) {
   if (details) {
     console.log("[convex:discord-feedback]", message, details)
@@ -328,6 +337,27 @@ function logError(
   }
 
   console.error("[convex:discord-feedback]", message, error)
+}
+
+function getDiscordFeedbackWorkerBaseUrl() {
+  const rawBaseUrl =
+    process.env.APP_URL ??
+    process.env.NEXT_PUBLIC_APP_URL ??
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ??
+    process.env.VERCEL_URL
+
+  if (!rawBaseUrl) {
+    throw new Error(
+      "Missing APP_URL/NEXT_PUBLIC_APP_URL/NEXT_PUBLIC_SITE_URL/VERCEL_URL for Discord feedback worker handoff"
+    )
+  }
+
+  const baseUrl = rawBaseUrl.startsWith("http")
+    ? rawBaseUrl
+    : `https://${rawBaseUrl}`
+
+  return baseUrl.replace(/\/$/, "")
 }
 
 function formatCreatedAtLabel(timestamp: number) {
@@ -987,9 +1017,6 @@ export const handleFeedbackProcessingComplete = internalMutation({
   },
 })
 
-const MAX_EXTRACTED_ACTIONS = 5
-const MAX_EXTRACTED_LABELS = 5
-
 export const processFeedbackWindow = internalAction({
   args: {
     integrationId: v.id("discordWorkspaceIntegrations"),
@@ -1005,20 +1032,26 @@ export const processFeedbackWindow = internalAction({
       return { skipped: true, reason: "already_running" }
     }
 
-    const processingStart = Date.now()
-
     try {
-      const feedbackWindow: FeedbackWindow = await ctx.runQuery(
+      const botSecret = process.env.DISCORD_PAIRING_SECRET
+      if (!botSecret) {
+        throw new Error("Missing DISCORD_PAIRING_SECRET for Discord feedback processing")
+      }
+
+      const processingStart = Date.now()
+      const feedbackWindow = await ctx.runQuery(
         getPendingFeedbackWindowInternalQuery,
         {
           integrationId: args.integrationId,
           limit: FEEDBACK_WINDOW_LIMIT,
         }
       )
-
-      const quotaStatus: WorkspaceQuotaStatus = await ctx.runAction(
-        internal.billing.getWorkspaceQuotaStatusInternal,
-        { workspaceId: feedbackWindow.integration.workspaceId }
+      const quotaStatus = await ctx.runAction(
+        getWorkspaceQuotaStatusForDiscordFeedbackAction,
+        {
+          botSecret,
+          workspaceId: feedbackWindow.integration.workspaceId,
+        }
       )
 
       if (quotaStatus.eventsExhausted) {
@@ -1041,12 +1074,22 @@ export const processFeedbackWindow = internalAction({
       )
 
       if (pendingMessages.length === 0) {
-        return { skipped: true, reason: "no_pending_messages" }
+        return {
+          skipped: false,
+          createdTaskCount: 0,
+          updatedTaskCount: 0,
+          reason: "no_pending_messages",
+        }
       }
 
       const latestPendingMessage = pendingMessages.at(-1)
       if (!latestPendingMessage) {
-        return { skipped: true, reason: "missing_latest_pending_message" }
+        return {
+          skipped: false,
+          createdTaskCount: 0,
+          updatedTaskCount: 0,
+          reason: "missing_latest_pending_message",
+        }
       }
 
       if (pendingNonAdminMessages.length === 0) {
@@ -1055,7 +1098,13 @@ export const processFeedbackWindow = internalAction({
           lastProcessedMessageId: latestPendingMessage.messageId,
           lastProcessedMessageCreatedAt: latestPendingMessage.messageCreatedAt,
         })
-        return { skipped: true, reason: "admin_only_messages" }
+
+        return {
+          skipped: false,
+          createdTaskCount: 0,
+          updatedTaskCount: 0,
+          reason: "admin_only_messages",
+        }
       }
 
       const contextMessages = feedbackWindow.messages
@@ -1065,9 +1114,6 @@ export const processFeedbackWindow = internalAction({
         pendingNonAdminMessages.map((message) => message.messageId)
       )
       const transcript = formatTranscript(contextMessages, pendingMessageIds)
-      const additionalContext = getAdditionalContext(
-        feedbackWindow.integration.additionalContext
-      )
 
       const classifierSystemParts = [
         "You classify Discord conversations for a product team.",
@@ -1083,6 +1129,9 @@ export const processFeedbackWindow = internalAction({
         "Return valid JSON only. No markdown. No code fences. No commentary.",
         'Use this exact JSON shape: {"isProductFeedback":false,"needsTaskAction":false,"confidence":0.0,"summary":null,"reason":"...","relevantMessageIds":["123456789"]}',
       ]
+      const additionalContext = getAdditionalContext(
+        feedbackWindow.integration.additionalContext
+      )
       if (additionalContext) {
         classifierSystemParts.push(
           `Additional product context from the workspace owner: ${additionalContext}`
@@ -1101,6 +1150,7 @@ export const processFeedbackWindow = internalAction({
         ].join("\n\n"),
       })
       const classifierDurationMs = Date.now() - classifierStart
+
       await trackLLMGeneration({
         distinctId: feedbackWindow.integration.workspaceId,
         model: AI_MODEL_IDS.feedbackClassifier,
@@ -1125,6 +1175,7 @@ export const processFeedbackWindow = internalAction({
           integration_id: args.integrationId,
         },
       })
+
       const classification = feedbackClassificationSchema.parse(
         JSON.parse(extractJsonObject(classifierResult.text))
       )
@@ -1139,6 +1190,7 @@ export const processFeedbackWindow = internalAction({
           lastProcessedMessageId: latestPendingMessage.messageId,
           lastProcessedMessageCreatedAt: latestPendingMessage.messageCreatedAt,
         })
+
         await trackFeedbackProcessing({
           distinctId: feedbackWindow.integration.workspaceId,
           platform: "discord",
@@ -1152,6 +1204,7 @@ export const processFeedbackWindow = internalAction({
           classifierDurationMs,
           totalDurationMs: Date.now() - processingStart,
         })
+
         return {
           skipped: false,
           createdTaskCount: 0,
@@ -1174,7 +1227,8 @@ export const processFeedbackWindow = internalAction({
         matchedRelevantMessages.length > 0
           ? matchedRelevantMessages
           : pendingNonAdminMessages
-      const existingTasks: TaskSnapshot[] = await ctx.runQuery(
+
+      const existingTasks = await ctx.runQuery(
         getTaskSnapshotForDiscordInternalQuery,
         {
           workspaceId: feedbackWindow.integration.workspaceId,
@@ -1189,6 +1243,7 @@ export const processFeedbackWindow = internalAction({
         feedbackWindow.integration.availableLabels.length > 0
           ? feedbackWindow.integration.availableLabels.join(", ")
           : "No predefined labels."
+
       const extractorSystemParts = [
         "You turn Discord conversations into concise task requests for a task board.",
         `The product is ${feedbackWindow.integration.workspaceName}.`,
@@ -1213,6 +1268,7 @@ export const processFeedbackWindow = internalAction({
           `Additional product context from the workspace owner: ${additionalContext}`
         )
       }
+
       const relevantMessageIds = new Set(
         relevantMessages.map((message) => message.messageId)
       )
@@ -1231,6 +1287,7 @@ export const processFeedbackWindow = internalAction({
         output: Output.object({ schema: extractedFeedbackTasksSchema }),
       })
       const extractorDurationMs = Date.now() - extractorStart
+
       await trackLLMGeneration({
         distinctId: feedbackWindow.integration.workspaceId,
         model: AI_MODEL_IDS.feedbackExtractor,
@@ -1257,14 +1314,12 @@ export const processFeedbackWindow = internalAction({
       })
 
       if (!extractorResult.output) {
-        logInfo("Discord feedback extractor produced no structured output", {
-          integrationId: args.integrationId,
-        })
         await ctx.runMutation(markFeedbackWindowProcessedInternalMutation, {
           integrationId: args.integrationId,
           lastProcessedMessageId: latestPendingMessage.messageId,
           lastProcessedMessageCreatedAt: latestPendingMessage.messageCreatedAt,
         })
+
         await trackFeedbackProcessing({
           distinctId: feedbackWindow.integration.workspaceId,
           platform: "discord",
@@ -1279,6 +1334,7 @@ export const processFeedbackWindow = internalAction({
           extractorDurationMs,
           totalDurationMs: Date.now() - processingStart,
         })
+
         return {
           skipped: false,
           createdTaskCount: 0,
@@ -1288,48 +1344,42 @@ export const processFeedbackWindow = internalAction({
       }
 
       const extracted = extractedFeedbackTasksSchema.parse(extractorResult.output)
-      const limitedActions = extracted.actions.slice(0, MAX_EXTRACTED_ACTIONS)
-      const firstRelevantMessage = relevantMessages[0]
-      const operations: DiscordFeedbackTaskOperation[] = limitedActions.map(
+      const operations: DiscordFeedbackTaskOperation[] = extracted.actions.map(
         (action) =>
           action.action === "create"
-            ? ({
+            ? {
                 action: "create",
                 task: {
                   title: action.title,
                   description: action.description ?? undefined,
                   status: "requests",
                   priority: action.priority ?? "none",
-                  labels: action.labels
-                    .filter((label) =>
-                      feedbackWindow.integration.availableLabels.includes(label)
-                    )
-                    .slice(0, MAX_EXTRACTED_LABELS),
-                  source: firstRelevantMessage
+                  labels: action.labels.filter((label) =>
+                    feedbackWindow.integration.availableLabels.includes(label)
+                  ),
+                  source: relevantMessages[0]
                     ? {
                         platform: "discord",
-                        url: firstRelevantMessage.permalink,
-                        author: firstRelevantMessage.authorUsername,
+                        url: relevantMessages[0].permalink,
+                        author: relevantMessages[0].authorUsername,
                       }
                     : undefined,
                   createdAtLabel: formatCreatedAtLabel(
-                    firstRelevantMessage?.messageCreatedAt ??
+                    relevantMessages[0]?.messageCreatedAt ??
                       latestPendingMessage.messageCreatedAt
                   ),
                 },
-              } satisfies DiscordFeedbackTaskOperation)
-            : ({
+              }
+            : {
                 action: "update",
                 taskCode: action.taskCode,
                 title: action.title,
                 description: action.description ?? undefined,
                 priority: action.priority ?? undefined,
-                labels: action.labels
-                  .filter((label) =>
-                    feedbackWindow.integration.availableLabels.includes(label)
-                  )
-                  .slice(0, MAX_EXTRACTED_LABELS),
-              } satisfies DiscordFeedbackTaskOperation)
+                labels: action.labels.filter((label) =>
+                  feedbackWindow.integration.availableLabels.includes(label)
+                ),
+              }
       )
 
       const classifierCost = getAiCostForTokens({
@@ -1381,7 +1431,7 @@ export const processFeedbackWindow = internalAction({
         reason: operations.length > 0 ? "processed" : "no_task_operations",
       }
     } catch (error) {
-      logError("Discord feedback processing failed", error, {
+      logError("Failed to process Discord feedback window", error, {
         integrationId: args.integrationId,
       })
       throw error

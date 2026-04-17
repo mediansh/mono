@@ -29,6 +29,7 @@ import type * as taskGeneration from "../taskGeneration.js";
 import type * as taskSourceUtils from "../taskSourceUtils.js";
 import type * as tasks from "../tasks.js";
 import type * as waitlist from "../waitlist.js";
+import type * as waitlistEmails from "../waitlistEmails.js";
 import type * as workspaceInviteEmails from "../workspaceInviteEmails.js";
 import type * as workspaces from "../workspaces.js";
 import type * as x from "../x.js";
@@ -62,6 +63,7 @@ declare const fullApi: ApiFromModules<{
   taskSourceUtils: typeof taskSourceUtils;
   tasks: typeof tasks;
   waitlist: typeof waitlist;
+  waitlistEmails: typeof waitlistEmails;
   workspaceInviteEmails: typeof workspaceInviteEmails;
   workspaces: typeof workspaces;
   x: typeof x;
