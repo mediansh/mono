@@ -216,6 +216,95 @@ export const adminMetrics = query({
   },
 })
 
+function pickBucketMs(windowMs: number): number {
+  if (windowMs <= 60 * 60 * 1000) return 5 * 60 * 1000 // 1h → 5m buckets
+  if (windowMs <= 24 * 60 * 60 * 1000) return 60 * 60 * 1000 // 24h → 1h buckets
+  if (windowMs <= 7 * 24 * 60 * 60 * 1000) return 6 * 60 * 60 * 1000 // 7d → 6h
+  return 24 * 60 * 60 * 1000
+}
+
+export const adminRunsSeries = query({
+  args: {
+    windowMs: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx)
+    const windowMs = args.windowMs ?? 24 * 60 * 60 * 1000
+    const bucketMs = pickBucketMs(windowMs)
+    const now = Date.now()
+    const since = now - windowMs
+    const alignedStart = Math.floor(since / bucketMs) * bucketMs
+    const bucketCount = Math.ceil((now - alignedStart) / bucketMs)
+
+    const runs = await collectSince(ctx, since)
+
+    type Bucket = {
+      timestamp: number
+      success: number
+      failure: number
+      skipped: number
+      total: number
+      modules: Record<string, { success: number; failure: number; total: number }>
+    }
+
+    const buckets: Bucket[] = []
+    for (let i = 0; i < bucketCount; i++) {
+      const modules: Record<
+        string,
+        { success: number; failure: number; total: number }
+      > = {}
+      for (const mod of MODULES) {
+        modules[mod] = { success: 0, failure: 0, total: 0 }
+      }
+      buckets.push({
+        timestamp: alignedStart + i * bucketMs,
+        success: 0,
+        failure: 0,
+        skipped: 0,
+        total: 0,
+        modules,
+      })
+    }
+
+    for (const run of runs) {
+      const idx = Math.floor((run.finishedAt - alignedStart) / bucketMs)
+      if (idx < 0 || idx >= buckets.length) continue
+      const b = buckets[idx]!
+      b.total++
+      if (run.status === "success") b.success++
+      else if (run.status === "failure") b.failure++
+      else b.skipped++
+
+      const byModule = (b.modules[run.module] ??= {
+        success: 0,
+        failure: 0,
+        total: 0,
+      })
+      byModule.total++
+      if (run.status === "success") byModule.success++
+      else if (run.status === "failure") byModule.failure++
+    }
+
+    return {
+      windowMs,
+      bucketMs,
+      buckets: buckets.map((b) => ({
+        timestamp: b.timestamp,
+        success: b.success,
+        failure: b.failure,
+        skipped: b.skipped,
+        total: b.total,
+        failureRate: b.total > 0 ? b.failure / b.total : 0,
+        byModule: b.modules,
+      })),
+      modules: [...MODULES].map((m) => ({
+        module: m,
+        label: MODULE_LABELS[m] ?? m,
+      })),
+    }
+  },
+})
+
 export const adminRecentFailures = query({
   args: {
     limit: v.optional(v.number()),

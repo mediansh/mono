@@ -12,12 +12,15 @@ import {
 
 import { api } from "~/lib/convex"
 import { fadeUp, stagger } from "~/lib/utils"
+import { RunsChart } from "~/components/runs-chart"
 
 const WINDOW_OPTIONS = [
   { label: "1h", ms: 60 * 60 * 1000 },
   { label: "24h", ms: 24 * 60 * 60 * 1000 },
   { label: "7d", ms: 7 * 24 * 60 * 60 * 1000 },
 ] as const
+
+const CHART_COLORS = ["#0066cc", "#cc6600", "#009966", "#9933cc", "#cc0066"]
 
 function formatCount(n: number) {
   if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
@@ -47,6 +50,7 @@ function formatRelative(ms: number | null) {
 export default function AdminOverviewPage() {
   const [windowMs, setWindowMs] = useState<number>(24 * 60 * 60 * 1000)
   const metrics = useQuery(api.moduleRuns.adminMetrics, { windowMs })
+  const series = useQuery(api.moduleRuns.adminRunsSeries, { windowMs })
   const failures = useQuery(api.moduleRuns.adminRecentFailures, {
     windowMs,
     limit: 20,
@@ -120,6 +124,73 @@ export default function AdminOverviewPage() {
           last
         />
       </motion.div>
+
+      <motion.section
+        variants={fadeUp}
+        className="mb-5 grid gap-3 lg:grid-cols-2"
+      >
+        <div className="border border-sidebar-border bg-sidebar/30 p-3">
+          <div className="mb-1.5 flex items-center justify-between">
+            <h2 className="text-[12px] font-medium">Runs over time</h2>
+            <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+              <LegendDot color="var(--foreground)" label="Total" />
+              <LegendDot color="#cc3333" label="Failures" />
+            </div>
+          </div>
+          <RunsChart
+            buckets={series?.buckets}
+            bucketMs={series?.bucketMs ?? 0}
+            windowMs={windowMs}
+            modules={series?.modules ?? []}
+            mode="runs"
+            emptyLabel="No runs in this window yet."
+          />
+        </div>
+
+        <div className="border border-sidebar-border bg-sidebar/30 p-3">
+          <div className="mb-1.5 flex items-center justify-between">
+            <h2 className="text-[12px] font-medium">Failure rate</h2>
+            <span className="text-[10px] text-muted-foreground">
+              % of runs that failed
+            </span>
+          </div>
+          <RunsChart
+            buckets={series?.buckets}
+            bucketMs={series?.bucketMs ?? 0}
+            windowMs={windowMs}
+            modules={series?.modules ?? []}
+            mode="rate"
+            emptyLabel="No runs in this window yet."
+          />
+        </div>
+      </motion.section>
+
+      <motion.section
+        variants={fadeUp}
+        className="mb-6 border border-sidebar-border bg-sidebar/30 p-3"
+      >
+        <div className="mb-1.5 flex items-center justify-between">
+          <h2 className="text-[12px] font-medium">Runs per module</h2>
+          <div className="flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground">
+            {(series?.modules ?? []).map((m, i) => (
+              <LegendDot
+                key={m.module}
+                color={CHART_COLORS[i % CHART_COLORS.length] ?? "#666"}
+                label={m.label}
+              />
+            ))}
+          </div>
+        </div>
+        <RunsChart
+          buckets={series?.buckets}
+          bucketMs={series?.bucketMs ?? 0}
+          windowMs={windowMs}
+          modules={series?.modules ?? []}
+          mode="per-module"
+          height={220}
+          emptyLabel="No runs in this window yet."
+        />
+      </motion.section>
 
       <motion.section variants={fadeUp} className="mb-6">
         <h2 className="mb-2 text-[12px] font-medium text-muted-foreground">
@@ -293,6 +364,15 @@ function WindowPicker({
         )
       })}
     </div>
+  )
+}
+
+function LegendDot({ color, label }: { color: string; label: string }) {
+  return (
+    <span className="flex items-center gap-1">
+      <span className="size-1.5" style={{ backgroundColor: color }} />
+      <span>{label}</span>
+    </span>
   )
 }
 
