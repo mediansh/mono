@@ -443,6 +443,43 @@ function hasHighSignalTaskActionFeedback(messages: FeedbackMessage[]) {
   return false
 }
 
+function getFallbackFeedbackText(message: FeedbackMessage) {
+  return (
+    truncateText(message.content, MAX_MESSAGE_CONTENT_CHARS) ||
+    truncateText(message.threadTitle, MAX_MESSAGE_CONTENT_CHARS) ||
+    truncateText(message.forumTitle, MAX_MESSAGE_CONTENT_CHARS) ||
+    truncateText(message.channelName, MAX_MESSAGE_CONTENT_CHARS) ||
+    truncateText(message.parentChannelName, MAX_MESSAGE_CONTENT_CHARS) ||
+    "(no body text)"
+  )
+}
+
+function buildFallbackTaskTitle(messages: FeedbackMessage[]) {
+  const latestMessage = messages[messages.length - 1]
+  const detail = latestMessage
+    ? getFallbackFeedbackText(latestMessage)
+    : "User-reported issue"
+  const prefix = hasHighSignalTaskActionFeedback(messages)
+    ? "Investigate incident:"
+    : "Review feedback:"
+  return truncateText(`${prefix} ${detail}`, 140)
+}
+
+function buildFallbackTaskDescription(
+  messages: FeedbackMessage[],
+  summary: string
+) {
+  const excerpts = messages
+    .slice(-3)
+    .map((message) => `- ${message.authorUsername}: ${getFallbackFeedbackText(message)}`)
+    .join("\n")
+  const description = [`Summary: ${summary}`, "Recent messages:", excerpts]
+    .filter(Boolean)
+    .join("\n")
+  const normalized = truncateText(description, 2000)
+  return normalized || undefined
+}
+
 function parseDiscordPermalink(url: string | null) {
   if (!url) {
     return null
@@ -1315,6 +1352,18 @@ export const processFeedbackWindow = internalAction({
         0,
         MAX_EXTRACTED_TASK_ACTIONS
       )
+      const actionableClassification =
+        classification.needsTaskAction || forcedTaskAction
+      const fallbackMessages =
+        relevantMessagesForExtraction.length > 0
+          ? relevantMessagesForExtraction
+          : pendingNonAdminMessages
+
+      logInfo("Discord feedback extracted actions", {
+        integrationId: args.integrationId,
+        extractedActionCount: extracted.actions.length,
+        cappedActionCount: extractedActions.length,
+      })
 
       if (extractedActions.length > 0) {
         const authors = Array.from(
@@ -1382,7 +1431,65 @@ export const processFeedbackWindow = internalAction({
 
         createdTaskCount = result.createdTaskIds.length
         updatedTaskCount = result.updatedTaskIds.length
-      } else if (totalAiCost > 0) {
+      }
+
+      if (
+        actionableClassification &&
+        createdTaskCount === 0 &&
+        updatedTaskCount === 0
+      ) {
+        const authors = Array.from(
+          new Set(fallbackMessages.map((message) => message.authorUsername))
+        )
+        const sourceUrl = fallbackMessages[fallbackMessages.length - 1]?.permalink
+        const createdAtLabel = formatCreatedAtLabel(
+          latestPendingMessage.messageCreatedAt
+        )
+        const fallbackSummary = classification.summary ?? classification.reason
+        const fallbackPriority = hasHighSignalTaskActionFeedback(fallbackMessages)
+          ? "high"
+          : "medium"
+
+        logInfo("Applying fallback Discord task create for actionable feedback", {
+          integrationId: args.integrationId,
+        })
+
+        const fallbackResult = await ctx.runMutation(
+          createTasksFromDiscordFeedbackInternalMutation,
+          {
+            workspaceId: feedbackWindow.integration.workspaceId,
+            operations: [
+              {
+                action: "create" as const,
+                task: {
+                  title: buildFallbackTaskTitle(fallbackMessages),
+                  description: buildFallbackTaskDescription(
+                    fallbackMessages,
+                    fallbackSummary
+                  ),
+                  status: "requests" as const,
+                  priority: fallbackPriority,
+                  labels: [],
+                  source: sourceUrl
+                    ? {
+                        platform: "discord" as const,
+                        url: sourceUrl,
+                        author: authors.join(", "),
+                      }
+                    : undefined,
+                  createdAtLabel,
+                },
+              },
+            ],
+            cost: totalAiCost > 0 ? totalAiCost : undefined,
+          }
+        )
+
+        createdTaskCount += fallbackResult.createdTaskIds.length
+        updatedTaskCount += fallbackResult.updatedTaskIds.length
+      }
+
+      if (createdTaskCount === 0 && updatedTaskCount === 0 && totalAiCost > 0) {
         // Log AI cost when extractor returns no actions
         await ctx.runMutation(internal.logs.recordWorkspaceLog, {
           workspaceId: feedbackWindow.integration.workspaceId,
