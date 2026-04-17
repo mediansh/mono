@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import type { OptimisticLocalStore } from "convex/browser"
-import { useMutation, useQuery } from "convex/react"
+import { useAction, useMutation, useQuery } from "convex/react"
 import { Trash, Link as LinkIcon, Envelope } from "@phosphor-icons/react"
 import { motion } from "motion/react"
 import { toast } from "sonner"
@@ -163,6 +163,9 @@ export default function MembersSettingsPage() {
       })
     )
   })
+  const sendInviteEmail = useAction(
+    api.workspaceInviteEmails.sendInviteEmail
+  )
   const revokeInvite = useMutation(api.workspaces.revokeInvite).withOptimisticUpdate(
     (localStore, args) => {
       updateWorkspaceMembersQueries(
@@ -259,18 +262,13 @@ export default function MembersSettingsPage() {
     try {
       const invite = await createEmailInvite({ workspaceId, email, role: emailRole })
 
-      const response = await fetch("/api/workspace-invites/email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          workspaceId,
-          inviteToken: invite.token,
-        }),
+      const result = await sendInviteEmail({
+        workspaceId,
+        inviteToken: invite.token,
       })
 
-      if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as { error?: string } | null
-        throw new Error(body?.error ?? "Invite email failed to send")
+      if (!result.ok) {
+        throw new Error(result.error ?? "Invite email failed to send")
       }
 
       setEmailValue("")

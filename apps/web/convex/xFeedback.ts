@@ -257,21 +257,6 @@ function logError(
   console.error("[convex:x-feedback]", message, error)
 }
 
-function getXFeedbackWorkerBaseUrl() {
-  const baseUrl =
-    process.env.APP_URL ??
-    process.env.NEXT_PUBLIC_APP_URL ??
-    process.env.NEXT_PUBLIC_SITE_URL
-
-  if (!baseUrl) {
-    throw new Error(
-      "Missing APP_URL or NEXT_PUBLIC_APP_URL for X feedback worker handoff"
-    )
-  }
-
-  return baseUrl.replace(/\/$/, "")
-}
-
 function formatCreatedAtLabel(timestamp: number) {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
@@ -736,36 +721,340 @@ export const processFeedbackWindow = internalAction({
       return { skipped: true, reason: "already_running" }
     }
 
-    try {
-      const botSecret = process.env.X_API_SECRET
-      if (!botSecret) {
-        throw new Error("Missing X_API_SECRET for X feedback handoff")
-      }
+    const processingStart = Date.now()
 
-      const response = await fetch(
-        `${getXFeedbackWorkerBaseUrl()}/api/internal/feedback/x/process`,
+    try {
+      const feedbackWindow: FeedbackWindow = await ctx.runQuery(
+        getPendingFeedbackWindowInternalQuery,
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-median-worker-secret": botSecret,
-          },
-          body: JSON.stringify({
-            integrationId: args.integrationId,
-          }),
+          integrationId: args.integrationId,
+          limit: FEEDBACK_WINDOW_LIMIT,
         }
       )
 
-      if (!response.ok) {
-        const responseText = await response.text()
-        throw new Error(
-          `X feedback worker handoff failed: ${response.status} ${responseText}`
+      const quotaStatus: WorkspaceQuotaStatus = await ctx.runAction(
+        internal.billing.getWorkspaceQuotaStatusInternal,
+        { workspaceId: feedbackWindow.integration.workspaceId }
+      )
+
+      if (quotaStatus.eventsExhausted) {
+        await ctx.runMutation(markFeedbackProcessingPausedMutation, {
+          integrationId: args.integrationId,
+          reason: "Paused — events exhausted (overages disabled)",
+        })
+        return { skipped: true, reason: "events_exhausted" }
+      }
+
+      const pendingPosts = feedbackWindow.posts.filter((post) =>
+        isPostAfterCursor(post, {
+          postId: feedbackWindow.integration.lastProcessedPostId,
+          postCreatedAt: feedbackWindow.integration.lastProcessedPostCreatedAt,
+        })
+      )
+      if (pendingPosts.length === 0) {
+        return { skipped: true, reason: "no_pending_posts" }
+      }
+      const latestPendingPost = pendingPosts.at(-1)
+      if (!latestPendingPost) {
+        return { skipped: true, reason: "missing_latest_pending_post" }
+      }
+
+      const contextPosts = feedbackWindow.posts.slice(-FEEDBACK_CONTEXT_LIMIT)
+      const pendingPostIds = new Set(pendingPosts.map((post) => post.postId))
+      const transcript = formatTranscript(contextPosts, pendingPostIds)
+      const existingTasks: TaskSnapshot[] = await ctx.runQuery(
+        getTaskSnapshotForFeedbackInternalQuery,
+        {
+          workspaceId: feedbackWindow.integration.workspaceId,
+          limit: EXISTING_TASK_CONTEXT_LIMIT,
+        }
+      )
+
+      const classifierSystemParts = [
+        "You classify inbound X mentions and replies for a product team.",
+        `The only product that matters is ${feedbackWindow.integration.workspaceName}.`,
+        "Return isProductFeedback=true only when the newest posts contain concrete product feedback, a bug report, a feature request, workflow friction, or an actionable complaint about the actual product.",
+        "Reject hype, compliments without a request, memes, repost-style chatter, marketing banter, hiring talk, and anything unrelated to the product itself.",
+        "Use the recent context only to interpret what the new posts refer to.",
+        "If the new posts add detail, scope, reproduction steps, or acceptance criteria to an existing open task, that is still product feedback.",
+        "Only include relevantPostIds from NEW posts.",
+        "Each post has an [id:XXXXXXX] tag. Use the numeric ID from that tag as the relevantPostId, NOT the timestamp.",
+        "Return valid JSON only. No markdown. No code fences. No commentary.",
+        'Use this exact JSON shape: {"isProductFeedback":false,"confidence":0.0,"summary":null,"reason":"...","relevantPostIds":["123456789"]}',
+      ]
+      if (feedbackWindow.integration.additionalContext) {
+        classifierSystemParts.push(
+          `Additional product context from the workspace owner: ${feedbackWindow.integration.additionalContext}`
         )
       }
 
-      return { skipped: true, reason: "delegated" }
+      const classifierStart = Date.now()
+      const classifierResult = await generateText({
+        model: AI_MODELS.feedbackClassifier,
+        system: classifierSystemParts.join(" "),
+        prompt: [
+          `Workspace name: ${feedbackWindow.integration.workspaceName}`,
+          `Connected X account: @${feedbackWindow.integration.username}`,
+          "Existing task context:",
+          formatExistingTasks(existingTasks),
+          "Inbound post transcript:",
+          transcript,
+        ].join("\n\n"),
+      })
+      const classifierDurationMs = Date.now() - classifierStart
+      await trackLLMGeneration({
+        distinctId: feedbackWindow.integration.workspaceId,
+        model: AI_MODEL_IDS.feedbackClassifier,
+        feature: "x_feedback_classifier",
+        inputTokens: classifierResult.usage?.inputTokens,
+        outputTokens: classifierResult.usage?.outputTokens,
+        durationMs: classifierDurationMs,
+        success: true,
+        metadata: {
+          integration_id: args.integrationId,
+          pending_post_count: pendingPosts.length,
+        },
+      })
+      await safeTrackAiUsage({
+        workspaceId: feedbackWindow.integration.workspaceId,
+        workspaceName: feedbackWindow.integration.workspaceName,
+        model: AI_MODEL_IDS.feedbackClassifier,
+        inputTokens: classifierResult.usage?.inputTokens,
+        outputTokens: classifierResult.usage?.outputTokens,
+        properties: {
+          feature: "x_feedback_classifier",
+          integration_id: args.integrationId,
+        },
+      })
+      const classification = feedbackClassificationSchema.parse(
+        JSON.parse(extractJsonObject(classifierResult.text))
+      )
+
+      if (
+        !classification.isProductFeedback ||
+        classification.relevantPostIds.length === 0
+      ) {
+        await ctx.runMutation(markFeedbackWindowProcessedInternalMutation, {
+          integrationId: args.integrationId,
+          lastProcessedPostId: latestPendingPost.postId,
+          lastProcessedPostCreatedAt: latestPendingPost.postCreatedAt,
+        })
+        await trackFeedbackProcessing({
+          distinctId: feedbackWindow.integration.workspaceId,
+          platform: "x",
+          integrationId: args.integrationId,
+          workspaceId: feedbackWindow.integration.workspaceId,
+          messageCount: pendingPosts.length,
+          isProductFeedback: classification.isProductFeedback,
+          confidence: classification.confidence,
+          createdTaskCount: 0,
+          updatedTaskCount: 0,
+          classifierDurationMs,
+          totalDurationMs: Date.now() - processingStart,
+        })
+        return {
+          skipped: false,
+          createdTaskCount: 0,
+          updatedTaskCount: 0,
+          reason: "not_product_feedback",
+        }
+      }
+
+      const normalizedRelevantIds = new Set(
+        classification.relevantPostIds
+          .map((postId) => normalizeId(postId))
+          .filter(Boolean)
+      )
+      const matchedRelevantPosts = pendingPosts.filter((post) =>
+        normalizedRelevantIds.has(normalizeId(post.postId))
+      )
+      const relevantPosts =
+        matchedRelevantPosts.length > 0 ? matchedRelevantPosts : pendingPosts
+      const labelsText =
+        feedbackWindow.integration.availableLabels.length > 0
+          ? feedbackWindow.integration.availableLabels.join(", ")
+          : "No predefined labels."
+      const extractorSystemParts = [
+        "You turn product feedback into concise task requests for a task board.",
+        `The product is ${feedbackWindow.integration.workspaceName}.`,
+        "Only create or update tasks for actionable feedback about the real product. Ignore unrelated discussion.",
+        "Return between 0 and 5 actions total.",
+        "Each action must be distinct, concrete, and understandable without requiring the original X post.",
+        "You can either create a new task or update an existing task.",
+        "Use update when the new feedback materially adds detail to an existing open task, such as reproduction steps, missing scope, edge cases, urgency, or acceptance criteria.",
+        "For update actions, use the existing taskCode and return the full revised title, description, priority, and labels after incorporating the new feedback.",
+        "Descriptions should summarize the user problem and expected outcome in plain text.",
+        `Allowed labels: ${labelsText}`,
+        "Only use labels from the allowed list. Use an empty array when none apply.",
+        'Return valid structured output only with action items shaped like {"action":"create",...} or {"action":"update","taskCode":"MDN-123",...}.',
+      ]
+      if (feedbackWindow.integration.additionalContext) {
+        extractorSystemParts.push(
+          `Additional product context from the workspace owner: ${feedbackWindow.integration.additionalContext}`
+        )
+      }
+      const relevantPostSet = new Set(relevantPosts.map((post) => post.postId))
+      const extractorStart = Date.now()
+      const extractorResult = await generateText({
+        model: AI_MODELS.feedbackExtractor,
+        system: extractorSystemParts.join(" "),
+        prompt: [
+          `Workspace name: ${feedbackWindow.integration.workspaceName}`,
+          `Connected X account: @${feedbackWindow.integration.username}`,
+          "Existing task context:",
+          formatExistingTasks(existingTasks),
+          "Relevant posts:",
+          formatTranscript(relevantPosts, relevantPostSet),
+        ].join("\n\n"),
+        output: Output.object({ schema: extractedFeedbackTasksSchema }),
+      })
+      const extractorDurationMs = Date.now() - extractorStart
+      await trackLLMGeneration({
+        distinctId: feedbackWindow.integration.workspaceId,
+        model: AI_MODEL_IDS.feedbackExtractor,
+        feature: "x_feedback_extractor",
+        inputTokens: extractorResult.usage?.inputTokens,
+        outputTokens: extractorResult.usage?.outputTokens,
+        durationMs: extractorDurationMs,
+        success: true,
+        metadata: {
+          integration_id: args.integrationId,
+          relevant_post_count: relevantPosts.length,
+        },
+      })
+      await safeTrackAiUsage({
+        workspaceId: feedbackWindow.integration.workspaceId,
+        workspaceName: feedbackWindow.integration.workspaceName,
+        model: AI_MODEL_IDS.feedbackExtractor,
+        inputTokens: extractorResult.usage?.inputTokens,
+        outputTokens: extractorResult.usage?.outputTokens,
+        properties: {
+          feature: "x_feedback_extractor",
+          integration_id: args.integrationId,
+        },
+      })
+
+      if (!extractorResult.output) {
+        logInfo("X feedback extractor produced no structured output", {
+          integrationId: args.integrationId,
+        })
+        await ctx.runMutation(markFeedbackWindowProcessedInternalMutation, {
+          integrationId: args.integrationId,
+          lastProcessedPostId: latestPendingPost.postId,
+          lastProcessedPostCreatedAt: latestPendingPost.postCreatedAt,
+        })
+        await trackFeedbackProcessing({
+          distinctId: feedbackWindow.integration.workspaceId,
+          platform: "x",
+          integrationId: args.integrationId,
+          workspaceId: feedbackWindow.integration.workspaceId,
+          messageCount: pendingPosts.length,
+          isProductFeedback: classification.isProductFeedback,
+          confidence: classification.confidence,
+          createdTaskCount: 0,
+          updatedTaskCount: 0,
+          classifierDurationMs,
+          extractorDurationMs,
+          totalDurationMs: Date.now() - processingStart,
+        })
+        return {
+          skipped: false,
+          createdTaskCount: 0,
+          updatedTaskCount: 0,
+          reason: "no_structured_output",
+        }
+      }
+
+      const extracted = extractedFeedbackTasksSchema.parse(extractorResult.output)
+      const firstRelevantPost = relevantPosts[0]
+      const operations: XFeedbackTaskOperation[] = extracted.actions.map(
+        (action) =>
+          action.action === "create"
+            ? ({
+                action: "create",
+                task: {
+                  title: action.title,
+                  description: action.description ?? undefined,
+                  status: "requests",
+                  priority: action.priority ?? "none",
+                  labels: action.labels.filter((label) =>
+                    feedbackWindow.integration.availableLabels.includes(label)
+                  ),
+                  source: firstRelevantPost
+                    ? {
+                        platform: "x",
+                        url: firstRelevantPost.permalink,
+                        author: firstRelevantPost.authorUsername,
+                      }
+                    : undefined,
+                  createdAtLabel: formatCreatedAtLabel(
+                    firstRelevantPost?.postCreatedAt ??
+                      latestPendingPost.postCreatedAt
+                  ),
+                },
+              } satisfies XFeedbackTaskOperation)
+            : ({
+                action: "update",
+                taskCode: action.taskCode,
+                title: action.title,
+                description: action.description ?? undefined,
+                priority: action.priority ?? undefined,
+                labels: action.labels.filter((label) =>
+                  feedbackWindow.integration.availableLabels.includes(label)
+                ),
+              } satisfies XFeedbackTaskOperation)
+      )
+
+      const classifierCost = getAiCostForTokens({
+        model: AI_MODEL_IDS.feedbackClassifier,
+        inputTokens: classifierResult.usage?.inputTokens,
+        outputTokens: classifierResult.usage?.outputTokens,
+      })
+      const extractorCost = getAiCostForTokens({
+        model: AI_MODEL_IDS.feedbackExtractor,
+        inputTokens: extractorResult.usage?.inputTokens,
+        outputTokens: extractorResult.usage?.outputTokens,
+      })
+      const totalAiCost = classifierCost + extractorCost
+
+      const taskResult =
+        operations.length > 0
+          ? await ctx.runMutation(createTasksFromFeedbackInternalMutation, {
+              workspaceId: feedbackWindow.integration.workspaceId,
+              operations,
+              cost: totalAiCost > 0 ? totalAiCost : undefined,
+            })
+          : { createdTaskIds: [], updatedTaskIds: [] }
+
+      await ctx.runMutation(markFeedbackWindowProcessedInternalMutation, {
+        integrationId: args.integrationId,
+        lastProcessedPostId: latestPendingPost.postId,
+        lastProcessedPostCreatedAt: latestPendingPost.postCreatedAt,
+      })
+
+      await trackFeedbackProcessing({
+        distinctId: feedbackWindow.integration.workspaceId,
+        platform: "x",
+        integrationId: args.integrationId,
+        workspaceId: feedbackWindow.integration.workspaceId,
+        messageCount: pendingPosts.length,
+        isProductFeedback: classification.isProductFeedback,
+        confidence: classification.confidence,
+        createdTaskCount: taskResult.createdTaskIds.length,
+        updatedTaskCount: taskResult.updatedTaskIds.length,
+        classifierDurationMs,
+        extractorDurationMs,
+        totalDurationMs: Date.now() - processingStart,
+      })
+
+      return {
+        skipped: false,
+        createdTaskCount: taskResult.createdTaskIds.length,
+        updatedTaskCount: taskResult.updatedTaskIds.length,
+        reason: operations.length > 0 ? "processed" : "no_task_operations",
+      }
     } catch (error) {
-      logError("Failed to hand off X feedback window", error, {
+      logError("X feedback processing failed", error, {
         integrationId: args.integrationId,
       })
       throw error
