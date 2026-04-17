@@ -1,12 +1,7 @@
-import { generateText, Output } from "ai"
-import { trackLLMGeneration, trackFeedbackProcessing } from "./posthog"
-import { AI_MODEL_IDS, AI_MODELS } from "../lib/ai"
-import { safeTrackAiUsage } from "../lib/billing/autumn"
-import { getAiCostForTokens } from "../lib/billing/config"
+import { trackFeedbackProcessing } from "./posthog"
 import { Workpool, vOnCompleteArgs } from "@convex-dev/workpool"
 import { makeFunctionReference } from "convex/server"
 import { v } from "convex/values"
-import { z } from "zod"
 import { components, internal } from "./_generated/api"
 import type { Id } from "./_generated/dataModel"
 import type { WorkspaceQuotaStatus } from "./billing"
@@ -18,85 +13,35 @@ import {
   type MutationCtx,
   type QueryCtx,
 } from "./_generated/server"
+import {
+  runFeedbackPipeline,
+  truncateText,
+  type ExistingTask,
+  type FeedbackMessage,
+  type TaskAction,
+} from "./feedbackPipeline"
 
 const FEEDBACK_WINDOW_LIMIT = 100
 const FEEDBACK_CONTEXT_LIMIT = 10
-const RELEVANT_MESSAGE_LIMIT = 10
 const TASK_CONTEXT_FETCH_LIMIT = 100
 const EXISTING_TASK_CONTEXT_LIMIT = 12
 const FEEDBACK_PROCESSING_DEBOUNCE_MS = 8_000
 const FEEDBACK_PROCESSING_RETRY_DELAY_MS = 5_000
 const DEFAULT_WORKPOOL_PARALLELISM = 2
-const MAX_MESSAGE_CONTENT_CHARS = 280
-const MAX_TASK_DESCRIPTION_CHARS = 220
 const MAX_LOCATION_TEXT_CHARS = 80
-const MAX_ADDITIONAL_CONTEXT_CHARS = 500
 const MAX_SEARCH_TERMS = 18
 
 const TASK_MATCH_STOP_WORDS = new Set([
-  "about",
-  "after",
-  "all",
-  "also",
-  "and",
-  "any",
-  "are",
-  "but",
-  "can",
-  "cant",
-  "could",
-  "did",
-  "does",
-  "dont",
-  "for",
-  "from",
-  "get",
-  "got",
-  "had",
-  "has",
-  "have",
-  "hey",
-  "how",
-  "into",
-  "its",
-  "just",
-  "like",
-  "maybe",
-  "more",
-  "not",
-  "now",
-  "our",
-  "out",
-  "pls",
-  "please",
-  "really",
-  "same",
-  "should",
-  "some",
-  "still",
-  "than",
-  "that",
-  "the",
-  "their",
-  "them",
-  "there",
-  "they",
-  "this",
-  "too",
-  "use",
-  "using",
-  "very",
-  "was",
-  "were",
-  "what",
-  "when",
-  "with",
-  "would",
-  "you",
-  "your",
+  "about", "after", "all", "also", "and", "any", "are", "but", "can", "cant",
+  "could", "did", "does", "dont", "for", "from", "get", "got", "had", "has",
+  "have", "hey", "how", "into", "its", "just", "like", "maybe", "more", "not",
+  "now", "our", "out", "pls", "please", "really", "same", "should", "some",
+  "still", "than", "that", "the", "their", "them", "there", "they", "this",
+  "too", "use", "using", "very", "was", "were", "what", "when", "with",
+  "would", "you", "your",
 ])
 
-type FeedbackMessage = {
+type DiscordMessageRow = {
   _id: Id<"discordMessages">
   channelId: string
   channelName: string | null
@@ -127,18 +72,7 @@ type FeedbackWindow = {
     lastProcessedMessageCreatedAt: number | null
     additionalContext: string | null
   }
-  messages: FeedbackMessage[]
-}
-
-type TaskSnapshot = {
-  taskId: Id<"tasks">
-  taskCode: string
-  title: string
-  description: string | null
-  status: "requests" | "todo" | "in_progress" | "ready" | "shipped" | "archive"
-  priority: "urgent" | "high" | "medium" | "low" | "none"
-  labels: string[]
-  sourceUrl: string | null
+  messages: DiscordMessageRow[]
 }
 
 type DiscordFeedbackCreateTaskInput = {
@@ -182,43 +116,6 @@ type ProcessFeedbackWindowResult =
       updatedTaskCount: number
       reason?: string
     }
-
-const feedbackClassificationSchema = z.object({
-  isProductFeedback: z.boolean(),
-  needsTaskAction: z.boolean(),
-  confidence: z.number().min(0).max(1),
-  summary: z.string().min(1).nullable(),
-  reason: z.string().min(1),
-  relevantMessageIds: z.array(z.string()).max(RELEVANT_MESSAGE_LIMIT),
-})
-
-const extractedFeedbackTasksSchema = z.object({
-  actions: z
-    .array(
-      z.discriminatedUnion("action", [
-        z.object({
-          action: z.literal("create"),
-          title: z.string().min(1).max(140),
-          description: z.string().max(2000).nullable(),
-          priority: z
-            .enum(["urgent", "high", "medium", "low", "none"])
-            .nullable(),
-          labels: z.array(z.string()).max(5),
-        }),
-        z.object({
-          action: z.literal("update"),
-          taskCode: z.string().min(1),
-          title: z.string().min(1).max(140),
-          description: z.string().max(2000).nullable(),
-          priority: z
-            .enum(["urgent", "high", "medium", "low", "none"])
-            .nullable(),
-          labels: z.array(z.string()).max(5),
-        }),
-      ])
-    )
-    .max(5),
-})
 
 function getFeedbackWorkpoolParallelism() {
   const parsed = Number(
@@ -292,7 +189,7 @@ const getTaskSnapshotForDiscordInternalQuery = makeFunctionReference<
     workspaceId: Id<"workspaces">
     limit?: number
   },
-  TaskSnapshot[]
+  ExistingTask[]
 >("tasks:getTaskSnapshotForDiscordInternal")
 
 const createTasksFromDiscordFeedbackInternalMutation = makeFunctionReference<
@@ -308,21 +205,11 @@ const createTasksFromDiscordFeedbackInternalMutation = makeFunctionReference<
   }
 >("tasks:createTasksFromDiscordFeedbackInternal")
 
-const getWorkspaceQuotaStatusForDiscordFeedbackAction = makeFunctionReference<
-  "action",
-  {
-    botSecret: string
-    workspaceId: Id<"workspaces">
-  },
-  WorkspaceQuotaStatus
->("billing:getWorkspaceQuotaStatusForDiscordFeedback")
-
 function logInfo(message: string, details?: Record<string, unknown>) {
   if (details) {
     console.log("[convex:discord-feedback]", message, details)
     return
   }
-
   console.log("[convex:discord-feedback]", message)
 }
 
@@ -335,29 +222,7 @@ function logError(
     console.error("[convex:discord-feedback]", message, details, error)
     return
   }
-
   console.error("[convex:discord-feedback]", message, error)
-}
-
-function getDiscordFeedbackWorkerBaseUrl() {
-  const rawBaseUrl =
-    process.env.APP_URL ??
-    process.env.NEXT_PUBLIC_APP_URL ??
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    process.env.VERCEL_PROJECT_PRODUCTION_URL ??
-    process.env.VERCEL_URL
-
-  if (!rawBaseUrl) {
-    throw new Error(
-      "Missing APP_URL/NEXT_PUBLIC_APP_URL/NEXT_PUBLIC_SITE_URL/VERCEL_URL for Discord feedback worker handoff"
-    )
-  }
-
-  const baseUrl = rawBaseUrl.startsWith("http")
-    ? rawBaseUrl
-    : `https://${rawBaseUrl}`
-
-  return baseUrl.replace(/\/$/, "")
 }
 
 function formatCreatedAtLabel(timestamp: number) {
@@ -367,45 +232,9 @@ function formatCreatedAtLabel(timestamp: number) {
   }).format(timestamp)
 }
 
-function extractJsonObject(text: string) {
-  const start = text.indexOf("{")
-  const end = text.lastIndexOf("}")
-
-  if (start === -1 || end === -1 || end <= start) {
-    throw new Error("Model did not return a JSON object.")
-  }
-
-  return text.slice(start, end + 1)
-}
-
-function normalizeDiscordId(id: string) {
-  return id.trim().replace(/\D/g, "")
-}
-
-function truncateText(text: string | null | undefined, maxChars: number) {
-  const normalized = (text ?? "").replace(/\s+/g, " ").trim()
-  if (!normalized) {
-    return ""
-  }
-
-  if (normalized.length <= maxChars) {
-    return normalized
-  }
-
-  return `${normalized.slice(0, maxChars - 1).trimEnd()}…`
-}
-
-function getAdditionalContext(context: string | null) {
-  const value = truncateText(context, MAX_ADDITIONAL_CONTEXT_CHARS)
-  return value || null
-}
-
 function tokenizeTaskMatchTerms(text: string | null | undefined) {
   const normalized = truncateText(text, 400).toLowerCase()
-  if (!normalized) {
-    return []
-  }
-
+  if (!normalized) return []
   return Array.from(
     new Set(
       (normalized.match(/[a-z0-9][a-z0-9_-]*/g) ?? []).filter(
@@ -415,9 +244,8 @@ function tokenizeTaskMatchTerms(text: string | null | undefined) {
   )
 }
 
-function collectRelevantTaskTerms(messages: FeedbackMessage[]) {
+function collectRelevantTaskTerms(messages: DiscordMessageRow[]) {
   const counts = new Map<string, number>()
-
   for (const message of messages) {
     const parts = [
       message.content,
@@ -426,14 +254,12 @@ function collectRelevantTaskTerms(messages: FeedbackMessage[]) {
       message.channelName,
       message.parentChannelName,
     ]
-
     for (const part of parts) {
       for (const term of tokenizeTaskMatchTerms(part)) {
         counts.set(term, (counts.get(term) ?? 0) + 1)
       }
     }
   }
-
   return Array.from(counts.entries())
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .slice(0, MAX_SEARCH_TERMS)
@@ -441,15 +267,9 @@ function collectRelevantTaskTerms(messages: FeedbackMessage[]) {
 }
 
 function parseDiscordPermalink(url: string | null) {
-  if (!url) {
-    return null
-  }
-
+  if (!url) return null
   const match = url.match(/discord\.com\/channels\/(\d+)\/(\d+)\/(\d+)/)
-  if (!match?.[1] || !match[2] || !match[3]) {
-    return null
-  }
-
+  if (!match?.[1] || !match[2] || !match[3]) return null
   return {
     guildId: match[1],
     channelId: match[2],
@@ -458,78 +278,54 @@ function parseDiscordPermalink(url: string | null) {
 }
 
 function selectRelevantTasks(
-  tasks: TaskSnapshot[],
-  relevantMessages: FeedbackMessage[]
+  tasks: ExistingTask[],
+  relevantMessages: DiscordMessageRow[]
 ) {
-  if (tasks.length === 0 || relevantMessages.length === 0) {
-    return []
-  }
+  if (tasks.length === 0 || relevantMessages.length === 0) return []
 
   const exactSourceUrls = new Set(
-    relevantMessages.map((message) => message.permalink).filter(Boolean)
+    relevantMessages.map((m) => m.permalink).filter(Boolean)
   )
   const relevantChannelIds = new Set(
-    relevantMessages.flatMap((message) =>
-      [
-        message.channelId,
-        message.parentChannelId,
-        message.threadId,
-        message.forumChannelId,
-      ].filter(Boolean)
+    relevantMessages.flatMap((m) =>
+      [m.channelId, m.parentChannelId, m.threadId, m.forumChannelId].filter(
+        (value): value is string => Boolean(value)
+      )
     )
   )
   const relevantGuildIds = new Set(
     relevantMessages
-      .map((message) => parseDiscordPermalink(message.permalink)?.guildId)
-      .filter(Boolean)
+      .map((m) => parseDiscordPermalink(m.permalink)?.guildId)
+      .filter((value): value is string => Boolean(value))
   )
   const relevantTerms = collectRelevantTaskTerms(relevantMessages)
 
   return tasks
     .map((task) => {
       let score = 0
-
-      if (exactSourceUrls.has(task.sourceUrl ?? "")) {
-        score += 100
-      }
-
+      if (exactSourceUrls.has(task.sourceUrl ?? "")) score += 100
       const parsedSource = parseDiscordPermalink(task.sourceUrl)
       if (parsedSource) {
-        if (relevantChannelIds.has(parsedSource.channelId)) {
-          score += 16
-        }
-        if (relevantGuildIds.has(parsedSource.guildId)) {
-          score += 4
-        }
+        if (relevantChannelIds.has(parsedSource.channelId)) score += 16
+        if (relevantGuildIds.has(parsedSource.guildId)) score += 4
       }
-
-      if (task.status !== "shipped") {
-        score += 2
-      }
-
+      if (task.status !== "shipped") score += 2
       const taskTerms = new Set([
         ...tokenizeTaskMatchTerms(task.title),
         ...tokenizeTaskMatchTerms(task.description),
         ...task.labels.flatMap((label) => tokenizeTaskMatchTerms(label)),
       ])
       for (const term of relevantTerms) {
-        if (taskTerms.has(term)) {
-          score += 3
-        }
+        if (taskTerms.has(term)) score += 3
       }
-
       return { task, score }
     })
     .filter((entry) => entry.score > 0)
     .sort((a, b) => {
-      if (b.score !== a.score) {
-        return b.score - a.score
-      }
-
+      if (b.score !== a.score) return b.score - a.score
       if (a.task.status !== b.task.status) {
         return a.task.status === "shipped" ? 1 : -1
       }
-
       return a.task.taskCode.localeCompare(b.task.taskCode)
     })
     .slice(0, EXISTING_TASK_CONTEXT_LIMIT)
@@ -540,82 +336,53 @@ function isMessageAfterCursor(
   message: { messageId: string; messageCreatedAt: number },
   cursor: { messageId: string | null; messageCreatedAt: number | null }
 ) {
-  if (cursor.messageCreatedAt === null || cursor.messageId === null) {
-    return true
-  }
-
-  if (message.messageCreatedAt > cursor.messageCreatedAt) {
-    return true
-  }
-
-  if (message.messageCreatedAt < cursor.messageCreatedAt) {
-    return false
-  }
-
+  if (cursor.messageCreatedAt === null || cursor.messageId === null) return true
+  if (message.messageCreatedAt > cursor.messageCreatedAt) return true
+  if (message.messageCreatedAt < cursor.messageCreatedAt) return false
   return BigInt(message.messageId) > BigInt(cursor.messageId)
 }
 
-function formatTranscript(
-  messages: FeedbackMessage[],
-  pendingMessageIds: Set<string>
-) {
-  return messages
-    .map((message) => {
-      const timestamp = new Date(message.messageCreatedAt).toISOString()
-      const marker = pendingMessageIds.has(message.messageId)
-        ? "NEW"
-        : "CONTEXT"
-      const locationParts = [
-        message.forumTitle
-          ? `forum:${truncateText(message.forumTitle, MAX_LOCATION_TEXT_CHARS)}`
-          : null,
-        message.threadTitle
-          ? `thread:${truncateText(message.threadTitle, MAX_LOCATION_TEXT_CHARS)}`
-          : null,
-        message.parentChannelName
-          ? `parent_channel:${truncateText(message.parentChannelName, MAX_LOCATION_TEXT_CHARS)}`
-          : null,
-        message.channelName
-          ? `channel:${truncateText(message.channelName, MAX_LOCATION_TEXT_CHARS)}`
-          : null,
-      ].filter(Boolean)
-      const locationPrefix =
-        locationParts.length > 0 ? ` [${locationParts.join(" | ")}]` : ""
-      const content =
-        truncateText(message.content, MAX_MESSAGE_CONTENT_CHARS) ||
-        (message.threadTitle
-          ? "(no body text; use the thread title as the post title)"
-          : "(no body text)")
-      return `[${marker}] [id:${message.messageId}] ${timestamp}${locationPrefix} ${message.authorUsername}: ${content}`
-    })
-    .join("\n")
+function normalizeDiscordId(id: string) {
+  return id.trim().replace(/\D/g, "")
 }
 
-function formatExistingTasks(tasks: TaskSnapshot[]) {
-  if (tasks.length === 0) {
-    return "No likely matching existing tasks."
-  }
+function toFeedbackMessage(row: DiscordMessageRow): FeedbackMessage {
+  const locationLabels = [
+    row.forumTitle
+      ? `forum:${truncateText(row.forumTitle, MAX_LOCATION_TEXT_CHARS)}`
+      : null,
+    row.threadTitle
+      ? `thread:${truncateText(row.threadTitle, MAX_LOCATION_TEXT_CHARS)}`
+      : null,
+    row.parentChannelName
+      ? `parent_channel:${truncateText(row.parentChannelName, MAX_LOCATION_TEXT_CHARS)}`
+      : null,
+    row.channelName
+      ? `channel:${truncateText(row.channelName, MAX_LOCATION_TEXT_CHARS)}`
+      : null,
+  ].filter((value): value is string => Boolean(value))
 
-  return tasks
-    .map((task) =>
-      [
-        `${task.taskCode} | ${task.status} | ${task.priority} | ${truncateText(task.title, 140)}`,
-        task.labels.length > 0 ? `labels: ${task.labels.join(", ")}` : null,
-        task.description
-          ? `description: ${truncateText(task.description, MAX_TASK_DESCRIPTION_CHARS)}`
-          : null,
-      ]
-        .filter(Boolean)
-        .join(" | ")
-    )
-    .join("\n")
+  const content =
+    row.content.trim() ||
+    (row.threadTitle
+      ? "(no body text; use the thread title as the post title)"
+      : "(no body text)")
+
+  return {
+    id: row.messageId,
+    authorUsername: row.authorUsername,
+    content,
+    permalink: row.permalink,
+    createdAt: row.messageCreatedAt,
+    locationLabels,
+    isAdmin: row.authorHasAdminPrivileges,
+  }
 }
 
 function getCompletedProcessingReason(result: WorkpoolResult): string | null {
   if (result.kind !== "success" || typeof result.returnValue !== "object") {
     return null
   }
-
   const reason = (result.returnValue as { reason?: unknown } | null)?.reason
   return typeof reason === "string" ? reason : null
 }
@@ -731,7 +498,6 @@ export const markFeedbackWindowProcessedInternal = internalMutation({
     if (!integration) {
       throw new Error("Discord integration not found")
     }
-
     await ctx.db.patch(args.integrationId, {
       lastProcessedMessageId: args.lastProcessedMessageId,
       lastProcessedMessageCreatedAt: args.lastProcessedMessageCreatedAt,
@@ -791,20 +557,14 @@ export const markFeedbackProcessingRunning = internalMutation({
   },
   handler: async (ctx, args): Promise<boolean> => {
     const integration = await ctx.db.get(args.integrationId)
-    if (!integration) {
-      return false
-    }
-
-    if (integration.feedbackProcessingState === "running") {
-      return false
-    }
+    if (!integration) return false
+    if (integration.feedbackProcessingState === "running") return false
 
     await ctx.db.patch(args.integrationId, {
       feedbackProcessingState: "running",
       feedbackProcessingStartedAt: Date.now(),
       feedbackProcessingLastError: undefined,
     })
-
     return true
   },
 })
@@ -816,14 +576,9 @@ export const markFeedbackProcessingPaused = internalMutation({
   },
   handler: async (ctx, args): Promise<null> => {
     const integration = await ctx.db.get(args.integrationId)
-    if (!integration) {
-      return null
-    }
+    if (!integration) return null
 
     await ctx.db.patch(args.integrationId, {
-      // Preserve the active state until the workpool onComplete callback
-      // finalizes this run. Flipping to idle here opens a race where newly
-      // ingested messages can schedule work that onComplete then clobbers.
       feedbackProcessingLastError: args.reason,
     })
 
@@ -853,9 +608,7 @@ export const finalizeDelegatedFeedbackProcessing = mutation({
     }
 
     const integration = await ctx.db.get(args.integrationId)
-    if (!integration) {
-      return null
-    }
+    if (!integration) return null
 
     const [latestMessage] = await ctx.db
       .query("discordMessages")
@@ -873,9 +626,7 @@ export const finalizeDelegatedFeedbackProcessing = mutation({
       : false
 
     const latestIntegration = await ctx.db.get(args.integrationId)
-    if (!latestIntegration) {
-      return null
-    }
+    if (!latestIntegration) return null
 
     const pausedForEventsExhausted = args.result.reason === "events_exhausted"
     const shouldRerun =
@@ -938,14 +689,10 @@ export const handleFeedbackProcessingComplete = internalMutation({
   ),
   handler: async (ctx, args) => {
     const integration = await ctx.db.get(args.context.integrationId)
-    if (!integration) {
-      return
-    }
+    if (!integration) return
 
     const completionReason = getCompletedProcessingReason(args.result)
-    if (completionReason === "delegated") {
-      return
-    }
+    if (completionReason === "delegated") return
 
     const [latestMessage] = await ctx.db
       .query("discordMessages")
@@ -962,9 +709,8 @@ export const handleFeedbackProcessingComplete = internalMutation({
         })
       : false
     const latestIntegration = await ctx.db.get(args.context.integrationId)
-    if (!latestIntegration) {
-      return
-    }
+    if (!latestIntegration) return
+
     const pausedForEventsExhausted = completionReason === "events_exhausted"
 
     const shouldRerun =
@@ -1024,34 +770,26 @@ export const processFeedbackWindow = internalAction({
   handler: async (ctx, args): Promise<ProcessFeedbackWindowResult> => {
     const acquired = await ctx.runMutation(
       markFeedbackProcessingRunningMutation,
-      {
-        integrationId: args.integrationId,
-      }
+      { integrationId: args.integrationId }
     )
     if (!acquired) {
       return { skipped: true, reason: "already_running" }
     }
 
-    try {
-      const botSecret = process.env.DISCORD_PAIRING_SECRET
-      if (!botSecret) {
-        throw new Error("Missing DISCORD_PAIRING_SECRET for Discord feedback processing")
-      }
+    const processingStart = Date.now()
 
-      const processingStart = Date.now()
-      const feedbackWindow = await ctx.runQuery(
+    try {
+      const feedbackWindow: FeedbackWindow = await ctx.runQuery(
         getPendingFeedbackWindowInternalQuery,
         {
           integrationId: args.integrationId,
           limit: FEEDBACK_WINDOW_LIMIT,
         }
       )
-      const quotaStatus = await ctx.runAction(
-        getWorkspaceQuotaStatusForDiscordFeedbackAction,
-        {
-          botSecret,
-          workspaceId: feedbackWindow.integration.workspaceId,
-        }
+
+      const quotaStatus: WorkspaceQuotaStatus = await ctx.runAction(
+        internal.billing.getWorkspaceQuotaStatusInternal,
+        { workspaceId: feedbackWindow.integration.workspaceId }
       )
 
       if (quotaStatus.eventsExhausted) {
@@ -1074,267 +812,101 @@ export const processFeedbackWindow = internalAction({
       )
 
       if (pendingMessages.length === 0) {
-        return {
-          skipped: false,
-          createdTaskCount: 0,
-          updatedTaskCount: 0,
-          reason: "no_pending_messages",
-        }
+        return { skipped: true, reason: "no_pending_messages" }
       }
 
       const latestPendingMessage = pendingMessages.at(-1)
       if (!latestPendingMessage) {
-        return {
-          skipped: false,
-          createdTaskCount: 0,
-          updatedTaskCount: 0,
-          reason: "missing_latest_pending_message",
-        }
+        return { skipped: true, reason: "missing_latest_pending_message" }
+      }
+
+      async function markProcessed() {
+        await ctx.runMutation(markFeedbackWindowProcessedInternalMutation, {
+          integrationId: args.integrationId,
+          lastProcessedMessageId: latestPendingMessage!.messageId,
+          lastProcessedMessageCreatedAt:
+            latestPendingMessage!.messageCreatedAt,
+        })
       }
 
       if (pendingNonAdminMessages.length === 0) {
-        await ctx.runMutation(markFeedbackWindowProcessedInternalMutation, {
-          integrationId: args.integrationId,
-          lastProcessedMessageId: latestPendingMessage.messageId,
-          lastProcessedMessageCreatedAt: latestPendingMessage.messageCreatedAt,
-        })
-
-        return {
-          skipped: false,
-          createdTaskCount: 0,
-          updatedTaskCount: 0,
-          reason: "admin_only_messages",
-        }
+        await markProcessed()
+        return { skipped: true, reason: "admin_only_messages" }
       }
 
       const contextMessages = feedbackWindow.messages
         .filter((message) => !message.authorHasAdminPrivileges)
         .slice(-FEEDBACK_CONTEXT_LIMIT)
-      const pendingMessageIds = new Set(
-        pendingNonAdminMessages.map((message) => message.messageId)
-      )
-      const transcript = formatTranscript(contextMessages, pendingMessageIds)
 
-      const classifierSystemParts = [
-        "You classify Discord conversations for a product team.",
-        `The only product that matters is ${feedbackWindow.integration.workspaceName}`,
-        "Return isProductFeedback=true only when the newest messages contain concrete product feedback, a bug report, a feature request, workflow friction, or an actionable complaint about the actual product.",
-        "Reject off-topic chat, memes, introductions, hiring talk, agency requests, feedback about unrelated tools, and generic conversation that is not about the product itself.",
-        "Use the recent context only to interpret what the new messages refer to.",
-        "Return needsTaskAction=true only when the NEW messages contain enough specific, non-duplicate information to justify creating a task or materially updating one.",
-        "Return needsTaskAction=false for +1s, me-too replies, generic agreement, thanks, status checks, bumps, or restatements that add no meaningful new detail.",
-        "Forum and thread metadata may appear inline as forum/thread/channel labels; use that metadata, especially when a forum post body is empty.",
-        "Only include relevantMessageIds from NEW messages.",
-        "Each message has an [id:XXXXXXX] tag. Use the numeric ID from that tag as the relevantMessageId, NOT the timestamp.",
-        "Return valid JSON only. No markdown. No code fences. No commentary.",
-        'Use this exact JSON shape: {"isProductFeedback":false,"needsTaskAction":false,"confidence":0.0,"summary":null,"reason":"...","relevantMessageIds":["123456789"]}',
-      ]
-      const additionalContext = getAdditionalContext(
-        feedbackWindow.integration.additionalContext
-      )
-      if (additionalContext) {
-        classifierSystemParts.push(
-          `Additional product context from the workspace owner: ${additionalContext}`
-        )
-      }
-
-      const classifierStart = Date.now()
-      const classifierResult = await generateText({
-        model: AI_MODELS.feedbackClassifier,
-        system: classifierSystemParts.join(" "),
-        prompt: [
-          `Workspace name: ${feedbackWindow.integration.workspaceName}`,
-          `Guild: ${feedbackWindow.integration.guildName}`,
-          "Conversation transcript:",
-          transcript,
-        ].join("\n\n"),
-      })
-      const classifierDurationMs = Date.now() - classifierStart
-
-      await trackLLMGeneration({
-        distinctId: feedbackWindow.integration.workspaceId,
-        model: AI_MODEL_IDS.feedbackClassifier,
-        feature: "discord_feedback_classifier",
-        inputTokens: classifierResult.usage?.inputTokens,
-        outputTokens: classifierResult.usage?.outputTokens,
-        durationMs: classifierDurationMs,
-        success: true,
-        metadata: {
-          integration_id: args.integrationId,
-          pending_message_count: pendingNonAdminMessages.length,
-        },
-      })
-      await safeTrackAiUsage({
-        workspaceId: feedbackWindow.integration.workspaceId,
-        workspaceName: feedbackWindow.integration.workspaceName,
-        model: AI_MODEL_IDS.feedbackClassifier,
-        inputTokens: classifierResult.usage?.inputTokens,
-        outputTokens: classifierResult.usage?.outputTokens,
-        properties: {
-          feature: "discord_feedback_classifier",
-          integration_id: args.integrationId,
-        },
-      })
-
-      const classification = feedbackClassificationSchema.parse(
-        JSON.parse(extractJsonObject(classifierResult.text))
-      )
-
-      if (
-        !classification.isProductFeedback ||
-        !classification.needsTaskAction ||
-        classification.relevantMessageIds.length === 0
-      ) {
-        await ctx.runMutation(markFeedbackWindowProcessedInternalMutation, {
-          integrationId: args.integrationId,
-          lastProcessedMessageId: latestPendingMessage.messageId,
-          lastProcessedMessageCreatedAt: latestPendingMessage.messageCreatedAt,
-        })
-
-        await trackFeedbackProcessing({
-          distinctId: feedbackWindow.integration.workspaceId,
-          platform: "discord",
-          integrationId: args.integrationId,
-          workspaceId: feedbackWindow.integration.workspaceId,
-          messageCount: pendingNonAdminMessages.length,
-          isProductFeedback: classification.isProductFeedback,
-          confidence: classification.confidence,
-          createdTaskCount: 0,
-          updatedTaskCount: 0,
-          classifierDurationMs,
-          totalDurationMs: Date.now() - processingStart,
-        })
-
-        return {
-          skipped: false,
-          createdTaskCount: 0,
-          updatedTaskCount: 0,
-          reason: classification.isProductFeedback
-            ? "not_actionable"
-            : "not_product_feedback",
-        }
-      }
-
-      const normalizedRelevantIds = new Set(
-        classification.relevantMessageIds
-          .map((messageId) => normalizeDiscordId(messageId))
-          .filter(Boolean)
-      )
-      const matchedRelevantMessages = pendingNonAdminMessages.filter((message) =>
-        normalizedRelevantIds.has(normalizeDiscordId(message.messageId))
-      )
-      const relevantMessages =
-        matchedRelevantMessages.length > 0
-          ? matchedRelevantMessages
-          : pendingNonAdminMessages
-
-      const existingTasks = await ctx.runQuery(
+      const existingTasksRaw: ExistingTask[] = await ctx.runQuery(
         getTaskSnapshotForDiscordInternalQuery,
         {
           workspaceId: feedbackWindow.integration.workspaceId,
           limit: TASK_CONTEXT_FETCH_LIMIT,
         }
       )
-      const relevantExistingTasks = selectRelevantTasks(
-        existingTasks,
-        relevantMessages
+      const existingTasks = selectRelevantTasks(
+        existingTasksRaw,
+        pendingNonAdminMessages
       )
-      const labelsText =
-        feedbackWindow.integration.availableLabels.length > 0
-          ? feedbackWindow.integration.availableLabels.join(", ")
-          : "No predefined labels."
 
-      const extractorSystemParts = [
-        "You turn Discord conversations into concise task requests for a task board.",
-        `The product is ${feedbackWindow.integration.workspaceName}.`,
-        "Only create or update tasks for actionable feedback about the real product. Ignore unrelated discussion.",
-        "Return between 0 and 5 actions total.",
-        "Each action must be distinct, concrete, and understandable without requiring the original Discord thread.",
-        "You can either create a new task or update an existing task.",
-        "Use update when the new feedback materially adds detail to an existing open task, such as reproduction steps, missing scope, edge cases, urgency, or acceptance criteria.",
-        "For update actions, use the existing taskCode and return the full revised title, description, priority, and labels after incorporating the new feedback.",
-        "Do not update shipped or archived tasks. If the closest shipped task is only an exact duplicate, do nothing. If the new feedback is materially different, create a new task instead.",
-        "If an existing task describes the exact same issue with no meaningful new information, do not create or update anything.",
-        "Different error messages, different symptoms, or different contexts should each get their own task even if they relate to the same general area.",
-        "When in doubt between update and create, prefer update only for the same underlying task; otherwise create.",
-        "Descriptions should summarize the user problem and expected outcome in plain text.",
-        "Priority may be urgent, high, medium, low, or none.",
-        `Allowed labels: ${labelsText}`,
-        "Only use labels from the allowed list. Use an empty array when none apply.",
-        'Return valid structured output only with action items shaped like {"action":"create",...} or {"action":"update","taskCode":"MDN-123",...}.',
-      ]
-      if (additionalContext) {
-        extractorSystemParts.push(
-          `Additional product context from the workspace owner: ${additionalContext}`
-        )
-      }
-
-      const relevantMessageIds = new Set(
-        relevantMessages.map((message) => message.messageId)
-      )
-      const extractorStart = Date.now()
-      const extractorResult = await generateText({
-        model: AI_MODELS.feedbackExtractor,
-        system: extractorSystemParts.join(" "),
-        prompt: [
-          `Workspace name: ${feedbackWindow.integration.workspaceName}`,
-          `Guild: ${feedbackWindow.integration.guildName}`,
-          "Likely matching existing tasks:",
-          formatExistingTasks(relevantExistingTasks),
-          "Relevant Discord messages:",
-          formatTranscript(relevantMessages, relevantMessageIds),
-        ].join("\n\n"),
-        output: Output.object({ schema: extractedFeedbackTasksSchema }),
-      })
-      const extractorDurationMs = Date.now() - extractorStart
-
-      await trackLLMGeneration({
-        distinctId: feedbackWindow.integration.workspaceId,
-        model: AI_MODEL_IDS.feedbackExtractor,
-        feature: "discord_feedback_extractor",
-        inputTokens: extractorResult.usage?.inputTokens,
-        outputTokens: extractorResult.usage?.outputTokens,
-        durationMs: extractorDurationMs,
-        success: true,
-        metadata: {
-          integration_id: args.integrationId,
-          relevant_message_count: relevantMessages.length,
-        },
-      })
-      await safeTrackAiUsage({
+      const pipelineResult = await runFeedbackPipeline({
+        platform: "discord",
         workspaceId: feedbackWindow.integration.workspaceId,
         workspaceName: feedbackWindow.integration.workspaceName,
-        model: AI_MODEL_IDS.feedbackExtractor,
-        inputTokens: extractorResult.usage?.inputTokens,
-        outputTokens: extractorResult.usage?.outputTokens,
-        properties: {
-          feature: "discord_feedback_extractor",
-          integration_id: args.integrationId,
-        },
+        integrationId: args.integrationId,
+        availableLabels: feedbackWindow.integration.availableLabels,
+        additionalContext: feedbackWindow.integration.additionalContext,
+        workspaceContextLines: [
+          `Guild: ${feedbackWindow.integration.guildName}`,
+        ],
+        pendingMessages: pendingNonAdminMessages.map(toFeedbackMessage),
+        contextMessages: contextMessages.map(toFeedbackMessage),
+        existingTasks,
       })
 
-      if (!extractorResult.output) {
-        await ctx.runMutation(markFeedbackWindowProcessedInternalMutation, {
-          integrationId: args.integrationId,
-          lastProcessedMessageId: latestPendingMessage.messageId,
-          lastProcessedMessageCreatedAt: latestPendingMessage.messageCreatedAt,
-        })
-
+      if (pipelineResult.kind === "skip") {
+        await markProcessed()
         await trackFeedbackProcessing({
           distinctId: feedbackWindow.integration.workspaceId,
           platform: "discord",
           integrationId: args.integrationId,
           workspaceId: feedbackWindow.integration.workspaceId,
           messageCount: pendingNonAdminMessages.length,
-          isProductFeedback: classification.isProductFeedback,
-          confidence: classification.confidence,
+          isProductFeedback: pipelineResult.classification.isProductFeedback,
+          confidence: pipelineResult.classification.confidence,
           createdTaskCount: 0,
           updatedTaskCount: 0,
-          classifierDurationMs,
-          extractorDurationMs,
+          classifierDurationMs: pipelineResult.classifierDurationMs,
           totalDurationMs: Date.now() - processingStart,
         })
+        return {
+          skipped: false,
+          createdTaskCount: 0,
+          updatedTaskCount: 0,
+          reason: pipelineResult.reason,
+        }
+      }
 
+      if (pipelineResult.kind === "no_structured_output") {
+        logInfo("Discord feedback extractor produced no structured output", {
+          integrationId: args.integrationId,
+        })
+        await markProcessed()
+        await trackFeedbackProcessing({
+          distinctId: feedbackWindow.integration.workspaceId,
+          platform: "discord",
+          integrationId: args.integrationId,
+          workspaceId: feedbackWindow.integration.workspaceId,
+          messageCount: pendingNonAdminMessages.length,
+          isProductFeedback: pipelineResult.classification.isProductFeedback,
+          confidence: pipelineResult.classification.confidence,
+          createdTaskCount: 0,
+          updatedTaskCount: 0,
+          classifierDurationMs: pipelineResult.classifierDurationMs,
+          extractorDurationMs: pipelineResult.extractorDurationMs,
+          totalDurationMs: Date.now() - processingStart,
+        })
         return {
           skipped: false,
           createdTaskCount: 0,
@@ -1343,71 +915,51 @@ export const processFeedbackWindow = internalAction({
         }
       }
 
-      const extracted = extractedFeedbackTasksSchema.parse(extractorResult.output)
-      const operations: DiscordFeedbackTaskOperation[] = extracted.actions.map(
-        (action) =>
-          action.action === "create"
-            ? {
-                action: "create",
-                task: {
-                  title: action.title,
-                  description: action.description ?? undefined,
-                  status: "requests",
-                  priority: action.priority ?? "none",
-                  labels: action.labels.filter((label) =>
-                    feedbackWindow.integration.availableLabels.includes(label)
-                  ),
-                  source: relevantMessages[0]
-                    ? {
-                        platform: "discord",
-                        url: relevantMessages[0].permalink,
-                        author: relevantMessages[0].authorUsername,
-                      }
-                    : undefined,
-                  createdAtLabel: formatCreatedAtLabel(
-                    relevantMessages[0]?.messageCreatedAt ??
-                      latestPendingMessage.messageCreatedAt
-                  ),
-                },
-              }
-            : {
-                action: "update",
-                taskCode: action.taskCode,
-                title: action.title,
-                description: action.description ?? undefined,
-                priority: action.priority ?? undefined,
-                labels: action.labels.filter((label) =>
-                  feedbackWindow.integration.availableLabels.includes(label)
-                ),
-              }
+      // Map the pipeline's chosen relevantMessages back to the raw rows to keep
+      // Discord-specific cursor + permalink data accurate.
+      const pendingById = new Map(
+        pendingNonAdminMessages.map((m) => [m.messageId, m])
       )
+      const normalizedRelevantIds = new Set(
+        pipelineResult.classification.relevantMessageIds
+          .map((id) => normalizeDiscordId(id))
+          .filter(Boolean)
+      )
+      const matchedRelevantRows = pendingNonAdminMessages.filter((row) =>
+        normalizedRelevantIds.has(normalizeDiscordId(row.messageId))
+      )
+      const relevantRows =
+        matchedRelevantRows.length > 0
+          ? matchedRelevantRows
+          : pipelineResult.relevantMessages
+              .map((m) => pendingById.get(m.id))
+              .filter((row): row is DiscordMessageRow => Boolean(row))
+      const firstRelevant = relevantRows[0]
 
-      const classifierCost = getAiCostForTokens({
-        model: AI_MODEL_IDS.feedbackClassifier,
-        inputTokens: classifierResult.usage?.inputTokens,
-        outputTokens: classifierResult.usage?.outputTokens,
-      })
-      const extractorCost = getAiCostForTokens({
-        model: AI_MODEL_IDS.feedbackExtractor,
-        inputTokens: extractorResult.usage?.inputTokens,
-        outputTokens: extractorResult.usage?.outputTokens,
-      })
-      const totalAiCost = classifierCost + extractorCost
+      const operations: DiscordFeedbackTaskOperation[] =
+        pipelineResult.operations.map((action) =>
+          actionToDiscordOperation(
+            action,
+            firstRelevant,
+            latestPendingMessage.messageCreatedAt
+          )
+        )
 
+      const totalAiCost =
+        pipelineResult.classifierCost + pipelineResult.extractorCost
       const taskResult =
         operations.length > 0
-          ? await ctx.runMutation(createTasksFromDiscordFeedbackInternalMutation, {
-              workspaceId: feedbackWindow.integration.workspaceId,
-              operations,
-              cost: totalAiCost > 0 ? totalAiCost : undefined,
-            })
+          ? await ctx.runMutation(
+              createTasksFromDiscordFeedbackInternalMutation,
+              {
+                workspaceId: feedbackWindow.integration.workspaceId,
+                operations,
+                cost: totalAiCost > 0 ? totalAiCost : undefined,
+              }
+            )
           : { createdTaskIds: [], updatedTaskIds: [] }
 
-      await ctx.runMutation(markFeedbackWindowProcessedInternalMutation, {
-        integrationId: args.integrationId,
-        lastProcessedMessageId: latestPendingMessage.messageId,
-        lastProcessedMessageCreatedAt: latestPendingMessage.messageCreatedAt,
-      })
+      await markProcessed()
 
       await trackFeedbackProcessing({
         distinctId: feedbackWindow.integration.workspaceId,
@@ -1415,12 +967,12 @@ export const processFeedbackWindow = internalAction({
         integrationId: args.integrationId,
         workspaceId: feedbackWindow.integration.workspaceId,
         messageCount: pendingNonAdminMessages.length,
-        isProductFeedback: classification.isProductFeedback,
-        confidence: classification.confidence,
+        isProductFeedback: pipelineResult.classification.isProductFeedback,
+        confidence: pipelineResult.classification.confidence,
         createdTaskCount: taskResult.createdTaskIds.length,
         updatedTaskCount: taskResult.updatedTaskIds.length,
-        classifierDurationMs,
-        extractorDurationMs,
+        classifierDurationMs: pipelineResult.classifierDurationMs,
+        extractorDurationMs: pipelineResult.extractorDurationMs,
         totalDurationMs: Date.now() - processingStart,
       })
 
@@ -1431,10 +983,48 @@ export const processFeedbackWindow = internalAction({
         reason: operations.length > 0 ? "processed" : "no_task_operations",
       }
     } catch (error) {
-      logError("Failed to process Discord feedback window", error, {
+      logError("Discord feedback processing failed", error, {
         integrationId: args.integrationId,
       })
       throw error
     }
   },
 })
+
+function actionToDiscordOperation(
+  action: TaskAction,
+  firstRelevant: DiscordMessageRow | undefined,
+  fallbackCreatedAt: number
+): DiscordFeedbackTaskOperation {
+  if (action.action === "create") {
+    return {
+      action: "create",
+      task: {
+        title: action.title,
+        description: action.description ?? undefined,
+        status: "requests",
+        priority: action.priority ?? "none",
+        labels: action.labels,
+        source: firstRelevant
+          ? {
+              platform: "discord",
+              url: firstRelevant.permalink,
+              author: firstRelevant.authorUsername,
+            }
+          : undefined,
+        createdAtLabel: formatCreatedAtLabel(
+          firstRelevant?.messageCreatedAt ?? fallbackCreatedAt
+        ),
+      },
+    }
+  }
+
+  return {
+    action: "update",
+    taskCode: action.taskCode,
+    title: action.title,
+    description: action.description ?? undefined,
+    priority: action.priority ?? undefined,
+    labels: action.labels,
+  }
+}
