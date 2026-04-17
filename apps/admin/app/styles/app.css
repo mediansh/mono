@@ -2,10 +2,19 @@
 
 :root {
   --radius: 0px;
+  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo,
+    Consolas, "Liberation Mono", monospace;
 }
 
 .dark {
   --radius: 0px;
+}
+
+html,
+body {
+  font-family: var(--font-sans);
 }
 
 /*
