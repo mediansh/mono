@@ -248,7 +248,9 @@ export async function processDiscordFeedbackInBackground(args: { integrationId: 
     const classifierDurationMs = Date.now() - classifierStart
     await trackLLMGeneration({ distinctId: feedbackWindow.integration.workspaceId, model: AI_MODEL_IDS.feedbackClassifier, feature: "discord_feedback_classifier", inputTokens: classifierResult.usage?.inputTokens, outputTokens: classifierResult.usage?.outputTokens, durationMs: classifierDurationMs, success: true, metadata: { integration_id: args.integrationId, pending_message_count: pendingNonAdminMessages.length } })
     await safeTrackAiUsage({ workspaceId: feedbackWindow.integration.workspaceId, workspaceName: feedbackWindow.integration.workspaceName, model: AI_MODEL_IDS.feedbackClassifier, inputTokens: classifierResult.usage?.inputTokens, outputTokens: classifierResult.usage?.outputTokens, properties: { feature: "discord_feedback_classifier", integration_id: args.integrationId } })
+    logger.info("[debug] Discord classifier raw text", { integrationId: args.integrationId, text: classifierResult.text, pendingCount: pendingNonAdminMessages.length, transcript })
     const classification = feedbackClassificationSchema.parse(JSON.parse(extractJsonObject(classifierResult.text)))
+    logger.info("[debug] Discord classifier parsed", { integrationId: args.integrationId, classification })
 
     if (!classification.isProductFeedback || !classification.needsTaskAction || classification.relevantMessageIds.length === 0) {
       await client.discord.markFeedbackWindowProcessed(botSecret, args.integrationId, latestPendingMessage.messageId, latestPendingMessage.messageCreatedAt)
@@ -294,6 +296,7 @@ export async function processDiscordFeedbackInBackground(args: { integrationId: 
     const extractorDurationMs = Date.now() - extractorStart
     await trackLLMGeneration({ distinctId: feedbackWindow.integration.workspaceId, model: AI_MODEL_IDS.feedbackExtractor, feature: "discord_feedback_extractor", inputTokens: extractorResult.usage?.inputTokens, outputTokens: extractorResult.usage?.outputTokens, durationMs: extractorDurationMs, success: true, metadata: { integration_id: args.integrationId, relevant_message_count: relevantMessages.length } })
     await safeTrackAiUsage({ workspaceId: feedbackWindow.integration.workspaceId, workspaceName: feedbackWindow.integration.workspaceName, model: AI_MODEL_IDS.feedbackExtractor, inputTokens: extractorResult.usage?.inputTokens, outputTokens: extractorResult.usage?.outputTokens, properties: { feature: "discord_feedback_extractor", integration_id: args.integrationId } })
+    logger.info("[debug] Discord extractor result", { integrationId: args.integrationId, hasOutput: Boolean(extractorResult.output), output: extractorResult.output, text: extractorResult.text })
     if (!extractorResult.output) {
       logger.warn("Discord feedback extractor produced no structured output", { integrationId: args.integrationId })
       await client.discord.markFeedbackWindowProcessed(botSecret, args.integrationId, latestPendingMessage.messageId, latestPendingMessage.messageCreatedAt)

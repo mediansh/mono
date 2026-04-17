@@ -107,7 +107,9 @@ export async function processXFeedbackInBackground(args: { integrationId: Id<"xW
     const classifierDurationMs = Date.now() - classifierStart
     await trackLLMGeneration({ distinctId: feedbackWindow.integration.workspaceId, model: AI_MODEL_IDS.feedbackClassifier, feature: "x_feedback_classifier", inputTokens: classifierResult.usage?.inputTokens, outputTokens: classifierResult.usage?.outputTokens, durationMs: classifierDurationMs, success: true, metadata: { integration_id: args.integrationId, pending_post_count: pendingPosts.length } })
     await safeTrackAiUsage({ workspaceId: feedbackWindow.integration.workspaceId, workspaceName: feedbackWindow.integration.workspaceName, model: AI_MODEL_IDS.feedbackClassifier, inputTokens: classifierResult.usage?.inputTokens, outputTokens: classifierResult.usage?.outputTokens, properties: { feature: "x_feedback_classifier", integration_id: args.integrationId } })
+    logger.info("[debug] X classifier raw text", { integrationId: args.integrationId, text: classifierResult.text, pendingCount: pendingPosts.length, transcript })
     const classification = feedbackClassificationSchema.parse(JSON.parse(extractJsonObject(classifierResult.text)))
+    logger.info("[debug] X classifier parsed", { integrationId: args.integrationId, classification })
 
     if (!classification.isProductFeedback || classification.relevantPostIds.length === 0) {
       await client.x.markFeedbackWindowProcessed(botSecret, args.integrationId, latestPendingPost.postId, latestPendingPost.postCreatedAt)
@@ -141,6 +143,7 @@ export async function processXFeedbackInBackground(args: { integrationId: Id<"xW
     const extractorDurationMs = Date.now() - extractorStart
     await trackLLMGeneration({ distinctId: feedbackWindow.integration.workspaceId, model: AI_MODEL_IDS.feedbackExtractor, feature: "x_feedback_extractor", inputTokens: extractorResult.usage?.inputTokens, outputTokens: extractorResult.usage?.outputTokens, durationMs: extractorDurationMs, success: true, metadata: { integration_id: args.integrationId, relevant_post_count: relevantPosts.length } })
     await safeTrackAiUsage({ workspaceId: feedbackWindow.integration.workspaceId, workspaceName: feedbackWindow.integration.workspaceName, model: AI_MODEL_IDS.feedbackExtractor, inputTokens: extractorResult.usage?.inputTokens, outputTokens: extractorResult.usage?.outputTokens, properties: { feature: "x_feedback_extractor", integration_id: args.integrationId } })
+    logger.info("[debug] X extractor result", { integrationId: args.integrationId, hasOutput: Boolean(extractorResult.output), output: extractorResult.output, text: extractorResult.text })
     if (!extractorResult.output) {
       logger.warn("X feedback extractor produced no structured output", { integrationId: args.integrationId })
       await client.x.markFeedbackWindowProcessed(botSecret, args.integrationId, latestPendingPost.postId, latestPendingPost.postCreatedAt)
