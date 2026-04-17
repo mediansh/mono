@@ -1,0 +1,20 @@
+@import "@workspace/ui/globals.css";
+
+:root {
+  --radius: 0px;
+}
+
+.dark {
+  --radius: 0px;
+}
+
+/*
+ * Boxy 0-radius aesthetic override — strip rounding from every utility the
+ * admin ports from the web app (rounded, rounded-sm, rounded-[4px], etc.).
+ * The web app's shared components use rounded-[4px]/6px liberally; we flatten
+ * them all here so we don't have to rewrite every class at the component
+ * level.
+ */
+[class*="rounded"] {
+  border-radius: 0 !important;
+}
