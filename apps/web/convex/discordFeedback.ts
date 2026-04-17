@@ -95,6 +95,13 @@ const TASK_MATCH_STOP_WORDS = new Set([
   "your",
 ])
 
+const HIGH_SIGNAL_TASK_ACTION_PATTERNS = [
+  /\b5\d{2}\b/,
+  /\b(?:error|errors|exception|exceptions|crash|crashes|crashed|crashing|broken|fails?|failing|failure)\b/,
+  /\b(?:not working|doesn't work|nothing works|unable to|can't|cannot)\b/,
+  /\b(?:slow|sluggish|lag|laggy|latency|unresponsive|freeze|freezing|hang|hanging|takes forever|forever to load|loading forever)\b/,
+]
+
 type FeedbackMessage = {
   _id: Id<"discordMessages">
   channelId: string
@@ -407,6 +414,33 @@ function collectRelevantTaskTerms(messages: FeedbackMessage[]) {
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .slice(0, MAX_SEARCH_TERMS)
     .map(([term]) => term)
+}
+
+function hasHighSignalTaskActionFeedback(messages: FeedbackMessage[]) {
+  for (const message of messages) {
+    const text = [
+      message.content,
+      message.threadTitle,
+      message.forumTitle,
+      message.channelName,
+      message.parentChannelName,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase()
+
+    if (!text) {
+      continue
+    }
+
+    if (
+      HIGH_SIGNAL_TASK_ACTION_PATTERNS.some((pattern) => pattern.test(text))
+    ) {
+      return true
+    }
+  }
+
+  return false
 }
 
 function parseDiscordPermalink(url: string | null) {
@@ -987,6 +1021,7 @@ export const processFeedbackWindow = internalAction({
         "Use the recent context only to interpret what the new messages refer to.",
         "Return needsTaskAction=true only when the NEW messages contain enough specific, non-duplicate information to justify creating a task or materially updating one.",
         "Return needsTaskAction=false for +1s, me-too replies, generic agreement, thanks, status checks, bumps, or restatements that add no meaningful new detail.",
+        "Treat direct breakage or reliability reports as actionable even without reproduction steps, including 500 errors, pages not loading, nothing works, and severe slowness/performance regressions.",
         "Forum and thread metadata may appear inline as forum/thread/channel labels; use that metadata, especially when a forum post body is empty.",
         "Only include relevantMessageIds from NEW messages.",
         "Each message has an [id:XXXXXXX] tag. Use the numeric ID from that tag as the relevantMessageId, NOT the timestamp.",
@@ -1054,10 +1089,21 @@ export const processFeedbackWindow = internalAction({
         relevantMessageCount: classification.relevantMessageIds.length,
       })
 
+      const forcedTaskAction =
+        classification.isProductFeedback &&
+        !classification.needsTaskAction &&
+        hasHighSignalTaskActionFeedback(pendingNonAdminMessages)
+
+      if (forcedTaskAction) {
+        logInfo("Forcing Discord task extraction for high-signal feedback", {
+          integrationId: args.integrationId,
+        })
+      }
+
       if (
         !classification.isProductFeedback ||
-        !classification.needsTaskAction ||
-        classification.relevantMessageIds.length === 0
+        (!classification.needsTaskAction && !forcedTaskAction) ||
+        (classification.relevantMessageIds.length === 0 && !forcedTaskAction)
       ) {
         // Log AI cost even when no actionable feedback is found
         const classifierCost = getAiCostForTokens({
