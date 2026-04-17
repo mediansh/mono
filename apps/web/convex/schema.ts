@@ -725,6 +725,32 @@ export default defineSchema({
     .index("by_status_created", ["status", "createdAt"])
     .index("by_updated", ["updatedAt"]),
 
+  moduleRuns: defineTable({
+    module: v.string(),
+    operation: v.string(),
+    status: v.union(
+      v.literal("success"),
+      v.literal("failure"),
+      v.literal("skipped")
+    ),
+    durationMs: v.optional(v.number()),
+    error: v.optional(v.string()),
+    workspaceId: v.optional(v.id("workspaces")),
+    metadata: v.optional(
+      v.object({
+        integrationId: v.optional(v.string()),
+        itemsProcessed: v.optional(v.number()),
+        itemsSkipped: v.optional(v.number()),
+        reason: v.optional(v.string()),
+      })
+    ),
+    startedAt: v.number(),
+    finishedAt: v.number(),
+  })
+    .index("by_module_finished", ["module", "finishedAt"])
+    .index("by_status_finished", ["status", "finishedAt"])
+    .index("by_finished", ["finishedAt"]),
+
   deletedTaskSources: defineTable({
     workspaceId: v.id("workspaces"),
     platform: v.union(

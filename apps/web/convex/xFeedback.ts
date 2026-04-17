@@ -17,6 +17,7 @@ import {
   type MutationCtx,
   type QueryCtx,
 } from "./_generated/server"
+import { recordRunDirect } from "./moduleRuns"
 
 const FEEDBACK_WINDOW_LIMIT = 100
 const FEEDBACK_CONTEXT_LIMIT = 10
@@ -551,6 +552,24 @@ export const handleFeedbackProcessingComplete = internalMutation({
       : false
     const completionReason = getCompletedProcessingReason(args.result)
     const pausedForEventsExhausted = completionReason === "events_exhausted"
+
+    await recordRunDirect(ctx, {
+      module: "x_feedback",
+      operation: "process_window",
+      status:
+        args.result.kind === "failed"
+          ? "failure"
+          : completionReason === "skipped" || pausedForEventsExhausted
+            ? "skipped"
+            : "success",
+      error: args.result.kind === "failed" ? args.result.error : undefined,
+      workspaceId: integration.workspaceId,
+      metadata: {
+        integrationId: args.context.integrationId,
+        reason: completionReason ?? undefined,
+      },
+      startedAt: integration.feedbackProcessingStartedAt,
+    })
 
     const shouldRerun =
       !pausedForEventsExhausted &&

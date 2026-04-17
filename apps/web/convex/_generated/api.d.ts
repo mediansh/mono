@@ -21,6 +21,7 @@ import type * as github from "../github.js";
 import type * as http from "../http.js";
 import type * as linear from "../linear.js";
 import type * as logs from "../logs.js";
+import type * as moduleRuns from "../moduleRuns.js";
 import type * as permissions from "../permissions.js";
 import type * as posthog from "../posthog.js";
 import type * as slack from "../slack.js";
@@ -52,6 +53,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   linear: typeof linear;
   logs: typeof logs;
+  moduleRuns: typeof moduleRuns;
   permissions: typeof permissions;
   posthog: typeof posthog;
   slack: typeof slack;
