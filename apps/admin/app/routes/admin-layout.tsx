@@ -12,8 +12,6 @@ import {
 } from "@phosphor-icons/react"
 
 import { api } from "~/lib/convex"
-import { useIsDataBlocked } from "~/lib/gate"
-import { SkeletonWall } from "~/components/skeleton-wall"
 
 const adminNav = [
   { label: "Observability", to: "/", icon: Pulse, match: "exact" as const },
@@ -41,7 +39,6 @@ export default function AdminLayout() {
     api.admins.isCurrentUserAdmin,
     isSignedIn ? {} : "skip",
   )
-  const dataBlocked = useIsDataBlocked()
 
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
@@ -175,7 +172,7 @@ export default function AdminLayout() {
           </div>
         </SignedOut>
         <SignedIn>
-          {dataBlocked ? <SkeletonWall /> : <Outlet />}
+          <Outlet />
         </SignedIn>
       </div>
     </div>
