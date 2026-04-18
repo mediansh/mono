@@ -11,13 +11,15 @@
     "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
     "NEXT_PUBLIC_CLERK_SIGN_IN_URL",
     "NEXT_PUBLIC_CLERK_SIGN_UP_URL",
-    "NEXT_PUBLIC_CONVEX_URL"
+    "NEXT_PUBLIC_CONVEX_URL",
+    "VITE_CLERK_PUBLISHABLE_KEY",
+    "VITE_CONVEX_URL"
   ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "outputs": [".next/**", "!.next/cache/**", "dist/**", "build/**"]
     },
     "lint": {
       "dependsOn": ["^lint"]
