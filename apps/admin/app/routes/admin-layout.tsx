@@ -1,6 +1,12 @@
 import { useEffect } from "react"
 import { Link, Outlet, useLocation, useNavigate } from "react-router"
-import { useAuth, UserButton, SignedIn, SignedOut } from "@clerk/clerk-react"
+import {
+  useAuth,
+  useClerk,
+  UserButton,
+  SignedIn,
+  SignedOut,
+} from "@clerk/clerk-react"
 import { useQuery } from "convex/react"
 import {
   Article,
@@ -33,6 +39,7 @@ const adminNav = [
 
 export default function AdminLayout() {
   const { isLoaded, isSignedIn } = useAuth()
+  const { signOut } = useClerk()
   const navigate = useNavigate()
   const location = useLocation()
   const isAdmin = useQuery(
@@ -45,6 +52,12 @@ export default function AdminLayout() {
       navigate("/sign-in", { replace: true })
     }
   }, [isLoaded, isSignedIn, navigate])
+
+  useEffect(() => {
+    if (isSignedIn && isAdmin === false) {
+      void signOut({ redirectUrl: "/sign-in" })
+    }
+  }, [isSignedIn, isAdmin, signOut])
 
   if (!isLoaded || (isSignedIn && isAdmin === undefined)) {
     return (
@@ -66,13 +79,7 @@ export default function AdminLayout() {
         </div>
         <div className="text-[13px] font-semibold">Not authorized</div>
         <div className="max-w-xs text-[12px] text-muted-foreground">
-          Your account is not an admin. Contact an existing admin to grant you
-          access.
-        </div>
-        <div className="mt-2">
-          <SignedIn>
-            <UserButton />
-          </SignedIn>
+          Your account is not an admin. Signing you out…
         </div>
       </div>
     )
