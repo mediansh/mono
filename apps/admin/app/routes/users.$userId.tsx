@@ -124,6 +124,10 @@ export default function UserDetailPage() {
     () => (user ? user.ownedWorkspaces.reduce((s, w) => s + w.taskCount, 0) : 0),
     [user]
   )
+  const tasksCapped = useMemo(
+    () => !!user?.ownedWorkspaces.some((w) => w.taskCountCapped),
+    [user]
+  )
   const topTypes = useMemo(() => {
     if (!activity) return []
     return Object.entries(activity.byType)
@@ -272,7 +276,8 @@ export default function UserDetailPage() {
         <Stat
           icon={<Stack size={14} />}
           label="Tasks in owned"
-          value={String(tasksTotal)}
+          value={`${tasksTotal}${tasksCapped ? "+" : ""}`}
+          hint={tasksCapped ? "Count capped per workspace" : undefined}
         />
         <Stat
           icon={<Key size={14} />}
@@ -490,7 +495,8 @@ export default function UserDetailPage() {
                   </div>
                 </div>
                 <div className="text-[11px] text-muted-foreground">
-                  <span className="tabular-nums">{w.taskCount}</span> tasks
+                  <span className="tabular-nums">{w.taskCount}</span>
+                  {w.taskCountCapped ? "+" : ""} tasks
                 </div>
               </div>
             ))}

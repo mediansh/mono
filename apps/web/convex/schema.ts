@@ -509,7 +509,8 @@ export default defineSchema({
     revokedAt: v.optional(v.number()),
   })
     .index("by_workspace", ["workspaceId"])
-    .index("by_key_hash", ["keyHash"]),
+    .index("by_key_hash", ["keyHash"])
+    .index("by_created_by", ["createdByUserId"]),
 
   workspaceLogs: defineTable({
     workspaceId: v.id("workspaces"),

@@ -138,7 +138,7 @@ export const adminGetUser = query({
     await requireAdmin(ctx)
     const userId = args.userId
 
-    const [members, adminRow, redemptions, ownedWorkspaces, keys] =
+    const [members, adminRow, redemptions, ownedWorkspaces, keysByUser] =
       await Promise.all([
         ctx.db
           .query("workspaceMembers")
@@ -156,7 +156,10 @@ export const adminGetUser = query({
           .query("workspaces")
           .withIndex("by_owner", (q) => q.eq("ownerId", userId))
           .collect(),
-        ctx.db.query("cliApiKeys").collect(),
+        ctx.db
+          .query("cliApiKeys")
+          .withIndex("by_created_by", (q) => q.eq("createdByUserId", userId))
+          .collect(),
       ])
 
     const memberships = await Promise.all(
@@ -176,20 +179,38 @@ export const adminGetUser = query({
       })
     )
 
-    const ownedIds = new Set<string>(ownedWorkspaces.map((w) => w._id))
+    const TASK_COUNT_CAP = 500
     const taskCounts = await Promise.all(
       ownedWorkspaces.map(async (w) => {
-        const tasks = await ctx.db
+        const sample = await ctx.db
           .query("tasks")
           .withIndex("by_workspace", (q) => q.eq("workspaceId", w._id))
-          .collect()
-        return { workspaceId: w._id, count: tasks.length }
+          .take(TASK_COUNT_CAP + 1)
+        return {
+          workspaceId: w._id,
+          count: Math.min(sample.length, TASK_COUNT_CAP),
+          hasMore: sample.length > TASK_COUNT_CAP,
+        }
       })
     )
 
-    const userKeys = keys.filter(
-      (k) => ownedIds.has(k.workspaceId) || k.createdByUserId === userId
-    )
+    const keysByWorkspace = (
+      await Promise.all(
+        ownedWorkspaces.map((w) =>
+          ctx.db
+            .query("cliApiKeys")
+            .withIndex("by_workspace", (q) => q.eq("workspaceId", w._id))
+            .collect()
+        )
+      )
+    ).flat()
+    const seenKeyIds = new Set<string>()
+    const userKeys: typeof keysByUser = []
+    for (const k of [...keysByUser, ...keysByWorkspace]) {
+      if (seenKeyIds.has(k._id)) continue
+      seenKeyIds.add(k._id)
+      userKeys.push(k)
+    }
 
     const name =
       members[0]?.name ??
@@ -227,14 +248,17 @@ export const adminGetUser = query({
       firstSeenAt: Number.isFinite(firstSeenAt) ? firstSeenAt : 0,
       lastSeenAt,
       memberships: memberships.sort((a, b) => b.joinedAt - a.joinedAt),
-      ownedWorkspaces: ownedWorkspaces.map((w) => ({
-        _id: w._id,
-        name: w.name,
-        prefix: w.prefix,
-        createdAt: w._creationTime,
-        taskCount:
-          taskCounts.find((t) => t.workspaceId === w._id)?.count ?? 0,
-      })),
+      ownedWorkspaces: ownedWorkspaces.map((w) => {
+        const counted = taskCounts.find((t) => t.workspaceId === w._id)
+        return {
+          _id: w._id,
+          name: w.name,
+          prefix: w.prefix,
+          createdAt: w._creationTime,
+          taskCount: counted?.count ?? 0,
+          taskCountCapped: counted?.hasMore ?? false,
+        }
+      }),
       redemptions: redemptions.map((r) => ({
         _id: r._id,
         code: r.code,
