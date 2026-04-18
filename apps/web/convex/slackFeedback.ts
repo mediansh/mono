@@ -17,7 +17,7 @@ import {
   type MutationCtx,
   type QueryCtx,
 } from "./_generated/server"
-import { recordRunDirect } from "./moduleRuns"
+import { classifyRunResult, recordRunDirect } from "./moduleRuns"
 
 const FEEDBACK_WINDOW_LIMIT = 100
 const FEEDBACK_CONTEXT_LIMIT = 10
@@ -552,12 +552,7 @@ export const handleFeedbackProcessingComplete = internalMutation({
     await recordRunDirect(ctx, {
       module: "slack_feedback",
       operation: "process_window",
-      status:
-        args.result.kind === "failed"
-          ? "failure"
-          : completionReason === "skipped" || pausedForEventsExhausted
-            ? "skipped"
-            : "success",
+      status: classifyRunResult(args.result),
       error: args.result.kind === "failed" ? args.result.error : undefined,
       workspaceId: latestIntegration.workspaceId,
       metadata: {

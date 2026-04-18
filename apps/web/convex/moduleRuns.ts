@@ -40,6 +40,30 @@ type RecordRunArgs = {
   startedAt?: number
 }
 
+/**
+ * Derive a run status from a Workpool result. A run is "skipped" when the
+ * action short-circuited without doing work — either by returning
+ * `{ skipped: true, ... }` (e.g. another worker is already running, no
+ * pending messages) or by pausing after exhausting its event budget, which
+ * the feedback modules encode as `reason: "events_exhausted"` on a
+ * non-skipped return value.
+ */
+export function classifyRunResult(result: {
+  kind: "success" | "failed" | "canceled"
+  returnValue?: unknown
+  error?: string
+}): RunStatus {
+  if (result.kind === "failed") return "failure"
+  if (result.kind === "canceled") return "skipped"
+  const rv = result.returnValue
+  if (rv && typeof rv === "object") {
+    const obj = rv as { skipped?: unknown; reason?: unknown }
+    if (obj.skipped === true) return "skipped"
+    if (obj.reason === "events_exhausted") return "skipped"
+  }
+  return "success"
+}
+
 export async function recordRunDirect(ctx: MutationCtx, args: RecordRunArgs) {
   const finishedAt = Date.now()
   const startedAt = args.startedAt ?? finishedAt
