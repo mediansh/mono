@@ -8,12 +8,14 @@ import {
   Megaphone,
   Pulse,
   ShieldCheck,
+  Users,
 } from "@phosphor-icons/react"
 
 import { api } from "~/lib/convex"
 
 const adminNav = [
   { label: "Observability", to: "/", icon: Pulse, match: "exact" as const },
+  { label: "Users", to: "/users", icon: Users, match: "prefix" as const },
   { label: "Blog", to: "/blog", icon: Article, match: "prefix" as const },
   {
     label: "Changelog",

@@ -28,6 +28,7 @@ import type * as slack from "../slack.js";
 import type * as slackFeedback from "../slackFeedback.js";
 import type * as taskSourceUtils from "../taskSourceUtils.js";
 import type * as tasks from "../tasks.js";
+import type * as users from "../users.js";
 import type * as waitlist from "../waitlist.js";
 import type * as workspaces from "../workspaces.js";
 import type * as x from "../x.js";
@@ -60,6 +61,7 @@ declare const fullApi: ApiFromModules<{
   slackFeedback: typeof slackFeedback;
   taskSourceUtils: typeof taskSourceUtils;
   tasks: typeof tasks;
+  users: typeof users;
   waitlist: typeof waitlist;
   workspaces: typeof workspaces;
   x: typeof x;

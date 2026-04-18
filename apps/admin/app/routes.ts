@@ -12,5 +12,7 @@ export default [
     route("changelog/new", "routes/changelog.new.tsx"),
     route("changelog/:id", "routes/changelog.$id.tsx"),
     route("early-access", "routes/early-access.tsx"),
+    route("users", "routes/users._index.tsx"),
+    route("users/:userId", "routes/users.$userId.tsx"),
   ]),
 ] satisfies RouteConfig
