@@ -1,6 +1,12 @@
 import { useEffect } from "react"
 import { Link, Outlet, useLocation, useNavigate } from "react-router"
-import { useAuth, UserButton, SignedIn, SignedOut } from "@clerk/clerk-react"
+import {
+  useAuth,
+  useClerk,
+  UserButton,
+  SignedIn,
+  SignedOut,
+} from "@clerk/clerk-react"
 import { useQuery } from "convex/react"
 import {
   Article,
@@ -12,8 +18,6 @@ import {
 } from "@phosphor-icons/react"
 
 import { api } from "~/lib/convex"
-import { useIsDataBlocked } from "~/lib/gate"
-import { SkeletonWall } from "~/components/skeleton-wall"
 
 const adminNav = [
   { label: "Observability", to: "/", icon: Pulse, match: "exact" as const },
@@ -35,19 +39,25 @@ const adminNav = [
 
 export default function AdminLayout() {
   const { isLoaded, isSignedIn } = useAuth()
+  const { signOut } = useClerk()
   const navigate = useNavigate()
   const location = useLocation()
   const isAdmin = useQuery(
     api.admins.isCurrentUserAdmin,
     isSignedIn ? {} : "skip",
   )
-  const dataBlocked = useIsDataBlocked()
 
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
       navigate("/sign-in", { replace: true })
     }
   }, [isLoaded, isSignedIn, navigate])
+
+  useEffect(() => {
+    if (isSignedIn && isAdmin === false) {
+      void signOut({ redirectUrl: "/sign-in" })
+    }
+  }, [isSignedIn, isAdmin, signOut])
 
   if (!isLoaded || (isSignedIn && isAdmin === undefined)) {
     return (
@@ -69,13 +79,7 @@ export default function AdminLayout() {
         </div>
         <div className="text-[13px] font-semibold">Not authorized</div>
         <div className="max-w-xs text-[12px] text-muted-foreground">
-          Your account is not an admin. Contact an existing admin to grant you
-          access.
-        </div>
-        <div className="mt-2">
-          <SignedIn>
-            <UserButton />
-          </SignedIn>
+          Your account is not an admin. Signing you out…
         </div>
       </div>
     )
@@ -175,7 +179,7 @@ export default function AdminLayout() {
           </div>
         </SignedOut>
         <SignedIn>
-          {dataBlocked ? <SkeletonWall /> : <Outlet />}
+          <Outlet />
         </SignedIn>
       </div>
     </div>
