@@ -2,9 +2,22 @@ import { httpRouter } from "convex/server"
 import { githubInstallCallback, githubWebhook } from "./github"
 import { linearWebhook } from "./linear"
 import { slackOAuthCallback, slackEventsWebhook, slackInteractivity } from "./slack"
+import { statusEndpoint } from "./status"
 import { xOAuthCallback, xWebhook } from "./x"
 
 const http = httpRouter()
+
+http.route({
+  path: "/status",
+  method: "GET",
+  handler: statusEndpoint,
+})
+
+http.route({
+  path: "/status",
+  method: "OPTIONS",
+  handler: statusEndpoint,
+})
 
 http.route({
   path: "/linear/webhook",
