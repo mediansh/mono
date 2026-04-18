@@ -173,20 +173,6 @@ async function buildComponentSnapshot(
   }
 }
 
-async function findLastByStatus(
-  ctx: QueryCtx,
-  module: string,
-  status: "success" | "failure"
-): Promise<number | null> {
-  const [row] = await ctx.db
-    .query("moduleRuns")
-    .withIndex("by_status_finished", (q) => q.eq("status", status))
-    .order("desc")
-    .filter((q) => q.eq(q.field("module"), module))
-    .take(1)
-  return row?.finishedAt ?? null
-}
-
 async function findLastByStatusWithDoc(
   ctx: QueryCtx,
   module: string,
@@ -194,11 +180,21 @@ async function findLastByStatusWithDoc(
 ) {
   const [row] = await ctx.db
     .query("moduleRuns")
-    .withIndex("by_status_finished", (q) => q.eq("status", status))
+    .withIndex("by_module_status_finished", (q) =>
+      q.eq("module", module).eq("status", status)
+    )
     .order("desc")
-    .filter((q) => q.eq(q.field("module"), module))
     .take(1)
   return row ?? null
+}
+
+async function findLastByStatus(
+  ctx: QueryCtx,
+  module: string,
+  status: "success" | "failure"
+): Promise<number | null> {
+  const row = await findLastByStatusWithDoc(ctx, module, status)
+  return row?.finishedAt ?? null
 }
 
 export const getStatusSnapshot = internalQuery({

@@ -748,6 +748,7 @@ export default defineSchema({
     finishedAt: v.number(),
   })
     .index("by_module_finished", ["module", "finishedAt"])
+    .index("by_module_status_finished", ["module", "status", "finishedAt"])
     .index("by_status_finished", ["status", "finishedAt"])
     .index("by_finished", ["finishedAt"]),
 
