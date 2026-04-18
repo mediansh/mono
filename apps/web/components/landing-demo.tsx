@@ -670,8 +670,6 @@ export function LandingDemo() {
               )}
               {/* Bottom fade so content doesn't cut harshly */}
               <div className="pointer-events-none absolute right-0 bottom-0 left-0 h-16 bg-gradient-to-t from-[#181818] to-transparent" />
-              {/* Bottom drawer handle, like the real dashboard */}
-              <div className="pointer-events-none absolute bottom-1.5 left-1/2 h-1 w-8 -translate-x-1/2 rounded-full bg-[#2A2A2A]" />
             </main>
           </div>
         </div>

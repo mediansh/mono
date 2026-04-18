@@ -23,6 +23,7 @@ import {
   PencilSimple,
   Sparkle,
   ArrowRight,
+  PaperPlaneRight,
 } from "@phosphor-icons/react"
 import {
   DropdownMenu,
@@ -760,45 +761,75 @@ export function NewTaskModal({
                 }
               }}
             >
-              {/* ── Header: segmented tab + Title + Meta + Close ── */}
-              <div className="relative px-5 pt-5 pb-0">
-                {/* Close button */}
-                <button
-                  onClick={handleClose}
-                  aria-label="Close"
-                  className="absolute top-4 right-4 rounded-[4px] p-1.5 text-muted-foreground/50 ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground"
-                >
-                  <X size={14} weight="bold" />
-                </button>
+              {/* ── Header: segmented tab + Send + Title ── */}
+              <div className="px-5 pt-5 pb-0">
+                {/* Tab switcher and send button row */}
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <div className="inline-flex items-center gap-0.5 rounded-[6px] p-0.5 ring-1 ring-border">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("manual")}
+                      className={`flex items-center gap-1.5 rounded-[4px] px-2 py-1 text-[11px] font-medium transition-colors ${
+                        activeTab === "manual"
+                          ? "bg-accent text-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <PencilSimple size={12} />
+                      Manual
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab("ai")
+                        trackAIPromptTabSelected()
+                      }}
+                      className={`flex items-center gap-1.5 rounded-[4px] px-2 py-1 text-[11px] font-medium transition-colors ${
+                        activeTab === "ai"
+                          ? "bg-accent text-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <Sparkle size={12} />
+                      AI Prompt
+                    </button>
+                  </div>
 
-                {/* Segmented tab switcher */}
-                <div className="mb-3 inline-flex items-center gap-0.5 rounded-[6px] p-0.5 ring-1 ring-border">
+                  {/* Mobile send button — creates/generates from the header */}
                   <button
                     type="button"
-                    onClick={() => setActiveTab("manual")}
-                    className={`flex items-center gap-1.5 rounded-[4px] px-2 py-1 text-[11px] font-medium transition-colors ${
+                    onClick={
                       activeTab === "manual"
-                        ? "bg-accent text-foreground"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
+                        ? handleCreate
+                        : handleGenerateTasks
+                    }
+                    disabled={
+                      activeTab === "manual"
+                        ? !title.trim() || !currentWorkspace
+                        : !aiPrompt.trim() || isGenerating
+                    }
+                    aria-label={
+                      activeTab === "manual"
+                        ? "Create task"
+                        : "Generate tasks"
+                    }
+                    className="flex items-center justify-center rounded-[4px] bg-primary p-1.5 text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40 md:hidden"
                   >
-                    <PencilSimple size={12} />
-                    Manual
+                    {activeTab === "ai" && isGenerating ? (
+                      <SpinnerGap size={14} className="animate-spin" />
+                    ) : (
+                      <PaperPlaneRight size={14} weight="fill" />
+                    )}
                   </button>
+
+                  {/* Desktop close button — keeps the original Create-at-bottom layout */}
                   <button
                     type="button"
-                    onClick={() => {
-                      setActiveTab("ai")
-                      trackAIPromptTabSelected()
-                    }}
-                    className={`flex items-center gap-1.5 rounded-[4px] px-2 py-1 text-[11px] font-medium transition-colors ${
-                      activeTab === "ai"
-                        ? "bg-accent text-foreground"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
+                    onClick={handleClose}
+                    aria-label="Close"
+                    className="hidden size-7 items-center justify-center rounded-[4px] text-muted-foreground/50 ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground md:flex"
                   >
-                    <Sparkle size={12} />
-                    AI Prompt
+                    <X size={14} weight="bold" />
                   </button>
                 </div>
 
@@ -811,7 +842,7 @@ export function NewTaskModal({
                     placeholder="Task title"
                     autoFocus
                     rows={1}
-                    className="block w-full resize-none overflow-hidden bg-transparent pr-8 text-[16px] leading-snug font-semibold tracking-tight break-words outline-none placeholder:text-muted-foreground/40"
+                    className="block w-full resize-none overflow-hidden bg-transparent text-[16px] leading-snug font-semibold tracking-tight break-words outline-none placeholder:text-muted-foreground/40"
                   />
                 ) : null}
               </div>
@@ -859,18 +890,19 @@ export function NewTaskModal({
               )}
 
               {/* ── Bottom toolbar ── */}
-              <div>
-                {error ? (
-                  <div className="px-5 pt-2">
-                    <span className="text-[11px] text-red-500">{error}</span>
-                  </div>
-                ) : null}
-                <div className="flex items-center justify-between gap-2 border-t border-border px-4 pt-2.5 pb-3">
-                  {activeTab === "manual" ? (
-                    <div className="flex flex-wrap items-center gap-2">
+              {activeTab === "manual" ? (
+                <div>
+                  {error ? (
+                    <div className="px-5 pt-2">
+                      <span className="text-[11px] text-red-500">{error}</span>
+                    </div>
+                  ) : null}
+                  <div className="flex flex-wrap items-center gap-2 border-t border-border px-4 pt-2.5 pb-3 md:flex-nowrap md:justify-between">
+                    {/* Metadata group — left side on desktop */}
+                    <div className="flex flex-wrap items-center gap-2 md:min-w-0">
                       {/* Status */}
                       <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent">
+                        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
                           {getStatusIcon(status)}
                           <span>{statusLabel}</span>
                         </DropdownMenuTrigger>
@@ -892,7 +924,7 @@ export function NewTaskModal({
 
                       {/* Priority */}
                       <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent">
+                        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
                           {getPriorityIcon(priority)}
                           <span>{priorityLabel}</span>
                         </DropdownMenuTrigger>
@@ -914,7 +946,7 @@ export function NewTaskModal({
 
                       {/* Labels */}
                       <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent">
+                        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
                           {labels.length > 0 ? (
                             <div className="flex items-center gap-1.5">
                               <div className="flex -space-x-0.5">
@@ -967,13 +999,10 @@ export function NewTaskModal({
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
-                  ) : (
-                    <div />
-                  )}
 
-                  {/* Right side actions */}
-                  {activeTab === "manual" ? (
-                    <div className="flex items-center gap-1.5">
+                    {/* Action group — pinned right via parent's md:justify-between + md:shrink-0 here */}
+                    <div className="flex flex-wrap items-center gap-2 md:shrink-0 md:gap-1.5">
+                      {/* Attach */}
                       <input
                         ref={fileInputRef}
                         type="file"
@@ -985,7 +1014,7 @@ export function NewTaskModal({
                         onClick={() => fileInputRef.current?.click()}
                         disabled={uploading}
                         title="Attach files"
-                        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {uploading ? (
                           <SpinnerGap size={14} className="animate-spin" />
@@ -994,11 +1023,13 @@ export function NewTaskModal({
                         )}
                         {uploading ? "Uploading..." : "Attach"}
                       </button>
+
+                      {/* Create more */}
                       <button
                         type="button"
                         onClick={() => setCreateMore(!createMore)}
                         title="Keep the modal open after creating"
-                        className={`flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent ${
+                        className={`flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent ${
                           createMore ? "text-foreground" : "text-muted-foreground"
                         }`}
                       >
@@ -1011,10 +1042,13 @@ export function NewTaskModal({
                         />
                         Create more
                       </button>
+
+                      {/* Create — desktop only; mobile uses the header send button */}
                       <button
+                        type="button"
                         onClick={handleCreate}
                         disabled={!title.trim() || !currentWorkspace}
-                        className="flex items-center gap-1.5 rounded-[4px] bg-primary px-3 py-1.5 text-[11px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="hidden items-center gap-1.5 rounded-[4px] bg-primary px-3 py-1.5 text-[11px] font-medium whitespace-nowrap text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 md:flex"
                       >
                         Create
                         <ArrowRight
@@ -1024,11 +1058,22 @@ export function NewTaskModal({
                         />
                       </button>
                     </div>
-                  ) : (
+                  </div>
+                </div>
+              ) : (
+                /* AI tab — desktop Generate button at bottom right; mobile uses header send */
+                <div>
+                  {error ? (
+                    <div className="px-5 pt-2">
+                      <span className="text-[11px] text-red-500">{error}</span>
+                    </div>
+                  ) : null}
+                  <div className="hidden items-center justify-end border-t border-border px-4 pt-2.5 pb-3 md:flex">
                     <button
+                      type="button"
                       onClick={handleGenerateTasks}
                       disabled={!aiPrompt.trim() || isGenerating}
-                      className="flex items-center gap-1.5 rounded-[4px] bg-primary px-3 py-1.5 text-[11px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex items-center gap-1.5 rounded-[4px] bg-primary px-3 py-1.5 text-[11px] font-medium whitespace-nowrap text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {isGenerating ? (
                         <>
@@ -1046,9 +1091,9 @@ export function NewTaskModal({
                         </>
                       )}
                     </button>
-                  )}
+                  </div>
                 </div>
-              </div>
+              )}
             </motion.div>
           </div>
         </>

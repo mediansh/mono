@@ -130,7 +130,7 @@ export default function LabelsSettingsPage() {
                   <button
                     type="button"
                     onClick={() => removeLabel(index)}
-                    className="flex size-8 shrink-0 items-center justify-center rounded-[4px] text-muted-foreground opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+                    className="flex size-8 shrink-0 items-center justify-center rounded-[4px] text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive md:invisible md:group-hover:visible"
                   >
                     <Trash size={14} />
                   </button>
