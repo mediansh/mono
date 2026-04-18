@@ -256,6 +256,11 @@ function formatSnapshot(snapshot: {
       key: c.key,
       label: c.label,
       status: c.status,
+      // `reason` is derived from aggregate counts and timing only — see
+      // buildComponentSnapshot. Raw error strings from workpool failures
+      // are intentionally NOT surfaced on this unauthenticated endpoint;
+      // admins see them on the Observability dashboard via
+      // api.moduleRuns.adminRecentFailures.
       reason: c.reason,
       last_run_at: c.lastRunAt
         ? new Date(c.lastRunAt).toISOString()
@@ -267,7 +272,6 @@ function formatSnapshot(snapshot: {
       last_failure_at: c.lastFailureAt
         ? new Date(c.lastFailureAt).toISOString()
         : null,
-      last_error: c.lastError,
       runs_last_hour: c.runsLastHour,
       successes_last_hour: c.successesLastHour,
       failures_last_hour: c.failuresLastHour,
@@ -324,12 +328,14 @@ export const statusEndpoint = httpAction(async (ctx, request) => {
 
     return jsonResponse(formatSnapshot(snapshot), httpStatusFor(snapshot.status))
   } catch (error) {
+    // Log the full error server-side for operators, but never echo it
+    // back on this unauthenticated endpoint.
+    console.error("[status] snapshot query failed:", error)
     return jsonResponse(
       {
         status: "outage" satisfies ComponentHealth,
         checked_at: new Date().toISOString(),
         error: "Status check failed",
-        detail: error instanceof Error ? error.message : String(error),
       },
       500
     )
