@@ -287,10 +287,8 @@ export function DiscordPairingPanel() {
   /* ── Connected state: status card + settings + disconnect ── */
   if (integration) {
     return (
-      <Stagger
-        className="mx-auto w-full max-w-lg px-6 py-6"
-      >
-        <div className="flex flex-col gap-3">
+      <Stagger className="h-full overflow-y-auto">
+        <div className="mx-auto flex w-full max-w-lg flex-col gap-3 px-6 py-6">
           <motion.div variants={fadeUp}>
             <h2 className="text-[14px] font-semibold tracking-tight">Discord</h2>
             <p className="mt-0.5 text-[12px] text-muted-foreground">
@@ -562,10 +560,8 @@ export function DiscordPairingPanel() {
 
   /* ── Disconnected state: pairing form + how it works ── */
   return (
-    <Stagger
-      className="mx-auto w-full max-w-lg px-6 py-6"
-    >
-      <div className="flex flex-col gap-3">
+    <Stagger className="h-full overflow-y-auto">
+      <div className="mx-auto flex w-full max-w-lg flex-col gap-3 px-6 py-6">
         <motion.div variants={fadeUp}>
           <h2 className="text-[14px] font-semibold tracking-tight">Discord</h2>
           <p className="mt-0.5 text-[12px] text-muted-foreground">
