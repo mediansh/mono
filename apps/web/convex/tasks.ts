@@ -1123,6 +1123,7 @@ function parseDiscordPermalink(
 
 async function getDiscordNotificationContext(
   ctx: MutationCtx,
+  workspaceId: Id<"workspaces">,
   sourceUrl: string
 ) {
   const parsed = parseDiscordPermalink(sourceUrl)
@@ -1132,17 +1133,18 @@ async function getDiscordNotificationContext(
 
   const integration = await ctx.db
     .query("discordWorkspaceIntegrations")
-    .withIndex("by_guild", (q) => q.eq("guildId", parsed.guildId))
-    .first()
+    .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
+    .unique()
 
-  if (!integration) {
+  if (!integration || integration.guildId !== parsed.guildId) {
     return null
   }
 
   const sourceMessage = await ctx.db
     .query("discordMessages")
-    .withIndex("by_discord_message", (q) =>
+    .withIndex("by_integration_discord_message", (q) =>
       q
+        .eq("integrationId", integration._id)
         .eq("guildId", parsed.guildId)
         .eq("channelId", parsed.channelId)
         .eq("messageId", parsed.messageId)
@@ -1176,6 +1178,7 @@ async function queueDiscordNotificationForStatusChange(
 
   const notificationContext = await getDiscordNotificationContext(
     ctx,
+    task.workspaceId,
     task.source.url
   )
   if (!notificationContext) {

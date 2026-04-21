@@ -59,12 +59,12 @@ const recordInboundMessageMutation = makeFunctionReference<
   {
     accepted: boolean
     duplicate: boolean
-    integration: {
+    integrations: {
       integrationId: string
       workspaceId: string
       channelId: string
       guildName: string
-    } | null
+    }[]
   }
 >("discord:recordInboundMessage")
 const getAllPendingDiscordNotificationsQuery = makeFunctionReference<
@@ -583,31 +583,36 @@ client.on(Events.MessageCreate, async (message: Message) => {
       messageCreatedAt: message.createdTimestamp,
     })
 
-    if (!result.accepted || !result.integration) {
+    if (!result.accepted || result.integrations.length === 0) {
       logger.info("Message was not accepted for processing", {
         scope: "message",
         guildId: message.guildId,
         channelId: message.channelId,
         messageId: message.id,
         duplicate: result.duplicate,
+        integrationCount: result.integrations.length,
       })
       return
     }
 
-    captureBot("message_ingested", {
-      guild_id: message.guildId,
-      channel_id: message.channelId,
-      workspace_id: result.integration.workspaceId,
-      content_length: content.length,
-    })
-    logger.info("Stored message and resolved integration", {
+    for (const integration of result.integrations) {
+      captureBot("message_ingested", {
+        guild_id: message.guildId,
+        channel_id: message.channelId,
+        workspace_id: integration.workspaceId,
+        content_length: content.length,
+      })
+    }
+    logger.info("Stored message and resolved integrations", {
       scope: "message",
       guildId: message.guildId,
       channelId: message.channelId,
       messageId: message.id,
-      integrationId: result.integration.integrationId,
-      workspaceId: result.integration.workspaceId,
-      guildName: result.integration.guildName,
+      integrations: result.integrations.map((integration) => ({
+        integrationId: integration.integrationId,
+        workspaceId: integration.workspaceId,
+        guildName: integration.guildName,
+      })),
       authorHasAdminPrivileges,
       threadTitle: channelContext.threadTitle ?? null,
       forumTitle: channelContext.forumTitle ?? null,

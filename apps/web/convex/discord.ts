@@ -23,7 +23,7 @@ function requireDiscordBotSecret(botSecret: string) {
   }
 }
 
-async function getActiveIntegrationForGuildChannel(
+async function getActiveIntegrationsForGuildChannel(
   ctx: Pick<MutationCtx, "db">,
   guildId: string,
   channelIds: string[]
@@ -36,12 +36,10 @@ async function getActiveIntegrationForGuildChannel(
     .withIndex("by_guild", (q) => q.eq("guildId", guildId))
     .collect()
 
-  return (
-    integrations.find(
-      (integration) =>
-        !integration.channelId ||
-        normalizedChannelIds.includes(integration.channelId)
-    ) ?? null
+  return integrations.filter(
+    (integration) =>
+      !integration.channelId ||
+      normalizedChannelIds.includes(integration.channelId)
   )
 }
 
@@ -171,7 +169,7 @@ export const recordInboundMessage = mutation({
   handler: async (ctx, args) => {
     requireDiscordBotSecret(args.botSecret)
 
-    const integration = await getActiveIntegrationForGuildChannel(
+    const integrations = await getActiveIntegrationsForGuildChannel(
       ctx,
       args.guildId,
       [
@@ -180,98 +178,121 @@ export const recordInboundMessage = mutation({
         args.forumChannelId ?? "",
       ]
     )
-    if (!integration) {
+    if (integrations.length === 0) {
       return {
         accepted: false,
         duplicate: false,
-        integration: null,
+        integrations: [],
       } as const
     }
 
-    const existingMessage = await ctx.db
-      .query("discordMessages")
-      .withIndex("by_discord_message", (q) =>
-        q
-          .eq("guildId", args.guildId)
-          .eq("channelId", args.channelId)
-          .eq("messageId", args.messageId)
-      )
-      .unique()
+    const results = await Promise.all(
+      integrations.map(async (integration) => {
+        const existingMessage = await ctx.db
+          .query("discordMessages")
+          .withIndex("by_integration_discord_message", (q) =>
+            q
+              .eq("integrationId", integration._id)
+              .eq("guildId", args.guildId)
+              .eq("channelId", args.channelId)
+              .eq("messageId", args.messageId)
+          )
+          .unique()
 
-    if (existingMessage) {
-      return {
-        accepted: false,
-        duplicate: true,
-        integration: {
-          integrationId: integration._id,
+        if (existingMessage) {
+          return {
+            accepted: false,
+            duplicate: true,
+            integration,
+          } as const
+        }
+
+        await ctx.db.insert("discordMessages", {
           workspaceId: integration.workspaceId,
-          channelId: integration.channelId ?? args.channelId,
-          guildName: integration.guildName,
-        },
-      } as const
-    }
+          integrationId: integration._id,
+          guildId: args.guildId,
+          channelId: args.channelId,
+          channelName: args.channelName,
+          parentChannelId: args.parentChannelId,
+          parentChannelName: args.parentChannelName,
+          threadId: args.threadId,
+          threadTitle: args.threadTitle,
+          forumChannelId: args.forumChannelId,
+          forumTitle: args.forumTitle,
+          messageId: args.messageId,
+          permalink: `https://discord.com/channels/${args.guildId}/${args.channelId}/${args.messageId}`,
+          authorId: args.authorId,
+          authorUsername: args.authorUsername,
+          authorHasAdminPrivileges: args.authorHasAdminPrivileges,
+          content: args.content,
+          messageCreatedAt: args.messageCreatedAt,
+          receivedAt: Date.now(),
+        })
 
-    await ctx.db.insert("discordMessages", {
-      workspaceId: integration.workspaceId,
-      integrationId: integration._id,
-      guildId: args.guildId,
-      channelId: args.channelId,
-      channelName: args.channelName,
-      parentChannelId: args.parentChannelId,
-      parentChannelName: args.parentChannelName,
-      threadId: args.threadId,
-      threadTitle: args.threadTitle,
-      forumChannelId: args.forumChannelId,
-      forumTitle: args.forumTitle,
-      messageId: args.messageId,
-      permalink: `https://discord.com/channels/${args.guildId}/${args.channelId}/${args.messageId}`,
-      authorId: args.authorId,
-      authorUsername: args.authorUsername,
-      authorHasAdminPrivileges: args.authorHasAdminPrivileges,
-      content: args.content,
-      messageCreatedAt: args.messageCreatedAt,
-      receivedAt: Date.now(),
-    })
+        await insertWorkspaceLog(ctx, {
+          workspaceId: integration.workspaceId,
+          category: "webhooks",
+          type: "webhook_received",
+          message: `Discord message received in ${args.channelName ?? "channel"}`,
+          source: "discord",
+        })
 
-    await insertWorkspaceLog(ctx, {
-      workspaceId: integration.workspaceId,
-      category: "webhooks",
-      type: "webhook_received",
-      message: `Discord message received in ${args.channelName ?? "channel"}`,
-      source: "discord",
-    })
+        await ctx.scheduler.runAfter(
+          0,
+          internal.billingTracking.trackIntegrationEvent,
+          {
+            workspaceId: integration.workspaceId,
+            source: "discord" as const,
+            properties: {
+              event_type: "message",
+              channel_id: args.channelId,
+              channel_name: args.channelName ?? undefined,
+            },
+          }
+        )
 
-    await ctx.scheduler.runAfter(
-      0,
-      internal.billingTracking.trackIntegrationEvent,
-      {
-        workspaceId: integration.workspaceId,
-        source: "discord" as const,
-        properties: {
-          event_type: "message",
-          channel_id: args.channelId,
-          channel_name: args.channelName ?? undefined,
-        },
-      }
+        await ctx.scheduler.runAfter(
+          0,
+          internal.discordFeedback.scheduleFeedbackDetection,
+          {
+            integrationId: integration._id,
+          }
+        )
+
+        return {
+          accepted: true,
+          duplicate: false,
+          integration,
+        } as const
+      })
     )
 
-    await ctx.scheduler.runAfter(
-      0,
-      internal.discordFeedback.scheduleFeedbackDetection,
-      {
-        integrationId: integration._id,
-      }
-    )
-
-    return {
-      accepted: true,
-      duplicate: false,
-      integration: {
+    const acceptedIntegrations = results
+      .filter((result) => result.accepted)
+      .map(({ integration }) => ({
         integrationId: integration._id,
         workspaceId: integration.workspaceId,
         channelId: integration.channelId ?? args.channelId,
         guildName: integration.guildName,
-      },
+      }))
+
+    if (acceptedIntegrations.length > 0) {
+      return {
+        accepted: true,
+        duplicate: false,
+        integrations: acceptedIntegrations,
+      } as const
+    }
+
+    return {
+      accepted: false,
+      duplicate: true,
+      integrations: results.map(({ integration }) => ({
+        integrationId: integration._id,
+        workspaceId: integration.workspaceId,
+        channelId: integration.channelId ?? args.channelId,
+        guildName: integration.guildName,
+      })),
     } as const
   },
 })
@@ -400,24 +421,13 @@ export const redeemPairingCode = mutation({
       throw new Error("That pairing code has expired")
     }
 
-    const [workspaceIntegrations, guildIntegrations] = await Promise.all([
-      ctx.db
-        .query("discordWorkspaceIntegrations")
-        .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
-        .collect(),
-      ctx.db
-        .query("discordWorkspaceIntegrations")
-        .withIndex("by_guild", (q) => q.eq("guildId", pairingCode.guildId))
-        .collect(),
-    ])
-
-    const integrationIds = new Set([
-      ...workspaceIntegrations.map((integration) => integration._id),
-      ...guildIntegrations.map((integration) => integration._id),
-    ])
+    const workspaceIntegrations = await ctx.db
+      .query("discordWorkspaceIntegrations")
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .collect()
 
     await Promise.all(
-      [...integrationIds].map((integrationId) => ctx.db.delete(integrationId))
+      workspaceIntegrations.map((integration) => ctx.db.delete(integration._id))
     )
 
     const pairedAt = Date.now()
@@ -426,6 +436,7 @@ export const redeemPairingCode = mutation({
       workspaceId: args.workspaceId,
       guildId: pairingCode.guildId,
       guildName: pairingCode.guildName,
+      channelId: pairingCode.channelId,
       pairedByUserId: identity.subject,
       pairedAt,
       pairingCodeId: pairingCode._id,
