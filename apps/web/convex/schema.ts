@@ -471,6 +471,12 @@ export default defineSchema({
     receivedAt: v.number(),
   })
     .index("by_discord_message", ["guildId", "channelId", "messageId"])
+    .index("by_integration_discord_message", [
+      "integrationId",
+      "guildId",
+      "channelId",
+      "messageId",
+    ])
     .index("by_integration_created_at", ["integrationId", "messageCreatedAt"])
     .index("by_workspace_channel_created_at", [
       "workspaceId",
