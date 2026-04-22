@@ -1,4 +1,4 @@
-import { generateText, Output } from "ai"
+import { generateText } from "ai"
 import { trackLLMGeneration, trackFeedbackProcessing } from "./posthog"
 import { AI_MODEL_IDS, AI_MODELS } from "../lib/ai"
 import { safeTrackAiUsage } from "../lib/billing/autumn"
@@ -515,10 +515,6 @@ function isIgnoredDiscordMessage(
       ? ignoredChannelIds.has(message.forumChannelId)
       : false)
   )
-}
-
-function isStructuredOutputSchemaError(error: unknown) {
-  return error instanceof Error && error.name === "AI_NoObjectGeneratedError"
 }
 
 function selectRelevantTasks(
@@ -1315,7 +1311,6 @@ export const processFeedbackWindow = internalAction({
       try {
         const extractorResult = await generateText({
           model: AI_MODELS.feedbackExtractor,
-          output: Output.object({ schema: extractedFeedbackTasksSchema }),
           system: extractorSystemParts.join(" "),
           prompt: [
             `Classifier summary: ${classification.summary ?? classification.reason}`,
@@ -1353,7 +1348,21 @@ export const processFeedbackWindow = internalAction({
         })
         extractorDurationMs = Date.now() - extractorStart
         extractorUsage = extractorResult.usage
-        extracted = extractorResult.output
+        const parsedExtraction = extractedFeedbackTasksSchema.safeParse(
+          JSON.parse(extractJsonObject(extractorResult.text))
+        )
+        if (parsedExtraction.success) {
+          extracted = parsedExtraction.data
+        } else {
+          logError(
+            "Discord feedback extractor schema mismatch",
+            parsedExtraction.error,
+            {
+              integrationId: args.integrationId,
+              workspaceId: feedbackWindow.integration.workspaceId,
+            }
+          )
+        }
 
         await trackLLMGeneration({
           distinctId: feedbackWindow.integration.workspaceId,
@@ -1383,11 +1392,7 @@ export const processFeedbackWindow = internalAction({
         })
       } catch (error) {
         extractorDurationMs = Date.now() - extractorStart
-        if (!isStructuredOutputSchemaError(error)) {
-          throw error
-        }
-
-        logError("Discord feedback extractor schema mismatch", error, {
+        logError("Discord feedback extractor parse failure", error, {
           integrationId: args.integrationId,
           workspaceId: feedbackWindow.integration.workspaceId,
         })

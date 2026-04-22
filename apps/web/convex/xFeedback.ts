@@ -1,4 +1,4 @@
-import { generateText, Output } from "ai"
+import { generateText } from "ai"
 import { trackLLMGeneration, trackFeedbackProcessing } from "./posthog"
 import { AI_MODEL_IDS, AI_MODELS } from "../lib/ai"
 import { safeTrackAiUsage } from "../lib/billing/autumn"
@@ -831,51 +831,78 @@ export const processFeedbackWindow = internalAction({
       }
 
       const extractorStart = Date.now()
-      const extractorResult = await generateText({
-        model: AI_MODELS.feedbackExtractor,
-        output: Output.object({ schema: extractedFeedbackTasksSchema }),
-        system: extractorSystemParts.join(" "),
-        prompt: [
-          `Classifier summary: ${classification.summary ?? classification.reason}`,
-          "Existing task context:",
-          formatExistingTasks(existingTasks),
-          "Relevant inbound posts:",
-          relevantPosts
-            .map(
-              (post) =>
-                `- ${new Date(post.postCreatedAt).toISOString()} @${post.authorUsername}: ${post.content}`
-            )
-            .join("\n"),
-        ].join("\n\n"),
-      })
-      const extractorDurationMs = Date.now() - extractorStart
-      const extracted = extractorResult.output
+      let extractorDurationMs = 0
+      let extractorUsage:
+        | {
+            inputTokens?: number
+            outputTokens?: number
+          }
+        | undefined
+      let extracted: z.infer<typeof extractedFeedbackTasksSchema> | null = null
 
-      await trackLLMGeneration({
-        distinctId: feedbackWindow.integration.workspaceId,
-        model: AI_MODEL_IDS.feedbackExtractor,
-        feature: "x_feedback_extractor",
-        inputTokens: extractorResult.usage?.inputTokens,
-        outputTokens: extractorResult.usage?.outputTokens,
-        durationMs: extractorDurationMs,
-        success: true,
-        metadata: {
-          integration_id: args.integrationId,
-          relevant_post_count: relevantPosts.length,
-        },
-      })
+      try {
+        const extractorResult = await generateText({
+          model: AI_MODELS.feedbackExtractor,
+          system: extractorSystemParts.join(" "),
+          prompt: [
+            `Classifier summary: ${classification.summary ?? classification.reason}`,
+            "Existing task context:",
+            formatExistingTasks(existingTasks),
+            "Relevant inbound posts:",
+            relevantPosts
+              .map(
+                (post) =>
+                  `- ${new Date(post.postCreatedAt).toISOString()} @${post.authorUsername}: ${post.content}`
+              )
+              .join("\n"),
+          ].join("\n\n"),
+        })
+        extractorDurationMs = Date.now() - extractorStart
+        extractorUsage = extractorResult.usage
+        const parsedExtraction = extractedFeedbackTasksSchema.safeParse(
+          JSON.parse(extractJsonObject(extractorResult.text))
+        )
+        if (parsedExtraction.success) {
+          extracted = parsedExtraction.data
+        } else {
+          logError("X feedback extractor schema mismatch", parsedExtraction.error, {
+            integrationId: args.integrationId,
+            workspaceId: feedbackWindow.integration.workspaceId,
+          })
+        }
 
-      await safeTrackAiUsage({
-        workspaceId: feedbackWindow.integration.workspaceId,
-        workspaceName: feedbackWindow.integration.workspaceName,
-        model: AI_MODEL_IDS.feedbackExtractor,
-        inputTokens: extractorResult.usage?.inputTokens,
-        outputTokens: extractorResult.usage?.outputTokens,
-        properties: {
+        await trackLLMGeneration({
+          distinctId: feedbackWindow.integration.workspaceId,
+          model: AI_MODEL_IDS.feedbackExtractor,
           feature: "x_feedback_extractor",
-          integration_id: args.integrationId,
-        },
-      })
+          inputTokens: extractorResult.usage?.inputTokens,
+          outputTokens: extractorResult.usage?.outputTokens,
+          durationMs: extractorDurationMs,
+          success: true,
+          metadata: {
+            integration_id: args.integrationId,
+            relevant_post_count: relevantPosts.length,
+          },
+        })
+
+        await safeTrackAiUsage({
+          workspaceId: feedbackWindow.integration.workspaceId,
+          workspaceName: feedbackWindow.integration.workspaceName,
+          model: AI_MODEL_IDS.feedbackExtractor,
+          inputTokens: extractorResult.usage?.inputTokens,
+          outputTokens: extractorResult.usage?.outputTokens,
+          properties: {
+            feature: "x_feedback_extractor",
+            integration_id: args.integrationId,
+          },
+        })
+      } catch (error) {
+        extractorDurationMs = Date.now() - extractorStart
+        logError("X feedback extractor parse failure", error, {
+          integrationId: args.integrationId,
+          workspaceId: feedbackWindow.integration.workspaceId,
+        })
+      }
 
       const totalAiCost =
         getAiCostForTokens({
@@ -885,8 +912,8 @@ export const processFeedbackWindow = internalAction({
         }) +
         getAiCostForTokens({
           model: AI_MODEL_IDS.feedbackExtractor,
-          inputTokens: extractorResult.usage?.inputTokens,
-          outputTokens: extractorResult.usage?.outputTokens,
+          inputTokens: extractorUsage?.inputTokens,
+          outputTokens: extractorUsage?.outputTokens,
         })
 
       if (!extracted) {
