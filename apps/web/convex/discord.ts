@@ -16,6 +16,12 @@ function normalizePairingCode(code: string) {
     .replace(/[^A-Z0-9]/g, "")
 }
 
+function normalizeChannelIds(channelIds: string[]) {
+  return Array.from(
+    new Set(channelIds.map((channelId) => channelId.trim()).filter(Boolean))
+  )
+}
+
 function requireDiscordBotSecret(botSecret: string) {
   const configuredSecret = process.env.DISCORD_PAIRING_SECRET
   if (!configuredSecret || botSecret !== configuredSecret) {
@@ -96,6 +102,7 @@ export const getWorkspaceDiscordIntegration = query({
           integration.respondForMeMode ??
           (integration.respondForMe ? "all" : "off"),
         respondForMeChannelIds: integration.respondForMeChannelIds ?? [],
+        feedbackIgnoredChannelIds: integration.feedbackIgnoredChannelIds ?? [],
         guildChannels: integration.guildChannels ?? [],
       },
     }
@@ -188,6 +195,25 @@ export const recordInboundMessage = mutation({
 
     const results = await Promise.all(
       integrations.map(async (integration) => {
+        const ignoredChannelIds = new Set(
+          integration.feedbackIgnoredChannelIds ?? []
+        )
+        if (
+          ignoredChannelIds.has(args.channelId) ||
+          (args.parentChannelId
+            ? ignoredChannelIds.has(args.parentChannelId)
+            : false) ||
+          (args.forumChannelId
+            ? ignoredChannelIds.has(args.forumChannelId)
+            : false)
+        ) {
+          return {
+            accepted: false,
+            duplicate: false,
+            integration,
+          } as const
+        }
+
         const existingMessage = await ctx.db
           .query("discordMessages")
           .withIndex("by_integration_discord_message", (q) =>
@@ -503,6 +529,7 @@ export const updateDiscordIntegrationSettings = mutation({
       v.union(v.literal("off"), v.literal("all"), v.literal("specific"))
     ),
     respondForMeChannelIds: v.optional(v.array(v.string())),
+    feedbackIgnoredChannelIds: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     await requireWorkspaceAdminAccess(ctx, args.workspaceId)
@@ -525,8 +552,14 @@ export const updateDiscordIntegrationSettings = mutation({
       updates.respondForMe = args.respondForMeMode !== "off"
     }
     if (args.respondForMeChannelIds !== undefined) {
-      updates.respondForMeChannelIds =
-        args.respondForMeChannelIds.filter(Boolean)
+      updates.respondForMeChannelIds = normalizeChannelIds(
+        args.respondForMeChannelIds
+      )
+    }
+    if (args.feedbackIgnoredChannelIds !== undefined) {
+      updates.feedbackIgnoredChannelIds = normalizeChannelIds(
+        args.feedbackIgnoredChannelIds
+      )
     }
     // Legacy support
     if (

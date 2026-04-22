@@ -20,8 +20,8 @@ import {
 import { classifyRunResult, recordRunDirect } from "./moduleRuns"
 
 const FEEDBACK_WINDOW_LIMIT = 100
-const FEEDBACK_CONTEXT_LIMIT = 10
-const RELEVANT_MESSAGE_LIMIT = 10
+const FEEDBACK_CONTEXT_LIMIT = 25
+const RELEVANT_MESSAGE_LIMIT = 25
 const TASK_CONTEXT_FETCH_LIMIT = 100
 const EXISTING_TASK_CONTEXT_LIMIT = 12
 const FEEDBACK_PROCESSING_DEBOUNCE_MS = 8_000
@@ -135,6 +135,7 @@ type FeedbackWindow = {
     lastProcessedMessageId: string | null
     lastProcessedMessageCreatedAt: number | null
     additionalContext: string | null
+    feedbackIgnoredChannelIds: string[]
   }
   messages: FeedbackMessage[]
 }
@@ -498,6 +499,28 @@ function parseDiscordPermalink(url: string | null) {
   }
 }
 
+function isIgnoredDiscordMessage(
+  message: Pick<
+    FeedbackMessage,
+    "channelId" | "parentChannelId" | "forumChannelId"
+  >,
+  ignoredChannelIds: Set<string>
+) {
+  return (
+    ignoredChannelIds.has(message.channelId) ||
+    (message.parentChannelId
+      ? ignoredChannelIds.has(message.parentChannelId)
+      : false) ||
+    (message.forumChannelId
+      ? ignoredChannelIds.has(message.forumChannelId)
+      : false)
+  )
+}
+
+function isStructuredOutputSchemaError(error: unknown) {
+  return error instanceof Error && error.name === "AI_NoObjectGeneratedError"
+}
+
 function selectRelevantTasks(
   tasks: TaskSnapshot[],
   relevantMessages: FeedbackMessage[]
@@ -697,6 +720,7 @@ async function loadPendingFeedbackWindow(
       lastProcessedMessageCreatedAt:
         integration.lastProcessedMessageCreatedAt ?? null,
       additionalContext: integration.additionalContext ?? null,
+      feedbackIgnoredChannelIds: integration.feedbackIgnoredChannelIds ?? [],
     },
     messages: messages.reverse().map((message) => ({
       _id: message._id,
@@ -1013,12 +1037,28 @@ export const processFeedbackWindow = internalAction({
         return { skipped: true, reason: "events_exhausted" }
       }
 
-      const pendingMessages = feedbackWindow.messages.filter((message) =>
+      const pendingMessagesBeforeIgnore = feedbackWindow.messages.filter((message) =>
         isMessageAfterCursor(message, {
           messageId: feedbackWindow.integration.lastProcessedMessageId,
           messageCreatedAt:
             feedbackWindow.integration.lastProcessedMessageCreatedAt,
         })
+      )
+
+      if (pendingMessagesBeforeIgnore.length === 0) {
+        return { skipped: true, reason: "no_pending_messages" }
+      }
+
+      const latestPendingMessage = pendingMessagesBeforeIgnore.at(-1)
+      if (!latestPendingMessage) {
+        return { skipped: true, reason: "missing_latest_pending_message" }
+      }
+
+      const ignoredChannelIds = new Set(
+        feedbackWindow.integration.feedbackIgnoredChannelIds
+      )
+      const pendingMessages = pendingMessagesBeforeIgnore.filter(
+        (message) => !isIgnoredDiscordMessage(message, ignoredChannelIds)
       )
       const pendingNonAdminMessages = pendingMessages.filter(
         (message) => !message.authorHasAdminPrivileges
@@ -1029,17 +1069,25 @@ export const processFeedbackWindow = internalAction({
         workspaceId: feedbackWindow.integration.workspaceId,
         totalMessages: feedbackWindow.messages.length,
         pendingMessages: pendingMessages.length,
+        ignoredMessages:
+          pendingMessagesBeforeIgnore.length - pendingMessages.length,
         pendingAdminMessages:
           pendingMessages.length - pendingNonAdminMessages.length,
       })
 
       if (pendingMessages.length === 0) {
-        return { skipped: true, reason: "no_pending_messages" }
-      }
+        await ctx.runMutation(markFeedbackWindowProcessedInternalMutation, {
+          integrationId: args.integrationId,
+          lastProcessedMessageId: latestPendingMessage.messageId,
+          lastProcessedMessageCreatedAt: latestPendingMessage.messageCreatedAt,
+        })
 
-      const latestPendingMessage = pendingMessages.at(-1)
-      if (!latestPendingMessage) {
-        return { skipped: true, reason: "missing_latest_pending_message" }
+        return {
+          skipped: false,
+          createdTaskCount: 0,
+          updatedTaskCount: 0,
+          reason: "ignored_channels_only",
+        }
       }
 
       if (pendingNonAdminMessages.length === 0) {
@@ -1058,6 +1106,9 @@ export const processFeedbackWindow = internalAction({
       }
 
       const contextMessages = feedbackWindow.messages
+        .filter(
+          (message) => !isIgnoredDiscordMessage(message, ignoredChannelIds)
+        )
         .filter((message) => !message.authorHasAdminPrivileges)
         .slice(-FEEDBACK_CONTEXT_LIMIT)
       const pendingMessageIds = new Set<string>(
@@ -1252,73 +1303,95 @@ export const processFeedbackWindow = internalAction({
       }
 
       const extractorStart = Date.now()
-      const extractorResult = await generateText({
-        model: AI_MODELS.feedbackExtractor,
-        output: Output.object({ schema: extractedFeedbackTasksSchema }),
-        system: extractorSystemParts.join(" "),
-        prompt: [
-          `Classifier summary: ${classification.summary ?? classification.reason}`,
-          "Likely matching existing tasks:",
-          formatExistingTasks(relevantTasks),
-          "Relevant feedback messages:",
-          relevantMessagesForExtraction
-            .map((message) =>
-              [
-                `- ${new Date(message.messageCreatedAt).toISOString()}`,
-                message.forumTitle
-                  ? `forum=${truncateText(message.forumTitle, MAX_LOCATION_TEXT_CHARS)}`
-                  : null,
-                message.threadTitle
-                  ? `thread=${truncateText(message.threadTitle, MAX_LOCATION_TEXT_CHARS)}`
-                  : null,
-                message.parentChannelName
-                  ? `parent_channel=${truncateText(message.parentChannelName, MAX_LOCATION_TEXT_CHARS)}`
-                  : null,
-                message.channelName
-                  ? `channel=${truncateText(message.channelName, MAX_LOCATION_TEXT_CHARS)}`
-                  : null,
-                `${message.authorUsername}: ${
-                  truncateText(message.content, MAX_MESSAGE_CONTENT_CHARS) ||
-                  (message.threadTitle
-                    ? "(no body text; rely on the thread title)"
-                    : "(no body text)")
-                }`,
-              ]
-                .filter(Boolean)
-                .join(" | ")
-            )
-            .join("\n"),
-        ].join("\n\n"),
-      })
-      const extractorDurationMs = Date.now() - extractorStart
-      const extracted = extractorResult.output
+      let extractorDurationMs = 0
+      let extractorUsage:
+        | {
+            inputTokens?: number
+            outputTokens?: number
+          }
+        | undefined
+      let extracted: z.infer<typeof extractedFeedbackTasksSchema> | null = null
 
-      await trackLLMGeneration({
-        distinctId: feedbackWindow.integration.workspaceId,
-        model: AI_MODEL_IDS.feedbackExtractor,
-        feature: "discord_feedback_extractor",
-        inputTokens: extractorResult.usage?.inputTokens,
-        outputTokens: extractorResult.usage?.outputTokens,
-        durationMs: extractorDurationMs,
-        success: true,
-        metadata: {
-          integration_id: args.integrationId,
-          relevant_message_count: relevantMessagesForExtraction.length,
-          existing_task_count: relevantTasks.length,
-        },
-      })
+      try {
+        const extractorResult = await generateText({
+          model: AI_MODELS.feedbackExtractor,
+          output: Output.object({ schema: extractedFeedbackTasksSchema }),
+          system: extractorSystemParts.join(" "),
+          prompt: [
+            `Classifier summary: ${classification.summary ?? classification.reason}`,
+            "Likely matching existing tasks:",
+            formatExistingTasks(relevantTasks),
+            "Relevant feedback messages:",
+            relevantMessagesForExtraction
+              .map((message) =>
+                [
+                  `- ${new Date(message.messageCreatedAt).toISOString()}`,
+                  message.forumTitle
+                    ? `forum=${truncateText(message.forumTitle, MAX_LOCATION_TEXT_CHARS)}`
+                    : null,
+                  message.threadTitle
+                    ? `thread=${truncateText(message.threadTitle, MAX_LOCATION_TEXT_CHARS)}`
+                    : null,
+                  message.parentChannelName
+                    ? `parent_channel=${truncateText(message.parentChannelName, MAX_LOCATION_TEXT_CHARS)}`
+                    : null,
+                  message.channelName
+                    ? `channel=${truncateText(message.channelName, MAX_LOCATION_TEXT_CHARS)}`
+                    : null,
+                  `${message.authorUsername}: ${
+                    truncateText(message.content, MAX_MESSAGE_CONTENT_CHARS) ||
+                    (message.threadTitle
+                      ? "(no body text; rely on the thread title)"
+                      : "(no body text)")
+                  }`,
+                ]
+                  .filter(Boolean)
+                  .join(" | ")
+              )
+              .join("\n"),
+          ].join("\n\n"),
+        })
+        extractorDurationMs = Date.now() - extractorStart
+        extractorUsage = extractorResult.usage
+        extracted = extractorResult.output
 
-      await safeTrackAiUsage({
-        workspaceId: feedbackWindow.integration.workspaceId,
-        workspaceName: feedbackWindow.integration.workspaceName,
-        model: AI_MODEL_IDS.feedbackExtractor,
-        inputTokens: extractorResult.usage?.inputTokens,
-        outputTokens: extractorResult.usage?.outputTokens,
-        properties: {
+        await trackLLMGeneration({
+          distinctId: feedbackWindow.integration.workspaceId,
+          model: AI_MODEL_IDS.feedbackExtractor,
           feature: "discord_feedback_extractor",
-          integration_id: args.integrationId,
-        },
-      })
+          inputTokens: extractorResult.usage?.inputTokens,
+          outputTokens: extractorResult.usage?.outputTokens,
+          durationMs: extractorDurationMs,
+          success: true,
+          metadata: {
+            integration_id: args.integrationId,
+            relevant_message_count: relevantMessagesForExtraction.length,
+            existing_task_count: relevantTasks.length,
+          },
+        })
+
+        await safeTrackAiUsage({
+          workspaceId: feedbackWindow.integration.workspaceId,
+          workspaceName: feedbackWindow.integration.workspaceName,
+          model: AI_MODEL_IDS.feedbackExtractor,
+          inputTokens: extractorResult.usage?.inputTokens,
+          outputTokens: extractorResult.usage?.outputTokens,
+          properties: {
+            feature: "discord_feedback_extractor",
+            integration_id: args.integrationId,
+          },
+        })
+      } catch (error) {
+        extractorDurationMs = Date.now() - extractorStart
+        if (!isStructuredOutputSchemaError(error)) {
+          throw error
+        }
+
+        logError("Discord feedback extractor schema mismatch", error, {
+          integrationId: args.integrationId,
+          workspaceId: feedbackWindow.integration.workspaceId,
+        })
+      }
 
       const totalAiCost =
         getAiCostForTokens({
@@ -1328,8 +1401,8 @@ export const processFeedbackWindow = internalAction({
         }) +
         getAiCostForTokens({
           model: AI_MODEL_IDS.feedbackExtractor,
-          inputTokens: extractorResult.usage?.inputTokens,
-          outputTokens: extractorResult.usage?.outputTokens,
+          inputTokens: extractorUsage?.inputTokens,
+          outputTokens: extractorUsage?.outputTokens,
         })
 
       if (!extracted) {

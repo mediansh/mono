@@ -3,14 +3,13 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react"
 import { useMutation, useQuery } from "convex/react"
 import { motion } from "motion/react"
-import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  InformationCircleIcon,
-  Link01Icon,
-  Unlink01Icon,
-  SentIcon,
-  TextIcon,
-} from "@hugeicons/core-free-icons"
+  EyeSlash,
+  LinkSimple,
+  LinkBreak,
+  PaperPlaneTilt,
+  TextT,
+} from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
@@ -27,6 +26,10 @@ import { useWorkspace } from "@/components/workspace-provider"
 import { SettingsAccessState } from "@/components/settings-access-state"
 import { updateOptimisticQuery } from "@/lib/convex-optimistic"
 import { hasWorkspaceAdminPermission } from "@/lib/workspace-permissions"
+import {
+  ChannelMultiSelect,
+  type IntegrationChannelOption,
+} from "@/components/channel-multi-select"
 import {
   trackIntegrationConnected,
   trackIntegrationDisconnected,
@@ -135,6 +138,9 @@ export function DiscordPairingPanel() {
                 : current.integration.respondForMeMode),
             respondForMeChannelIds:
               args.respondForMeChannelIds ?? current.integration.respondForMeChannelIds,
+            feedbackIgnoredChannelIds:
+              args.feedbackIgnoredChannelIds ??
+              current.integration.feedbackIgnoredChannelIds,
           },
         }
       }
@@ -145,7 +151,7 @@ export function DiscordPairingPanel() {
   const [additionalContext, setAdditionalContext] = useState("")
   const [respondForMeMode, setRespondForMeMode] = useState<"off" | "all" | "specific">("off")
   const [respondChannelIds, setRespondChannelIds] = useState<string[]>([])
-  const [channelSearch, setChannelSearch] = useState("")
+  const [feedbackIgnoredChannelIds, setFeedbackIgnoredChannelIds] = useState<string[]>([])
   const [settingsInitialized, setSettingsInitialized] = useState(false)
   const contextSaveTimer = useRef<NodeJS.Timeout | null>(null)
 
@@ -157,6 +163,7 @@ export function DiscordPairingPanel() {
       setAdditionalContext(integration.additionalContext)
       setRespondForMeMode(integration.respondForMeMode)
       setRespondChannelIds(integration.respondForMeChannelIds)
+      setFeedbackIgnoredChannelIds(integration.feedbackIgnoredChannelIds)
       setSettingsInitialized(true)
     }
     if (!integration && settingsInitialized) {
@@ -200,24 +207,7 @@ export function DiscordPairingPanel() {
     }
   }
 
-  const guildChannels = integration?.guildChannels ?? []
-
-  const filteredChannels = channelSearch
-    ? guildChannels.filter((ch) =>
-        ch.name.toLowerCase().includes(channelSearch.toLowerCase())
-      )
-    : guildChannels
-
-  // Group channels by category
-  const channelsByCategory = filteredChannels.reduce<
-    Map<string, typeof filteredChannels>
-  >((acc, ch) => {
-    const key = ch.parentName ?? ""
-    const group = acc.get(key) ?? []
-    group.push(ch)
-    acc.set(key, group)
-    return acc
-  }, new Map())
+  const guildChannels: IntegrationChannelOption[] = integration?.guildChannels ?? []
 
   function handleToggleChannel(channelId: string) {
     const isSelected = respondChannelIds.includes(channelId)
@@ -229,6 +219,23 @@ export function DiscordPairingPanel() {
     void updateSettings({
       workspaceId: currentWorkspace._id,
       respondForMeChannelIds: updated,
+    })
+  }
+
+  function handleToggleIgnoredChannel(channelId: string) {
+    const isSelected = feedbackIgnoredChannelIds.includes(channelId)
+    const updated = isSelected
+      ? feedbackIgnoredChannelIds.filter((id) => id !== channelId)
+      : [...feedbackIgnoredChannelIds, channelId]
+    setFeedbackIgnoredChannelIds(updated)
+    if (!currentWorkspace) return
+    void updateSettings({
+      workspaceId: currentWorkspace._id,
+      feedbackIgnoredChannelIds: updated,
+    })
+    trackIntegrationSettingsChanged({
+      platform: "discord",
+      setting: "ignored_channels",
     })
   }
 
@@ -329,7 +336,7 @@ export function DiscordPairingPanel() {
                 size="sm"
                 onClick={() => setDisconnectOpen(true)}
               >
-                <HugeiconsIcon icon={Unlink01Icon} size={13} strokeWidth={1.8} />
+                <LinkBreak size={13} />
                 Disconnect
               </Button>
             </div>
@@ -341,7 +348,7 @@ export function DiscordPairingPanel() {
             className="rounded-[4px] ring-1 ring-border bg-card"
           >
             <div className="flex items-center gap-3 border-b border-border px-3.5 py-2.5">
-              <HugeiconsIcon icon={TextIcon} size={15} strokeWidth={1.8} className="text-muted-foreground" />
+              <TextT size={15} className="text-muted-foreground" />
               <div className="flex-1">
                 <h3 className="text-[13px] font-medium">Additional context</h3>
                 <p className="text-[11px] text-muted-foreground">
@@ -369,7 +376,36 @@ export function DiscordPairingPanel() {
             className="rounded-[4px] ring-1 ring-border bg-card"
           >
             <div className="flex items-center gap-3 border-b border-border px-3.5 py-2.5">
-              <HugeiconsIcon icon={SentIcon} size={15} strokeWidth={1.8} className="text-muted-foreground" />
+              <EyeSlash size={15} className="text-muted-foreground" />
+              <div className="flex-1">
+                <h3 className="text-[13px] font-medium">Ignored channels</h3>
+                <p className="text-[11px] text-muted-foreground">
+                  Skip feedback processing for selected Discord channels, including forum parents.
+                </p>
+              </div>
+            </div>
+
+            <div className="border-t-0">
+              <ChannelMultiSelect
+                channels={guildChannels}
+                selectedChannelIds={feedbackIgnoredChannelIds}
+                onToggleChannel={handleToggleIgnoredChannel}
+                loadingLabel="Syncing channels from Discord..."
+                emptySelectionLabel="Select channels that Median should ignore during feedback processing."
+                selectedCountLabel={(count) =>
+                  `${count} ignored channel${count !== 1 ? "s" : ""} selected`
+                }
+                groupByParent
+              />
+            </div>
+          </motion.div>
+
+          <motion.div
+            variants={fadeUp}
+            className="rounded-[4px] ring-1 ring-border bg-card"
+          >
+            <div className="flex items-center gap-3 border-b border-border px-3.5 py-2.5">
+              <PaperPlaneTilt size={15} className="text-muted-foreground" />
               <div className="flex-1">
                 <h3 className="text-[13px] font-medium">Respond for me</h3>
                 <p className="text-[11px] text-muted-foreground">
@@ -407,117 +443,18 @@ export function DiscordPairingPanel() {
             </div>
 
             {respondForMeMode === "specific" ? (
-              <div
-                className="border-t border-border"
-              >
-                {guildChannels.length === 0 ? (
-                  <div className="px-3.5 py-3">
-                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground/60">
-                      <svg className="size-3.5 animate-spin" viewBox="0 0 16 16" fill="none">
-                        <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="2" opacity="0.25" />
-                        <path d="M14 8a6 6 0 0 0-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                      </svg>
-                      Syncing channels from Discord...
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col">
-                    {/* Filter input */}
-                    {guildChannels.length > 8 ? (
-                      <div className="px-3.5 pt-2.5 pb-1">
-                        <Input
-                          value={channelSearch}
-                          onChange={(event) => setChannelSearch(event.target.value)}
-                          placeholder="Filter channels..."
-                          className="h-7 text-xs"
-                        />
-                      </div>
-                    ) : null}
-
-                    {/* Channel list */}
-                    <div className="max-h-56 overflow-y-auto px-1.5 py-1.5">
-                      {filteredChannels.length === 0 ? (
-                        <p className="px-3 py-2 text-[11px] text-muted-foreground/50">
-                          No channels match "{channelSearch}"
-                        </p>
-                      ) : (
-                        Array.from(channelsByCategory.entries()).map(
-                          ([category, channels]) => (
-                            <div key={category || "__uncategorized"}>
-                              {category ? (
-                                <div className="mt-1.5 mb-0.5 px-2.5 pt-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40 first:mt-0">
-                                  {category}
-                                </div>
-                              ) : null}
-                              {channels.map((ch) => {
-                                const isSelected = respondChannelIds.includes(ch.id)
-                                return (
-                                  <button
-                                    key={ch.id}
-                                    type="button"
-                                    onClick={() => handleToggleChannel(ch.id)}
-                                    className="flex w-full items-center gap-2.5 rounded-sm px-2.5 py-1.5 text-left text-[12px] transition-colors hover:bg-muted/50"
-                                  >
-                                    <span
-                                      className={`flex size-3.5 shrink-0 items-center justify-center rounded-[3px] border transition-colors ${
-                                        isSelected
-                                          ? "border-foreground bg-foreground"
-                                          : "border-muted-foreground/30"
-                                      }`}
-                                    >
-                                      {isSelected ? (
-                                        <svg
-                                          width="10"
-                                          height="10"
-                                          viewBox="0 0 10 10"
-                                          fill="none"
-                                          className="text-background"
-                                        >
-                                          <path
-                                            d="M2.5 5L4.5 7L7.5 3"
-                                            stroke="currentColor"
-                                            strokeWidth="1.5"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                          />
-                                        </svg>
-                                      ) : null}
-                                    </span>
-                                    <span className="text-muted-foreground/50">#</span>
-                                    <span
-                                      className={
-                                        isSelected
-                                          ? "text-foreground"
-                                          : "text-muted-foreground"
-                                      }
-                                    >
-                                      {ch.name}
-                                    </span>
-                                  </button>
-                                )
-                              })}
-                            </div>
-                          )
-                        )
-                      )}
-                    </div>
-
-                    {/* Selected count footer */}
-                    {respondChannelIds.length > 0 ? (
-                      <div className="border-t border-border px-3.5 py-1.5">
-                        <p className="text-[11px] text-muted-foreground/60">
-                          {respondChannelIds.length} channel{respondChannelIds.length !== 1 ? "s" : ""} selected
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="border-t border-border px-3.5 py-1.5">
-                        <p className="text-[11px] text-muted-foreground/60">
-                          Select the channels where Median should auto-reply.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
+              <div className="border-t border-border">
+                <ChannelMultiSelect
+                  channels={guildChannels}
+                  selectedChannelIds={respondChannelIds}
+                  onToggleChannel={handleToggleChannel}
+                  loadingLabel="Syncing channels from Discord..."
+                  emptySelectionLabel="Select the channels where Median should auto-reply."
+                  selectedCountLabel={(count) =>
+                    `${count} channel${count !== 1 ? "s" : ""} selected`
+                  }
+                  groupByParent
+                />
               </div>
             ) : null}
           </motion.div>
@@ -600,7 +537,7 @@ export function DiscordPairingPanel() {
                 disabled={isPairing}
                 className="h-9 bg-[#5865F2] px-4 text-white hover:bg-[#5865F2]/90"
               >
-                <HugeiconsIcon icon={Link01Icon} size={15} strokeWidth={1.8} />
+                <LinkSimple size={15} />
                 {isPairing ? "Pairing..." : "Pair"}
               </Button>
             </div>
