@@ -126,6 +126,12 @@ function timingSafeEqualString(left: string, right: string) {
   return mismatch === 0
 }
 
+function normalizeChannelIds(channelIds: string[]) {
+  return Array.from(
+    new Set(channelIds.map((channelId) => channelId.trim()).filter(Boolean))
+  )
+}
+
 // ── Slack request verification ──────────────────────────
 
 async function verifySlackRequest(
@@ -203,6 +209,7 @@ export const getWorkspaceSlackIntegration = query({
           integration.respondForMeMode ??
           (integration.respondForMe ? "all" : "off"),
         respondForMeChannelIds: integration.respondForMeChannelIds ?? [],
+        feedbackIgnoredChannelIds: integration.feedbackIgnoredChannelIds ?? [],
         teamChannels: integration.teamChannels ?? [],
       },
     }
@@ -513,6 +520,7 @@ export const updateSlackIntegrationSettings = mutation({
       v.union(v.literal("off"), v.literal("all"), v.literal("specific"))
     ),
     respondForMeChannelIds: v.optional(v.array(v.string())),
+    feedbackIgnoredChannelIds: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     await requireWorkspaceAdminAccess(ctx, args.workspaceId)
@@ -544,8 +552,14 @@ export const updateSlackIntegrationSettings = mutation({
       updates.respondForMe = args.respondForMeMode !== "off"
     }
     if (args.respondForMeChannelIds !== undefined) {
-      updates.respondForMeChannelIds =
-        args.respondForMeChannelIds.filter(Boolean)
+      updates.respondForMeChannelIds = normalizeChannelIds(
+        args.respondForMeChannelIds
+      )
+    }
+    if (args.feedbackIgnoredChannelIds !== undefined) {
+      updates.feedbackIgnoredChannelIds = normalizeChannelIds(
+        args.feedbackIgnoredChannelIds
+      )
     }
     // Legacy support
     if (
@@ -690,6 +704,12 @@ export const recordInboundMessage = internalMutation({
     if (
       integration.feedbackChannelId &&
       args.channelId !== integration.feedbackChannelId
+    ) {
+      return { accepted: false, duplicate: false, integration: null } as const
+    }
+
+    if (
+      (integration.feedbackIgnoredChannelIds ?? []).includes(args.channelId)
     ) {
       return { accepted: false, duplicate: false, integration: null } as const
     }

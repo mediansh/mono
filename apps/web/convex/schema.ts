@@ -96,6 +96,7 @@ export default defineSchema({
       v.union(v.literal("off"), v.literal("all"), v.literal("specific"))
     ),
     respondForMeChannelIds: v.optional(v.array(v.string())),
+    feedbackIgnoredChannelIds: v.optional(v.array(v.string())),
     teamChannels: v.optional(
       v.array(
         v.object({
@@ -211,6 +212,7 @@ export default defineSchema({
       v.union(v.literal("off"), v.literal("all"), v.literal("specific"))
     ),
     respondForMeChannelIds: v.optional(v.array(v.string())),
+    feedbackIgnoredChannelIds: v.optional(v.array(v.string())),
     guildChannels: v.optional(
       v.array(
         v.object({
