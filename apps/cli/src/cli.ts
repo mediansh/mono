@@ -17,6 +17,7 @@ cli = registerSkillPlugin(cli)
 
 // Register commands
 cli = cli
+  .command("login", (cmd) => registerSetupCommand(cmd))
   .command("setup", (cmd) => registerSetupCommand(cmd))
   .command("tasks", (cmd) => registerTasksCommand(cmd))
   .command("create", (cmd) => registerCreateCommand(cmd))
