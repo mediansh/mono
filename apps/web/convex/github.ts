@@ -805,13 +805,9 @@ function normalizeRepositorySelection(
   defaultRepoId?: string
 ): RepositorySelection {
   const validRepoIds = new Set(repositories.map((repository) => repository.id))
-  const uniqueSelectedRepoIds = Array.from(
+  const nextSelectedRepoIds = Array.from(
     new Set((selectedRepoIds ?? []).filter((repoId) => validRepoIds.has(repoId)))
   )
-  const nextSelectedRepoIds =
-    uniqueSelectedRepoIds.length > 0
-      ? uniqueSelectedRepoIds
-      : repositories.map((repository) => repository.id)
 
   return {
     selectedRepoIds: nextSelectedRepoIds,
@@ -2355,8 +2351,8 @@ export const githubInstallCallback = httpAction(async (ctx, request) => {
         accountLogin: installation.accountLogin,
         accountType: installation.accountType,
         repositories,
-        selectedRepoIds: repositories.map((repository) => repository.id),
-        defaultRepoId: repositories[0]?.id,
+        selectedRepoIds: [],
+        defaultRepoId: undefined,
         issueSyncEnabled: issueSyncEnabledByDefault,
         prAutomationEnabled: true,
         commitAutomationEnabled: true,

@@ -197,6 +197,21 @@ export function GitHubIntegrationPanel() {
     })
   }
 
+  function handleToggleAllRepos() {
+    if (repositories.length === 0) return
+    const allSelected = selectedRepoIds.length === repositories.length
+    if (allSelected) {
+      setSelectedRepoIds([])
+      setDefaultRepoId("")
+    } else {
+      const allIds = repositories.map((repository) => repository.id)
+      setSelectedRepoIds(allIds)
+      if (!defaultRepoId) {
+        setDefaultRepoId(allIds[0] ?? "")
+      }
+    }
+  }
+
   function handleMakeDefault(repoId: string) {
     setDefaultRepoId(repoId)
     if (!selectedRepoIds.includes(repoId)) {
@@ -409,6 +424,22 @@ export function GitHubIntegrationPanel() {
               Select which repositories sync with Median. The default repo is where new issues are created.
             </p>
           </div>
+
+          {repositories.length > 0 && (
+            <div className="flex items-center justify-between border-b border-border/50 bg-muted/20 px-3.5 py-2">
+              <span className="text-[11px] text-muted-foreground">
+                {selectedRepoIds.length} of {repositories.length} selected
+              </span>
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={handleToggleAllRepos}
+                className="text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {selectedRepoIds.length === repositories.length ? "Deselect all" : "Select all"}
+              </button>
+            </div>
+          )}
 
           <div className="max-h-64 overflow-y-auto">
             {repositories.map((repository) => {
