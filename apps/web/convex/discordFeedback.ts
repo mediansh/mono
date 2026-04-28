@@ -1198,11 +1198,7 @@ export const processFeedbackWindow = internalAction({
         })
       }
 
-      if (
-        !classification.isProductFeedback ||
-        (!classification.needsTaskAction && !forcedTaskAction) ||
-        (classification.relevantMessageIds.length === 0 && !forcedTaskAction)
-      ) {
+      if (!classification.isProductFeedback) {
         // Log AI cost even when no actionable feedback is found
         const classifierCost = getAiCostForTokens({
           model: AI_MODEL_IDS.feedbackClassifier,
@@ -1411,30 +1407,11 @@ export const processFeedbackWindow = internalAction({
         })
 
       if (!extracted) {
-        // Log AI cost even when extraction fails
-        if (totalAiCost > 0) {
-          await ctx.runMutation(internal.logs.recordWorkspaceLog, {
-            workspaceId: feedbackWindow.integration.workspaceId,
-            category: "tasks",
-            type: "feedback_processed",
-            message: "Processed Discord messages (no actionable feedback)",
-            source: "discord",
-            cost: totalAiCost,
-          })
-        }
-
-        await ctx.runMutation(markFeedbackWindowProcessedInternalMutation, {
+        logInfo("Discord feedback extraction produced no structured output", {
           integrationId: args.integrationId,
-          lastProcessedMessageId: latestPendingMessage.messageId,
-          lastProcessedMessageCreatedAt: latestPendingMessage.messageCreatedAt,
         })
 
-        return {
-          skipped: false,
-          createdTaskCount: 0,
-          updatedTaskCount: 0,
-          reason: "no_structured_output",
-        }
+        extracted = { actions: [] }
       }
 
       let createdTaskCount = 0
@@ -1444,8 +1421,7 @@ export const processFeedbackWindow = internalAction({
         0,
         MAX_EXTRACTED_TASK_ACTIONS
       )
-      const actionableClassification =
-        classification.needsTaskAction || forcedTaskAction
+      const actionableClassification = classification.isProductFeedback
       const fallbackMessages =
         relevantMessagesForExtraction.length > 0
           ? relevantMessagesForExtraction
