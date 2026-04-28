@@ -27,6 +27,7 @@ const FEEDBACK_PROCESSING_RETRY_DELAY_MS = 5_000
 const DEFAULT_WORKPOOL_PARALLELISM = 2
 const MAX_EXTRACTED_TASK_ACTIONS = 5
 const MAX_EXTRACTED_TASK_LABELS = 5
+const MAX_FALLBACK_POST_CHARS = 280
 
 type FeedbackPost = {
   _id: Id<"xPosts">
@@ -262,6 +263,38 @@ function formatCreatedAtLabel(timestamp: number) {
     month: "short",
     day: "numeric",
   }).format(timestamp)
+}
+
+function truncateText(text: string | null | undefined, maxChars: number) {
+  const value = text?.trim() ?? ""
+  if (value.length <= maxChars) {
+    return value
+  }
+
+  return `${value.slice(0, Math.max(0, maxChars - 3)).trim()}...`
+}
+
+function getFallbackFeedbackText(post: FeedbackPost) {
+  return truncateText(post.content, MAX_FALLBACK_POST_CHARS) || "X feedback"
+}
+
+function buildFallbackTaskTitle(posts: FeedbackPost[]) {
+  const latestPost = posts[posts.length - 1]
+  const detail = latestPost ? getFallbackFeedbackText(latestPost) : "X feedback"
+
+  return truncateText(`Review feedback: ${detail}`, 140)
+}
+
+function buildFallbackTaskDescription(posts: FeedbackPost[], summary: string) {
+  const excerpts = posts
+    .slice(-3)
+    .map((post) => `- @${post.authorUsername}: ${getFallbackFeedbackText(post)}`)
+    .join("\n")
+  const description = [`Summary: ${summary}`, "Recent posts:", excerpts]
+    .filter(Boolean)
+    .join("\n")
+
+  return truncateText(description, 2000) || undefined
 }
 
 function extractJsonObject(text: string) {
@@ -999,6 +1032,65 @@ export const processFeedbackWindow = internalAction({
 
         createdTaskCount = result.createdTaskIds.length
         updatedTaskCount = result.updatedTaskIds.length
+      }
+
+      if (createdTaskCount === 0 && updatedTaskCount === 0) {
+        const authors = Array.from(
+          new Set(relevantPosts.map((post) => `@${post.authorUsername}`))
+        )
+        const sourceUrl = relevantPosts[relevantPosts.length - 1]?.permalink
+        const createdAtLabel = formatCreatedAtLabel(
+          latestPendingPost.postCreatedAt
+        )
+
+        logInfo("Applying fallback X task create for product feedback", {
+          integrationId: args.integrationId,
+        })
+
+        const fallbackResult = await ctx.runMutation(
+          createTasksFromFeedbackInternalMutation,
+          {
+            workspaceId: feedbackWindow.integration.workspaceId,
+            operations: [
+              {
+                action: "create" as const,
+                task: {
+                  title: buildFallbackTaskTitle(relevantPosts),
+                  description: buildFallbackTaskDescription(
+                    relevantPosts,
+                    classification.summary ?? classification.reason
+                  ),
+                  status: "requests" as const,
+                  priority: "medium" as const,
+                  labels: [],
+                  source: sourceUrl
+                    ? {
+                        platform: "x" as const,
+                        url: sourceUrl,
+                        author: authors.join(", "),
+                      }
+                    : undefined,
+                  createdAtLabel,
+                },
+              },
+            ],
+            cost: totalAiCost > 0 ? totalAiCost : undefined,
+          }
+        )
+
+        createdTaskCount += fallbackResult.createdTaskIds.length
+        updatedTaskCount += fallbackResult.updatedTaskIds.length
+      }
+
+      if (createdTaskCount === 0 && updatedTaskCount === 0 && totalAiCost > 0) {
+        await ctx.runMutation(internal.logs.recordWorkspaceLog, {
+          workspaceId: feedbackWindow.integration.workspaceId,
+          category: "tasks",
+          type: "feedback_processed",
+          message: "Processed X posts (no actionable feedback)",
+          source: "x",
+          cost: totalAiCost,
+        })
       }
 
       await ctx.runMutation(markFeedbackWindowProcessedInternalMutation, {

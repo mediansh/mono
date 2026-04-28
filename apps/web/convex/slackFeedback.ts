@@ -27,6 +27,7 @@ const FEEDBACK_PROCESSING_RETRY_DELAY_MS = 5_000
 const DEFAULT_WORKPOOL_PARALLELISM = 2
 const MAX_EXTRACTED_TASK_ACTIONS = 5
 const MAX_EXTRACTED_TASK_LABELS = 5
+const MAX_FALLBACK_MESSAGE_CHARS = 280
 
 type FeedbackMessage = {
   _id: Id<"slackMessages">
@@ -254,6 +255,50 @@ function formatCreatedAtLabel(timestamp: number) {
     month: "short",
     day: "numeric",
   }).format(timestamp)
+}
+
+function truncateText(text: string | null | undefined, maxChars: number) {
+  const value = text?.trim() ?? ""
+  if (value.length <= maxChars) {
+    return value
+  }
+
+  return `${value.slice(0, Math.max(0, maxChars - 3)).trim()}...`
+}
+
+function getFallbackFeedbackText(message: FeedbackMessage) {
+  return (
+    truncateText(message.content, MAX_FALLBACK_MESSAGE_CHARS) ||
+    message.channelName ||
+    "Slack feedback"
+  )
+}
+
+function buildFallbackTaskTitle(messages: FeedbackMessage[]) {
+  const latestMessage = messages[messages.length - 1]
+  const detail = latestMessage
+    ? getFallbackFeedbackText(latestMessage)
+    : "Slack feedback"
+
+  return truncateText(`Review feedback: ${detail}`, 140)
+}
+
+function buildFallbackTaskDescription(
+  messages: FeedbackMessage[],
+  summary: string
+) {
+  const excerpts = messages
+    .slice(-3)
+    .map(
+      (message) =>
+        `- ${message.authorUsername}: ${getFallbackFeedbackText(message)}`
+    )
+    .join("\n")
+  const description = [`Summary: ${summary}`, "Recent messages:", excerpts]
+    .filter(Boolean)
+    .join("\n")
+
+  return truncateText(description, 2000) || undefined
 }
 
 function extractJsonObject(text: string) {
@@ -1051,7 +1096,58 @@ export const processFeedbackWindow = internalAction({
 
         createdTaskCount = result.createdTaskIds.length
         updatedTaskCount = result.updatedTaskIds.length
-      } else if (totalAiCost > 0) {
+      }
+
+      if (createdTaskCount === 0 && updatedTaskCount === 0) {
+        const authors = Array.from(
+          new Set(relevantMessages.map((message) => message.authorUsername))
+        )
+        const sourceUrl =
+          relevantMessages[relevantMessages.length - 1]?.permalink
+        const createdAtLabel = formatCreatedAtLabel(
+          latestPendingMessage.messageCreatedAt
+        )
+
+        logInfo("Applying fallback Slack task create for product feedback", {
+          integrationId: args.integrationId,
+        })
+
+        const fallbackResult = await ctx.runMutation(
+          createTasksFromSlackFeedbackInternalMutation,
+          {
+            workspaceId: feedbackWindow.integration.workspaceId,
+            operations: [
+              {
+                action: "create" as const,
+                task: {
+                  title: buildFallbackTaskTitle(relevantMessages),
+                  description: buildFallbackTaskDescription(
+                    relevantMessages,
+                    classification.summary ?? classification.reason
+                  ),
+                  status: "requests" as const,
+                  priority: "medium" as const,
+                  labels: [],
+                  source: sourceUrl
+                    ? {
+                        platform: "slack" as const,
+                        url: sourceUrl,
+                        author: authors.join(", "),
+                      }
+                    : undefined,
+                  createdAtLabel,
+                },
+              },
+            ],
+            cost: totalAiCost > 0 ? totalAiCost : undefined,
+          }
+        )
+
+        createdTaskCount += fallbackResult.createdTaskIds.length
+        updatedTaskCount += fallbackResult.updatedTaskIds.length
+      }
+
+      if (createdTaskCount === 0 && updatedTaskCount === 0 && totalAiCost > 0) {
         await ctx.runMutation(internal.logs.recordWorkspaceLog, {
           workspaceId: feedbackWindow.integration.workspaceId,
           category: "tasks",
