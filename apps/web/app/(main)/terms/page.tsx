@@ -19,8 +19,7 @@ export default function TermsPage() {
     >
       <LegalSection title="1. Agreement to These Terms">
         <p>
-          These Terms of Service form a binding agreement between you and Clovr
-          Labs Pty Ltd concerning your use of Median, including the website, web
+          These Terms of Service form a binding agreement between you and Median concerning your use of Median, including the website, web
           application, CLI, API, integrations, AI-assisted features, and related
           services.
         </p>
@@ -149,7 +148,7 @@ export default function TermsPage() {
       <LegalSection title="10. Intellectual Property">
         <p>
           Median, including its software, design, trademarks, branding,
-          documentation, and related materials, is owned by Clovr Labs Pty Ltd
+          documentation, and related materials, is owned by Median
           or its licensors and is protected by intellectual property laws. These
           terms grant you a limited, non-exclusive, non-transferable,
           non-sublicensable right to use Median during the applicable term,
@@ -204,7 +203,7 @@ export default function TermsPage() {
 
       <LegalSection title="14. Limitation of Liability">
         <p>
-          To the maximum extent permitted by law, Clovr Labs Pty Ltd and its
+          To the maximum extent permitted by law, Median and its
           directors, employees, contractors, affiliates, and licensors will not
           be liable for any indirect, incidental, special, consequential,
           exemplary, or punitive damages, or for any loss of profits, revenues,
@@ -225,7 +224,7 @@ export default function TermsPage() {
 
       <LegalSection title="15. Indemnity">
         <p>
-          You will defend, indemnify, and hold harmless Clovr Labs Pty Ltd and
+          You will defend, indemnify, and hold harmless Median and
           its affiliates, officers, directors, employees, and agents from and
           against claims, damages, losses, liabilities, costs, and expenses
           arising from or related to your Customer Data, your use of Median,
@@ -256,7 +255,7 @@ export default function TermsPage() {
       <LegalSection title="18. Contact">
         <p>
           Questions about these terms can be sent to{" "}
-          <LegalLink href="mailto:hello@clovrlabs.co">hello@clovrlabs.co</LegalLink>.
+          <LegalLink href="mailto:contact@median.sh">contact@median.sh</LegalLink>.
         </p>
       </LegalSection>
     </LegalPage>

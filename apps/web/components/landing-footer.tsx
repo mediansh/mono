@@ -1,18 +1,13 @@
 import Link from "next/link"
 import { Logo } from "@/components/logo"
-import { FaXTwitter, FaDiscord, FaYoutube, FaInstagram, FaRedditAlien, FaGithub, FaTiktok } from "react-icons/fa6"
+import { FaGithub, FaXTwitter } from "react-icons/fa6"
 import type { ReactNode } from "react"
 
 type FooterLink = { label: string; href: string; icon?: ReactNode }
 
 const socialLinks: FooterLink[] = [
-  { label: "X/Twitter", href: "https://x.com/mediandotsh", icon: <FaXTwitter size={16} /> },
+  { label: "X", href: "https://x.com/mediandotsh", icon: <FaXTwitter size={16} /> },
   { label: "GitHub", href: "https://github.com/mediansh", icon: <FaGithub size={16} /> },
-  { label: "Instagram", href: "https://www.instagram.com/clovrlabs/", icon: <FaInstagram size={16} /> },
-  { label: "TikTok", href: "https://www.tiktok.com/@clovrlabs", icon: <FaTiktok size={16} /> },
-  { label: "YouTube", href: "https://www.youtube.com/@clovrlabs", icon: <FaYoutube size={16} /> },
-  { label: "Discord", href: "https://discord.com/invite/P7MwTrgH5a", icon: <FaDiscord size={16} /> },
-  { label: "Reddit", href: "https://www.reddit.com/r/Clovr/", icon: <FaRedditAlien size={16} /> },
 ]
 
 const links: Record<string, FooterLink[]> = {
@@ -30,7 +25,7 @@ const links: Record<string, FooterLink[]> = {
   Company: [
     { label: "Sign in", href: "/sign-in" },
     { label: "Get started", href: "/sign-up" },
-    { label: "Contact us", href: "mailto:hello@clovrlabs.co" },
+    { label: "Contact us", href: "mailto:contact@median.sh" },
   ],
 }
 
@@ -76,7 +71,7 @@ export function LandingFooter() {
         {/* Bottom bar */}
         <div className="mt-12 flex flex-col items-center gap-3 border-t border-foreground/[0.06] pt-6 sm:flex-row sm:justify-between sm:gap-0">
           <p className="text-[10px] text-muted-foreground/50 sm:text-xs">
-            &copy; {new Date().getFullYear()} Clovr Labs Pty Ltd. All rights reserved.
+            &copy; {new Date().getFullYear()} Median. All rights reserved.
           </p>
           <div className="flex gap-4">
             <Link href="/terms" className="text-[10px] text-muted-foreground/50 transition-colors hover:text-muted-foreground sm:text-xs">
