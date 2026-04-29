@@ -15,16 +15,16 @@ export default function PrivacyPage() {
       title="Privacy Policy"
 
       lastUpdated={lastUpdated}
-      summary="This Privacy Policy explains how Clovr Labs Pty Ltd collects, uses, discloses, and protects personal information when you use Median, including the website, web application, integrations, API, CLI, AI-assisted features, and related support channels."
+      summary="This Privacy Policy explains how Median collects, uses, discloses, and protects personal information when you use Median, including the website, web application, integrations, API, CLI, AI-assisted features, and related support channels."
     >
       <LegalSection title="1. Who We Are">
         <p>
-          Median is operated by Clovr Labs Pty Ltd. In this policy, “Median,”
-          “we,” “us,” and “our” mean Clovr Labs Pty Ltd and the Median service.
+          Median is operated by Median. In this policy, “Median,”
+          “we,” “us,” and “our” mean Median.
         </p>
         <p>
           If you have privacy questions, requests, or complaints, contact{" "}
-          <LegalLink href="mailto:hello@clovrlabs.co">hello@clovrlabs.co</LegalLink>.
+          <LegalLink href="mailto:contact@median.sh">contact@median.sh</LegalLink>.
         </p>
       </LegalSection>
 
@@ -193,7 +193,7 @@ export default function PrivacyPage() {
           Our provider list may change as the service evolves. If you need
           confirmation of a current subprocessor for procurement or security
           review, contact{" "}
-          <LegalLink href="mailto:hello@clovrlabs.co">hello@clovrlabs.co</LegalLink>.
+          <LegalLink href="mailto:contact@median.sh">contact@median.sh</LegalLink>.
         </p>
       </LegalSection>
 
@@ -259,7 +259,7 @@ export default function PrivacyPage() {
           Median is not directed to children, and we do not intend for children
           under 16 to use the service. If you believe a child has provided us
           personal information, contact{" "}
-          <LegalLink href="mailto:hello@clovrlabs.co">hello@clovrlabs.co</LegalLink>{" "}
+          <LegalLink href="mailto:contact@median.sh">contact@median.sh</LegalLink>{" "}
           so we can review and take appropriate action.
         </p>
       </LegalSection>
@@ -277,7 +277,7 @@ export default function PrivacyPage() {
       <LegalSection title="16. Contact">
         <p>
           Privacy inquiries, data requests, and complaints can be sent to{" "}
-          <LegalLink href="mailto:hello@clovrlabs.co">hello@clovrlabs.co</LegalLink>.
+          <LegalLink href="mailto:contact@median.sh">contact@median.sh</LegalLink>.
         </p>
       </LegalSection>
     </LegalPage>
