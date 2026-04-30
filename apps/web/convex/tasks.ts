@@ -1,5 +1,6 @@
 import { v } from "convex/values"
 import {
+  action,
   internalMutation,
   internalQuery,
   mutation,
@@ -862,7 +863,7 @@ export const resolveAttachmentUrls = query({
   },
 })
 
-export const createTask = mutation({
+export const createTaskInternal = internalMutation({
   args: {
     workspaceId: v.id("workspaces"),
     ...taskInputValidator.fields,
@@ -897,7 +898,7 @@ export const createTask = mutation({
   },
 })
 
-export const createTasks = mutation({
+export const createTasksInternal = internalMutation({
   args: {
     workspaceId: v.id("workspaces"),
     tasks: v.array(taskInputValidator),
@@ -927,6 +928,43 @@ export const createTasks = mutation({
       await queueGitHubSync(ctx, task._id)
     }
     return createdTasks
+  },
+})
+
+export const createTask = action({
+  args: {
+    workspaceId: v.id("workspaces"),
+    ...taskInputValidator.fields,
+  },
+  handler: async (ctx, args): Promise<Doc<"tasks"> | undefined> => {
+    const planStatus = await ctx.runAction(
+      internal.billing.getWorkspacePlanStatusInternal,
+      { workspaceId: args.workspaceId }
+    )
+    if (!planStatus.hasActivePlan) {
+      throw new Error("An active billing plan is required to create tasks")
+    }
+
+    return await ctx.runMutation(internal.tasks.createTaskInternal, args)
+  },
+})
+
+export const createTasks = action({
+  args: {
+    workspaceId: v.id("workspaces"),
+    tasks: v.array(taskInputValidator),
+    cost: v.optional(v.number()),
+  },
+  handler: async (ctx, args): Promise<Doc<"tasks">[]> => {
+    const planStatus = await ctx.runAction(
+      internal.billing.getWorkspacePlanStatusInternal,
+      { workspaceId: args.workspaceId }
+    )
+    if (!planStatus.hasActivePlan) {
+      throw new Error("An active billing plan is required to create tasks")
+    }
+
+    return await ctx.runMutation(internal.tasks.createTasksInternal, args)
   },
 })
 

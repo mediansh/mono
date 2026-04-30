@@ -3,8 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import { createPortal } from "react-dom"
 import { AnimatePresence, motion } from "motion/react"
-import { useMutation } from "convex/react"
-import { useAction } from "convex/react"
+import { useAction, useMutation } from "convex/react"
 import { useUser } from "@clerk/nextjs"
 import { toast } from "sonner"
 import {
@@ -175,8 +174,8 @@ export function NewTaskModal({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const previewUrlsRef = useRef<string[]>([])
   const preservedPreviewUrlsRef = useRef(new Set<string>())
-  const createTask = useMutation(api.tasks.createTask)
-  const createTasks = useMutation(api.tasks.createTasks)
+  const createTask = useAction(api.tasks.createTask)
+  const createTasks = useAction(api.tasks.createTasks)
   const getWorkspacePlanStatus = useAction(api.billing.getWorkspacePlanStatus)
 
   const generateUploadUrl = useMutation(api.workspaces.generateUploadUrl)
