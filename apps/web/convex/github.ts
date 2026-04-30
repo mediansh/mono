@@ -1660,7 +1660,7 @@ export const upsertTaskFromGitHubIssue = internalMutation({
       return null
     }
 
-    if (!workspace.hasActivePlan) {
+    if (workspace.hasActivePlan === false) {
       throw new Error("An active plan is required to create tasks")
     }
 

@@ -365,7 +365,7 @@ async function insertTasksForWorkspace(
 ) {
   const workspace = await ctx.db.get(workspaceId)
   if (!workspace) throw new Error("Workspace not found")
-  if (!workspace.hasActivePlan) {
+  if (workspace.hasActivePlan === false) {
     throw new Error("An active plan is required to create tasks")
   }
   if (taskInputs.length === 0) return []
@@ -434,7 +434,7 @@ async function createTasksForWorkspace(
 ) {
   await requireTaskWriteAccess(ctx, workspaceId)
   const workspace = await ctx.db.get(workspaceId)
-  if (!workspace?.hasActivePlan) {
+  if (workspace?.hasActivePlan === false) {
     throw new Error("An active plan is required to create tasks")
   }
   return await insertTasksForWorkspace(ctx, workspaceId, taskInputs)
@@ -950,7 +950,7 @@ export const createTasksFromDiscordFeedback = mutation({
     }
 
     const workspace = await ctx.db.get(args.workspaceId)
-    if (!workspace?.hasActivePlan) {
+    if (workspace?.hasActivePlan === false) {
       throw new Error("An active plan is required to create tasks")
     }
 

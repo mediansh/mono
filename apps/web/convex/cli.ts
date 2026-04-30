@@ -177,7 +177,7 @@ export const createTask = mutation({
     const workspaceId = keyRecord.workspaceId
     const workspace = await ctx.db.get(workspaceId)
     if (!workspace) throw new Error("Workspace not found")
-    if (!workspace.hasActivePlan) {
+    if (workspace.hasActivePlan === false) {
       throw new Error("An active plan is required to create tasks")
     }
 

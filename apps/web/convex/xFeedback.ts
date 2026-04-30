@@ -581,10 +581,12 @@ export const handleFeedbackProcessingComplete = internalMutation({
       ? isPostAfterCursor(latestPost, {
           postId: integration.lastProcessedPostId ?? null,
           postCreatedAt: integration.lastProcessedPostCreatedAt ?? null,
-        })
+      })
       : false
     const completionReason = getCompletedProcessingReason(args.result)
-    const pausedForEventsExhausted = completionReason === "events_exhausted"
+    const shouldPauseProcessing =
+      completionReason === "events_exhausted" ||
+      completionReason === "no_active_plan"
 
     await recordRunDirect(ctx, {
       module: "x_feedback",
@@ -600,7 +602,7 @@ export const handleFeedbackProcessingComplete = internalMutation({
     })
 
     const shouldRerun =
-      !pausedForEventsExhausted &&
+      !shouldPauseProcessing &&
       (args.result.kind === "failed" ||
         integration.feedbackProcessingNeedsRerun === true ||
         hasPendingPosts)
@@ -640,7 +642,7 @@ export const handleFeedbackProcessingComplete = internalMutation({
       feedbackProcessingStartedAt: undefined,
       feedbackProcessingCompletedAt: Date.now(),
       feedbackProcessingLastError:
-        pausedForEventsExhausted
+        shouldPauseProcessing
           ? integration.feedbackProcessingLastError
           : args.result.kind === "failed"
             ? args.result.error

@@ -923,7 +923,9 @@ export const handleFeedbackProcessingComplete = internalMutation({
       return
     }
     const completionReason = getCompletedProcessingReason(args.result)
-    const pausedForEventsExhausted = completionReason === "events_exhausted"
+    const shouldPauseProcessing =
+      completionReason === "events_exhausted" ||
+      completionReason === "no_active_plan"
 
     await recordRunDirect(ctx, {
       module: "discord_feedback",
@@ -939,7 +941,7 @@ export const handleFeedbackProcessingComplete = internalMutation({
     })
 
     const shouldRerun =
-      !pausedForEventsExhausted &&
+      !shouldPauseProcessing &&
       (args.result.kind === "failed" ||
         latestIntegration.feedbackProcessingNeedsRerun === true ||
         hasPendingMessages)
@@ -979,7 +981,7 @@ export const handleFeedbackProcessingComplete = internalMutation({
       feedbackProcessingStartedAt: undefined,
       feedbackProcessingCompletedAt: Date.now(),
       feedbackProcessingLastError:
-        pausedForEventsExhausted
+        shouldPauseProcessing
           ? latestIntegration.feedbackProcessingLastError
           : args.result.kind === "failed"
             ? args.result.error
