@@ -56,8 +56,8 @@ function getChangelogGithubToken() {
   return process.env.CHANGELOG_GITHUB_TOKEN?.trim() || null
 }
 
-function getAnthropicApiKey() {
-  return getRequiredEnv("ANTHROPIC_API_KEY")
+function getOpenRouterApiKey() {
+  return getRequiredEnv("OPENROUTER_API_KEY")
 }
 
 function bytesToHex(bytes: Uint8Array) {
@@ -220,29 +220,28 @@ Rules:
 - Write items in plain language for users, not developers.
 - If all commits are internal with no user impact, return an empty changes array and note it in the excerpt.`
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
+      Authorization: `Bearer ${apiKey}`,
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
+      model: "anthropic/claude-haiku-4-5-20251001",
       max_tokens: 1024,
       messages: [{ role: "user", content: prompt }],
     }),
   })
 
   if (!res.ok) {
-    const text = await res.text()
-    throw new Error(`Anthropic API error ${res.status}: ${text}`)
+    const resText = await res.text()
+    throw new Error(`OpenRouter API error ${res.status}: ${resText}`)
   }
 
   const data = (await res.json()) as {
-    content: Array<{ type: string; text: string }>
+    choices: Array<{ message: { content: string } }>
   }
-  const text = data.content.find((b) => b.type === "text")?.text ?? ""
+  const text = data.choices[0]?.message.content ?? ""
 
   // Extract JSON if returned as markdown
   const jsonMatch = text.match(/\{[\s\S]*\}/)
@@ -259,7 +258,7 @@ export const processDeployment = internalAction({
   handler: async (ctx, args) => {
     const deployedAt = args.deployedAt ?? Date.now()
     const token = getChangelogGithubToken()
-    const apiKey = getAnthropicApiKey()
+    const apiKey = getOpenRouterApiKey()
 
     // 1. Find tag
     const tag = await findTagForSha(args.repoFullName, args.sha, token)
