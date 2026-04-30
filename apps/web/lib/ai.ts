@@ -7,8 +7,8 @@ const openrouter = createOpenRouter({
 
 export const AI_MODEL_IDS = {
   feedbackClassifier: "nvidia/nemotron-3-super-120b-a12b",
-  feedbackExtractor: "moonshotai/kimi-k2.6",
-  taskGeneration: "moonshotai/kimi-k2.6",
+  feedbackExtractor: "z-ai/glm-4.7",
+  taskGeneration: "z-ai/glm-4.7",
 } as const
 
 export const AI_MODELS: Record<keyof typeof AI_MODEL_IDS, LanguageModel> = {
