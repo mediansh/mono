@@ -595,6 +595,9 @@ export const handleFeedbackProcessingComplete = internalMutation({
 
     const completionReason = getCompletedProcessingReason(args.result)
     const pausedForEventsExhausted = completionReason === "events_exhausted"
+    const pausedForNoActivePlan = completionReason === "no_active_plan"
+    const pausedForBlockingReason =
+      pausedForEventsExhausted || pausedForNoActivePlan
 
     await recordRunDirect(ctx, {
       module: "slack_feedback",
@@ -610,7 +613,7 @@ export const handleFeedbackProcessingComplete = internalMutation({
     })
 
     const shouldRerun =
-      !pausedForEventsExhausted &&
+      !pausedForBlockingReason &&
       (args.result.kind === "failed" ||
         latestIntegration.feedbackProcessingNeedsRerun === true ||
         hasPendingMessages)
@@ -650,7 +653,7 @@ export const handleFeedbackProcessingComplete = internalMutation({
       feedbackProcessingStartedAt: undefined,
       feedbackProcessingCompletedAt: Date.now(),
       feedbackProcessingLastError:
-        pausedForEventsExhausted
+        pausedForBlockingReason
           ? latestIntegration.feedbackProcessingLastError
           : args.result.kind === "failed"
             ? args.result.error

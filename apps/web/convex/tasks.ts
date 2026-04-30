@@ -936,7 +936,7 @@ export const createTask = action({
     workspaceId: v.id("workspaces"),
     ...taskInputValidator.fields,
   },
-  handler: async (ctx, args): Promise<Doc<"tasks"> | undefined> => {
+  handler: async (ctx, args): Promise<Doc<"tasks"> | null> => {
     const planStatus = await ctx.runAction(
       internal.billing.getWorkspacePlanStatusInternal,
       { workspaceId: args.workspaceId }
