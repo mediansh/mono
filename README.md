@@ -43,7 +43,30 @@ cp apps/web/.env.example apps/web/.env.local
 
 Then fill required values (at minimum Clerk + Convex + AI keys used by your local flow).
 
-### 4) Run checks
+### 4) Set up Clerk JWT template for Convex
+
+Convex validates auth tokens using a Clerk JWT template. Without this step, all authenticated Convex mutations will fail with `Not authenticated`.
+
+In the [Clerk Dashboard](https://dashboard.clerk.com), go to **JWT Templates → New template** and set:
+
+- **Name:** `convex`
+- **Audience (`aud`):** `convex`
+
+Leave everything else as default and save.
+
+### 5) Run the dev server
+
+```bash
+pnpm dev
+```
+
+This starts Next.js and Convex together via Turborepo. **Do not run `npx convex dev` from the repo root** — Convex is only installed in `apps/web`. If you need to run Convex commands manually (e.g. `convex env set`, `convex dev` standalone), always do so from `apps/web`:
+
+```bash
+cd apps/web && npx convex dev
+```
+
+### 6) Run checks
 
 ```bash
 pnpm typecheck
