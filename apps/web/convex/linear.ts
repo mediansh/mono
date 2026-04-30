@@ -1809,6 +1809,9 @@ export const upsertTaskFromLinearIssue = internalMutation({
         workspace.taskCounter ?? 0,
         ...workspaceTasks.map((task) => task.taskNumber)
       ) + 1
+    if (!workspace.hasActivePlan) {
+      throw new Error("An active plan is required to create tasks")
+    }
     const createdTaskId = await ctx.db.insert("tasks", {
       workspaceId: args.workspaceId,
       taskCode: `${workspace.prefix || "MED"}-${nextTaskNumber}`,

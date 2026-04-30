@@ -308,6 +308,48 @@ export const getWorkspaceOverageSettings = internalQuery({
   },
 })
 
+export const getWorkspacePlanSettings = internalQuery({
+  args: {
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (
+    ctx,
+    args
+  ): Promise<{
+    workspaceId: string
+    workspaceName: string
+    hasActivePlan: boolean
+    currentPlanId: string | null
+  } | null> => {
+    const workspace = await ctx.db.get(args.workspaceId)
+    if (!workspace) {
+      return null
+    }
+
+    return {
+      workspaceId: workspace._id,
+      workspaceName: workspace.name,
+      hasActivePlan: workspace.hasActivePlan === true,
+      currentPlanId: workspace.currentPlanId ?? null,
+    }
+  },
+})
+
+export const saveWorkspacePlanStatus = internalMutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    hasActivePlan: v.boolean(),
+    currentPlanId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.workspaceId, {
+      hasActivePlan: args.hasActivePlan,
+      currentPlanId: args.currentPlanId,
+      planStatusCheckedAt: Date.now(),
+    })
+  },
+})
+
 export const setWorkspaceDisableOverages = mutation({
   args: {
     workspaceId: v.id("workspaces"),
@@ -418,10 +460,58 @@ export const getWorkspacePlanStatus = action({
     })
 
     const activeSubscription = getActiveSubscription(customer)
-    return {
+    const status = {
       hasActivePlan: activeSubscription !== null,
       currentPlanId: activeSubscription?.planId ?? null,
     }
+
+    await ctx.runMutation(internal.billing.saveWorkspacePlanStatus, {
+      workspaceId: args.workspaceId,
+      hasActivePlan: status.hasActivePlan,
+      currentPlanId: status.currentPlanId ?? undefined,
+    })
+
+    return status
+  },
+})
+
+export const getWorkspacePlanStatusInternal = internalAction({
+  args: {
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args): Promise<{ hasActivePlan: boolean; currentPlanId: string | null }> => {
+    const settings = await ctx.runQuery(internal.billing.getWorkspacePlanSettings, {
+      workspaceId: args.workspaceId,
+    })
+
+    if (!settings) {
+      return { hasActivePlan: false, currentPlanId: null }
+    }
+
+    if (!isAutumnConfigured()) {
+      return {
+        hasActivePlan: settings.hasActivePlan,
+        currentPlanId: settings.currentPlanId,
+      }
+    }
+
+    const customer = await ensureAutumnCustomer({
+      workspaceId: settings.workspaceId,
+      workspaceName: settings.workspaceName,
+    })
+    const activeSubscription = getActiveSubscription(customer)
+    const status = {
+      hasActivePlan: activeSubscription !== null,
+      currentPlanId: activeSubscription?.planId ?? null,
+    }
+
+    await ctx.runMutation(internal.billing.saveWorkspacePlanStatus, {
+      workspaceId: args.workspaceId,
+      hasActivePlan: status.hasActivePlan,
+      currentPlanId: status.currentPlanId ?? undefined,
+    })
+
+    return status
   },
 })
 

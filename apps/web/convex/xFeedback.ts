@@ -674,6 +674,23 @@ export const processFeedbackWindow = internalAction({
         }
       )
 
+      const planStatus = (await ctx.runAction(
+        internal.billing.getWorkspacePlanStatusInternal,
+        { workspaceId: feedbackWindow.integration.workspaceId }
+      )) as { hasActivePlan: boolean; currentPlanId: string | null }
+
+      if (!planStatus.hasActivePlan) {
+        logInfo("Skipping X feedback scan — no active plan", {
+          integrationId: args.integrationId,
+          workspaceId: feedbackWindow.integration.workspaceId,
+        })
+        await ctx.runMutation(markFeedbackProcessingPausedMutation, {
+          integrationId: args.integrationId,
+          reason: "Paused — active plan required",
+        })
+        return { skipped: true, reason: "no_active_plan" }
+      }
+
       // Hard-stop scanning when overages are disabled and the workspace has
       // run out of events. We bail before any LLM call so the workspace isn't
       // billed for AI usage tied to ingest the user has paused.
