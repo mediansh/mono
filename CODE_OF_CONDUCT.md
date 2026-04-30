@@ -35,7 +35,7 @@ this project in public spaces.
 ## Enforcement
 
 To report unacceptable behavior, contact the maintainers privately at
-**opensource@median.example.com** (replace with your preferred maintainer contact).
+**contact@median.sh**
 All complaints will be reviewed and investigated promptly and fairly.
 
 ## Attribution
