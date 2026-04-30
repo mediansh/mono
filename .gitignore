@@ -28,7 +28,6 @@ out/
 build
 dist
 *.bun-build
-convex
 
 # Debug
 npm-debug.log*
