@@ -1,74 +1,92 @@
-# median
+# Median Monorepo
 
-This is a Turbo + pnpm monorepo with a Next.js app in [`apps/web`](/Users/abdul/Documents/median/apps/web).
+Median is a TypeScript product suite for planning and executing software work with AI-assisted workflows.
+This repository is a **pnpm + Turborepo** monorepo containing:
 
-## Development
+- `apps/web` — Next.js web app (primary product UI)
+- `apps/cli` — CLI for setup, status, and tasks
+- `apps/discord-bot` — Discord integration bot
+- `packages/*` — shared linting and TypeScript config packages
 
-```bash
-pnpm dev
-```
+## Why this repo exists
 
-The root dev command now starts:
+Median combines a collaborative web workspace with integrations (GitHub, Linear, Slack, Discord, X) and AI tooling so teams can move from idea to shipped task quickly.
 
-- `web#dev` for Next.js
-- `web#dev:convex` for the Convex local/dev deployment flow
+## Tech stack
 
-## Auth + Convex setup
+- **Runtime:** Node.js 20+
+- **Package manager:** pnpm
+- **Monorepo/build:** Turborepo
+- **Frontend:** Next.js + React + TypeScript
+- **Backend services:** Convex
 
-1. Copy [`apps/web/.env.example`](/Users/abdul/Documents/median/apps/web/.env.example) to `apps/web/.env.local`.
-2. Create a Clerk app and add your publishable/secret keys.
-3. In Clerk, create a JWT template named `convex`.
-4. Set `CLERK_JWT_ISSUER_DOMAIN` to your Clerk issuer domain.
-5. Add `ANTHROPIC_API_KEY` to `apps/web/.env.local` for AI features.
-6. Run `pnpm dev` and finish the Convex CLI prompts in the Convex task tab.
+## Quick start
 
-## X integration env
+### 1) Prerequisites
 
-The X integration expects these server env vars to be present:
+- Node.js `>=20`
+- pnpm `9.x`
 
-- `X_API_KEY`
-- `X_API_SECRET`
-- `X_API_BEARER_TOKEN`
-- `X_TOKEN_ENCRYPTION_KEY`
-
-`CONVEX_SITE_URL` must point at the public Convex site URL because the X webhook and OAuth callback are registered against Convex HTTP routes.
-
-In the X developer portal, the app must be configured as a web-capable app and the callback URL must match:
-
-- `{CONVEX_SITE_URL}/x/oauth/callback`
-
-## GitHub integration env
-
-The GitHub integration expects these server env vars to be present:
-
-- `GITHUB_APP_ID`
-- `GITHUB_APP_SLUG`
-- `GITHUB_APP_PRIVATE_KEY`
-- `GITHUB_WEBHOOK_SECRET`
-- `CONVEX_SITE_URL`
-
-The GitHub App should be configured with:
-
-- Setup URL: `{CONVEX_SITE_URL}/github/callback`
-- Webhook URL: `{CONVEX_SITE_URL}/github/webhook`
-- Webhook secret: the value of `GITHUB_WEBHOOK_SECRET`
-
-Install the app into the repositories you want the workspace to sync. Median lets you narrow that installed set down further inside the GitHub integration page.
-
-## Adding components
-
-To add components to the web app, run:
+### 2) Install dependencies
 
 ```bash
-pnpm dlx shadcn@latest add button -c apps/web
+pnpm install
 ```
 
-This places UI components in [`packages/ui/src/components`](/Users/abdul/Documents/median/packages/ui/src/components).
+### 3) Configure environment
 
-## Using components
+Copy environment examples before running apps.
 
-Import components from the `ui` package:
-
-```tsx
-import { Button } from "@workspace/ui/components/button";
+```bash
+cp apps/web/.env.example apps/web/.env.local
 ```
+
+Then fill required values (at minimum Clerk + Convex + AI keys used by your local flow).
+
+### 4) Run checks
+
+```bash
+pnpm typecheck
+pnpm build
+```
+
+## Common commands
+
+```bash
+pnpm dev        # run all app dev tasks through turbo
+pnpm lint       # lint all workspaces
+pnpm typecheck  # type-check all workspaces
+pnpm build      # build all workspaces
+pnpm format     # format code
+```
+
+## Repository layout
+
+```text
+.
+├── apps/
+│   ├── web/
+│   ├── cli/
+│   └── discord-bot/
+├── packages/
+│   ├── eslint-config/
+│   └── typescript-config/
+└── turbo.json
+```
+
+## Contributing
+
+We welcome contributions.
+
+- Start with [CONTRIBUTING.md](./CONTRIBUTING.md) for setup, workflow, and standards.
+- Follow our [Code of Conduct](./CODE_OF_CONDUCT.md).
+- Review our [Security Policy](./SECURITY.md) before reporting vulnerabilities.
+
+## Security
+
+If you discover a security issue, please **do not open a public issue**.
+Use the private reporting process in [SECURITY.md](./SECURITY.md).
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](./LICENSE).
