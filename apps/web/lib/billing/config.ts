@@ -17,8 +17,8 @@ export const AI_TOKEN_PRICING_PER_MILLION: Record<
     output: 1,
   },
   "z-ai/glm-4.7": {
-    input: 1.2,
-    output: 8,
+    input: 3,
+    output: 4,
   },
 }
 
