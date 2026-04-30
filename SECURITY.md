@@ -8,7 +8,7 @@ Security updates are applied to the latest version on the default branch.
 
 Please **do not** report security vulnerabilities through public GitHub issues.
 
-Instead, email: **security@median.example.com** (replace with your preferred security contact).
+Instead, email: **security@median.sh**.
 
 Include:
 
