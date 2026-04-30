@@ -425,6 +425,30 @@ export const getWorkspacePlanStatus = action({
   },
 })
 
+export const getWorkspacePlanStatusInternal = internalAction({
+  args: {
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args): Promise<{ hasActivePlan: boolean; currentPlanId: string | null }> => {
+    const billingContext: WorkspaceBillingContext = await ctx.runQuery(
+      internal.billing.getWorkspaceBillingContext,
+      { workspaceId: args.workspaceId }
+    )
+
+    const customer = await ensureAutumnCustomer({
+      workspaceId: billingContext.workspaceId,
+      workspaceName: billingContext.workspaceName,
+      email: billingContext.user.email,
+    })
+
+    const activeSubscription = getActiveSubscription(customer)
+    return {
+      hasActivePlan: activeSubscription !== null,
+      currentPlanId: activeSubscription?.planId ?? null,
+    }
+  },
+})
+
 export const getWorkspaceBillingDashboard = action({
   args: {
     workspaceId: v.id("workspaces"),

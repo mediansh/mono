@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import { createPortal } from "react-dom"
 import { AnimatePresence, motion } from "motion/react"
 import { useMutation } from "convex/react"
+import { useAction } from "convex/react"
 import { useUser } from "@clerk/nextjs"
 import { toast } from "sonner"
 import {
@@ -176,6 +177,7 @@ export function NewTaskModal({
   const preservedPreviewUrlsRef = useRef(new Set<string>())
   const createTask = useMutation(api.tasks.createTask)
   const createTasks = useMutation(api.tasks.createTasks)
+  const getWorkspacePlanStatus = useAction(api.billing.getWorkspacePlanStatus)
 
   const generateUploadUrl = useMutation(api.workspaces.generateUploadUrl)
 
@@ -479,10 +481,17 @@ export function NewTaskModal({
     ]
   )
 
-  function handleCreate() {
+  async function handleCreate() {
     if (!title.trim() || !currentWorkspace) return
     if (!canManageTasks) {
       setError("Guests can only view tasks.")
+      return
+    }
+    const planStatus = await getWorkspacePlanStatus({
+      workspaceId: currentWorkspace._id,
+    })
+    if (!planStatus.hasActivePlan) {
+      setError("An active billing plan is required to create tasks.")
       return
     }
 
@@ -754,7 +763,7 @@ export function NewTaskModal({
                 if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                   e.preventDefault()
                   if (activeTab === "manual") {
-                    handleCreate()
+                    void handleCreate()
                   } else {
                     handleGenerateTasks()
                   }
@@ -800,7 +809,7 @@ export function NewTaskModal({
                     type="button"
                     onClick={
                       activeTab === "manual"
-                        ? handleCreate
+                        ? () => void handleCreate()
                         : handleGenerateTasks
                     }
                     disabled={
@@ -1046,7 +1055,7 @@ export function NewTaskModal({
                       {/* Create — desktop only; mobile uses the header send button */}
                       <button
                         type="button"
-                        onClick={handleCreate}
+                        onClick={() => void handleCreate()}
                         disabled={!title.trim() || !currentWorkspace}
                         className="hidden items-center gap-1.5 rounded-[4px] bg-primary px-3 py-1.5 text-[11px] font-medium whitespace-nowrap text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 md:flex"
                       >

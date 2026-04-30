@@ -1020,6 +1020,22 @@ export const processFeedbackWindow = internalAction({
         internal.billing.getWorkspaceQuotaStatusInternal,
         { workspaceId: feedbackWindow.integration.workspaceId }
       )) as WorkspaceQuotaStatus
+      const planStatus = await ctx.runAction(
+        internal.billing.getWorkspacePlanStatusInternal,
+        { workspaceId: feedbackWindow.integration.workspaceId }
+      )
+
+      if (!planStatus.hasActivePlan) {
+        logInfo("Skipping Discord feedback scan — no active billing plan", {
+          integrationId: args.integrationId,
+          workspaceId: feedbackWindow.integration.workspaceId,
+        })
+        await ctx.runMutation(markFeedbackProcessingPausedMutation, {
+          integrationId: args.integrationId,
+          reason: "Paused — no active billing plan",
+        })
+        return { skipped: true, reason: "no_active_plan" }
+      }
 
       if (quotaStatus.eventsExhausted) {
         logInfo("Skipping Discord feedback scan — events exhausted", {
