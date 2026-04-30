@@ -4,7 +4,7 @@ import { NextResponse } from "next/server"
 const HAS_WORKSPACE_COOKIE = "median_has_workspace"
 const ADMIN_HOST = "https://admin.median.sh"
 
-export default clerkMiddleware((auth, req) => {
+export default clerkMiddleware(async (auth, req) => {
   if (
     req.nextUrl.pathname === "/app/admin" ||
     req.nextUrl.pathname.startsWith("/app/admin/")
@@ -15,10 +15,9 @@ export default clerkMiddleware((auth, req) => {
     return NextResponse.redirect(redirectUrl)
   }
 
-  if (req.nextUrl.pathname === "/app/setup" && req.cookies.get(HAS_WORKSPACE_COOKIE)?.value === "1") {
-    return NextResponse.redirect(new URL("/app", req.url))
+  if (req.nextUrl.pathname.startsWith("/app")) {
+    await auth.protect()
   }
-})
 
 export const config = {
   matcher: ["/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)", "/(api|trpc)(.*)"],
