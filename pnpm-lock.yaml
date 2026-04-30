@@ -140,22 +140,22 @@ importers:
         version: 0.0.23
       '@crustjs/plugins':
         specifier: latest
-        version: 0.0.21(@crustjs/core@0.0.16(typescript@5.9.3))(typescript@5.9.3)
+        version: 0.0.22(@crustjs/core@0.0.16(typescript@5.9.3))(typescript@5.9.3)
       '@crustjs/prompts':
         specifier: latest
-        version: 0.0.11(typescript@5.9.3)
+        version: 0.0.13(typescript@5.9.3)
       '@crustjs/skills':
         specifier: latest
-        version: 0.0.22(@crustjs/core@0.0.16(typescript@5.9.3))(typescript@5.9.3)
+        version: 0.0.24(@crustjs/core@0.0.16(typescript@5.9.3))(typescript@5.9.3)
       '@crustjs/store':
         specifier: latest
         version: 0.0.4(typescript@5.9.3)
       '@crustjs/style':
         specifier: latest
-        version: 0.0.6(typescript@5.9.3)
+        version: 0.1.0(typescript@5.9.3)
       '@types/bun':
         specifier: latest
-        version: 1.3.12
+        version: 1.3.13
       typescript:
         specifier: ^5
         version: 5.9.3
@@ -205,9 +205,6 @@ importers:
 
   apps/web:
     dependencies:
-      '@ai-sdk/anthropic':
-        specifier: ^3.0.69
-        version: 3.0.69(zod@3.25.76)
       '@ai-sdk/google':
         specifier: ^2.0.12
         version: 2.0.63(zod@3.25.76)
@@ -247,6 +244,9 @@ importers:
       '@inboundemail/sdk':
         specifier: ^4.4.0
         version: 4.4.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@openrouter/ai-sdk-provider':
+        specifier: ^2.9.0
+        version: 2.9.0(ai@6.0.134(zod@3.25.76))(zod@3.25.76)
       '@phosphor-icons/react':
         specifier: ^2.1.10
         version: 2.1.10(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -482,12 +482,6 @@ importers:
 
 packages:
 
-  '@ai-sdk/anthropic@3.0.69':
-    resolution: {integrity: sha512-LshR7X3pFugY0o41G2VKTmg1XoGpSl7uoYWfzk6zjVZLhCfeFiwgpOga+eTV4XY1VVpZwKVqRnkDbIL7K2eH5g==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
-
   '@ai-sdk/gateway@3.0.77':
     resolution: {integrity: sha512-UdwIG2H2YMuntJQ5L+EmED5XiwnlvDT3HOmKfVFxR4Nq/RSLFA/HcchhwfNXHZ5UJjyuL2VO0huLbWSZ9ijemQ==}
     engines: {node: '>=18'}
@@ -508,12 +502,6 @@ packages:
 
   '@ai-sdk/provider-utils@4.0.21':
     resolution: {integrity: sha512-MtFUYI1/8mgDvRmaBDjbLJPFFrMG777AvSgyIFQtZHIMzm88R/12vYBBpnk7pfiWLFE1DSZzY4WDYzGbKAcmiw==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
-
-  '@ai-sdk/provider-utils@4.0.23':
-    resolution: {integrity: sha512-z8GlDaCmRSDlqkMF2f4/RFgWxdarvIbyuk+m6WXT1LYgsnGiXRJGTD2Z1+SDl3LqtFuRtGX1aghYvQLoHL/9pg==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -818,37 +806,37 @@ packages:
     resolution: {integrity: sha512-mghonO4AhMQiNTendaj7qpkguCnp/77tnf1EbMwqSwvTZpAkApcjEwu5+USyky1TLOX9L+UBWA2p7Skz3NIRew==}
     hasBin: true
 
-  '@crustjs/plugins@0.0.21':
-    resolution: {integrity: sha512-8XAB3UU0ztUxeTsxGuXhOpsDRFXZ1N3/g5fS8QR3GPD/qV940GMp0wsjjAlAyqrY9b7mudYFs0PQmyTTYTTXpw==}
+  '@crustjs/plugins@0.0.22':
+    resolution: {integrity: sha512-aWgC1cvS9DeCT7Ynv/oahUZFdB7mQwVGVl37GMHU76zENjI8lVj9d92jsHgBY+fdltAa9OWEte5vyLD13SlmEg==}
     peerDependencies:
       '@crustjs/core': 0.0.16
-      typescript: ^6.0.2
+      typescript: ^6.0.3
 
-  '@crustjs/progress@0.0.2':
-    resolution: {integrity: sha512-1ExIE8COOYPX/rR6aeOX5IH/S6VfCZNDI4wEq8u21ekFs/lo7pOi5tdabWFhJrWWQuaINa7n2tkN+vNUWSqXEQ==}
+  '@crustjs/progress@0.0.3':
+    resolution: {integrity: sha512-OHHxQVB4HpG109S5BDIZGGTpOsfJaQdHgs+adHmrNK9hZAQm4WHjkYavrDWpsM7SSXHTEIqfnKvkMtiTvOMq3Q==}
     peerDependencies:
-      typescript: ^6.0.2
+      typescript: ^6.0.3
 
-  '@crustjs/prompts@0.0.11':
-    resolution: {integrity: sha512-cCRkvARThX7toIKJ44IW4iA2UEadAMx2V0lTLLNPZkxDWzIWuHft9foAOrp6RdIgBi3r+zIhRIIy2RFRG5PRBA==}
+  '@crustjs/prompts@0.0.13':
+    resolution: {integrity: sha512-8iEzeaZrD+hAVrxX41ik/z+kL/bz7TiUVRzz+DRfiREyeN6OAQEdReErEIgDrmrrskXmNw7Ki9Dur0DQJuIA3g==}
     peerDependencies:
-      typescript: ^6.0.2
+      typescript: ^6.0.3
 
-  '@crustjs/skills@0.0.22':
-    resolution: {integrity: sha512-CZkZGGTK77N2lcUJSDs5LQmL8T7hlqVvtswwydtaPrifij5p9G3o8qBN94wR8/blG07xYu3fnlS0NS9amrtTJw==}
+  '@crustjs/skills@0.0.24':
+    resolution: {integrity: sha512-BZjLORj8Cx9E3M4mhGjAuL1lg5IMQv6ZkwiLElVvY4DlnSQrqDqyLXnq3mYSo9mBXeMCeIp9BOruvAhnrNju1w==}
     peerDependencies:
       '@crustjs/core': 0.0.16
-      typescript: ^6.0.2
+      typescript: ^6.0.3
 
   '@crustjs/store@0.0.4':
     resolution: {integrity: sha512-pfYuykVBH08HKBpycPcBZrk4CSQMVhccENDANbJoGXX86YjZk5urjzaJGeGXR1S4DVCt6hGC15aiRf6SEbpyag==}
     peerDependencies:
       typescript: ^5
 
-  '@crustjs/style@0.0.6':
-    resolution: {integrity: sha512-GB15j1g/IeOa+ZhacHOzEj9D7TKDFJ2axdwvTCyyfl3U1c+tbi+gBs+2HWmExDjEDhuN3ABwuUlLMljTUlxI4w==}
+  '@crustjs/style@0.1.0':
+    resolution: {integrity: sha512-nIg+YWiwnpNE8Va/B6LnuJcbsisBr/EpEcP/xaxtn/PsuMTHkKUkalR/OocLAwqzKl2IM2Y0m26lIwGoFJNaTg==}
     peerDependencies:
-      typescript: ^5
+      typescript: ^6.0.3
 
   '@dimforge/rapier3d-compat@0.12.0':
     resolution: {integrity: sha512-uekIGetywIgopfD97oDL5PfeezkFpNhwlzlaEYNOA0N6ghdsOvh/HYjSMek5Q2O1PYvRSDFcqFVJl4r4ZBwOow==}
@@ -1880,6 +1868,13 @@ packages:
   '@open-draft/until@2.1.0':
     resolution: {integrity: sha512-U69T3ItWHvLwGg5eJ0n3I62nWuE6ilHlmz7zM0npLBRvPRd7e6NYmg54vvRtP5mZG7kZqZCFVdsTWo7BPtBujg==}
 
+  '@openrouter/ai-sdk-provider@2.9.0':
+    resolution: {integrity: sha512-Seva+NCa0WUQnJIUE5GzHsUv1WTIeyqwz0ELl2VtS6NP+eF+77yCXGFVOMbvoCM7QMjlnhv7931e89R+8pJdcQ==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      ai: ^6.0.0
+      zod: ^3.25.0 || ^4.0.0
+
   '@opentelemetry/api-logs@0.208.0':
     resolution: {integrity: sha512-CjruKY9V6NMssL/T1kAFgzosF1v9o6oeN+aX5JB/C/xPNtmgIJqcXHG7fA82Ou1zCpWGl4lROQUKwUNE1pMCyg==}
     engines: {node: '>=8.0.0'}
@@ -2642,8 +2637,8 @@ packages:
   '@tweenjs/tween.js@23.1.3':
     resolution: {integrity: sha512-vJmvvwFxYuGnF2axRtPYocag6Clbb5YS7kLL+SO/TeVFzHqDIWrNKYtcsPMibjDx9O+bu+psAy9NKfWklassUA==}
 
-  '@types/bun@1.3.12':
-    resolution: {integrity: sha512-DBv81elK+/VSwXHDlnH3Qduw+KxkTIWi7TXkAeh24zpi5l0B2kUg9Ga3tb4nJaPcOFswflgi/yAvMVBPrxMB+A==}
+  '@types/bun@1.3.13':
+    resolution: {integrity: sha512-9fqXWk5YIHGGnUau9TEi+qdlTYDAnOj+xLCmSTwXfAIqXr2x4tytJb43E9uCvt09zJURKXwAtkoH4nLQfzeTXw==}
 
   '@types/d3-array@3.2.2':
     resolution: {integrity: sha512-hOLWVbm7uRza0BYXpIIW5pxfrKe0W+D5lrFiAEYR+pb6w3N2SwSMaJbXdUfSEv+dT4MfHBLtn5js0LAWaO6otw==}
@@ -3063,7 +3058,7 @@ packages:
   basic-ftp@5.0.5:
     resolution: {integrity: sha512-4Bcg1P8xhUuqcii/S0Z9wiHIrQVPMermM1any+MX5GeGD7faD3/msQUDGLol9wOcz4/jbg/WJnGqoJF6LiBdtg==}
     engines: {node: '>=10.0.0'}
-    deprecated: Security vulnerability fixed in 5.2.0, please upgrade
+    deprecated: Security vulnerability fixed in 5.2.1, please upgrade
 
   bidi-js@1.0.3:
     resolution: {integrity: sha512-RKshQI1R3YQ+n9YJz2QQ147P66ELpa1FQEg20Dk8oW9t2KgLbpDLLp9aGZ7y8WHSshDknG0bknqGw5/tyCs5tw==}
@@ -3104,8 +3099,8 @@ packages:
   builtins@5.1.0:
     resolution: {integrity: sha512-SW9lzGTLvWTP1AY8xeAMZimqDrIaSdLQUcVr9DMef51niJ022Ri87SwRRKYm4A6iHfkPaiVUu/Duw2Wc4J7kKg==}
 
-  bun-types@1.3.12:
-    resolution: {integrity: sha512-HqOLj5PoFajAQciOMRiIZGNoKxDJSr6qigAttOX40vJuSp6DN/CxWp9s3C1Xwm4oH7ybueITwiaOcWXoYVoRkA==}
+  bun-types@1.3.13:
+    resolution: {integrity: sha512-QXKeHLlOLqQX9LgYaHJfzdBaV21T63HhFJnvuRCcjZiaUDpbs5ED1MgxbMra71CsryN/1dAoXuJJJwIv/2drVA==}
 
   bundle-name@4.1.0:
     resolution: {integrity: sha512-tjwM5exMg6BGRI+kNmTntNsvdZS1X8BFYS6tnJ2hdH0kVxM6/eVZ2xy+FqStSWvYmtfFMDLIxurorHwDKfDz5Q==}
@@ -6336,12 +6331,6 @@ packages:
 
 snapshots:
 
-  '@ai-sdk/anthropic@3.0.69(zod@3.25.76)':
-    dependencies:
-      '@ai-sdk/provider': 3.0.8
-      '@ai-sdk/provider-utils': 4.0.23(zod@3.25.76)
-      zod: 3.25.76
-
   '@ai-sdk/gateway@3.0.77(zod@3.25.76)':
     dependencies:
       '@ai-sdk/provider': 3.0.8
@@ -6363,13 +6352,6 @@ snapshots:
       zod: 3.25.76
 
   '@ai-sdk/provider-utils@4.0.21(zod@3.25.76)':
-    dependencies:
-      '@ai-sdk/provider': 3.0.8
-      '@standard-schema/spec': 1.1.0
-      eventsource-parser: 3.0.6
-      zod: 3.25.76
-
-  '@ai-sdk/provider-utils@4.0.23(zod@3.25.76)':
     dependencies:
       '@ai-sdk/provider': 3.0.8
       '@standard-schema/spec': 1.1.0
@@ -6716,36 +6698,36 @@ snapshots:
       '@crustjs/crust-windows-arm64': 0.0.23
       '@crustjs/crust-windows-x64': 0.0.23
 
-  '@crustjs/plugins@0.0.21(@crustjs/core@0.0.16(typescript@5.9.3))(typescript@5.9.3)':
+  '@crustjs/plugins@0.0.22(@crustjs/core@0.0.16(typescript@5.9.3))(typescript@5.9.3)':
     dependencies:
       '@crustjs/core': 0.0.16(typescript@5.9.3)
-      '@crustjs/style': 0.0.6(typescript@5.9.3)
+      '@crustjs/style': 0.1.0(typescript@5.9.3)
       typescript: 5.9.3
 
-  '@crustjs/progress@0.0.2(typescript@5.9.3)':
+  '@crustjs/progress@0.0.3(typescript@5.9.3)':
     dependencies:
-      '@crustjs/style': 0.0.6(typescript@5.9.3)
+      '@crustjs/style': 0.1.0(typescript@5.9.3)
       typescript: 5.9.3
 
-  '@crustjs/prompts@0.0.11(typescript@5.9.3)':
+  '@crustjs/prompts@0.0.13(typescript@5.9.3)':
     dependencies:
-      '@crustjs/progress': 0.0.2(typescript@5.9.3)
-      '@crustjs/style': 0.0.6(typescript@5.9.3)
+      '@crustjs/progress': 0.0.3(typescript@5.9.3)
+      '@crustjs/style': 0.1.0(typescript@5.9.3)
       typescript: 5.9.3
 
-  '@crustjs/skills@0.0.22(@crustjs/core@0.0.16(typescript@5.9.3))(typescript@5.9.3)':
+  '@crustjs/skills@0.0.24(@crustjs/core@0.0.16(typescript@5.9.3))(typescript@5.9.3)':
     dependencies:
       '@crustjs/core': 0.0.16(typescript@5.9.3)
-      '@crustjs/progress': 0.0.2(typescript@5.9.3)
-      '@crustjs/prompts': 0.0.11(typescript@5.9.3)
-      '@crustjs/style': 0.0.6(typescript@5.9.3)
+      '@crustjs/progress': 0.0.3(typescript@5.9.3)
+      '@crustjs/prompts': 0.0.13(typescript@5.9.3)
+      '@crustjs/style': 0.1.0(typescript@5.9.3)
       typescript: 5.9.3
 
   '@crustjs/store@0.0.4(typescript@5.9.3)':
     dependencies:
       typescript: 5.9.3
 
-  '@crustjs/style@0.0.6(typescript@5.9.3)':
+  '@crustjs/style@0.1.0(typescript@5.9.3)':
     dependencies:
       typescript: 5.9.3
 
@@ -7514,6 +7496,11 @@ snapshots:
 
   '@open-draft/until@2.1.0': {}
 
+  '@openrouter/ai-sdk-provider@2.9.0(ai@6.0.134(zod@3.25.76))(zod@3.25.76)':
+    dependencies:
+      ai: 6.0.134(zod@3.25.76)
+      zod: 3.25.76
+
   '@opentelemetry/api-logs@0.208.0':
     dependencies:
       '@opentelemetry/api': 1.9.0
@@ -8254,9 +8241,9 @@ snapshots:
 
   '@tweenjs/tween.js@23.1.3': {}
 
-  '@types/bun@1.3.12':
+  '@types/bun@1.3.13':
     dependencies:
-      bun-types: 1.3.12
+      bun-types: 1.3.13
 
   '@types/d3-array@3.2.2': {}
 
@@ -8730,7 +8717,7 @@ snapshots:
     dependencies:
       semver: 7.7.3
 
-  bun-types@1.3.12:
+  bun-types@1.3.13:
     dependencies:
       '@types/node': 25.2.3
 
