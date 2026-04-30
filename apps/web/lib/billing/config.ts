@@ -118,7 +118,7 @@ export function getPlanCopy(planId: string, price?: number | null) {
     features: [
       ...(trialDays > 0 ? [`${trialDays}-day free trial`] : []),
       `$${fallbackPlan.aiBudget} AI budget / month`,
-      `${fallbackPlan.eventLimit.toLocaleString()} events included, then $0.015/event`,
+      `${fallbackPlan.eventLimit.toLocaleString("en-US")} events included, then $0.015/event`,
       "Overages auto-charged",
       ...(fallbackPlan.id === "scale" ? ["Priority support"] : []),
     ],
