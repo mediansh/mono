@@ -5,7 +5,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
-import { AI_MODEL_IDS, AI_MODELS, hasAnthropicApiKey } from "@/lib/ai"
+import { AI_MODEL_IDS, AI_MODELS, hasOpenRouterApiKey } from "@/lib/ai"
 import { withAxiom, logger } from "@/lib/logger"
 import { getPostHogServerClient } from "@/lib/posthog-server"
 import { checkRateLimit, getRequestIp } from "@/lib/rate-limit"
@@ -125,10 +125,10 @@ export const POST = withAxiom(async (request: Request) => {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  if (!hasAnthropicApiKey()) {
-    logger.error("Missing ANTHROPIC_API_KEY", { userId })
+  if (!hasOpenRouterApiKey()) {
+    logger.error("Missing OPENROUTER_API_KEY", { userId })
     return NextResponse.json(
-      { error: "Missing ANTHROPIC_API_KEY." },
+      { error: "Missing OPENROUTER_API_KEY." },
       { status: 500 }
     )
   }

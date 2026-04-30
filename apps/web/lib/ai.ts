@@ -1,18 +1,23 @@
-import { anthropic } from "@ai-sdk/anthropic"
+import { createAnthropic } from "@ai-sdk/anthropic"
 import type { LanguageModel } from "ai"
 
+const openrouter = createAnthropic({
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: "https://openrouter.ai/api/v1/anthropic",
+})
+
 export const AI_MODEL_IDS = {
-  feedbackClassifier: "anthropic/claude-haiku-4.5",
-  feedbackExtractor: "anthropic/claude-sonnet-4.6",
-  taskGeneration: "anthropic/claude-sonnet-4.6",
+  feedbackClassifier: "nvidia/nemotron-3-super-120b-a12b",
+  feedbackExtractor: "moonshotai/kimi-k2.6",
+  taskGeneration: "moonshotai/kimi-k2.6",
 } as const
 
 export const AI_MODELS: Record<keyof typeof AI_MODEL_IDS, LanguageModel> = {
-  feedbackClassifier: anthropic("claude-haiku-4-5"),
-  feedbackExtractor: anthropic("claude-sonnet-4-6"),
-  taskGeneration: anthropic("claude-sonnet-4-6"),
+  feedbackClassifier: openrouter("nvidia/nemotron-3-super-120b-a12b"),
+  feedbackExtractor: openrouter("moonshotai/kimi-k2.6"),
+  taskGeneration: openrouter("moonshotai/kimi-k2.6"),
 }
 
-export function hasAnthropicApiKey() {
-  return Boolean(process.env.ANTHROPIC_API_KEY)
+export function hasOpenRouterApiKey() {
+  return Boolean(process.env.OPENROUTER_API_KEY)
 }

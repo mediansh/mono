@@ -2,8 +2,8 @@ export const AUTUMN_AI_USAGE_FEATURE_ID = "ai_usage"
 export const AUTUMN_EVENTS_FEATURE_ID = "events"
 
 export const AUTUMN_TRACKED_AI_MODELS = [
-  "anthropic/claude-haiku-4.5",
-  "anthropic/claude-sonnet-4.6",
+  "nvidia/nemotron-3-super-120b-a12b",
+  "moonshotai/kimi-k2.6",
 ] as const
 
 export type TrackedAiModel = (typeof AUTUMN_TRACKED_AI_MODELS)[number]
@@ -12,13 +12,13 @@ export const AI_TOKEN_PRICING_PER_MILLION: Record<
   TrackedAiModel,
   { input: number; output: number }
 > = {
-  "anthropic/claude-haiku-4.5": {
-    input: 2,
-    output: 8,
+  "nvidia/nemotron-3-super-120b-a12b": {
+    input: 0.2,
+    output: 1,
   },
-  "anthropic/claude-sonnet-4.6": {
-    input: 5.5,
-    output: 22,
+  "moonshotai/kimi-k2.6": {
+    input: 1.2,
+    output: 8,
   },
 }
 
@@ -84,10 +84,10 @@ export function getAiCostForTokens(args: {
 
 export function formatTrackedModelName(model: TrackedAiModel) {
   switch (model) {
-    case "anthropic/claude-haiku-4.5":
-      return "Claude Haiku 4.5"
-    case "anthropic/claude-sonnet-4.6":
-      return "Claude Sonnet 4.6"
+    case "nvidia/nemotron-3-super-120b-a12b":
+      return "NVIDIA Nemotron 3 Super 120B A12B"
+    case "moonshotai/kimi-k2.6":
+      return "Moonshot Kimi K2.6"
   }
 }
 
