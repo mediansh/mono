@@ -12,6 +12,8 @@ import type * as admins from "../admins.js";
 import type * as billing from "../billing.js";
 import type * as billingTracking from "../billingTracking.js";
 import type * as blogPosts from "../blogPosts.js";
+import type * as changelogDeploymentData from "../changelogDeploymentData.js";
+import type * as changelogDeployments from "../changelogDeployments.js";
 import type * as changelogEntries from "../changelogEntries.js";
 import type * as cli from "../cli.js";
 import type * as discord from "../discord.js";
@@ -46,6 +48,8 @@ declare const fullApi: ApiFromModules<{
   billing: typeof billing;
   billingTracking: typeof billingTracking;
   blogPosts: typeof blogPosts;
+  changelogDeploymentData: typeof changelogDeploymentData;
+  changelogDeployments: typeof changelogDeployments;
   changelogEntries: typeof changelogEntries;
   cli: typeof cli;
   discord: typeof discord;

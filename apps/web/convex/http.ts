@@ -1,4 +1,5 @@
 import { httpRouter } from "convex/server"
+import { deploymentWebhook } from "./changelogDeployments"
 import { githubInstallCallback, githubWebhook } from "./github"
 import { linearWebhook } from "./linear"
 import { slackOAuthCallback, slackEventsWebhook, slackInteractivity } from "./slack"
@@ -35,6 +36,12 @@ http.route({
   path: "/github/webhook",
   method: "POST",
   handler: githubWebhook,
+})
+
+http.route({
+  path: "/changelog/webhook",
+  method: "POST",
+  handler: deploymentWebhook,
 })
 
 http.route({

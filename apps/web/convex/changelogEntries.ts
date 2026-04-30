@@ -1,5 +1,5 @@
 import { v } from "convex/values"
-import { mutation, query, type MutationCtx } from "./_generated/server"
+import { internalMutation, mutation, query, type MutationCtx } from "./_generated/server"
 import type { Id } from "./_generated/dataModel"
 import { requireAdmin } from "./admins"
 import { getIdentityProfile } from "./permissions"
@@ -183,5 +183,33 @@ export const remove = mutation({
   handler: async (ctx, args) => {
     await requireAdmin(ctx)
     await ctx.db.delete(args.id)
+  },
+})
+
+export const internalCreate = internalMutation({
+  args: {
+    title: v.string(),
+    slug: v.optional(v.string()),
+    excerpt: v.optional(v.string()),
+    content: v.string(),
+    version: v.optional(v.string()),
+    deploymentSha: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now()
+    const slug = await ensureUniqueSlug(ctx, args.slug || args.title)
+    return await ctx.db.insert("changelogEntries", {
+      slug,
+      title: args.title,
+      excerpt: args.excerpt,
+      content: args.content,
+      version: args.version,
+      deploymentSha: args.deploymentSha,
+      status: "draft",
+      authorId: "system",
+      authorName: "Changelog Bot",
+      createdAt: now,
+      updatedAt: now,
+    })
   },
 })

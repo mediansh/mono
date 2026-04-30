@@ -727,12 +727,22 @@ export default defineSchema({
     publishedAt: v.optional(v.number()),
     authorId: v.string(),
     authorName: v.optional(v.string()),
+    deploymentSha: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_slug", ["slug"])
     .index("by_status_created", ["status", "createdAt"])
     .index("by_updated", ["updatedAt"]),
+
+  deployments: defineTable({
+    sha: v.string(),
+    version: v.string(),
+    repoFullName: v.string(),
+    deployedAt: v.number(),
+  })
+    .index("by_repo_and_deployed", ["repoFullName", "deployedAt"])
+    .index("by_repo_and_sha", ["repoFullName", "sha"]),
 
   moduleRuns: defineTable({
     module: v.string(),
