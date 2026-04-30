@@ -923,7 +923,9 @@ export const handleFeedbackProcessingComplete = internalMutation({
       return
     }
     const completionReason = getCompletedProcessingReason(args.result)
-    const pausedForEventsExhausted = completionReason === "events_exhausted"
+    const shouldPauseProcessing =
+      completionReason === "events_exhausted" ||
+      completionReason === "no_active_plan"
 
     await recordRunDirect(ctx, {
       module: "discord_feedback",
@@ -939,7 +941,7 @@ export const handleFeedbackProcessingComplete = internalMutation({
     })
 
     const shouldRerun =
-      !pausedForEventsExhausted &&
+      !shouldPauseProcessing &&
       (args.result.kind === "failed" ||
         latestIntegration.feedbackProcessingNeedsRerun === true ||
         hasPendingMessages)
@@ -979,7 +981,7 @@ export const handleFeedbackProcessingComplete = internalMutation({
       feedbackProcessingStartedAt: undefined,
       feedbackProcessingCompletedAt: Date.now(),
       feedbackProcessingLastError:
-        pausedForEventsExhausted
+        shouldPauseProcessing
           ? latestIntegration.feedbackProcessingLastError
           : args.result.kind === "failed"
             ? args.result.error
@@ -1012,6 +1014,23 @@ export const processFeedbackWindow = internalAction({
           limit: FEEDBACK_WINDOW_LIMIT,
         }
       )
+
+      const planStatus = (await ctx.runAction(
+        internal.billing.getWorkspacePlanStatusInternal,
+        { workspaceId: feedbackWindow.integration.workspaceId }
+      )) as { hasActivePlan: boolean; currentPlanId: string | null }
+
+      if (!planStatus.hasActivePlan) {
+        logInfo("Skipping Discord feedback scan — no active plan", {
+          integrationId: args.integrationId,
+          workspaceId: feedbackWindow.integration.workspaceId,
+        })
+        await ctx.runMutation(markFeedbackProcessingPausedMutation, {
+          integrationId: args.integrationId,
+          reason: "Paused — active plan required",
+        })
+        return { skipped: true, reason: "no_active_plan" }
+      }
 
       // Hard-stop scanning when overages are disabled and the workspace has
       // run out of events. We bail before any LLM call so the workspace isn't

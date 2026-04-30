@@ -17,6 +17,9 @@ export default defineSchema({
       )
     ),
     disableOveragesWhenExhausted: v.optional(v.boolean()),
+    hasActivePlan: v.optional(v.boolean()),
+    currentPlanId: v.optional(v.string()),
+    planStatusCheckedAt: v.optional(v.number()),
   }).index("by_owner", ["ownerId"]),
 
   workspaceMembers: defineTable({

@@ -1660,6 +1660,10 @@ export const upsertTaskFromGitHubIssue = internalMutation({
       return null
     }
 
+    if (workspace.hasActivePlan === false) {
+      throw new Error("An active plan is required to create tasks")
+    }
+
     const nextTaskNumber =
       Math.max(
         workspace.taskCounter ?? 0,

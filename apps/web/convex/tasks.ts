@@ -365,6 +365,9 @@ async function insertTasksForWorkspace(
 ) {
   const workspace = await ctx.db.get(workspaceId)
   if (!workspace) throw new Error("Workspace not found")
+  if (workspace.hasActivePlan === false) {
+    throw new Error("An active plan is required to create tasks")
+  }
   if (taskInputs.length === 0) return []
   const now = Date.now()
 
@@ -430,6 +433,10 @@ async function createTasksForWorkspace(
   taskInputs: CreateTaskInput[]
 ) {
   await requireTaskWriteAccess(ctx, workspaceId)
+  const workspace = await ctx.db.get(workspaceId)
+  if (workspace?.hasActivePlan === false) {
+    throw new Error("An active plan is required to create tasks")
+  }
   return await insertTasksForWorkspace(ctx, workspaceId, taskInputs)
 }
 
@@ -940,6 +947,11 @@ export const createTasksFromDiscordFeedback = mutation({
     const configuredSecret = process.env.DISCORD_PAIRING_SECRET
     if (!configuredSecret || args.botSecret !== configuredSecret) {
       throw new Error("Invalid Discord bot secret")
+    }
+
+    const workspace = await ctx.db.get(args.workspaceId)
+    if (workspace?.hasActivePlan === false) {
+      throw new Error("An active plan is required to create tasks")
     }
 
     const filteredTasks = await filterSuppressedTaskInputs(
