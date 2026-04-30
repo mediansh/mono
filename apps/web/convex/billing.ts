@@ -489,11 +489,13 @@ export const getWorkspacePlanStatusInternal = internalAction({
     }
 
     if (!isAutumnConfigured()) {
+      // Local dev with no Autumn configured — never block feedback processing.
       return {
-        hasActivePlan: settings.hasActivePlan,
+        hasActivePlan: true,
         currentPlanId: settings.currentPlanId,
       }
     }
+
 
     const customer = await ensureAutumnCustomer({
       workspaceId: settings.workspaceId,
