@@ -1237,12 +1237,13 @@ const SortableListRow = memo(function SortableListRow({
   onDelete: (taskId: string) => void
 }) {
   const boardMounted = useBoardMounted()
+  const isMobile = useIsMobile()
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useSortable({
       id: task.id,
       data: { type: "task", task },
       transition: SORTABLE_TRANSITION,
-      disabled: !canManageTasks,
+      disabled: !canManageTasks || isMobile,
     })
 
   const [hasAnimated, setHasAnimated] = useState(boardMounted)
@@ -1292,7 +1293,7 @@ const SortableListRow = memo(function SortableListRow({
         {...listeners}
         onClick={handleClick}
         onAnimationEnd={() => setHasAnimated(true)}
-        className={`group flex cursor-pointer touch-none items-center gap-3 border-b border-l-2 border-border px-3 py-2 transition-[background-color,box-shadow,opacity] duration-150 select-none hover:bg-accent/40 ${PRIORITY_ACCENT[task.priority]} ${isSelected ? "bg-primary/[0.06] hover:bg-primary/[0.10]" : "bg-background"}`}
+        className={`group flex cursor-pointer items-center gap-3 border-b border-l-2 border-border px-3 py-2 transition-[background-color,box-shadow,opacity] duration-150 select-none hover:bg-accent/40 ${isMobile ? "" : "touch-none"} ${PRIORITY_ACCENT[task.priority]} ${isSelected ? "bg-primary/[0.06] hover:bg-primary/[0.10]" : "bg-background"}`}
       >
         {/* Checkbox */}
         <div
@@ -2372,13 +2373,14 @@ const KanbanCard = memo(function KanbanCard({
 }) {
   const { colors: labelColors } = useLabelConfig()
   const boardMounted = useBoardMounted()
+  const isMobile = useIsMobile()
   const activeAgent = getActiveAgent(task)
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useSortable({
       id: task.id,
       data: { type: "task", task },
       transition: SORTABLE_TRANSITION,
-      disabled: !canManageTasks,
+      disabled: !canManageTasks || isMobile,
     })
 
   const hidden = isDragging || isDraggedAway
@@ -2439,7 +2441,7 @@ const KanbanCard = memo(function KanbanCard({
         {...attributes}
         {...listeners}
         onClick={handleClick}
-        className={`group relative cursor-pointer touch-none rounded-[4px] bg-background ring-1 ring-border transition-[background-color,box-shadow,opacity] duration-150 select-none hover:bg-accent/20 dark:bg-card ${isSelected ? "bg-primary/[0.06] ring-2 ring-primary/40" : ""} ${hidden ? "!ring-0" : ""}`}
+        className={`group relative cursor-pointer rounded-[4px] bg-background ring-1 ring-border transition-[background-color,box-shadow,opacity] duration-150 select-none hover:bg-accent/20 dark:bg-card ${isMobile ? "" : "touch-none"} ${isSelected ? "bg-primary/[0.06] ring-2 ring-primary/40" : ""} ${hidden ? "!ring-0" : ""}`}
       >
         {/* Checkbox overlay */}
         <div
