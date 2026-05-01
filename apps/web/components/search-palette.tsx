@@ -190,12 +190,8 @@ export function SearchPalette({
       }
     }
 
-    // If there's a query, show tasks first then nav
-    if (q) {
-      items.push(...taskResults, ...navResults)
-    } else {
-      items.push(...navResults, ...taskResults)
-    }
+    // Always show nav items first, then tasks
+    items.push(...navResults, ...taskResults)
 
     return items
   }, [query, taskDocs])
@@ -207,14 +203,13 @@ export function SearchPalette({
 
     const sections: { label: string; items: SearchResult[] }[] = []
 
-    if (query.trim()) {
-      // When searching, show tasks first
-      if (taskItems.length > 0) sections.push({ label: "Tasks", items: taskItems })
-      if (navItems.length > 0) sections.push({ label: "Navigation", items: navItems })
-    } else {
-      // When no query, show nav first
-      if (navItems.length > 0) sections.push({ label: "Navigation", items: navItems })
-      if (taskItems.length > 0) sections.push({ label: "Recent tasks", items: taskItems })
+    // Always show navigation first, then tasks
+    if (navItems.length > 0) sections.push({ label: "Navigation", items: navItems })
+    if (taskItems.length > 0) {
+      sections.push({
+        label: query.trim() ? "Tasks" : "Recent tasks",
+        items: taskItems,
+      })
     }
 
     return sections
