@@ -7,7 +7,6 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -39,7 +38,6 @@ import {
   ListBullets,
   SquaresFour,
   Paperclip,
-  CaretRight,
   X,
   Plus,
 } from "@phosphor-icons/react"
@@ -67,6 +65,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuCheckboxItem,
 } from "@workspace/ui/components/dropdown-menu"
+import {
+  ContextMenu,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuCheckboxItem,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubTrigger,
+  ContextMenuSubContent,
+} from "@workspace/ui/components/context-menu"
 import {
   DndContext,
   DragOverlay,
@@ -1032,313 +1041,24 @@ function RequestsGroup({
 }
 
 // ── Context Menu ──
+//
+// All positioning, focus, keyboard nav, safe-triangle submenu hovering,
+// single-active-submenu coordination, viewport collision avoidance and
+// theming come from base-ui's <ContextMenu> primitive — wrapped in
+// @workspace/ui/components/context-menu. We only describe the items.
 
-const CONTEXT_MENU_VIEWPORT_PADDING = 8
-const CONTEXT_SUBMENU_GAP = 4
-const CONTEXT_SUBMENU_CLOSE_DELAY = 140
-const CONTEXT_SUBMENU_LEAVE_DELAY = 260
-
-function pointInRect(p: { x: number; y: number }, r: DOMRect) {
-  return p.x >= r.left && p.x <= r.right && p.y >= r.top && p.y <= r.bottom
-}
-
-// Returns true if `p` lies inside the triangle (a, b, c). Used to maintain a
-// "safe zone" while the cursor moves diagonally from a submenu trigger toward
-// the open submenu — without this, the submenu closes the moment the cursor
-// leaves the trigger row even though the user is clearly heading for the
-// submenu.
-function pointInTriangle(
-  p: { x: number; y: number },
-  a: { x: number; y: number },
-  b: { x: number; y: number },
-  c: { x: number; y: number }
-) {
-  const sign = (
-    p1: { x: number; y: number },
-    p2: { x: number; y: number },
-    p3: { x: number; y: number }
-  ) => (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y)
-  const d1 = sign(p, a, b)
-  const d2 = sign(p, b, c)
-  const d3 = sign(p, c, a)
-  const hasNeg = d1 < 0 || d2 < 0 || d3 < 0
-  const hasPos = d1 > 0 || d2 > 0 || d3 > 0
-  return !(hasNeg && hasPos)
-}
-
-function clampContextMenuPosition(
-  x: number,
-  y: number,
-  width: number,
-  height: number
-) {
-  if (typeof window === "undefined") {
-    return { x, y }
-  }
-
-  return {
-    x: Math.max(
-      CONTEXT_MENU_VIEWPORT_PADDING,
-      Math.min(
-        x,
-        window.innerWidth - width - CONTEXT_MENU_VIEWPORT_PADDING
-      )
-    ),
-    y: Math.max(
-      CONTEXT_MENU_VIEWPORT_PADDING,
-      Math.min(
-        y,
-        window.innerHeight - height - CONTEXT_MENU_VIEWPORT_PADDING
-      )
-    ),
-  }
-}
-
-function ContextSubmenu({
-  label,
-  icon,
-  children,
-}: {
-  label: string
-  icon: React.ReactNode
-  children: React.ReactNode
-}) {
-  const [open, setOpen] = useState(false)
-  const [openLeft, setOpenLeft] = useState(false)
-  const [alignBottom, setAlignBottom] = useState(false)
-  const triggerRef = useRef<HTMLDivElement>(null)
-  const submenuRef = useRef<HTMLDivElement>(null)
-  const closeTimerRef = useRef<number | null>(null)
-  // Anchor for the safe-triangle: the last cursor position recorded while the
-  // pointer was over the trigger. The triangle is drawn from this point to the
-  // two near corners of the submenu's leading edge.
-  const safeAnchorRef = useRef<{ x: number; y: number } | null>(null)
-
-  const cancelClose = useCallback(() => {
-    if (closeTimerRef.current !== null) {
-      window.clearTimeout(closeTimerRef.current)
-      closeTimerRef.current = null
-    }
-  }, [])
-
-  const scheduleClose = useCallback(
-    (delay: number) => {
-      cancelClose()
-      closeTimerRef.current = window.setTimeout(() => {
-        setOpen(false)
-        closeTimerRef.current = null
-      }, delay)
-    },
-    [cancelClose]
-  )
-
-  const handleTriggerEnter = (e: ReactMouseEvent) => {
-    cancelClose()
-    setOpen(true)
-    safeAnchorRef.current = { x: e.clientX, y: e.clientY }
-  }
-
-  const handleTriggerLeave = () => {
-    // Generous delay — the global mousemove listener below will keep the
-    // submenu open while the cursor remains inside the safe triangle.
-    scheduleClose(CONTEXT_SUBMENU_LEAVE_DELAY)
-  }
-
-  const handleSubmenuEnter = () => {
-    cancelClose()
-  }
-
-  const handleSubmenuLeave = () => {
-    scheduleClose(CONTEXT_SUBMENU_CLOSE_DELAY)
-  }
-
-  useLayoutEffect(() => {
-    if (!open || !triggerRef.current || !submenuRef.current) {
-      return
-    }
-
-    const triggerRect = triggerRef.current.getBoundingClientRect()
-    const submenuRect = submenuRef.current.getBoundingClientRect()
-
-    setOpenLeft(
-      triggerRect.right +
-        CONTEXT_SUBMENU_GAP +
-        submenuRect.width +
-        CONTEXT_MENU_VIEWPORT_PADDING >
-        window.innerWidth
-    )
-    setAlignBottom(
-      triggerRect.top +
-        submenuRect.height +
-        CONTEXT_MENU_VIEWPORT_PADDING >
-        window.innerHeight
-    )
-  }, [open, children])
-
-  // Safe-triangle tracking: while the submenu is open, watch global mouse
-  // movement. If the cursor sits inside the trigger, the submenu, OR the
-  // triangle pointing from the anchor to the submenu's near edge, keep the
-  // menu open. This lets the user move diagonally toward submenu items
-  // without the submenu collapsing the moment they leave the trigger row.
-  useEffect(() => {
-    if (!open) return
-
-    function onMove(e: globalThis.MouseEvent) {
-      const submenu = submenuRef.current
-      const trigger = triggerRef.current
-      if (!submenu || !trigger) return
-
-      const cursor = { x: e.clientX, y: e.clientY }
-      const submenuRect = submenu.getBoundingClientRect()
-      const triggerRect = trigger.getBoundingClientRect()
-
-      if (pointInRect(cursor, triggerRect)) {
-        // Refresh anchor while still on the trigger so the triangle starts
-        // from wherever the user actually leaves.
-        safeAnchorRef.current = cursor
-        cancelClose()
-        return
-      }
-
-      if (pointInRect(cursor, submenuRect)) {
-        cancelClose()
-        return
-      }
-
-      const anchor = safeAnchorRef.current
-      if (!anchor) return
-
-      const nearX = openLeft ? submenuRect.right : submenuRect.left
-      const top = { x: nearX, y: submenuRect.top }
-      const bottom = { x: nearX, y: submenuRect.bottom }
-
-      if (pointInTriangle(cursor, anchor, top, bottom)) {
-        cancelClose()
-      }
-    }
-
-    document.addEventListener("mousemove", onMove)
-    return () => document.removeEventListener("mousemove", onMove)
-  }, [open, openLeft, cancelClose])
-
-  // Clean up any pending timer on unmount.
-  useEffect(() => () => cancelClose(), [cancelClose])
-
-  return (
-    <div
-      ref={triggerRef}
-      className="relative"
-      onMouseEnter={handleTriggerEnter}
-      onMouseLeave={handleTriggerLeave}
-    >
-      <button
-        type="button"
-        className={`flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-foreground/[0.06] ${
-          open ? "bg-foreground/[0.06]" : ""
-        }`}
-      >
-        {icon}
-        <span>{label}</span>
-        <CaretRight
-          size={14}
-          weight="bold"
-          className="ml-auto text-muted-foreground"
-        />
-      </button>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            ref={submenuRef}
-            onMouseEnter={handleSubmenuEnter}
-            onMouseLeave={handleSubmenuLeave}
-            initial={{ opacity: 0, x: openLeft ? 4 : -4 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: openLeft ? 4 : -4 }}
-            transition={{ duration: 0.12, ease: "easeOut" }}
-            className={`absolute z-[101] min-w-[180px] rounded-[4px] bg-popover p-1 text-popover-foreground shadow-lg shadow-foreground/[0.08] ring-1 ring-border ${
-              openLeft ? "right-full mr-1" : "left-full ml-1"
-            } ${alignBottom ? "bottom-0" : "top-0"}`}
-          >
-            {children}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  )
-}
-
-function TaskContextMenu({
+function TaskContextMenuContent({
   task,
-  position,
-  onClose,
   onUpdate,
   onDelete,
   canManageTasks,
 }: {
   task: Task
-  position: { x: number; y: number }
-  onClose: () => void
   onUpdate: (taskId: string, updates: Partial<Task>) => void
   onDelete: (taskId: string) => void
   canManageTasks: boolean
 }) {
   const labelConfig = useLabelConfig()
-  const menuRef = useRef<HTMLDivElement>(null)
-  const [menuPosition, setMenuPosition] = useState(position)
-
-
-  useLayoutEffect(() => {
-    if (!menuRef.current) {
-      return
-    }
-
-    const rect = menuRef.current.getBoundingClientRect()
-    const clamped = clampContextMenuPosition(
-      position.x,
-      position.y,
-      rect.width,
-      rect.height
-    )
-
-    setMenuPosition((current) =>
-      current.x === clamped.x && current.y === clamped.y ? current : clamped
-    )
-  }, [position])
-
-  useEffect(() => {
-    function handleClick(e: globalThis.MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        onClose()
-      }
-    }
-    function handleEscape(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose()
-    }
-    document.addEventListener("mousedown", handleClick)
-    document.addEventListener("keydown", handleEscape)
-    return () => {
-      document.removeEventListener("mousedown", handleClick)
-      document.removeEventListener("keydown", handleEscape)
-    }
-  }, [onClose])
-
-  useEffect(() => {
-    function handleResize() {
-      if (!menuRef.current) {
-        return
-      }
-
-      const rect = menuRef.current.getBoundingClientRect()
-      setMenuPosition((current) =>
-        clampContextMenuPosition(current.x, current.y, rect.width, rect.height)
-      )
-    }
-
-    window.addEventListener("resize", handleResize)
-    return () => {
-      window.removeEventListener("resize", handleResize)
-    }
-  }, [])
 
   function toggleLabel(label: Label) {
     const labels = task.labels ?? []
@@ -1347,100 +1067,96 @@ function TaskContextMenu({
     onUpdate(task.id, { labels: updated })
   }
 
-  return createPortal(
-    <div
-      ref={menuRef}
-      className="fixed z-[100] min-w-[200px] rounded-[4px] bg-popover p-1 text-popover-foreground shadow-lg shadow-foreground/[0.08] ring-1 ring-border"
-      style={{ top: menuPosition.y, left: menuPosition.x }}
-    >
+  return (
+    <ContextMenuContent>
       {!canManageTasks ? (
         <div className="px-2 py-1.5 text-[12px] text-muted-foreground">
           Guests can only view tasks.
         </div>
       ) : null}
 
-      {/* Status submenu */}
-      <ContextSubmenu label="Status" icon={getStatusIcon(task.status, 14)}>
-        {ALL_STATUSES.map((s) => (
-          <button
-            key={s}
-            disabled={!canManageTasks}
-            onClick={() => {
-              onUpdate(task.id, { status: s })
-              onClose()
-            }}
-            className={`flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-foreground/[0.06] disabled:pointer-events-none disabled:opacity-50 ${task.status === s ? "font-medium" : ""}`}
-          >
-            {getStatusIcon(s, 14)}
-            <span>{STATUS_LABELS[s]}</span>
-            {task.status === s && (
-              <span className="ml-auto text-[12px] text-primary">✓</span>
-            )}
-          </button>
-        ))}
-      </ContextSubmenu>
+      <ContextMenuSub>
+        <ContextMenuSubTrigger disabled={!canManageTasks}>
+          {getStatusIcon(task.status, 14)}
+          <span>Status</span>
+        </ContextMenuSubTrigger>
+        <ContextMenuSubContent>
+          {ALL_STATUSES.map((s) => (
+            <ContextMenuItem
+              key={s}
+              disabled={!canManageTasks}
+              onClick={() => onUpdate(task.id, { status: s })}
+              className={task.status === s ? "font-medium" : ""}
+            >
+              {getStatusIcon(s, 14)}
+              <span>{STATUS_LABELS[s]}</span>
+              {task.status === s && (
+                <Check size={12} weight="bold" className="ml-auto" />
+              )}
+            </ContextMenuItem>
+          ))}
+        </ContextMenuSubContent>
+      </ContextMenuSub>
 
-      {/* Priority submenu */}
-      <ContextSubmenu
-        label="Priority"
-        icon={getPriorityIcon(task.priority, 14)}
-      >
-        {ALL_PRIORITIES.map((p) => (
-          <button
-            key={p}
-            disabled={!canManageTasks}
-            onClick={() => {
-              onUpdate(task.id, { priority: p })
-              onClose()
-            }}
-            className={`flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-foreground/[0.06] disabled:pointer-events-none disabled:opacity-50 ${task.priority === p ? "font-medium" : ""}`}
-          >
-            {getPriorityIcon(p, 14)}
-            <span>{PRIORITY_LABELS[p]}</span>
-            {task.priority === p && (
-              <span className="ml-auto text-[12px] text-primary">✓</span>
-            )}
-          </button>
-        ))}
-      </ContextSubmenu>
+      <ContextMenuSub>
+        <ContextMenuSubTrigger disabled={!canManageTasks}>
+          {getPriorityIcon(task.priority, 14)}
+          <span>Priority</span>
+        </ContextMenuSubTrigger>
+        <ContextMenuSubContent>
+          {ALL_PRIORITIES.map((p) => (
+            <ContextMenuItem
+              key={p}
+              disabled={!canManageTasks}
+              onClick={() => onUpdate(task.id, { priority: p })}
+              className={task.priority === p ? "font-medium" : ""}
+            >
+              {getPriorityIcon(p, 14)}
+              <span>{PRIORITY_LABELS[p]}</span>
+              {task.priority === p && (
+                <Check size={12} weight="bold" className="ml-auto" />
+              )}
+            </ContextMenuItem>
+          ))}
+        </ContextMenuSubContent>
+      </ContextMenuSub>
 
-      {/* Labels submenu */}
-      <ContextSubmenu label="Labels" icon={<Tag size={14} />}>
-        {labelConfig.names.map((label) => (
-          <button
-            key={label}
-            disabled={!canManageTasks}
-            onClick={() => toggleLabel(label)}
-            className="flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] capitalize transition-colors hover:bg-foreground/[0.06] disabled:pointer-events-none disabled:opacity-50"
-          >
-            <div
-              className="size-2.5 rounded-[4px]"
-              style={{ backgroundColor: labelConfig.colors[label] ?? "#888" }}
-            />
-            <span>{label}</span>
-            {(task.labels ?? []).includes(label) && (
-              <span className="ml-auto text-[12px] text-primary">✓</span>
-            )}
-          </button>
-        ))}
-      </ContextSubmenu>
+      <ContextMenuSub>
+        <ContextMenuSubTrigger disabled={!canManageTasks}>
+          <Tag size={14} />
+          <span>Labels</span>
+        </ContextMenuSubTrigger>
+        <ContextMenuSubContent>
+          {labelConfig.names.map((label) => (
+            <ContextMenuCheckboxItem
+              key={label}
+              disabled={!canManageTasks}
+              checked={(task.labels ?? []).includes(label)}
+              onCheckedChange={() => toggleLabel(label)}
+              closeOnClick={false}
+              className="capitalize"
+            >
+              <div
+                className="size-2.5 shrink-0 rounded-[4px]"
+                style={{ backgroundColor: labelConfig.colors[label] ?? "#888" }}
+              />
+              <span>{label}</span>
+            </ContextMenuCheckboxItem>
+          ))}
+        </ContextMenuSubContent>
+      </ContextMenuSub>
 
-      <div className="-mx-1 my-1 h-px bg-border" />
+      <ContextMenuSeparator />
 
-      {/* Delete */}
-      <button
+      <ContextMenuItem
+        variant="destructive"
         disabled={!canManageTasks}
-        onClick={() => {
-          onDelete(task.id)
-          onClose()
-        }}
-        className="flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] text-destructive transition-colors hover:bg-destructive/10 disabled:pointer-events-none disabled:opacity-50 dark:hover:bg-destructive/20"
+        onClick={() => onDelete(task.id)}
       >
         <Trash size={14} />
         <span>Delete task</span>
-      </button>
-    </div>,
-    document.body
+      </ContextMenuItem>
+    </ContextMenuContent>
   )
 }
 
@@ -1520,10 +1236,6 @@ const SortableListRow = memo(function SortableListRow({
   onUpdate: (taskId: string, updates: Partial<Task>) => void
   onDelete: (taskId: string) => void
 }) {
-  const [contextMenu, setContextMenu] = useState<{
-    x: number
-    y: number
-  } | null>(null)
   const boardMounted = useBoardMounted()
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useSortable({
@@ -1563,11 +1275,6 @@ const SortableListRow = memo(function SortableListRow({
     [onSelect, onToggleSelect, task, hasSelection]
   )
 
-  const handleContextMenu = useCallback((e: ReactMouseEvent) => {
-    e.preventDefault()
-    setContextMenu({ x: e.clientX, y: e.clientY })
-  }, [])
-
   const handleCheckboxClick = useCallback(
     (e: ReactMouseEvent) => {
       e.stopPropagation()
@@ -1577,14 +1284,13 @@ const SortableListRow = memo(function SortableListRow({
   )
 
   return (
-    <>
-      <div
+    <ContextMenu>
+      <ContextMenuTrigger
         ref={setNodeRef}
         style={style}
         {...attributes}
         {...listeners}
         onClick={handleClick}
-        onContextMenu={handleContextMenu}
         onAnimationEnd={() => setHasAnimated(true)}
         className={`group flex cursor-pointer touch-none items-center gap-3 border-b border-l-2 border-border px-3 py-2 transition-[background-color,box-shadow,opacity] duration-150 select-none hover:bg-accent/40 ${PRIORITY_ACCENT[task.priority]} ${isSelected ? "bg-primary/[0.06] hover:bg-primary/[0.10]" : "bg-background"}`}
       >
@@ -1600,18 +1306,14 @@ const SortableListRow = memo(function SortableListRow({
           {isSelected && <Check size={10} weight="bold" />}
         </div>
         <ListRowContent task={task} />
-      </div>
-      {contextMenu && (
-        <TaskContextMenu
-          task={task}
-          position={contextMenu}
-          onClose={() => setContextMenu(null)}
-          onUpdate={onUpdate}
-          onDelete={onDelete}
-          canManageTasks={canManageTasks}
-        />
-      )}
-    </>
+      </ContextMenuTrigger>
+      <TaskContextMenuContent
+        task={task}
+        onUpdate={onUpdate}
+        onDelete={onDelete}
+        canManageTasks={canManageTasks}
+      />
+    </ContextMenu>
   )
 })
 
@@ -2670,10 +2372,6 @@ const KanbanCard = memo(function KanbanCard({
 }) {
   const { colors: labelColors } = useLabelConfig()
   const boardMounted = useBoardMounted()
-  const [contextMenu, setContextMenu] = useState<{
-    x: number
-    y: number
-  } | null>(null)
   const activeAgent = getActiveAgent(task)
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useSortable({
@@ -2707,11 +2405,6 @@ const KanbanCard = memo(function KanbanCard({
     [onSelect, onToggleSelect, task, hasSelection]
   )
 
-  const handleContextMenu = useCallback((e: ReactMouseEvent) => {
-    e.preventDefault()
-    setContextMenu({ x: e.clientX, y: e.clientY })
-  }, [])
-
   const handleCheckboxClick = useCallback(
     (e: ReactMouseEvent) => {
       e.stopPropagation()
@@ -2724,25 +2417,28 @@ const KanbanCard = memo(function KanbanCard({
   const staggerDelay = columnIndex * 0.06 + Math.min(cardIndex, 8) * 0.03
 
   return (
-    <>
-      <motion.div
+    <ContextMenu>
+      <ContextMenuTrigger
+        render={
+          <motion.div
+            initial={boardMounted ? false : { opacity: 0, y: 8, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={
+              boardMounted
+                ? { duration: 0 }
+                : {
+                    duration: 0.25,
+                    delay: staggerDelay,
+                    ease: [0.25, 0.1, 0.25, 1],
+                  }
+            }
+          />
+        }
         ref={setNodeRef}
         style={style}
-        initial={boardMounted ? false : { opacity: 0, y: 8, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={
-          boardMounted
-            ? { duration: 0 }
-            : {
-                duration: 0.25,
-                delay: staggerDelay,
-                ease: [0.25, 0.1, 0.25, 1],
-              }
-        }
         {...attributes}
         {...listeners}
         onClick={handleClick}
-        onContextMenu={handleContextMenu}
         className={`group relative cursor-pointer touch-none rounded-[4px] bg-background ring-1 ring-border transition-[background-color,box-shadow,opacity] duration-150 select-none hover:bg-accent/20 dark:bg-card ${isSelected ? "bg-primary/[0.06] ring-2 ring-primary/40" : ""} ${hidden ? "!ring-0" : ""}`}
       >
         {/* Checkbox overlay */}
@@ -2797,18 +2493,14 @@ const KanbanCard = memo(function KanbanCard({
             {task.taskCode}
           </span>
         </div>
-      </motion.div>
-      {contextMenu && (
-        <TaskContextMenu
-          task={task}
-          position={contextMenu}
-          onClose={() => setContextMenu(null)}
-          onUpdate={onUpdate}
-          onDelete={onDelete}
-          canManageTasks={canManageTasks}
-        />
-      )}
-    </>
+      </ContextMenuTrigger>
+      <TaskContextMenuContent
+        task={task}
+        onUpdate={onUpdate}
+        onDelete={onDelete}
+        canManageTasks={canManageTasks}
+      />
+    </ContextMenu>
   )
 })
 
