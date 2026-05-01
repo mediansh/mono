@@ -21,7 +21,13 @@ import {
   CellSignalLow,
   ArrowRight,
   Plugs,
+  ClockCounterClockwise,
+  CreditCard,
+  Key,
+  ShieldCheck,
 } from "@phosphor-icons/react"
+import { useQuery } from "convex/react"
+import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
 import { useLocalFirstStore } from "@/lib/local-first-store"
 import {
@@ -88,14 +94,21 @@ function getPriorityIcon(priority: TaskPriority, size = 12) {
 
 const NAV_ITEMS = [
   { id: "home", label: "Home", href: "/app", icon: House, keywords: ["board", "kanban", "tasks", "home"] },
+  { id: "logs", label: "Logs", href: "/app/logs", icon: ClockCounterClockwise, keywords: ["logs", "history", "activity", "audit", "events"] },
+  { id: "billing", label: "Billing", href: "/app/billing", icon: CreditCard, keywords: ["billing", "plan", "subscription", "invoice", "payment", "usage", "upgrade"] },
   { id: "settings", label: "Settings", href: "/app/settings", icon: Gear, keywords: ["settings", "preferences", "account"] },
   { id: "labels", label: "Labels", href: "/app/settings/labels", icon: Tag, keywords: ["labels", "tags", "categories"] },
   { id: "members", label: "Members", href: "/app/settings/members", icon: Users, keywords: ["members", "team", "users", "invite"] },
+  { id: "api-keys", label: "API Keys", href: "/app/settings/api-keys", icon: Key, keywords: ["api", "keys", "tokens", "credentials", "secrets"] },
   { id: "integrations-discord", label: "Discord Integration", href: "/app/integrations/discord", icon: Plugs, keywords: ["integrations", "discord", "connect", "bot"] },
+  { id: "integrations-slack", label: "Slack Integration", href: "/app/integrations/slack", icon: Plugs, keywords: ["integrations", "slack", "connect", "bot", "messages"] },
   { id: "integrations-linear", label: "Linear Integration", href: "/app/integrations/linear", icon: Plugs, keywords: ["integrations", "linear", "sync", "issues"] },
   { id: "integrations-x", label: "X (Twitter) Integration", href: "/app/integrations/x", icon: Plugs, keywords: ["integrations", "x", "twitter", "tweets", "mentions"] },
   { id: "integrations-github", label: "GitHub Integration", href: "/app/integrations/github", icon: Plugs, keywords: ["integrations", "github", "repository", "issues", "pr", "pull request"] },
+  { id: "integrations-cli", label: "CLI Integration", href: "/app/integrations/cli", icon: Plugs, keywords: ["integrations", "cli", "terminal", "command line"] },
 ]
+
+const ADMIN_NAV_ITEM = { id: "admin", label: "Admin", href: "/app/admin", icon: ShieldCheck, keywords: ["admin", "administration", "blog", "changelog", "early access"] }
 
 // ── Search result types ──
 
@@ -134,6 +147,11 @@ export function SearchPalette({
   const pathname = usePathname()
   const { currentWorkspace } = useWorkspace()
   const { tasksByWorkspace } = useLocalFirstStore()
+  const isAdmin = useQuery(api.admins.isCurrentUserAdmin) ?? false
+  const navItems = useMemo(
+    () => (isAdmin ? [...NAV_ITEMS, ADMIN_NAV_ITEM] : NAV_ITEMS),
+    [isAdmin]
+  )
   const [query, setQuery] = useState("")
   const [activeIndex, setActiveIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -149,7 +167,7 @@ export function SearchPalette({
     const items: SearchResult[] = []
 
     // Navigation results
-    const navResults = NAV_ITEMS.filter((item) => {
+    const navResults = navItems.filter((item) => {
       if (!q) return true
       return (
         item.label.toLowerCase().includes(q) ||
@@ -194,7 +212,7 @@ export function SearchPalette({
     items.push(...navResults, ...taskResults)
 
     return items
-  }, [query, taskDocs])
+  }, [query, taskDocs, navItems])
 
   // Group results for section headers
   const groupedResults = useMemo(() => {
@@ -291,12 +309,12 @@ export function SearchPalette({
   )
 
   useEffect(() => {
-    for (const item of NAV_ITEMS) {
+    for (const item of navItems) {
       if (item.href !== pathname) {
         prefetch(item.href)
       }
     }
-  }, [pathname, prefetch])
+  }, [pathname, prefetch, navItems])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
