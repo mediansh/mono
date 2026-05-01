@@ -1035,6 +1035,36 @@ function RequestsGroup({
 
 const CONTEXT_MENU_VIEWPORT_PADDING = 8
 const CONTEXT_SUBMENU_GAP = 4
+const CONTEXT_SUBMENU_CLOSE_DELAY = 140
+const CONTEXT_SUBMENU_LEAVE_DELAY = 260
+
+function pointInRect(p: { x: number; y: number }, r: DOMRect) {
+  return p.x >= r.left && p.x <= r.right && p.y >= r.top && p.y <= r.bottom
+}
+
+// Returns true if `p` lies inside the triangle (a, b, c). Used to maintain a
+// "safe zone" while the cursor moves diagonally from a submenu trigger toward
+// the open submenu — without this, the submenu closes the moment the cursor
+// leaves the trigger row even though the user is clearly heading for the
+// submenu.
+function pointInTriangle(
+  p: { x: number; y: number },
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+  c: { x: number; y: number }
+) {
+  const sign = (
+    p1: { x: number; y: number },
+    p2: { x: number; y: number },
+    p3: { x: number; y: number }
+  ) => (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y)
+  const d1 = sign(p, a, b)
+  const d2 = sign(p, b, c)
+  const d3 = sign(p, c, a)
+  const hasNeg = d1 < 0 || d2 < 0 || d3 < 0
+  const hasPos = d1 > 0 || d2 > 0 || d3 > 0
+  return !(hasNeg && hasPos)
+}
 
 function clampContextMenuPosition(
   x: number,
@@ -1078,12 +1108,48 @@ function ContextSubmenu({
   const [alignBottom, setAlignBottom] = useState(false)
   const triggerRef = useRef<HTMLDivElement>(null)
   const submenuRef = useRef<HTMLDivElement>(null)
+  const closeTimerRef = useRef<number | null>(null)
+  // Anchor for the safe-triangle: the last cursor position recorded while the
+  // pointer was over the trigger. The triangle is drawn from this point to the
+  // two near corners of the submenu's leading edge.
+  const safeAnchorRef = useRef<{ x: number; y: number } | null>(null)
 
-  const handleEnter = () => {
+  const cancelClose = useCallback(() => {
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+  }, [])
+
+  const scheduleClose = useCallback(
+    (delay: number) => {
+      cancelClose()
+      closeTimerRef.current = window.setTimeout(() => {
+        setOpen(false)
+        closeTimerRef.current = null
+      }, delay)
+    },
+    [cancelClose]
+  )
+
+  const handleTriggerEnter = (e: ReactMouseEvent) => {
+    cancelClose()
     setOpen(true)
+    safeAnchorRef.current = { x: e.clientX, y: e.clientY }
   }
-  const handleLeave = () => {
-    setOpen(false)
+
+  const handleTriggerLeave = () => {
+    // Generous delay — the global mousemove listener below will keep the
+    // submenu open while the cursor remains inside the safe triangle.
+    scheduleClose(CONTEXT_SUBMENU_LEAVE_DELAY)
+  }
+
+  const handleSubmenuEnter = () => {
+    cancelClose()
+  }
+
+  const handleSubmenuLeave = () => {
+    scheduleClose(CONTEXT_SUBMENU_CLOSE_DELAY)
   }
 
   useLayoutEffect(() => {
@@ -1109,14 +1175,68 @@ function ContextSubmenu({
     )
   }, [open, children])
 
+  // Safe-triangle tracking: while the submenu is open, watch global mouse
+  // movement. If the cursor sits inside the trigger, the submenu, OR the
+  // triangle pointing from the anchor to the submenu's near edge, keep the
+  // menu open. This lets the user move diagonally toward submenu items
+  // without the submenu collapsing the moment they leave the trigger row.
+  useEffect(() => {
+    if (!open) return
+
+    function onMove(e: globalThis.MouseEvent) {
+      const submenu = submenuRef.current
+      const trigger = triggerRef.current
+      if (!submenu || !trigger) return
+
+      const cursor = { x: e.clientX, y: e.clientY }
+      const submenuRect = submenu.getBoundingClientRect()
+      const triggerRect = trigger.getBoundingClientRect()
+
+      if (pointInRect(cursor, triggerRect)) {
+        // Refresh anchor while still on the trigger so the triangle starts
+        // from wherever the user actually leaves.
+        safeAnchorRef.current = cursor
+        cancelClose()
+        return
+      }
+
+      if (pointInRect(cursor, submenuRect)) {
+        cancelClose()
+        return
+      }
+
+      const anchor = safeAnchorRef.current
+      if (!anchor) return
+
+      const nearX = openLeft ? submenuRect.right : submenuRect.left
+      const top = { x: nearX, y: submenuRect.top }
+      const bottom = { x: nearX, y: submenuRect.bottom }
+
+      if (pointInTriangle(cursor, anchor, top, bottom)) {
+        cancelClose()
+      }
+    }
+
+    document.addEventListener("mousemove", onMove)
+    return () => document.removeEventListener("mousemove", onMove)
+  }, [open, openLeft, cancelClose])
+
+  // Clean up any pending timer on unmount.
+  useEffect(() => () => cancelClose(), [cancelClose])
+
   return (
     <div
       ref={triggerRef}
       className="relative"
-      onMouseEnter={handleEnter}
-      onMouseLeave={handleLeave}
+      onMouseEnter={handleTriggerEnter}
+      onMouseLeave={handleTriggerLeave}
     >
-      <button className="flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-accent">
+      <button
+        type="button"
+        className={`flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-foreground/[0.06] ${
+          open ? "bg-foreground/[0.06]" : ""
+        }`}
+      >
         {icon}
         <span>{label}</span>
         <CaretRight
@@ -1125,22 +1245,24 @@ function ContextSubmenu({
           className="ml-auto text-muted-foreground"
         />
       </button>
-      {open && (
-        <div
-          ref={submenuRef}
-          className={`absolute z-[101] min-w-[180px] rounded-[4px] bg-popover p-1 text-popover-foreground shadow-none ring-1 ring-border ${
-            openLeft
-              ? "right-full mr-1"
-              : "left-full ml-1"
-          } ${
-            alignBottom
-              ? "bottom-0"
-              : "top-0"
-          }`}
-        >
-          {children}
-        </div>
-      )}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            ref={submenuRef}
+            onMouseEnter={handleSubmenuEnter}
+            onMouseLeave={handleSubmenuLeave}
+            initial={{ opacity: 0, x: openLeft ? 4 : -4 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: openLeft ? 4 : -4 }}
+            transition={{ duration: 0.12, ease: "easeOut" }}
+            className={`absolute z-[101] min-w-[180px] rounded-[4px] bg-popover p-1 text-popover-foreground shadow-lg shadow-foreground/[0.08] ring-1 ring-border ${
+              openLeft ? "right-full mr-1" : "left-full ml-1"
+            } ${alignBottom ? "bottom-0" : "top-0"}`}
+          >
+            {children}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
@@ -1228,7 +1350,7 @@ function TaskContextMenu({
   return createPortal(
     <div
       ref={menuRef}
-      className="fixed z-[100] min-w-[200px] rounded-[4px] bg-popover p-1 text-popover-foreground shadow-none ring-1 ring-border"
+      className="fixed z-[100] min-w-[200px] rounded-[4px] bg-popover p-1 text-popover-foreground shadow-lg shadow-foreground/[0.08] ring-1 ring-border"
       style={{ top: menuPosition.y, left: menuPosition.x }}
     >
       {!canManageTasks ? (
@@ -1247,7 +1369,7 @@ function TaskContextMenu({
               onUpdate(task.id, { status: s })
               onClose()
             }}
-            className={`flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-accent ${task.status === s ? "font-medium" : ""}`}
+            className={`flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-foreground/[0.06] disabled:pointer-events-none disabled:opacity-50 ${task.status === s ? "font-medium" : ""}`}
           >
             {getStatusIcon(s, 14)}
             <span>{STATUS_LABELS[s]}</span>
@@ -1271,7 +1393,7 @@ function TaskContextMenu({
               onUpdate(task.id, { priority: p })
               onClose()
             }}
-            className={`flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-accent ${task.priority === p ? "font-medium" : ""}`}
+            className={`flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-foreground/[0.06] disabled:pointer-events-none disabled:opacity-50 ${task.priority === p ? "font-medium" : ""}`}
           >
             {getPriorityIcon(p, 14)}
             <span>{PRIORITY_LABELS[p]}</span>
@@ -1289,7 +1411,7 @@ function TaskContextMenu({
             key={label}
             disabled={!canManageTasks}
             onClick={() => toggleLabel(label)}
-            className="flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] capitalize transition-colors hover:bg-accent"
+            className="flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] capitalize transition-colors hover:bg-foreground/[0.06] disabled:pointer-events-none disabled:opacity-50"
           >
             <div
               className="size-2.5 rounded-[4px]"
@@ -1312,7 +1434,7 @@ function TaskContextMenu({
           onDelete(task.id)
           onClose()
         }}
-        className="flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] text-destructive transition-colors hover:bg-destructive/10"
+        className="flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] text-destructive transition-colors hover:bg-destructive/10 disabled:pointer-events-none disabled:opacity-50 dark:hover:bg-destructive/20"
       >
         <Trash size={14} />
         <span>Delete task</span>
