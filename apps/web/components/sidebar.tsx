@@ -22,6 +22,7 @@ import {
   ClockCounterClockwise,
   CreditCard,
   ShieldCheck,
+  ArrowSquareOut,
 } from "@phosphor-icons/react"
 import { Facehash } from "facehash"
 import {
@@ -440,19 +441,22 @@ export function AppSidebar() {
             {isAdmin && (
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  render={<Link href="/app/admin" />}
-                  isActive={pathname.startsWith("/app/admin")}
-                  className={
-                    pathname.startsWith("/app/admin")
-                      ? "data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground"
-                      : "text-sidebar-foreground/70"
+                  render={
+                    <a
+                      href="https://admin.median.sh"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    />
                   }
+                  className="text-sidebar-foreground/70"
                 >
-                  <ShieldCheck
-                    size={15}
-                    weight={pathname.startsWith("/app/admin") ? "fill" : "regular"}
-                  />
+                  <ShieldCheck size={15} weight="regular" />
                   <span>Admin</span>
+                  <ArrowSquareOut
+                    size={12}
+                    weight="regular"
+                    className="ml-auto text-sidebar-foreground/40 group-data-[collapsible=icon]:hidden"
+                  />
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
