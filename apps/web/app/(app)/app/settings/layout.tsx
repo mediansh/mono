@@ -38,7 +38,7 @@ export default function SettingsLayout({
               <Link
                 key={item.href}
                 href={item.href}
-                className={`group relative flex items-center gap-2 rounded-[4px] px-2 py-1 text-[13px] font-medium transition-colors ${
+                className={`group relative flex items-center gap-2 rounded-[4px] px-2 py-1 text-[13px] font-medium transition-colors duration-150 ease-out active:bg-sidebar-border active:text-foreground ${
                   isActive
                     ? "bg-sidebar-accent text-foreground"
                     : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
@@ -67,7 +67,7 @@ export default function SettingsLayout({
               <Link
                 key={item.href}
                 href={item.href}
-                className={`group relative flex shrink-0 items-center gap-1.5 rounded-[4px] px-2 py-1 text-[13px] font-medium transition-colors ${
+                className={`group relative flex shrink-0 items-center gap-1.5 rounded-[4px] px-2 py-1 text-[13px] font-medium transition-colors duration-150 ease-out active:bg-sidebar-border active:text-foreground ${
                   isActive
                     ? "bg-sidebar-accent text-foreground"
                     : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
