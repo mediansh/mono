@@ -168,7 +168,7 @@ function PriorityIcon({ priority }: { priority: Priority }) {
     case "low":
       return <CellSignalLow size={12} className="text-blue-400" />
     case "none":
-      return <Minus size={12} className="text-[#9B9D9E]" />
+      return <Minus size={12} className="text-[var(--demo-muted)]" />
   }
 }
 
@@ -186,27 +186,31 @@ function TaskLabel({ label }: { label: LabelName }) {
 
 function RequestCard({ task }: { task: MockTask }) {
   return (
-    <div className="flex min-w-0 flex-col rounded-[4px] bg-[#1E1E1E] ring-1 ring-[#2E2E2E]">
+    <div className="flex min-w-0 flex-col rounded-[4px] bg-[var(--demo-surface)] ring-1 ring-[var(--demo-border)]">
       <div className="flex flex-1 flex-col p-2.5 pb-0">
-        <p className="mb-2 text-[12px] leading-snug font-medium text-[#F7F7F4]/90">
+        <p className="mb-2 text-[12px] leading-snug font-medium text-[var(--demo-text)]/90">
           {task.title}
         </p>
         <div className="mb-2 flex items-center gap-1.5">
-          {task.labels?.map((l) => <TaskLabel key={l} label={l} />)}
+          {task.labels?.map((l) => (
+            <TaskLabel key={l} label={l} />
+          ))}
         </div>
       </div>
-      <div className="flex items-center justify-between border-t border-[#2E2E2E] px-2.5 py-1">
-        <span className="text-[10px] text-[#9B9D9E]/60">{task.date}</span>
-        <span className="font-mono text-[10px] text-[#9B9D9E]/60 tabular-nums">
+      <div className="flex items-center justify-between border-t border-[var(--demo-border)] px-2.5 py-1">
+        <span className="text-[10px] text-[var(--demo-muted)]/60">
+          {task.date}
+        </span>
+        <span className="font-mono text-[10px] text-[var(--demo-muted)]/60 tabular-nums">
           {task.code}
         </span>
       </div>
-      <div className="flex items-stretch border-t border-[#2E2E2E]">
+      <div className="flex items-stretch border-t border-[var(--demo-border)]">
         <div className="flex flex-1 items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium text-emerald-400">
           <CheckCircle size={12} weight="fill" />
           Accept
         </div>
-        <div className="w-px bg-[#2E2E2E]" />
+        <div className="w-px bg-[var(--demo-border)]" />
         <div className="flex flex-1 items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium text-red-400">
           <XCircle size={12} />
           Deny
@@ -218,19 +222,23 @@ function RequestCard({ task }: { task: MockTask }) {
 
 function KanbanCard({ task }: { task: MockTask }) {
   return (
-    <div className="rounded-[4px] bg-[#1E1E1E] ring-1 ring-[#2E2E2E]">
+    <div className="rounded-[4px] bg-[var(--demo-surface)] ring-1 ring-[var(--demo-border)]">
       <div className="p-2.5 pb-0">
-        <p className="mb-2 line-clamp-2 pr-5 text-[12px] leading-snug font-medium text-[#F7F7F4]/90">
+        <p className="mb-2 line-clamp-2 pr-5 text-[12px] leading-snug font-medium text-[var(--demo-text)]/90">
           {task.title}
         </p>
         <div className="mb-2 flex items-center gap-1.5">
           {task.priority && <PriorityIcon priority={task.priority} />}
-          {task.labels?.map((l) => <TaskLabel key={l} label={l} />)}
+          {task.labels?.map((l) => (
+            <TaskLabel key={l} label={l} />
+          ))}
         </div>
       </div>
-      <div className="flex items-center justify-between border-t border-[#2E2E2E] px-2.5 py-1">
-        <span className="text-[10px] text-[#9B9D9E]/60">{task.date}</span>
-        <span className="font-mono text-[10px] text-[#9B9D9E]/60 tabular-nums">
+      <div className="flex items-center justify-between border-t border-[var(--demo-border)] px-2.5 py-1">
+        <span className="text-[10px] text-[var(--demo-muted)]/60">
+          {task.date}
+        </span>
+        <span className="font-mono text-[10px] text-[var(--demo-muted)]/60 tabular-nums">
           {task.code}
         </span>
       </div>
@@ -238,22 +246,36 @@ function KanbanCard({ task }: { task: MockTask }) {
   )
 }
 
-type ColumnStatus = "requests" | "todo" | "in_progress" | "ready" | "shipped" | "archive"
+type ColumnStatus =
+  | "requests"
+  | "todo"
+  | "in_progress"
+  | "ready"
+  | "shipped"
+  | "archive"
 
-function StatusIcon({ status, size = 14 }: { status: ColumnStatus; size?: number }) {
+function StatusIcon({
+  status,
+  size = 14,
+}: {
+  status: ColumnStatus
+  size?: number
+}) {
   switch (status) {
     case "requests":
-      return <SpinnerGap size={size} className="text-[#9B9D9E]" />
+      return <SpinnerGap size={size} className="text-[var(--demo-muted)]" />
     case "todo":
-      return <Circle size={size} className="text-[#9B9D9E]" />
+      return <Circle size={size} className="text-[var(--demo-muted)]" />
     case "in_progress":
       return <SpinnerGap size={size} className="text-yellow-500" />
     case "ready":
-      return <SealCheck size={size} weight="fill" className="text-emerald-500" />
+      return (
+        <SealCheck size={size} weight="fill" className="text-emerald-500" />
+      )
     case "shipped":
       return <Rocket size={size} weight="fill" className="text-blue-500" />
     case "archive":
-      return <Archive size={size} className="text-[#9B9D9E]" />
+      return <Archive size={size} className="text-[var(--demo-muted)]" />
   }
 }
 
@@ -269,16 +291,16 @@ function Column({
   children: React.ReactNode
 }) {
   return (
-    <div className="flex h-full w-[230px] shrink-0 flex-col overflow-hidden rounded-[4px] ring-1 ring-[#2E2E2E]">
-      <div className="flex items-center gap-2 bg-[#1E1E1E] px-3 py-1.5 shadow-[inset_0_-1px_0_#2E2E2E]">
+    <div className="flex h-full w-[230px] shrink-0 flex-col overflow-hidden rounded-[4px] ring-1 ring-[var(--demo-border)]">
+      <div className="flex items-center gap-2 bg-[var(--demo-surface)] px-3 py-1.5 shadow-[inset_0_-1px_0_var(--demo-border)]">
         <StatusIcon status={status} />
-        <span className="text-[13px] font-semibold tracking-tight text-[#F7F7F4]">
+        <span className="text-[13px] font-semibold tracking-tight text-[var(--demo-text)]">
           {label}
         </span>
-        <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-[#2A2A2A] px-1.5 text-[10px] font-medium text-[#9B9D9E]">
+        <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-[var(--demo-border-strong)] px-1.5 text-[10px] font-medium text-[var(--demo-muted)]">
           {count}
         </span>
-        <Plus size={14} className="ml-auto text-[#9B9D9E]/40" />
+        <Plus size={14} className="ml-auto text-[var(--demo-muted)]/40" />
       </div>
       <div className="flex flex-col gap-2 p-2">{children}</div>
     </div>
@@ -287,22 +309,30 @@ function Column({
 
 function ListRow({ task, status }: { task: MockTask; status: ColumnStatus }) {
   return (
-    <div className="flex cursor-pointer items-center gap-3 border-b border-[#2E2E2E] px-3 py-2 transition-colors last:border-b-0 hover:bg-[#1E1E1E]/60">
-      <span className="w-14 shrink-0 font-mono text-[11px] text-[#9B9D9E]/60 tabular-nums">
+    <div className="flex cursor-pointer items-center gap-3 border-b border-[var(--demo-border)] px-3 py-2 transition-colors last:border-b-0 hover:bg-[var(--demo-surface)]/60">
+      <span className="w-14 shrink-0 font-mono text-[11px] text-[var(--demo-muted)]/60 tabular-nums">
         {task.code}
       </span>
       <span className="flex size-3.5 shrink-0 items-center justify-center">
-        {task.priority ? <PriorityIcon priority={task.priority} /> : <Minus size={12} className="text-[#9B9D9E]/60" />}
+        {task.priority ? (
+          <PriorityIcon priority={task.priority} />
+        ) : (
+          <Minus size={12} className="text-[var(--demo-muted)]/60" />
+        )}
       </span>
       <span className="flex size-3.5 shrink-0 items-center justify-center">
         <StatusIcon status={status} size={13} />
       </span>
-      <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-[#F7F7F4]/90">
+      <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-[var(--demo-text)]/90">
         {task.title}
       </span>
       <div className="flex shrink-0 items-center gap-1.5">
-        {task.labels?.map((l) => <TaskLabel key={l} label={l} />)}
-        <span className="ml-1 text-[11px] text-[#9B9D9E]/60">{task.date}</span>
+        {task.labels?.map((l) => (
+          <TaskLabel key={l} label={l} />
+        ))}
+        <span className="ml-1 text-[11px] text-[var(--demo-muted)]/60">
+          {task.date}
+        </span>
       </div>
     </div>
   )
@@ -326,13 +356,13 @@ function ListGroup({
   children?: React.ReactNode
 }) {
   return (
-    <div className="mb-1.5 overflow-hidden rounded-[4px] ring-1 ring-[#2E2E2E]">
+    <div className="mb-1.5 overflow-hidden rounded-[4px] ring-1 ring-[var(--demo-border)]">
       <button
         onClick={onToggle}
-        className="flex w-full cursor-pointer items-center gap-2.5 bg-[#1E1E1E] px-3 py-1.5 text-left transition-colors hover:bg-[#252525]"
+        className="flex w-full cursor-pointer items-center gap-2.5 bg-[var(--demo-surface)] px-3 py-1.5 text-left transition-colors hover:bg-[var(--demo-surface-hover)]"
       >
         <span
-          className="text-[10px] text-[#9B9D9E]/60 transition-transform"
+          className="text-[10px] text-[var(--demo-muted)]/60 transition-transform"
           style={{
             display: "inline-block",
             transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)",
@@ -341,14 +371,14 @@ function ListGroup({
           ▼
         </span>
         <StatusIcon status={status} />
-        <span className="text-[13px] font-semibold tracking-tight text-[#F7F7F4]">
+        <span className="text-[13px] font-semibold tracking-tight text-[var(--demo-text)]">
           {label}
         </span>
-        <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-[#2A2A2A] px-1.5 text-[10px] font-medium text-[#9B9D9E]">
+        <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-[var(--demo-border-strong)] px-1.5 text-[10px] font-medium text-[var(--demo-muted)]">
           {tasks.length}
         </span>
         {extraHeader}
-        <Plus size={14} className="ml-auto text-[#9B9D9E]/40" />
+        <Plus size={14} className="ml-auto text-[var(--demo-muted)]/40" />
       </button>
       <AnimatePresence initial={false}>
         {!collapsed && (
@@ -386,10 +416,16 @@ function ListView() {
         tasks={REQUESTS}
         collapsed={isCollapsed("requests")}
         onToggle={() => toggle("requests")}
-        extraHeader={<span className="ml-1 text-[11px] text-[#9B9D9E]/50">from users</span>}
+        extraHeader={
+          <span className="ml-1 text-[11px] text-[var(--demo-muted)]/50">
+            from users
+          </span>
+        }
       >
         <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2">
-          {REQUESTS.map((t) => <RequestCard key={t.id} task={t} />)}
+          {REQUESTS.map((t) => (
+            <RequestCard key={t.id} task={t} />
+          ))}
         </div>
       </ListGroup>
       <ListGroup
@@ -399,7 +435,9 @@ function ListView() {
         collapsed={isCollapsed("todo")}
         onToggle={() => toggle("todo")}
       >
-        {TODO.map((t) => <ListRow key={t.id} task={t} status="todo" />)}
+        {TODO.map((t) => (
+          <ListRow key={t.id} task={t} status="todo" />
+        ))}
       </ListGroup>
       <ListGroup
         status="in_progress"
@@ -408,7 +446,9 @@ function ListView() {
         collapsed={isCollapsed("in_progress")}
         onToggle={() => toggle("in_progress")}
       >
-        {IN_PROGRESS.map((t) => <ListRow key={t.id} task={t} status="in_progress" />)}
+        {IN_PROGRESS.map((t) => (
+          <ListRow key={t.id} task={t} status="in_progress" />
+        ))}
       </ListGroup>
       <ListGroup
         status="ready"
@@ -417,7 +457,9 @@ function ListView() {
         collapsed={isCollapsed("ready")}
         onToggle={() => toggle("ready")}
       >
-        {READY.map((t) => <ListRow key={t.id} task={t} status="ready" />)}
+        {READY.map((t) => (
+          <ListRow key={t.id} task={t} status="ready" />
+        ))}
       </ListGroup>
       <ListGroup
         status="shipped"
@@ -426,7 +468,9 @@ function ListView() {
         collapsed={isCollapsed("shipped")}
         onToggle={() => toggle("shipped")}
       >
-        {SHIPPED.map((t) => <ListRow key={t.id} task={t} status="shipped" />)}
+        {SHIPPED.map((t) => (
+          <ListRow key={t.id} task={t} status="shipped" />
+        ))}
       </ListGroup>
       <ListGroup
         status="archive"
@@ -435,7 +479,9 @@ function ListView() {
         collapsed={isCollapsed("archive")}
         onToggle={() => toggle("archive")}
       >
-        {ARCHIVED.map((t) => <ListRow key={t.id} task={t} status="archive" />)}
+        {ARCHIVED.map((t) => (
+          <ListRow key={t.id} task={t} status="archive" />
+        ))}
       </ListGroup>
     </div>
   )
@@ -444,35 +490,53 @@ function ListView() {
 function BoardView() {
   return (
     <div className="scrollbar-hide flex flex-1 gap-2 overflow-x-auto px-4 pt-1 pb-4">
-      <div className="flex h-full w-[230px] shrink-0 flex-col overflow-hidden rounded-[4px] ring-1 ring-[#2E2E2E]">
-        <div className="flex items-center gap-2 bg-[#1E1E1E] px-3 py-1.5 shadow-[inset_0_-1px_0_#2E2E2E]">
+      <div className="flex h-full w-[230px] shrink-0 flex-col overflow-hidden rounded-[4px] ring-1 ring-[var(--demo-border)]">
+        <div className="flex items-center gap-2 bg-[var(--demo-surface)] px-3 py-1.5 shadow-[inset_0_-1px_0_var(--demo-border)]">
           <StatusIcon status="requests" />
-          <span className="text-[13px] font-semibold tracking-tight text-[#F7F7F4]">
+          <span className="text-[13px] font-semibold tracking-tight text-[var(--demo-text)]">
             Requests
           </span>
-          <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-[#2A2A2A] px-1.5 text-[10px] font-medium text-[#9B9D9E]">
+          <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-[var(--demo-border-strong)] px-1.5 text-[10px] font-medium text-[var(--demo-muted)]">
             {REQUESTS.length}
           </span>
-          <span className="ml-1 text-[11px] text-[#9B9D9E]/50">from users</span>
+          <span className="ml-1 text-[11px] text-[var(--demo-muted)]/50">
+            from users
+          </span>
         </div>
         <div className="flex flex-col gap-2 p-2">
-          {REQUESTS.map((t) => <RequestCard key={t.id} task={t} />)}
+          {REQUESTS.map((t) => (
+            <RequestCard key={t.id} task={t} />
+          ))}
         </div>
       </div>
       <Column status="todo" label="Todo" count={TODO.length}>
-        {TODO.map((t) => <KanbanCard key={t.id} task={t} />)}
+        {TODO.map((t) => (
+          <KanbanCard key={t.id} task={t} />
+        ))}
       </Column>
-      <Column status="in_progress" label="In Progress" count={IN_PROGRESS.length}>
-        {IN_PROGRESS.map((t) => <KanbanCard key={t.id} task={t} />)}
+      <Column
+        status="in_progress"
+        label="In Progress"
+        count={IN_PROGRESS.length}
+      >
+        {IN_PROGRESS.map((t) => (
+          <KanbanCard key={t.id} task={t} />
+        ))}
       </Column>
       <Column status="ready" label="Ready" count={READY.length}>
-        {READY.map((t) => <KanbanCard key={t.id} task={t} />)}
+        {READY.map((t) => (
+          <KanbanCard key={t.id} task={t} />
+        ))}
       </Column>
       <Column status="shipped" label="Shipped" count={SHIPPED.length}>
-        {SHIPPED.map((t) => <KanbanCard key={t.id} task={t} />)}
+        {SHIPPED.map((t) => (
+          <KanbanCard key={t.id} task={t} />
+        ))}
       </Column>
       <Column status="archive" label="Archive" count={ARCHIVED.length}>
-        {ARCHIVED.map((t) => <KanbanCard key={t.id} task={t} />)}
+        {ARCHIVED.map((t) => (
+          <KanbanCard key={t.id} task={t} />
+        ))}
       </Column>
     </div>
   )
@@ -495,16 +559,18 @@ function SidebarItem({
     <div
       className={`flex items-center gap-2 rounded-[4px] px-2 py-1 ${
         active
-          ? "bg-[#1E1E1E] text-[#F7F7F4] ring-1 ring-[#2A2A2A]"
+          ? "bg-[var(--demo-surface)] text-[var(--demo-text)] ring-1 ring-[var(--demo-border-strong)]"
           : muted
-            ? "text-[#F7F7F4]/40"
-            : "text-[#F7F7F4]/70"
+            ? "text-[var(--demo-text)]/40"
+            : "text-[var(--demo-text)]/70"
       }`}
     >
-      <span className="flex size-[15px] items-center justify-center">{icon}</span>
+      <span className="flex size-[15px] items-center justify-center">
+        {icon}
+      </span>
       <span className="text-[13px]">{label}</span>
       {shortcut && (
-        <kbd className="ml-auto rounded-[3px] border border-[#2A2A2A] px-1 py-px font-mono text-[10px] text-[#F7F7F4]/40">
+        <kbd className="ml-auto rounded-[3px] border border-[var(--demo-border-strong)] px-1 py-px font-mono text-[10px] text-[var(--demo-text)]/40">
           {shortcut}
         </kbd>
       )}
@@ -520,8 +586,8 @@ function SidebarSubItem({
   label: string
 }) {
   return (
-    <div className="flex items-center gap-2 rounded-[4px] py-1 pr-2 pl-7 text-[13px] text-[#F7F7F4]/70">
-      <span className="flex size-3 items-center justify-center text-[#F7F7F4]/70">
+    <div className="flex items-center gap-2 rounded-[4px] py-1 pr-2 pl-7 text-[13px] text-[var(--demo-text)]/70">
+      <span className="flex size-3 items-center justify-center text-[var(--demo-text)]/70">
         {icon}
       </span>
       <span>{label}</span>
@@ -550,26 +616,26 @@ export function LandingDemo() {
         transition={{ duration: 0.7, delay: 0.8, ease: [0.25, 0.1, 0.25, 1] }}
         className="mx-auto max-w-6xl"
       >
-        <div className="relative overflow-hidden rounded-2xl border border-foreground/10 bg-[#141414] p-1.5 shadow-2xl">
+        <div className="relative overflow-hidden rounded-2xl border border-foreground/10 bg-[var(--demo-shell)] p-1.5 shadow-2xl [--demo-border-strong:#ddd7cb] [--demo-border:#e7e2d8] [--demo-main:#fbfaf7] [--demo-muted:#7d766a] [--demo-shell:#f2eee7] [--demo-surface-hover:#f5f1e9] [--demo-surface:#fffefa] [--demo-text:#171615] dark:[--demo-border-strong:#2A2A2A] dark:[--demo-border:#2E2E2E] dark:[--demo-main:#181818] dark:[--demo-muted:#9B9D9E] dark:[--demo-shell:#141414] dark:[--demo-surface-hover:#252525] dark:[--demo-surface:#1E1E1E] dark:[--demo-text:#F7F7F4]">
           <div className="flex h-[520px] min-h-0 gap-1.5 md:h-[600px]">
             {/* Sidebar */}
-            <aside className="flex w-[200px] shrink-0 flex-col bg-[#141414] select-none">
+            <aside className="flex w-[200px] shrink-0 flex-col bg-[var(--demo-shell)] select-none">
               <div className="flex items-center gap-1.5 px-1 py-0.5">
                 <Logo symbolOnly className="size-6" />
               </div>
 
               <div className="mt-2 flex flex-col gap-1">
-                <div className="flex items-center gap-2 rounded-[4px] px-2 py-1 text-[#F7F7F4]/60 ring-1 ring-[#2A2A2A]">
+                <div className="flex items-center gap-2 rounded-[4px] px-2 py-1 text-[var(--demo-text)]/60 ring-1 ring-[var(--demo-border-strong)]">
                   <MagnifyingGlass size={15} />
                   <span className="text-[13px]">Search</span>
-                  <kbd className="ml-auto rounded-[3px] border border-[#2A2A2A] px-1 py-px font-mono text-[10px] text-[#F7F7F4]/40">
+                  <kbd className="ml-auto rounded-[3px] border border-[var(--demo-border-strong)] px-1 py-px font-mono text-[10px] text-[var(--demo-text)]/40">
                     ⌘K
                   </kbd>
                 </div>
-                <div className="flex items-center gap-2 rounded-[4px] bg-[#F7F7F4] px-2 py-1 text-[#141414] ring-1 ring-[#F7F7F4]/10">
+                <div className="flex items-center gap-2 rounded-[4px] bg-[var(--demo-text)] px-2 py-1 text-[var(--demo-shell)] ring-1 ring-[var(--demo-text)]/10">
                   <PenNib size={15} weight="fill" />
                   <span className="text-[13px] font-medium">New</span>
-                  <kbd className="ml-auto rounded-[3px] border border-[#141414]/15 px-1 py-px font-mono text-[10px] text-[#141414]/50">
+                  <kbd className="ml-auto rounded-[3px] border border-[var(--demo-shell)]/15 px-1 py-px font-mono text-[10px] text-[var(--demo-shell)]/50">
                     C
                   </kbd>
                 </div>
@@ -585,20 +651,29 @@ export function LandingDemo() {
                   icon={<ClockCounterClockwise size={15} />}
                   label="Logs"
                 />
-                <SidebarItem
-                  icon={<CreditCard size={15} />}
-                  label="Billing"
-                />
-                <SidebarItem
-                  icon={<Plugs size={15} />}
-                  label="Integrations"
-                />
-                <div className="mt-0.5 flex flex-col gap-0.5 border-l border-[#2A2A2A] ml-3 pl-0">
-                  <SidebarSubItem icon={<DiscordIcon size={12} />} label="Discord" />
-                  <SidebarSubItem icon={<SlackIcon size={12} />} label="Slack" />
-                  <SidebarSubItem icon={<LinearIcon size={12} />} label="Linear" />
-                  <SidebarSubItem icon={<XIcon size={12} />} label="X (Twitter)" />
-                  <SidebarSubItem icon={<GitHubIcon size={12} />} label="GitHub" />
+                <SidebarItem icon={<CreditCard size={15} />} label="Billing" />
+                <SidebarItem icon={<Plugs size={15} />} label="Integrations" />
+                <div className="mt-0.5 ml-3 flex flex-col gap-0.5 border-l border-[var(--demo-border-strong)] pl-0">
+                  <SidebarSubItem
+                    icon={<DiscordIcon size={12} />}
+                    label="Discord"
+                  />
+                  <SidebarSubItem
+                    icon={<SlackIcon size={12} />}
+                    label="Slack"
+                  />
+                  <SidebarSubItem
+                    icon={<LinearIcon size={12} />}
+                    label="Linear"
+                  />
+                  <SidebarSubItem
+                    icon={<XIcon size={12} />}
+                    label="X (Twitter)"
+                  />
+                  <SidebarSubItem
+                    icon={<GitHubIcon size={12} />}
+                    label="GitHub"
+                  />
                   <SidebarSubItem icon={<CliIcon size={12} />} label="CLI" />
                 </div>
               </div>
@@ -606,14 +681,14 @@ export function LandingDemo() {
               <div className="mt-auto flex flex-col gap-0.5">
                 <SidebarItem icon={<Gear size={15} />} label="Settings" />
                 <div className="flex items-center gap-2 rounded-[4px] px-2 py-1">
-                  <div className="flex size-5 shrink-0 items-center justify-center rounded-[4px] bg-[#1E1E1E] text-[10px] font-medium text-[#F7F7F4] ring-1 ring-[#2A2A2A]">
+                  <div className="flex size-5 shrink-0 items-center justify-center rounded-[4px] bg-[var(--demo-surface)] text-[10px] font-medium text-[var(--demo-text)] ring-1 ring-[var(--demo-border-strong)]">
                     M
                   </div>
                   <div className="flex min-w-0 flex-col leading-tight">
-                    <span className="truncate text-[12px] font-medium text-[#F7F7F4]">
+                    <span className="truncate text-[12px] font-medium text-[var(--demo-text)]">
                       Median
                     </span>
-                    <span className="truncate text-[10px] text-[#F7F7F4]/50">
+                    <span className="truncate text-[10px] text-[var(--demo-text)]/50">
                       Workspace
                     </span>
                   </div>
@@ -622,16 +697,16 @@ export function LandingDemo() {
             </aside>
 
             {/* Main (inset panel) */}
-            <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-[4px] bg-[#181818] ring-1 ring-[#2A2A2A]">
+            <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-[4px] bg-[var(--demo-main)] ring-1 ring-[var(--demo-border-strong)]">
               {/* Toolbar — toggle hidden on mobile (board-only) */}
               <div className="hidden items-center gap-2 px-4 pt-3 pb-2 md:flex">
-                <div className="flex items-center gap-0.5 rounded-[4px] bg-[#1E1E1E]/60 p-0.5 ring-1 ring-[#2A2A2A]">
+                <div className="flex items-center gap-0.5 rounded-[4px] bg-[var(--demo-surface)]/60 p-0.5 ring-1 ring-[var(--demo-border-strong)]">
                   <button
                     onClick={() => setView("list")}
                     className={`flex size-6 cursor-pointer items-center justify-center rounded-[4px] transition-colors ${
                       view === "list"
-                        ? "bg-[#2A2A2A] text-[#F7F7F4]"
-                        : "text-[#F7F7F4]/50 hover:text-[#F7F7F4]"
+                        ? "bg-[var(--demo-border-strong)] text-[var(--demo-text)]"
+                        : "text-[var(--demo-text)]/50 hover:text-[var(--demo-text)]"
                     }`}
                     aria-label="List view"
                   >
@@ -641,8 +716,8 @@ export function LandingDemo() {
                     onClick={() => setView("board")}
                     className={`flex size-6 cursor-pointer items-center justify-center rounded-[4px] transition-colors ${
                       view === "board"
-                        ? "bg-[#2A2A2A] text-[#F7F7F4]"
-                        : "text-[#F7F7F4]/50 hover:text-[#F7F7F4]"
+                        ? "bg-[var(--demo-border-strong)] text-[var(--demo-text)]"
+                        : "text-[var(--demo-text)]/50 hover:text-[var(--demo-text)]"
                     }`}
                     aria-label="Board view"
                   >
@@ -666,10 +741,10 @@ export function LandingDemo() {
 
               {/* Right-edge fade (board overflow) */}
               {effectiveView === "board" && (
-                <div className="pointer-events-none absolute top-0 right-0 bottom-0 w-20 bg-gradient-to-l from-[#181818] to-transparent" />
+                <div className="pointer-events-none absolute top-0 right-0 bottom-0 w-20 bg-gradient-to-l from-[var(--demo-main)] to-transparent" />
               )}
               {/* Bottom fade so content doesn't cut harshly */}
-              <div className="pointer-events-none absolute right-0 bottom-0 left-0 h-16 bg-gradient-to-t from-[#181818] to-transparent" />
+              <div className="pointer-events-none absolute right-0 bottom-0 left-0 h-16 bg-gradient-to-t from-[var(--demo-main)] to-transparent" />
             </main>
           </div>
         </div>
