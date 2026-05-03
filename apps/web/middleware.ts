@@ -4,7 +4,7 @@ import { NextResponse } from "next/server"
 const HAS_WORKSPACE_COOKIE = "median_has_workspace"
 const ADMIN_HOST = "https://admin.median.sh"
 
-export default clerkMiddleware((auth, req) => {
+export default clerkMiddleware(async (auth, req) => {
   if (
     req.nextUrl.pathname === "/app/admin" ||
     req.nextUrl.pathname.startsWith("/app/admin/")
@@ -13,6 +13,10 @@ export default clerkMiddleware((auth, req) => {
     const redirectUrl = new URL(adminPath, ADMIN_HOST)
     redirectUrl.search = req.nextUrl.search
     return NextResponse.redirect(redirectUrl)
+  }
+
+  if (req.nextUrl.pathname.startsWith("/app")) {
+    await auth.protect()
   }
 
   if (req.nextUrl.pathname === "/app/setup" && req.cookies.get(HAS_WORKSPACE_COOKIE)?.value === "1") {

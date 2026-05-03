@@ -286,7 +286,7 @@ function EventTooltip({ eventLimit }: { eventLimit: number }) {
           >
             <p className="text-xs font-medium text-foreground">Event pricing</p>
             <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-              Your plan includes {eventLimit.toLocaleString()} events per month.
+              Your plan includes {eventLimit.toLocaleString("en-US")} events per month.
               After that, each additional event costs $
               {AUTUMN_EVENT_OVERAGE_PRICE}. Events are tracked from all
               connected integrations (Discord, GitHub, Linear, X).

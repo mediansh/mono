@@ -29,7 +29,6 @@ build
 dist
 *.bun-build
 
-
 # Debug
 npm-debug.log*
 
@@ -37,3 +36,8 @@ npm-debug.log*
 .DS_Store
 *.pem
 .linear.toml
+.skills-lock.json
+
+# AI
+.agents
+.claude
