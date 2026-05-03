@@ -132,6 +132,7 @@ type GeneratedTaskPayload = {
   description?: string
   status?: Status
   priority?: Priority
+  tags?: Label[]
   labels?: Label[]
 }
 
@@ -562,7 +563,10 @@ export function NewTaskModal({
       const payload = await response.json()
 
       if (!response.ok) {
-        if (response.status === 402 && payload?.code === "ai_budget_exhausted") {
+        if (
+          response.status === 402 &&
+          payload?.code === "ai_budget_exhausted"
+        ) {
           toast.error(
             payload?.error ??
               "AI budget exhausted. Overages are disabled for this workspace.",
@@ -606,7 +610,7 @@ export function NewTaskModal({
           description: task.description,
           status: task.status ?? defaultStatus,
           priority: task.priority ?? "none",
-          labels: (task.labels ?? []).filter((label) =>
+          labels: (task.tags ?? task.labels ?? []).filter((label) =>
             labelOptions.some((option) => option.id === label)
           ),
         })),
@@ -809,9 +813,7 @@ export function NewTaskModal({
                         : !aiPrompt.trim() || isGenerating
                     }
                     aria-label={
-                      activeTab === "manual"
-                        ? "Create task"
-                        : "Generate tasks"
+                      activeTab === "manual" ? "Create task" : "Generate tasks"
                     }
                     className="flex items-center justify-center rounded-[4px] bg-primary p-1.5 text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40 md:hidden"
                   >
@@ -933,7 +935,9 @@ export function NewTaskModal({
                             <DropdownMenuItem
                               key={opt.id}
                               onClick={() => setPriority(opt.id)}
-                              className={priority === opt.id ? "font-medium" : ""}
+                              className={
+                                priority === opt.id ? "font-medium" : ""
+                              }
                             >
                               <div className="flex items-center gap-2">
                                 {getPriorityIcon(opt.id)}
@@ -964,14 +968,18 @@ export function NewTaskModal({
                               </div>
                               <span>
                                 {labels.length === 1
-                                  ? (labelOptions.find((o) => o.id === labels[0])
-                                      ?.label ?? labels[0])
+                                  ? (labelOptions.find(
+                                      (o) => o.id === labels[0]
+                                    )?.label ?? labels[0])
                                   : `${labels.length} labels`}
                               </span>
                             </div>
                           ) : (
                             <div className="flex items-center gap-1.5">
-                              <Tag size={12} className="text-muted-foreground" />
+                              <Tag
+                                size={12}
+                                className="text-muted-foreground"
+                              />
                               <span className="text-muted-foreground">
                                 Labels
                               </span>
@@ -1030,7 +1038,9 @@ export function NewTaskModal({
                         onClick={() => setCreateMore(!createMore)}
                         title="Keep the modal open after creating"
                         className={`flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent ${
-                          createMore ? "text-foreground" : "text-muted-foreground"
+                          createMore
+                            ? "text-foreground"
+                            : "text-muted-foreground"
                         }`}
                       >
                         <span
