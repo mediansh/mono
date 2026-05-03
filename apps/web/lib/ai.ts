@@ -6,23 +6,15 @@ const openrouter = createOpenRouter({
 })
 
 export const AI_MODEL_IDS = {
-  feedbackClassifier: "nvidia/nemotron-3-super-120b-a12b",
-  feedbackExtractor: "z-ai/glm-4.7",
-  taskGeneration: "z-ai/glm-4.7",
+  feedbackClassifier: "anthropic/claude-haiku-4.5",
+  feedbackExtractor: "anthropic/claude-sonnet-4.6",
+  taskGeneration: "anthropic/claude-haiku-4.5",
 } as const
-
-const glm47Settings = {
-  provider: {
-    only: ["cerebras"],
-    quantizations: ["fp16"],
-    allow_fallbacks: false,
-  },
-}
 
 export const AI_MODELS: Record<keyof typeof AI_MODEL_IDS, LanguageModel> = {
   feedbackClassifier: openrouter(AI_MODEL_IDS.feedbackClassifier),
-  feedbackExtractor: openrouter(AI_MODEL_IDS.feedbackExtractor, glm47Settings),
-  taskGeneration: openrouter(AI_MODEL_IDS.taskGeneration, glm47Settings),
+  feedbackExtractor: openrouter(AI_MODEL_IDS.feedbackExtractor),
+  taskGeneration: openrouter(AI_MODEL_IDS.taskGeneration),
 }
 
 export function hasOpenRouterApiKey() {
