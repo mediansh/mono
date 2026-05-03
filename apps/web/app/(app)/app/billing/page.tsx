@@ -228,6 +228,9 @@ export default function BillingPage() {
   const [error, setError] = useState<string | null>(null)
   const [managingBilling, setManagingBilling] = useState(false)
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null)
+  const [overageConfirmPlanId, setOverageConfirmPlanId] = useState<
+    string | null
+  >(null)
   const [disableOveragesPending, setDisableOveragesPending] = useState(false)
   const [confirmDisableOveragesOpen, setConfirmDisableOveragesOpen] =
     useState(false)
@@ -400,6 +403,17 @@ export default function BillingPage() {
     }
   }
 
+  function handlePlanSubscribeClick(planId: string) {
+    if (
+      !currentWorkspace ||
+      !dashboard?.canManageBilling ||
+      pendingPlanId
+    )
+      return
+
+    setOverageConfirmPlanId(planId)
+  }
+
   if (error && !dashboard) {
     return (
       <Stagger className="h-full overflow-y-auto">
@@ -437,6 +451,8 @@ export default function BillingPage() {
 
   const currentPlan =
     dashboard.plans.find((plan) => plan.id === dashboard.currentPlanId) ?? null
+  const overageConfirmPlan =
+    dashboard.plans.find((plan) => plan.id === overageConfirmPlanId) ?? null
   const aiBudgetUsed =
     dashboard.summary.aiBudget > 0
       ? Math.min(dashboard.summary.aiSpend, dashboard.summary.aiBudget)
@@ -697,7 +713,7 @@ export default function BillingPage() {
                     ))}
                   </div>
                   <button
-                    onClick={() => void handleAttachPlan(plan.id)}
+                    onClick={() => handlePlanSubscribeClick(plan.id)}
                     disabled={isDisabled}
                     className={`flex h-7 items-center justify-center rounded-[4px] text-[12px] font-medium transition-colors ${
                       isDisabled
@@ -818,6 +834,51 @@ export default function BillingPage() {
               className="flex h-8 flex-1 items-center justify-center rounded-[4px] bg-primary text-[13px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
             >
               {disableOveragesPending ? "Disabling..." : "Disable overages"}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={overageConfirmPlanId !== null}
+        onOpenChange={(open) => {
+          if (pendingPlanId) return
+          if (!open) setOverageConfirmPlanId(null)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Overages are charged by default</DialogTitle>
+            <DialogDescription>
+              When you subscribe to
+              {overageConfirmPlan ? ` ${overageConfirmPlan.name}` : " a plan"},
+              usage beyond the included plan limits is automatically charged to
+              your account by default. You can disable overages anytime in
+              Billing to hard-cap usage at your plan limits.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setOverageConfirmPlanId(null)}
+              disabled={pendingPlanId !== null}
+              className="flex h-8 flex-1 items-center justify-center rounded-[4px] ring-1 ring-border text-[13px] font-medium transition-colors hover:bg-muted disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={pendingPlanId !== null || !overageConfirmPlan}
+              onClick={async () => {
+                if (!overageConfirmPlan) return
+                await handleAttachPlan(overageConfirmPlan.id)
+                setOverageConfirmPlanId(null)
+              }}
+              className="flex h-8 flex-1 items-center justify-center rounded-[4px] bg-primary text-[13px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+            >
+              {pendingPlanId === overageConfirmPlan?.id
+                ? "Working..."
+                : "Continue"}
             </button>
           </div>
         </DialogContent>

@@ -22,6 +22,7 @@ import {
   ClockCounterClockwise,
   CreditCard,
   ShieldCheck,
+  ArrowSquareOut,
 } from "@phosphor-icons/react"
 import { Facehash } from "facehash"
 import {
@@ -384,7 +385,7 @@ export function AppSidebar() {
                         isActive={isActive}
                         className={
                           isActive
-                            ? "data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground data-active:ring-1 data-active:ring-sidebar-border"
+                            ? "data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground"
                             : "text-sidebar-foreground/70"
                         }
                       >
@@ -402,7 +403,7 @@ export function AppSidebar() {
                     isActive={pathname === "/app/integrations"}
                     className={
                       pathname.startsWith("/app/integrations")
-                        ? "data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground data-active:ring-1 data-active:ring-sidebar-border text-sidebar-accent-foreground"
+                        ? "data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground text-sidebar-accent-foreground"
                         : "text-sidebar-foreground/70"
                     }
                   >
@@ -440,19 +441,22 @@ export function AppSidebar() {
             {isAdmin && (
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  render={<Link href="/app/admin" />}
-                  isActive={pathname.startsWith("/app/admin")}
-                  className={
-                    pathname.startsWith("/app/admin")
-                      ? "data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground data-active:ring-1 data-active:ring-sidebar-border"
-                      : "text-sidebar-foreground/70"
+                  render={
+                    <a
+                      href="https://admin.median.sh"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    />
                   }
+                  className="text-sidebar-foreground/70"
                 >
-                  <ShieldCheck
-                    size={15}
-                    weight={pathname.startsWith("/app/admin") ? "fill" : "regular"}
-                  />
+                  <ShieldCheck size={15} weight="regular" />
                   <span>Admin</span>
+                  <ArrowSquareOut
+                    size={12}
+                    weight="regular"
+                    className="ml-auto text-sidebar-foreground/40 group-data-[collapsible=icon]:hidden"
+                  />
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
@@ -462,7 +466,7 @@ export function AppSidebar() {
                 isActive={pathname.startsWith("/app/settings")}
                 className={
                   pathname.startsWith("/app/settings")
-                    ? "data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground data-active:ring-1 data-active:ring-sidebar-border"
+                    ? "data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground"
                     : "text-sidebar-foreground/70"
                 }
               >
@@ -473,7 +477,7 @@ export function AppSidebar() {
             <SidebarMenuItem>
               {mounted ? (
               <DropdownMenu>
-                <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-[4px] px-2 py-1 outline-none transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring">
+                <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-[4px] px-2 py-1 outline-none transition-colors duration-150 ease-out hover:bg-sidebar-accent active:bg-sidebar-border focus-visible:ring-2 focus-visible:ring-sidebar-ring">
                   {user?.imageUrl ? (
                     <img
                       src={user.imageUrl}

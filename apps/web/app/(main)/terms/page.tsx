@@ -7,7 +7,7 @@ import {
   LegalSection,
 } from "@/components/legal-document"
 
-const lastUpdated = "April 9, 2026"
+const lastUpdated = "May 3, 2026"
 
 export default function TermsPage() {
   return (
@@ -136,7 +136,14 @@ export default function TermsPage() {
         </p>
         <LegalList
           items={[
-            <>You authorize us and our billing providers to charge the payment method associated with your account for recurring subscription fees, overages, and other agreed charges.</>,
+            <>
+              You authorize us and our billing providers to charge the payment
+              method associated with your account for recurring subscription
+              fees, overages, and other agreed charges. By default, usage
+              overages are automatically charged to the payment method
+              associated with your account unless you disable overages in
+              Billing.
+            </>,
             <>Unless otherwise stated, fees are non-refundable and exclusive of taxes, duties, and government charges.</>,
             <>You are responsible for applicable taxes other than taxes based on our net income.</>,
             <>We may suspend or limit access to paid features for overdue amounts, failed payments, or billing abuse.</>,
