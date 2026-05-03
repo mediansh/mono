@@ -616,7 +616,7 @@ export function LandingDemo() {
         transition={{ duration: 0.7, delay: 0.8, ease: [0.25, 0.1, 0.25, 1] }}
         className="mx-auto max-w-6xl"
       >
-        <div className="relative overflow-hidden rounded-2xl border border-foreground/10 bg-[var(--demo-shell)] p-1.5 shadow-2xl [--demo-border-strong:#ddd7cb] [--demo-border:#e7e2d8] [--demo-main:#fbfaf7] [--demo-muted:#7d766a] [--demo-shell:#f2eee7] [--demo-surface-hover:#f5f1e9] [--demo-surface:#fffefa] [--demo-text:#171615] dark:[--demo-border-strong:#2A2A2A] dark:[--demo-border:#2E2E2E] dark:[--demo-main:#181818] dark:[--demo-muted:#9B9D9E] dark:[--demo-shell:#141414] dark:[--demo-surface-hover:#252525] dark:[--demo-surface:#1E1E1E] dark:[--demo-text:#F7F7F4]">
+        <div className="relative overflow-hidden rounded-2xl border border-foreground/10 bg-[var(--demo-shell)] p-1.5 shadow-2xl [--demo-border-strong:#EBEBEB] [--demo-border:#EBEBEB] [--demo-main:#FCFCFC] [--demo-muted:#9B9D9E] [--demo-shell:#F7F7F7] [--demo-surface-hover:#F2F2F2] [--demo-surface:#F7F7F7] [--demo-text:#252728] dark:[--demo-border-strong:#2A2A2A] dark:[--demo-border:#2E2E2E] dark:[--demo-main:#181818] dark:[--demo-muted:#9B9D9E] dark:[--demo-shell:#141414] dark:[--demo-surface-hover:#252525] dark:[--demo-surface:#1E1E1E] dark:[--demo-text:#F7F7F4]">
           <div className="flex h-[520px] min-h-0 gap-1.5 md:h-[600px]">
             {/* Sidebar */}
             <aside className="flex w-[200px] shrink-0 flex-col bg-[var(--demo-shell)] select-none">
