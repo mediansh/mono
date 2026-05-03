@@ -21,7 +21,7 @@ function Spinner() {
 }
 
 export default function EarlyAccessPage() {
-  const { navigate } = useInstantNavigation()
+  const { navigate, replace } = useInstantNavigation()
   const { signOut } = useClerk()
   const enabled = useQuery(api.earlyAccess.isEnabled)
   const redemption = useQuery(api.earlyAccess.currentUserRedemption)
@@ -34,10 +34,15 @@ export default function EarlyAccessPage() {
   const inputsRef = useRef<Array<HTMLInputElement | null>>([])
 
   useEffect(() => {
-    if (enabled === false || redemption || isAdmin === true) {
+    if (enabled === false) {
+      replace("/app")
+      return
+    }
+
+    if (redemption || isAdmin === true) {
       navigate("/app")
     }
-  }, [enabled, redemption, isAdmin, navigate])
+  }, [enabled, redemption, isAdmin, navigate, replace])
 
   useEffect(() => {
     inputsRef.current[0]?.focus()

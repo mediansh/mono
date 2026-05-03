@@ -16,11 +16,16 @@ export function EarlyAccessGuard({ children }: { children: React.ReactNode }) {
   const isEarlyAccessPage = pathname === "/app/early-access"
   const loading =
     enabled === undefined || redemption === undefined || isAdmin === undefined
+  const earlyAccessDisabled = enabled === false
   const needsCode =
     enabled === true && redemption === null && isAdmin === false
 
   useEffect(() => {
     if (loading) return
+    if (earlyAccessDisabled && isEarlyAccessPage) {
+      replace("/app")
+      return
+    }
     if (needsCode && !isEarlyAccessPage) {
       replace("/app/early-access")
       return
@@ -28,7 +33,7 @@ export function EarlyAccessGuard({ children }: { children: React.ReactNode }) {
     if (!needsCode && isEarlyAccessPage) {
       replace("/app")
     }
-  }, [loading, needsCode, isEarlyAccessPage, replace])
+  }, [earlyAccessDisabled, loading, needsCode, isEarlyAccessPage, replace])
 
   if (loading) return null
 
