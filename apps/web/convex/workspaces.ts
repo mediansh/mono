@@ -1,5 +1,6 @@
 import { v } from "convex/values"
-import { mutation, query } from "./_generated/server"
+import { internalMutation, mutation, query } from "./_generated/server"
+import { internal } from "./_generated/api"
 import type { Doc } from "./_generated/dataModel"
 import {
   getIdentityProfile,
@@ -331,6 +332,12 @@ export const updateWorkspace = mutation({
   },
 })
 
+// Maximum number of documents to delete in a single batch within a Convex
+// mutation. Convex caps each mutation at ~8k document writes / ~16k reads, so
+// we stay well under that to allow headroom for the queries themselves.
+const PURGE_BATCH_SIZE = 200
+const MEMBER_DELETE_LIMIT = 500
+
 export const deleteWorkspace = mutation({
   args: {
     workspaceId: v.id("workspaces"),
@@ -344,143 +351,303 @@ export const deleteWorkspace = mutation({
     const workspace = await ctx.db.get(args.workspaceId)
     if (!workspace) throw new Error("Workspace not found")
 
-    const [
-      members,
-      invites,
-      tasks,
-      discordIntegrations,
-      linearIntegrations,
-      linearTaskLinks,
-      pairedCodes,
-      xIntegrations,
-      xPosts,
-      xOAuthStates,
-      xWebhookDeliveries,
-      deletedTaskSources,
-      workspaceLogs,
-      workspaceLogMetrics,
-    ] = await Promise.all([
-      ctx.db
-        .query("workspaceMembers")
-        .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
-        .collect(),
-      ctx.db
-        .query("workspaceInvites")
-        .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
-        .collect(),
-      ctx.db
-        .query("tasks")
-        .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
-        .collect(),
-      ctx.db
-        .query("discordWorkspaceIntegrations")
-        .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
-        .collect(),
-      ctx.db
-        .query("linearWorkspaceIntegrations")
-        .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
-        .collect(),
-      ctx.db
-        .query("linearTaskLinks")
-        .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
-        .collect(),
-      ctx.db
-        .query("discordPairingCodes")
-        .withIndex("by_paired_workspace", (q) => q.eq("pairedWorkspaceId", args.workspaceId))
-        .collect(),
-      ctx.db
-        .query("xWorkspaceIntegrations")
-        .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
-        .collect(),
-      ctx.db
-        .query("xPosts")
-        .withIndex("by_workspace_created_at", (q) => q.eq("workspaceId", args.workspaceId))
-        .collect(),
-      ctx.db
-        .query("xOAuthStates")
-        .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
-        .collect(),
-      ctx.db
-        .query("xWebhookDeliveries")
-        .withIndex("by_workspace_received_at", (q) =>
-          q.eq("workspaceId", args.workspaceId)
-        )
-        .collect(),
-      ctx.db
-        .query("deletedTaskSources")
-        .withIndex("by_workspace_source", (q) => q.eq("workspaceId", args.workspaceId))
-        .collect(),
-      ctx.db
-        .query("workspaceLogs")
-        .withIndex("by_workspace_timestamp", (q) => q.eq("workspaceId", args.workspaceId))
-        .collect(),
-      ctx.db
-        .query("workspaceLogMetrics")
-        .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
-        .collect(),
-    ])
-
-    for (const task of tasks) {
-      await ctx.db.delete(task._id)
-    }
-
-    for (const invite of invites) {
-      await ctx.db.delete(invite._id)
-    }
-
-    for (const integration of discordIntegrations) {
-      await ctx.db.delete(integration._id)
-    }
-
-    for (const integration of linearIntegrations) {
-      await ctx.db.delete(integration._id)
-    }
-
-    for (const link of linearTaskLinks) {
-      await ctx.db.delete(link._id)
-    }
-
-    for (const pairingCode of pairedCodes) {
-      await ctx.db.delete(pairingCode._id)
-    }
-
-    for (const post of xPosts) {
-      await ctx.db.delete(post._id)
-    }
-
-    for (const oauthState of xOAuthStates) {
-      await ctx.db.delete(oauthState._id)
-    }
-
-    for (const delivery of xWebhookDeliveries) {
-      await ctx.db.delete(delivery._id)
-    }
-
-    for (const deletedTaskSource of deletedTaskSources) {
-      await ctx.db.delete(deletedTaskSource._id)
-    }
-
-    for (const log of workspaceLogs) {
-      await ctx.db.delete(log._id)
-    }
-
-    for (const metrics of workspaceLogMetrics) {
-      await ctx.db.delete(metrics._id)
-    }
-
-    for (const integration of xIntegrations) {
-      await ctx.db.delete(integration._id)
-    }
-
+    // Step 1: remove every membership so the workspace immediately disappears
+    // from getUserWorkspaces for everyone (including other members).
+    const members = await ctx.db
+      .query("workspaceMembers")
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .take(MEMBER_DELETE_LIMIT)
     for (const member of members) {
       await ctx.db.delete(member._id)
     }
 
+    // Step 2: delete the workspace document and its icon synchronously so the
+    // workspace is gone the moment this mutation resolves, regardless of how
+    // much related data is still being cleaned up in the background.
     if (workspace.iconId) {
       await ctx.storage.delete(workspace.iconId)
     }
-
     await ctx.db.delete(args.workspaceId)
+
+    // Step 3: schedule a background purge of related rows (tasks, logs,
+    // integrations, messages, etc.). The previous implementation tried to do
+    // all of this in one transaction and silently failed once a workspace had
+    // enough records to exceed Convex's per-mutation read/write limits.
+    await ctx.scheduler.runAfter(0, internal.workspaces.purgeWorkspaceData, {
+      workspaceId: args.workspaceId,
+    })
+  },
+})
+
+export const purgeWorkspaceData = internalMutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args) => {
+    const workspaceId = args.workspaceId
+    let budget = PURGE_BATCH_SIZE
+
+    // Drains documents from `query` up to the current `budget`. Returns true
+    // when the table is fully cleaned out within this batch (so we can move
+    // on to the next table) and false when we've exhausted the budget on a
+    // single table (so the caller should schedule another pass).
+    async function drain(
+      runQuery: () => {
+        take: (n: number) => Promise<Array<{ _id: any }>>
+      }
+    ): Promise<boolean> {
+      if (budget <= 0) return false
+      const limit = budget
+      const docs = await runQuery().take(limit)
+      for (const doc of docs) {
+        await ctx.db.delete(doc._id)
+      }
+      budget -= docs.length
+      // We took fewer rows than the limit, so this table is empty.
+      return docs.length < limit
+    }
+
+    // Cleanup steps. Each closure builds the query lazily so it picks up the
+    // latest `budget` value when invoked. Order matters only insofar as parent
+    // rows should generally be removed after their children — we delete
+    // workspaceMembers last so this mutation's auth model (which queries
+    // workspaceMembers) keeps working if anything is rerun.
+    const steps: Array<() => Promise<boolean>> = [
+      () =>
+        drain(() =>
+          ctx.db
+            .query("workspaceInvites")
+            .withIndex("by_workspace", (q) =>
+              q.eq("workspaceId", workspaceId)
+            )
+        ),
+      () =>
+        drain(() =>
+          ctx.db
+            .query("tasks")
+            .withIndex("by_workspace", (q) =>
+              q.eq("workspaceId", workspaceId)
+            )
+        ),
+      () =>
+        drain(() =>
+          ctx.db
+            .query("workspaceLogs")
+            .withIndex("by_workspace_timestamp", (q) =>
+              q.eq("workspaceId", workspaceId)
+            )
+        ),
+      () =>
+        drain(() =>
+          ctx.db
+            .query("workspaceLogMetrics")
+            .withIndex("by_workspace", (q) =>
+              q.eq("workspaceId", workspaceId)
+            )
+        ),
+      () =>
+        drain(() =>
+          ctx.db
+            .query("deletedTaskSources")
+            .withIndex("by_workspace_source", (q) =>
+              q.eq("workspaceId", workspaceId)
+            )
+        ),
+      // Slack
+      () =>
+        drain(() =>
+          ctx.db
+            .query("slackPendingNotifications")
+            .withIndex("by_workspace", (q) =>
+              q.eq("workspaceId", workspaceId)
+            )
+        ),
+      () =>
+        drain(() =>
+          ctx.db
+            .query("slackMessages")
+            .withIndex("by_workspace_channel_created_at", (q) =>
+              q.eq("workspaceId", workspaceId)
+            )
+        ),
+      () =>
+        drain(() =>
+          ctx.db
+            .query("slackOAuthStates")
+            .withIndex("by_workspace", (q) =>
+              q.eq("workspaceId", workspaceId)
+            )
+        ),
+      () =>
+        drain(() =>
+          ctx.db
+            .query("slackWorkspaceIntegrations")
+            .withIndex("by_workspace", (q) =>
+              q.eq("workspaceId", workspaceId)
+            )
+        ),
+      // Discord
+      () =>
+        drain(() =>
+          ctx.db
+            .query("discordPendingNotifications")
+            .withIndex("by_workspace", (q) =>
+              q.eq("workspaceId", workspaceId)
+            )
+        ),
+      () =>
+        drain(() =>
+          ctx.db
+            .query("discordMessages")
+            .withIndex("by_workspace_channel_created_at", (q) =>
+              q.eq("workspaceId", workspaceId)
+            )
+        ),
+      () =>
+        drain(() =>
+          ctx.db
+            .query("discordWorkspaceIntegrations")
+            .withIndex("by_workspace", (q) =>
+              q.eq("workspaceId", workspaceId)
+            )
+        ),
+      () =>
+        drain(() =>
+          ctx.db
+            .query("discordPairingCodes")
+            .withIndex("by_paired_workspace", (q) =>
+              q.eq("pairedWorkspaceId", workspaceId)
+            )
+        ),
+      // Linear
+      () =>
+        drain(() =>
+          ctx.db
+            .query("linearTaskLinks")
+            .withIndex("by_workspace", (q) =>
+              q.eq("workspaceId", workspaceId)
+            )
+        ),
+      () =>
+        drain(() =>
+          ctx.db
+            .query("linearWorkspaceIntegrations")
+            .withIndex("by_workspace", (q) =>
+              q.eq("workspaceId", workspaceId)
+            )
+        ),
+      // GitHub
+      () =>
+        drain(() =>
+          ctx.db
+            .query("githubInstallStates")
+            .withIndex("by_workspace", (q) =>
+              q.eq("workspaceId", workspaceId)
+            )
+        ),
+      () =>
+        drain(() =>
+          ctx.db
+            .query("githubWorkspaceIntegrations")
+            .withIndex("by_workspace", (q) =>
+              q.eq("workspaceId", workspaceId)
+            )
+        ),
+      () =>
+        drain(() =>
+          ctx.db
+            .query("githubTaskLinks")
+            .withIndex("by_workspace", (q) =>
+              q.eq("workspaceId", workspaceId)
+            )
+        ),
+      () =>
+        drain(() =>
+          ctx.db
+            .query("githubWebhookDeliveries")
+            .withIndex("by_workspace_received_at", (q) =>
+              q.eq("workspaceId", workspaceId)
+            )
+        ),
+      () =>
+        drain(() =>
+          ctx.db
+            .query("githubTaskDevelopmentRefs")
+            .withIndex("by_workspace", (q) =>
+              q.eq("workspaceId", workspaceId)
+            )
+        ),
+      // X (Twitter)
+      () =>
+        drain(() =>
+          ctx.db
+            .query("xPosts")
+            .withIndex("by_workspace_created_at", (q) =>
+              q.eq("workspaceId", workspaceId)
+            )
+        ),
+      () =>
+        drain(() =>
+          ctx.db
+            .query("xWebhookDeliveries")
+            .withIndex("by_workspace_received_at", (q) =>
+              q.eq("workspaceId", workspaceId)
+            )
+        ),
+      () =>
+        drain(() =>
+          ctx.db
+            .query("xOAuthStates")
+            .withIndex("by_workspace", (q) =>
+              q.eq("workspaceId", workspaceId)
+            )
+        ),
+      () =>
+        drain(() =>
+          ctx.db
+            .query("xWorkspaceIntegrations")
+            .withIndex("by_workspace", (q) =>
+              q.eq("workspaceId", workspaceId)
+            )
+        ),
+      // CLI
+      () =>
+        drain(() =>
+          ctx.db
+            .query("cliApiKeys")
+            .withIndex("by_workspace", (q) =>
+              q.eq("workspaceId", workspaceId)
+            )
+        ),
+      // Memberships are normally cleared by the public mutation. Re-running
+      // here covers the (rare) case where a workspace had more members than
+      // MEMBER_DELETE_LIMIT could fit synchronously.
+      () =>
+        drain(() =>
+          ctx.db
+            .query("workspaceMembers")
+            .withIndex("by_workspace", (q) =>
+              q.eq("workspaceId", workspaceId)
+            )
+        ),
+    ]
+
+    let needsContinuation = false
+    for (const step of steps) {
+      const tableDone = await step()
+      if (!tableDone) {
+        needsContinuation = true
+        break
+      }
+    }
+
+    if (needsContinuation) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.workspaces.purgeWorkspaceData,
+        { workspaceId }
+      )
+    }
   },
 })
 

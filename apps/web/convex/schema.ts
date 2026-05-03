@@ -166,7 +166,8 @@ export default defineSchema({
   })
     .index("by_integration_status", ["integrationId", "status"])
     .index("by_status", ["status"])
-    .index("by_task", ["taskId"]),
+    .index("by_task", ["taskId"])
+    .index("by_workspace", ["workspaceId"]),
 
   discordPairingCodes: defineTable({
     code: v.string(),
@@ -508,7 +509,8 @@ export default defineSchema({
   })
     .index("by_integration_status", ["integrationId", "status"])
     .index("by_status", ["status"])
-    .index("by_task", ["taskId"]),
+    .index("by_task", ["taskId"])
+    .index("by_workspace", ["workspaceId"]),
 
   cliApiKeys: defineTable({
     workspaceId: v.id("workspaces"),
