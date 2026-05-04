@@ -1597,6 +1597,7 @@ const ALL_STATUSES: Status[] = [
   "shipped",
   "archive",
 ]
+const FILTER_STATUSES: Status[] = ["requests", ...ALL_STATUSES]
 const ALL_PRIORITIES: Priority[] = ["urgent", "high", "medium", "low", "none"]
 // ALL_LABELS is now dynamic from workspace config via LabelConfigContext
 
@@ -3920,7 +3921,7 @@ function BoardFilter({
                       Status
                     </div>
                     <div className="flex flex-col">
-                      {ALL_STATUSES.map((status) => {
+                      {FILTER_STATUSES.map((status) => {
                         const checked = filter.statuses.includes(status)
                         return (
                           <button
@@ -4284,6 +4285,8 @@ export function KanbanBoard() {
       filter.sources.length > 0
     if (!hasFilter) return tasks
     return tasks.filter((task) => {
+      const taskLabels = task.labels ?? []
+
       if (filter.statuses.length > 0 && !filter.statuses.includes(task.status)) {
         return false
       }
@@ -4295,7 +4298,7 @@ export function KanbanBoard() {
       }
       if (
         filter.labels.length > 0 &&
-        !filter.labels.some((l) => task.labels.includes(l))
+        !filter.labels.some((l) => taskLabels.includes(l))
       ) {
         return false
       }
@@ -4315,7 +4318,7 @@ export function KanbanBoard() {
           task.description ?? "",
           task.taskCode,
           task.assignee?.name ?? "",
-          task.labels.join(" "),
+          taskLabels.join(" "),
         ]
           .join(" ")
           .toLowerCase()
@@ -4771,7 +4774,7 @@ export function KanbanBoard() {
               <HiddenColumnsToolbar
                 hiddenColumns={hiddenColumns}
                 onShow={handleShowColumn}
-                tasks={tasks}
+                tasks={filteredTasks}
               />
             )}
             <div className="ml-auto flex items-center gap-1">
