@@ -40,6 +40,8 @@ import {
   Paperclip,
   X,
   Plus,
+  FunnelSimple,
+  MagnifyingGlass,
 } from "@phosphor-icons/react"
 import { NewTaskModal } from "@/components/new-task-modal"
 import {
@@ -3685,6 +3687,356 @@ function ListView({
   )
 }
 
+// ── Board Filter ──
+
+type BoardFilterState = {
+  search: string
+  statuses: Status[]
+  priorities: Priority[]
+  labels: string[]
+}
+
+const EMPTY_FILTER_STATE: BoardFilterState = {
+  search: "",
+  statuses: [],
+  priorities: [],
+  labels: [],
+}
+
+function BoardFilter({
+  filter,
+  onFilterChange,
+  availableLabels,
+}: {
+  filter: BoardFilterState
+  onFilterChange: (next: BoardFilterState) => void
+  availableLabels: { name: string; color: string }[]
+}) {
+  const [open, setOpen] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement | null>(null)
+  const popoverRef = useRef<HTMLDivElement | null>(null)
+  const inputRef = useRef<HTMLInputElement | null>(null)
+  const [position, setPosition] = useState<{ top: number; right: number } | null>(
+    null
+  )
+
+  const filterCount =
+    (filter.search.trim() ? 1 : 0) +
+    filter.statuses.length +
+    filter.priorities.length +
+    filter.labels.length
+  const isActive = filterCount > 0
+
+  const updatePosition = useCallback(() => {
+    const trigger = triggerRef.current
+    if (!trigger) return
+    const rect = trigger.getBoundingClientRect()
+    setPosition({
+      top: rect.bottom + 6,
+      right: window.innerWidth - rect.right,
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!open) return
+    updatePosition()
+    const onResize = () => updatePosition()
+    window.addEventListener("resize", onResize)
+    window.addEventListener("scroll", onResize, true)
+    return () => {
+      window.removeEventListener("resize", onResize)
+      window.removeEventListener("scroll", onResize, true)
+    }
+  }, [open, updatePosition])
+
+  // Click outside / escape to close
+  useEffect(() => {
+    if (!open) return
+    function onPointerDown(event: PointerEvent) {
+      const target = event.target as Node | null
+      if (!target) return
+      if (popoverRef.current?.contains(target)) return
+      if (triggerRef.current?.contains(target)) return
+      setOpen(false)
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.stopPropagation()
+        setOpen(false)
+      }
+    }
+    document.addEventListener("pointerdown", onPointerDown)
+    document.addEventListener("keydown", onKeyDown)
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown)
+      document.removeEventListener("keydown", onKeyDown)
+    }
+  }, [open])
+
+  // Auto-focus search when popover opens
+  useEffect(() => {
+    if (open) {
+      const timer = setTimeout(() => inputRef.current?.focus(), 50)
+      return () => clearTimeout(timer)
+    }
+  }, [open])
+
+  function toggleStatus(status: Status) {
+    onFilterChange({
+      ...filter,
+      statuses: filter.statuses.includes(status)
+        ? filter.statuses.filter((s) => s !== status)
+        : [...filter.statuses, status],
+    })
+  }
+
+  function togglePriority(priority: Priority) {
+    onFilterChange({
+      ...filter,
+      priorities: filter.priorities.includes(priority)
+        ? filter.priorities.filter((p) => p !== priority)
+        : [...filter.priorities, priority],
+    })
+  }
+
+  function toggleLabel(label: string) {
+    onFilterChange({
+      ...filter,
+      labels: filter.labels.includes(label)
+        ? filter.labels.filter((l) => l !== label)
+        : [...filter.labels, label],
+    })
+  }
+
+  function clearAll() {
+    onFilterChange(EMPTY_FILTER_STATE)
+  }
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        title="Filter tasks"
+        aria-expanded={open}
+        className={`relative flex items-center gap-1.5 rounded-[5px] px-2 py-1.5 text-[12px] font-medium transition-colors ${
+          isActive
+            ? "bg-primary/10 text-primary ring-1 ring-primary/30 hover:bg-primary/15 dark:bg-primary/15 dark:text-primary dark:ring-primary/40"
+            : "text-muted-foreground ring-1 ring-border hover:bg-accent hover:text-foreground"
+        }`}
+      >
+        <FunnelSimple size={13} weight={isActive ? "bold" : "regular"} />
+        <span>Filter</span>
+        <AnimatePresence initial={false}>
+          {isActive && (
+            <motion.span
+              key="filter-badge"
+              initial={{ opacity: 0, scale: 0.6 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.6 }}
+              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+              className="flex min-w-[16px] items-center justify-center rounded-full bg-primary px-1 py-0 text-[10px] font-semibold leading-4 text-primary-foreground"
+            >
+              {filterCount}
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </button>
+
+      {typeof document !== "undefined" &&
+        createPortal(
+          <AnimatePresence>
+            {open && position && (
+              <motion.div
+                ref={popoverRef}
+                initial={{ opacity: 0, y: -4, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -4, scale: 0.97 }}
+                transition={{ duration: 0.12, ease: [0.25, 1, 0.5, 1] }}
+                style={{
+                  position: "fixed",
+                  top: position.top,
+                  right: position.right,
+                  zIndex: 50,
+                }}
+                className="w-[280px] origin-top-right overflow-hidden rounded-[6px] bg-popover text-popover-foreground shadow-lg ring-1 ring-border"
+              >
+                {/* Search input */}
+                <div className="flex items-center gap-2 border-b border-border px-2.5 py-2">
+                  <MagnifyingGlass
+                    size={13}
+                    className="shrink-0 text-muted-foreground"
+                  />
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={filter.search}
+                    onChange={(e) =>
+                      onFilterChange({ ...filter, search: e.target.value })
+                    }
+                    placeholder="Search tasks..."
+                    className="w-full bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none"
+                  />
+                  {filter.search && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onFilterChange({ ...filter, search: "" })
+                      }
+                      className="shrink-0 rounded-[3px] p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                      title="Clear search"
+                    >
+                      <X size={11} />
+                    </button>
+                  )}
+                </div>
+
+                <div className="max-h-[60vh] overflow-y-auto">
+                  {/* Status */}
+                  <div className="px-2 pt-2 pb-1">
+                    <div className="px-1 pb-1 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
+                      Status
+                    </div>
+                    <div className="flex flex-col">
+                      {ALL_STATUSES.map((status) => {
+                        const checked = filter.statuses.includes(status)
+                        return (
+                          <button
+                            key={status}
+                            type="button"
+                            onClick={() => toggleStatus(status)}
+                            className={`flex items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-accent ${
+                              checked
+                                ? "text-foreground"
+                                : "text-muted-foreground"
+                            }`}
+                          >
+                            <span
+                              className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px] ring-1 transition-colors ${
+                                checked
+                                  ? "bg-primary text-primary-foreground ring-primary"
+                                  : "bg-transparent ring-border"
+                              }`}
+                            >
+                              {checked && <Check size={10} weight="bold" />}
+                            </span>
+                            {getStatusIcon(status, 12)}
+                            <span className="truncate">
+                              {STATUS_LABELS[status]}
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Priority */}
+                  <div className="px-2 pt-2 pb-1">
+                    <div className="px-1 pb-1 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
+                      Priority
+                    </div>
+                    <div className="flex flex-col">
+                      {ALL_PRIORITIES.map((priority) => {
+                        const checked = filter.priorities.includes(priority)
+                        return (
+                          <button
+                            key={priority}
+                            type="button"
+                            onClick={() => togglePriority(priority)}
+                            className={`flex items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-accent ${
+                              checked
+                                ? "text-foreground"
+                                : "text-muted-foreground"
+                            }`}
+                          >
+                            <span
+                              className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px] ring-1 transition-colors ${
+                                checked
+                                  ? "bg-primary text-primary-foreground ring-primary"
+                                  : "bg-transparent ring-border"
+                              }`}
+                            >
+                              {checked && <Check size={10} weight="bold" />}
+                            </span>
+                            {getPriorityIcon(priority, 12)}
+                            <span className="truncate">
+                              {PRIORITY_LABELS[priority]}
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Labels */}
+                  {availableLabels.length > 0 && (
+                    <div className="px-2 pt-2 pb-2">
+                      <div className="px-1 pb-1 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
+                        Labels
+                      </div>
+                      <div className="flex flex-col">
+                        {availableLabels.map((label) => {
+                          const checked = filter.labels.includes(label.name)
+                          return (
+                            <button
+                              key={label.name}
+                              type="button"
+                              onClick={() => toggleLabel(label.name)}
+                              className={`flex items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-accent ${
+                                checked
+                                  ? "text-foreground"
+                                  : "text-muted-foreground"
+                              }`}
+                            >
+                              <span
+                                className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px] ring-1 transition-colors ${
+                                  checked
+                                    ? "bg-primary text-primary-foreground ring-primary"
+                                    : "bg-transparent ring-border"
+                                }`}
+                              >
+                                {checked && <Check size={10} weight="bold" />}
+                              </span>
+                              <span
+                                className="h-2 w-2 shrink-0 rounded-full"
+                                style={{ backgroundColor: label.color }}
+                              />
+                              <span className="truncate">{label.name}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer: clear all */}
+                {isActive && (
+                  <div className="flex items-center justify-between border-t border-border px-2.5 py-1.5">
+                    <span className="text-[11px] text-muted-foreground">
+                      {filterCount} active{" "}
+                      {filterCount === 1 ? "filter" : "filters"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={clearAll}
+                      className="flex items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    >
+                      <X size={10} />
+                      Clear all
+                    </button>
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
+    </>
+  )
+}
+
 // ── Main Component ──
 
 export function KanbanBoard() {
@@ -3700,6 +4052,7 @@ export function KanbanBoard() {
   const [hiddenColumns, setHiddenColumns] = useState<Status[]>([])
   const [isCleaningDemoTasks, setIsCleaningDemoTasks] = useState(false)
   const [boardMounted, setBoardMounted] = useState(false)
+  const [filter, setFilter] = useState<BoardFilterState>(EMPTY_FILTER_STATE)
 
   // Mark board as mounted after initial render to suppress entry animations on subsequent updates
   useEffect(() => {
@@ -3860,6 +4213,46 @@ export function KanbanBoard() {
   }, [cleanedWorkspaceIds, clearDemoTasks, taskDocs, workspaceId])
 
   const tasks = useMemo(() => (taskDocs ?? []).map(mapTaskDoc), [taskDocs])
+
+  const filteredTasks = useMemo(() => {
+    const search = filter.search.trim().toLowerCase()
+    const hasFilter =
+      search.length > 0 ||
+      filter.statuses.length > 0 ||
+      filter.priorities.length > 0 ||
+      filter.labels.length > 0
+    if (!hasFilter) return tasks
+    return tasks.filter((task) => {
+      if (filter.statuses.length > 0 && !filter.statuses.includes(task.status)) {
+        return false
+      }
+      if (
+        filter.priorities.length > 0 &&
+        !filter.priorities.includes(task.priority)
+      ) {
+        return false
+      }
+      if (
+        filter.labels.length > 0 &&
+        !filter.labels.some((l) => task.labels.includes(l))
+      ) {
+        return false
+      }
+      if (search.length > 0) {
+        const haystack = [
+          task.title,
+          task.description ?? "",
+          task.taskCode,
+          task.assignee?.name ?? "",
+          task.labels.join(" "),
+        ]
+          .join(" ")
+          .toLowerCase()
+        if (!haystack.includes(search)) return false
+      }
+      return true
+    })
+  }, [tasks, filter])
 
   function handleAddTask(status: Status) {
     if (!canManageTasks) {
@@ -4310,13 +4703,24 @@ export function KanbanBoard() {
                 tasks={tasks}
               />
             )}
+            <div className="ml-auto flex items-center gap-1">
+              <BoardFilter
+                filter={filter}
+                onFilterChange={setFilter}
+                availableLabels={
+                  currentWorkspace?.labels && currentWorkspace.labels.length > 0
+                    ? currentWorkspace.labels
+                    : DEFAULT_WORKSPACE_LABELS
+                }
+              />
+            </div>
           </div>
 
           {/* Content */}
           <div className="min-h-0 flex-1">
             {boardView === "board" ? (
               <ColumnBoardView
-                tasks={tasks}
+                tasks={filteredTasks}
                 hiddenColumns={hiddenColumns}
                 canManageTasks={canManageTasks}
                 onMoveTask={handleMoveTask}
@@ -4331,7 +4735,7 @@ export function KanbanBoard() {
               />
             ) : (
               <ListView
-                tasks={tasks}
+                tasks={filteredTasks}
                 hiddenColumns={hiddenColumns}
                 collapsedColumns={collapsedColumns}
                 canManageTasks={canManageTasks}
