@@ -3694,6 +3694,7 @@ type BoardFilterState = {
   statuses: Status[]
   priorities: Priority[]
   labels: string[]
+  sources: RequestSource[]
 }
 
 const EMPTY_FILTER_STATE: BoardFilterState = {
@@ -3701,7 +3702,17 @@ const EMPTY_FILTER_STATE: BoardFilterState = {
   statuses: [],
   priorities: [],
   labels: [],
+  sources: [],
 }
+
+const ALL_SOURCES: RequestSource[] = [
+  "discord",
+  "slack",
+  "github",
+  "linear",
+  "x",
+  "cli",
+]
 
 function BoardFilter({
   filter,
@@ -3724,7 +3735,8 @@ function BoardFilter({
     (filter.search.trim() ? 1 : 0) +
     filter.statuses.length +
     filter.priorities.length +
-    filter.labels.length
+    filter.labels.length +
+    filter.sources.length
   const isActive = filterCount > 0
 
   const updatePosition = useCallback(() => {
@@ -3805,6 +3817,15 @@ function BoardFilter({
       labels: filter.labels.includes(label)
         ? filter.labels.filter((l) => l !== label)
         : [...filter.labels, label],
+    })
+  }
+
+  function toggleSource(source: RequestSource) {
+    onFilterChange({
+      ...filter,
+      sources: filter.sources.includes(source)
+        ? filter.sources.filter((s) => s !== source)
+        : [...filter.sources, source],
     })
   }
 
@@ -3971,7 +3992,7 @@ function BoardFilter({
 
                   {/* Labels */}
                   {availableLabels.length > 0 && (
-                    <div className="px-2 pt-2 pb-2">
+                    <div className="px-2 pt-2 pb-1">
                       <div className="px-1 pb-1 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
                         Labels
                       </div>
@@ -4009,6 +4030,45 @@ function BoardFilter({
                       </div>
                     </div>
                   )}
+
+                  {/* Sources */}
+                  <div className="px-2 pt-2 pb-2">
+                    <div className="px-1 pb-1 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
+                      Source
+                    </div>
+                    <div className="flex flex-col">
+                      {ALL_SOURCES.map((source) => {
+                        const checked = filter.sources.includes(source)
+                        const config = SOURCE_CONFIG[source]
+                        return (
+                          <button
+                            key={source}
+                            type="button"
+                            onClick={() => toggleSource(source)}
+                            className={`flex items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-accent ${
+                              checked
+                                ? "text-foreground"
+                                : "text-muted-foreground"
+                            }`}
+                          >
+                            <span
+                              className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px] ring-1 transition-colors ${
+                                checked
+                                  ? "bg-primary text-primary-foreground ring-primary"
+                                  : "bg-transparent ring-border"
+                              }`}
+                            >
+                              {checked && <Check size={10} weight="bold" />}
+                            </span>
+                            <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+                              <SourceIcon platform={source} size={12} />
+                            </span>
+                            <span className="truncate">{config.label}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Footer: clear all */}
@@ -4220,7 +4280,8 @@ export function KanbanBoard() {
       search.length > 0 ||
       filter.statuses.length > 0 ||
       filter.priorities.length > 0 ||
-      filter.labels.length > 0
+      filter.labels.length > 0 ||
+      filter.sources.length > 0
     if (!hasFilter) return tasks
     return tasks.filter((task) => {
       if (filter.statuses.length > 0 && !filter.statuses.includes(task.status)) {
@@ -4237,6 +4298,16 @@ export function KanbanBoard() {
         !filter.labels.some((l) => task.labels.includes(l))
       ) {
         return false
+      }
+      if (filter.sources.length > 0) {
+        const taskSources = getTaskSources(task)
+        if (
+          !taskSources.some((s) =>
+            filter.sources.includes(s.platform as RequestSource)
+          )
+        ) {
+          return false
+        }
       }
       if (search.length > 0) {
         const haystack = [
