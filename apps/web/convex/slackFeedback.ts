@@ -28,7 +28,6 @@ const FEEDBACK_PROCESSING_MAX_RETRIES = 3
 const DEFAULT_WORKPOOL_PARALLELISM = 2
 const MAX_EXTRACTED_TASK_ACTIONS = 5
 const MAX_EXTRACTED_TASK_LABELS = 5
-const MAX_FALLBACK_MESSAGE_CHARS = 280
 
 type FeedbackMessage = {
   _id: Id<"slackMessages">
@@ -277,41 +276,6 @@ function truncateText(text: string | null | undefined, maxChars: number) {
   }
 
   return `${value.slice(0, Math.max(0, maxChars - 3)).trim()}...`
-}
-
-function getFallbackFeedbackText(message: FeedbackMessage) {
-  return (
-    truncateText(message.content, MAX_FALLBACK_MESSAGE_CHARS) ||
-    message.channelName ||
-    "Slack feedback"
-  )
-}
-
-function buildFallbackTaskTitle(messages: FeedbackMessage[]) {
-  const latestMessage = messages[messages.length - 1]
-  const detail = latestMessage
-    ? getFallbackFeedbackText(latestMessage)
-    : "Slack feedback"
-
-  return truncateText(`Review feedback: ${detail}`, 140)
-}
-
-function buildFallbackTaskDescription(
-  messages: FeedbackMessage[],
-  summary: string
-) {
-  const excerpts = messages
-    .slice(-3)
-    .map(
-      (message) =>
-        `- ${message.authorUsername}: ${getFallbackFeedbackText(message)}`
-    )
-    .join("\n")
-  const description = [`Summary: ${summary}`, "Recent messages:", excerpts]
-    .filter(Boolean)
-    .join("\n")
-
-  return truncateText(description, 2000) || undefined
 }
 
 function extractJsonObject(text: string) {
@@ -809,7 +773,9 @@ export const processFeedbackWindow = internalAction({
         "You classify Slack conversations for a product team.",
         `The only product that matters is ${feedbackWindow.integration.workspaceName}`,
         "Return isProductFeedback=true only when the newest messages contain concrete product feedback, a bug report, a feature request, workflow friction, or an actionable complaint about the actual product.",
-        "Reject off-topic chat, memes, introductions, hiring talk, agency requests, feedback about unrelated tools, and generic conversation that is not about the product itself.",
+        "Be strict: only flag messages that describe a specific problem, request, or behavior with the product. When in doubt, classify as not feedback.",
+        "Reject compliments, praise, hype, thanks, and generic positive sentiment about the product when there is no specific request, problem, or suggestion attached.",
+        "Reject introductions, joining messages, off-topic chat, memes, social commentary about other people, hiring talk, agency requests, feedback about unrelated tools, and generic conversation that is not about the product itself.",
         "Use the recent context only to interpret what the new messages refer to.",
         "If the new messages add detail, scope, reproduction steps, or acceptance criteria to an existing open task, that is still product feedback.",
         "Each message has an [id:XXXXXXX] tag. Use the message timestamp from that tag as the relevantMessageId.",
@@ -1141,55 +1107,6 @@ export const processFeedbackWindow = internalAction({
 
         createdTaskCount = result.createdTaskIds.length
         updatedTaskCount = result.updatedTaskIds.length
-      }
-
-      if (createdTaskCount === 0 && updatedTaskCount === 0) {
-        const authors = Array.from(
-          new Set(relevantMessages.map((message) => message.authorUsername))
-        )
-        const sourceUrl =
-          relevantMessages[relevantMessages.length - 1]?.permalink
-        const createdAtLabel = formatCreatedAtLabel(
-          latestPendingMessage.messageCreatedAt
-        )
-
-        logInfo("Applying fallback Slack task create for product feedback", {
-          integrationId: args.integrationId,
-        })
-
-        const fallbackResult = await ctx.runMutation(
-          createTasksFromSlackFeedbackInternalMutation,
-          {
-            workspaceId: feedbackWindow.integration.workspaceId,
-            operations: [
-              {
-                action: "create" as const,
-                task: {
-                  title: buildFallbackTaskTitle(relevantMessages),
-                  description: buildFallbackTaskDescription(
-                    relevantMessages,
-                    classification.summary ?? classification.reason
-                  ),
-                  status: "requests" as const,
-                  priority: "medium" as const,
-                  labels: [],
-                  source: sourceUrl
-                    ? {
-                        platform: "slack" as const,
-                        url: sourceUrl,
-                        author: authors.join(", "),
-                      }
-                    : undefined,
-                  createdAtLabel,
-                },
-              },
-            ],
-            cost: totalAiCost > 0 ? totalAiCost : undefined,
-          }
-        )
-
-        createdTaskCount += fallbackResult.createdTaskIds.length
-        updatedTaskCount += fallbackResult.updatedTaskIds.length
       }
 
       if (createdTaskCount === 0 && updatedTaskCount === 0 && totalAiCost > 0) {

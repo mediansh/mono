@@ -1155,11 +1155,13 @@ export const processFeedbackWindow = internalAction({
         "You classify Discord conversations for a product team.",
         `The only product that matters is ${feedbackWindow.integration.workspaceName}`,
         "Return isProductFeedback=true only when the newest messages contain concrete product feedback, a bug report, a feature request, workflow friction, or an actionable complaint about the actual product.",
-        "Bias toward preserving customer feedback: if a reasonable product manager would want to triage it, classify it as product feedback.",
-        "Reject off-topic chat, memes, introductions, hiring talk, agency requests, feedback about unrelated tools, and generic conversation that is not about the product itself.",
+        "Be strict: only flag messages that describe a specific problem, request, or behavior with the product. When in doubt, classify as not feedback.",
+        "Reject compliments, praise, hype, thanks, and generic positive sentiment about the product when there is no specific request, problem, or suggestion attached. Examples to reject: 'I love this tool', 'great product', 'this is awesome', 'rlly like X'.",
+        "Reject server-joining or introduction messages such as 'just joined', 'hi everyone', 'thought I'd check this out', or explanations of why someone joined the server.",
+        "Reject off-topic chat, memes, social commentary about other community members or people (e.g. 'X is a cool guy'), hiring talk, agency requests, feedback about unrelated tools, and generic conversation that is not about the product itself.",
         "Use the recent context only to interpret what the new messages refer to.",
         "Return needsTaskAction=true only when the NEW messages contain enough specific, non-duplicate information to justify creating a task or materially updating one.",
-        "Return needsTaskAction=false only for +1s, me-too replies, generic agreement, thanks, status checks, bumps, exact duplicate restatements, or messages that add no useful triage detail.",
+        "Return needsTaskAction=false for +1s, me-too replies, generic agreement, thanks, status checks, bumps, exact duplicate restatements, compliments, or any messages that add no useful triage detail.",
         "Treat direct breakage or reliability reports as actionable even without reproduction steps, including 500 errors, pages not loading, nothing works, and severe slowness/performance regressions.",
         "Treat requests for missing functionality, confusing behavior, setup friction, integrations, workflow blockers, or repeated complaints as actionable.",
         "Forum and thread metadata may appear inline as forum/thread/channel labels; use that metadata as evidence, especially when a forum post body is empty.",
@@ -1550,10 +1552,12 @@ export const processFeedbackWindow = internalAction({
         updatedTaskCount = result.updatedTaskIds.length
       }
 
+      const fallbackHighSignal = hasHighSignalTaskActionFeedback(fallbackMessages)
       if (
         actionableClassification &&
         createdTaskCount === 0 &&
-        updatedTaskCount === 0
+        updatedTaskCount === 0 &&
+        fallbackHighSignal
       ) {
         const authors = Array.from(
           new Set(fallbackMessages.map((message) => message.authorUsername))
@@ -1564,18 +1568,11 @@ export const processFeedbackWindow = internalAction({
           latestPendingMessage.messageCreatedAt
         )
         const fallbackSummary = classification.summary ?? classification.reason
-        const fallbackPriority = hasHighSignalTaskActionFeedback(
-          fallbackMessages
-        )
-          ? "high"
-          : "medium"
+        const fallbackPriority = "high" as const
 
-        logInfo(
-          "Applying fallback Discord task create for actionable feedback",
-          {
-            integrationId: args.integrationId,
-          }
-        )
+        logInfo("Applying fallback Discord task create for high-signal incident", {
+          integrationId: args.integrationId,
+        })
 
         const fallbackResult = await ctx.runMutation(
           createTasksFromDiscordFeedbackInternalMutation,

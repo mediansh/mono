@@ -28,7 +28,6 @@ const FEEDBACK_PROCESSING_MAX_RETRIES = 3
 const DEFAULT_WORKPOOL_PARALLELISM = 2
 const MAX_EXTRACTED_TASK_ACTIONS = 5
 const MAX_EXTRACTED_TASK_LABELS = 5
-const MAX_FALLBACK_POST_CHARS = 280
 
 type FeedbackPost = {
   _id: Id<"xPosts">
@@ -279,31 +278,6 @@ function truncateText(text: string | null | undefined, maxChars: number) {
   }
 
   return `${value.slice(0, Math.max(0, maxChars - 3)).trim()}...`
-}
-
-function getFallbackFeedbackText(post: FeedbackPost) {
-  return truncateText(post.content, MAX_FALLBACK_POST_CHARS) || "X feedback"
-}
-
-function buildFallbackTaskTitle(posts: FeedbackPost[]) {
-  const latestPost = posts[posts.length - 1]
-  const detail = latestPost ? getFallbackFeedbackText(latestPost) : "X feedback"
-
-  return truncateText(`Review feedback: ${detail}`, 140)
-}
-
-function buildFallbackTaskDescription(posts: FeedbackPost[], summary: string) {
-  const excerpts = posts
-    .slice(-3)
-    .map(
-      (post) => `- @${post.authorUsername}: ${getFallbackFeedbackText(post)}`
-    )
-    .join("\n")
-  const description = [`Summary: ${summary}`, "Recent posts:", excerpts]
-    .filter(Boolean)
-    .join("\n")
-
-  return truncateText(description, 2000) || undefined
 }
 
 function extractJsonObject(text: string) {
@@ -767,7 +741,8 @@ export const processFeedbackWindow = internalAction({
         "You classify inbound X mentions and replies for a product team.",
         `The only product that matters is ${feedbackWindow.integration.workspaceName}.`,
         "Return isProductFeedback=true only when the newest posts contain concrete product feedback, a bug report, a feature request, workflow friction, or an actionable complaint about the actual product.",
-        "Reject hype, compliments without a request, memes, repost-style chatter, marketing banter, hiring talk, and anything unrelated to the product itself.",
+        "Be strict: only flag posts that describe a specific problem, request, or behavior with the product. When in doubt, classify as not feedback.",
+        "Reject compliments, praise, hype, thanks, generic positive sentiment, memes, repost-style chatter, marketing banter, social commentary about other people, hiring talk, and anything unrelated to the product itself. A post that simply says the product is good or that someone likes it is NOT feedback unless it includes a specific request, problem, or suggestion.",
         "Use the recent context only to interpret what the new posts refer to.",
         "If the new posts add detail, scope, reproduction steps, or acceptance criteria to an existing open task, that is still product feedback. A later step can update the existing task instead of creating a new one.",
         "Only include relevantPostIds from NEW posts.",
@@ -1076,54 +1051,6 @@ export const processFeedbackWindow = internalAction({
 
         createdTaskCount = result.createdTaskIds.length
         updatedTaskCount = result.updatedTaskIds.length
-      }
-
-      if (createdTaskCount === 0 && updatedTaskCount === 0) {
-        const authors = Array.from(
-          new Set(relevantPosts.map((post) => `@${post.authorUsername}`))
-        )
-        const sourceUrl = relevantPosts[relevantPosts.length - 1]?.permalink
-        const createdAtLabel = formatCreatedAtLabel(
-          latestPendingPost.postCreatedAt
-        )
-
-        logInfo("Applying fallback X task create for product feedback", {
-          integrationId: args.integrationId,
-        })
-
-        const fallbackResult = await ctx.runMutation(
-          createTasksFromFeedbackInternalMutation,
-          {
-            workspaceId: feedbackWindow.integration.workspaceId,
-            operations: [
-              {
-                action: "create" as const,
-                task: {
-                  title: buildFallbackTaskTitle(relevantPosts),
-                  description: buildFallbackTaskDescription(
-                    relevantPosts,
-                    classification.summary ?? classification.reason
-                  ),
-                  status: "requests" as const,
-                  priority: "medium" as const,
-                  labels: [],
-                  source: sourceUrl
-                    ? {
-                        platform: "x" as const,
-                        url: sourceUrl,
-                        author: authors.join(", "),
-                      }
-                    : undefined,
-                  createdAtLabel,
-                },
-              },
-            ],
-            cost: totalAiCost > 0 ? totalAiCost : undefined,
-          }
-        )
-
-        createdTaskCount += fallbackResult.createdTaskIds.length
-        updatedTaskCount += fallbackResult.updatedTaskIds.length
       }
 
       if (createdTaskCount === 0 && updatedTaskCount === 0 && totalAiCost > 0) {
