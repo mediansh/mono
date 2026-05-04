@@ -14,6 +14,7 @@ import { WebVitals } from "@/components/web-vitals"
 import { DevDebugPanel } from "@/components/dev-debug-panel"
 import { DevNetworkInterceptor } from "@/components/dev-network-interceptor"
 import { DevErrorTrigger } from "@/components/dev-error-trigger"
+import { Databuddy } from "@databuddy/sdk/react"
 
 const siteUrl = "https://median.sh"
 const siteName = "Median"
@@ -27,7 +28,10 @@ export const metadata: Metadata = {
   },
   description: siteDescription,
   icons: {
-    icon: process.env.NODE_ENV === "development" ? "/favicon-dev.svg" : "/favicon.svg",
+    icon:
+      process.env.NODE_ENV === "development"
+        ? "/favicon-dev.svg"
+        : "/favicon.svg",
   },
   openGraph: {
     type: "website",
@@ -73,13 +77,26 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn("antialiased", fontMono.variable, fontSans.variable, "font-sans")}
+      className={cn(
+        "antialiased",
+        fontMono.variable,
+        fontSans.variable,
+        "font-sans"
+      )}
     >
       <body>
         <Suspense fallback={null}>
           <Providers>
             <NavigationAccelerator />
             <RoutePrefetch routes={globalRoutes} />
+            <Databuddy
+              clientId={process.env.NEXT_PUBLIC_DATABUDDY_CLIENT_ID!}
+              trackHashChanges={true}
+              trackAttributes={true}
+              trackOutgoingLinks={true}
+              trackInteractions={true}
+              trackPerformance={false}
+            />
             {children}
           </Providers>
         </Suspense>

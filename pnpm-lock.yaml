@@ -226,6 +226,9 @@ importers:
       '@convex-dev/workpool':
         specifier: 0.4.6
         version: 0.4.6(convex-helpers@0.1.114(@standard-schema/spec@1.1.0)(convex@1.34.0(@clerk/clerk-react@5.61.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4))(hono@4.12.12)(react@19.2.4)(typescript@5.9.3)(zod@3.25.76))(convex@1.34.0(@clerk/clerk-react@5.61.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4))
+      '@databuddy/sdk':
+        specifier: ^2.4.11
+        version: 2.4.11(react@19.2.4)
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -837,6 +840,17 @@ packages:
     resolution: {integrity: sha512-nIg+YWiwnpNE8Va/B6LnuJcbsisBr/EpEcP/xaxtn/PsuMTHkKUkalR/OocLAwqzKl2IM2Y0m26lIwGoFJNaTg==}
     peerDependencies:
       typescript: ^6.0.3
+
+  '@databuddy/sdk@2.4.11':
+    resolution: {integrity: sha512-pDT0tfsLOhuFnX0MHSOOt+qq9IPAB7rktuWclVgaRU3D6A6Mw7pN0oRttvPPKc3Ue7gUvq3kOtFkhmquLtmVQA==}
+    peerDependencies:
+      react: '>=18'
+      vue: '>=3'
+    peerDependenciesMeta:
+      react:
+        optional: true
+      vue:
+        optional: true
 
   '@dimforge/rapier3d-compat@0.12.0':
     resolution: {integrity: sha512-uekIGetywIgopfD97oDL5PfeezkFpNhwlzlaEYNOA0N6ghdsOvh/HYjSMek5Q2O1PYvRSDFcqFVJl4r4ZBwOow==}
@@ -3058,7 +3072,7 @@ packages:
   basic-ftp@5.0.5:
     resolution: {integrity: sha512-4Bcg1P8xhUuqcii/S0Z9wiHIrQVPMermM1any+MX5GeGD7faD3/msQUDGLol9wOcz4/jbg/WJnGqoJF6LiBdtg==}
     engines: {node: '>=10.0.0'}
-    deprecated: Security vulnerability fixed in 5.2.1, please upgrade
+    deprecated: Security vulnerability fixed in 5.2.0, please upgrade
 
   bidi-js@1.0.3:
     resolution: {integrity: sha512-RKshQI1R3YQ+n9YJz2QQ147P66ELpa1FQEg20Dk8oW9t2KgLbpDLLp9aGZ7y8WHSshDknG0bknqGw5/tyCs5tw==}
@@ -6730,6 +6744,10 @@ snapshots:
   '@crustjs/style@0.1.0(typescript@5.9.3)':
     dependencies:
       typescript: 5.9.3
+
+  '@databuddy/sdk@2.4.11(react@19.2.4)':
+    optionalDependencies:
+      react: 19.2.4
 
   '@dimforge/rapier3d-compat@0.12.0': {}
 
