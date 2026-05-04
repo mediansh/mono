@@ -166,7 +166,8 @@ export default defineSchema({
   })
     .index("by_integration_status", ["integrationId", "status"])
     .index("by_status", ["status"])
-    .index("by_task", ["taskId"]),
+    .index("by_task", ["taskId"])
+    .index("by_workspace", ["workspaceId"]),
 
   discordPairingCodes: defineTable({
     code: v.string(),
@@ -277,7 +278,9 @@ export default defineSchema({
     integrationId: v.id("linearWorkspaceIntegrations"),
     eventType: v.string(),
     receivedAt: v.number(),
-  }).index("by_delivery", ["deliveryId"]),
+  })
+    .index("by_delivery", ["deliveryId"])
+    .index("by_integration", ["integrationId"]),
 
   githubInstallStates: defineTable({
     workspaceId: v.id("workspaces"),
@@ -508,7 +511,8 @@ export default defineSchema({
   })
     .index("by_integration_status", ["integrationId", "status"])
     .index("by_status", ["status"])
-    .index("by_task", ["taskId"]),
+    .index("by_task", ["taskId"])
+    .index("by_workspace", ["workspaceId"]),
 
   cliApiKeys: defineTable({
     workspaceId: v.id("workspaces"),

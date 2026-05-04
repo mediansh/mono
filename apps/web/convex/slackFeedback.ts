@@ -24,6 +24,7 @@ const FEEDBACK_CONTEXT_LIMIT = 25
 const EXISTING_TASK_CONTEXT_LIMIT = 50
 const FEEDBACK_PROCESSING_DEBOUNCE_MS = 8_000
 const FEEDBACK_PROCESSING_RETRY_DELAY_MS = 5_000
+const FEEDBACK_PROCESSING_MAX_RETRIES = 3
 const DEFAULT_WORKPOOL_PARALLELISM = 2
 const MAX_EXTRACTED_TASK_ACTIONS = 5
 const MAX_EXTRACTED_TASK_LABELS = 5
@@ -73,7 +74,13 @@ type SlackFeedbackTaskOperation =
       task: {
         title: string
         description?: string
-        status: "requests" | "todo" | "in_progress" | "ready" | "shipped" | "archive"
+        status:
+          | "requests"
+          | "todo"
+          | "in_progress"
+          | "ready"
+          | "shipped"
+          | "archive"
         priority: "urgent" | "high" | "medium" | "low" | "none"
         labels: string[]
         source?: {
@@ -159,7 +166,10 @@ const slackFeedbackPool = new Workpool(components.slackFeedbackWorkpool, {
 
 const processFeedbackWindowAction = makeFunctionReference<
   "action",
-  { integrationId: Id<"slackWorkspaceIntegrations"> },
+  {
+    integrationId: Id<"slackWorkspaceIntegrations">
+    retryAttempt?: number
+  },
   ProcessFeedbackWindowResult
 >("slackFeedback:processFeedbackWindow")
 
@@ -167,7 +177,10 @@ const handleFeedbackProcessingCompleteMutation = makeFunctionReference<
   "mutation",
   {
     workId: string
-    context: { integrationId: Id<"slackWorkspaceIntegrations"> }
+    context: {
+      integrationId: Id<"slackWorkspaceIntegrations">
+      retryAttempt?: number
+    }
     result: WorkpoolResult
   },
   null
@@ -391,17 +404,18 @@ async function loadPendingFeedbackWindow(
 async function enqueueFeedbackProcessingWork(
   ctx: MutationCtx,
   integrationId: Id<"slackWorkspaceIntegrations">,
-  delayMs: number
+  delayMs: number,
+  retryAttempt = 0
 ): Promise<string> {
   const workId = await slackFeedbackPool.enqueueAction(
     ctx,
     processFeedbackWindowAction,
-    { integrationId },
+    { integrationId, retryAttempt },
     {
       runAfter: Math.max(0, delayMs),
       retry: false,
       onComplete: handleFeedbackProcessingCompleteMutation,
-      context: { integrationId },
+      context: { integrationId, retryAttempt },
     }
   )
 
@@ -533,6 +547,7 @@ export const handleFeedbackProcessingComplete = internalMutation({
   args: vOnCompleteArgs(
     v.object({
       integrationId: v.id("slackWorkspaceIntegrations"),
+      retryAttempt: v.optional(v.number()),
     })
   ),
   handler: async (ctx, args) => {
@@ -575,19 +590,27 @@ export const handleFeedbackProcessingComplete = internalMutation({
       startedAt: latestIntegration.feedbackProcessingStartedAt,
     })
 
+    const retryAttempt = args.context.retryAttempt ?? 0
+    const canRetryFailure =
+      args.result.kind === "failed" &&
+      retryAttempt < FEEDBACK_PROCESSING_MAX_RETRIES
     const shouldRerun =
       !shouldPauseProcessing &&
-      (args.result.kind === "failed" ||
-        latestIntegration.feedbackProcessingNeedsRerun === true ||
-        hasPendingMessages)
+      (args.result.kind === "failed"
+        ? canRetryFailure
+        : latestIntegration.feedbackProcessingNeedsRerun === true ||
+          hasPendingMessages)
 
     if (shouldRerun) {
+      const nextRetryAttempt =
+        args.result.kind === "failed" ? retryAttempt + 1 : 0
       const workId = await enqueueFeedbackProcessingWork(
         ctx,
         args.context.integrationId,
         args.result.kind === "failed"
           ? FEEDBACK_PROCESSING_RETRY_DELAY_MS
-          : FEEDBACK_PROCESSING_DEBOUNCE_MS
+          : FEEDBACK_PROCESSING_DEBOUNCE_MS,
+        nextRetryAttempt
       )
 
       await ctx.db.patch(args.context.integrationId, {
@@ -598,6 +621,7 @@ export const handleFeedbackProcessingComplete = internalMutation({
       logInfo("Re-queued Slack feedback work", {
         integrationId: args.context.integrationId,
         workId,
+        retryAttempt: nextRetryAttempt,
         reason:
           args.result.kind === "failed"
             ? "failed"
@@ -615,12 +639,11 @@ export const handleFeedbackProcessingComplete = internalMutation({
       feedbackProcessingQueuedAt: undefined,
       feedbackProcessingStartedAt: undefined,
       feedbackProcessingCompletedAt: Date.now(),
-      feedbackProcessingLastError:
-        shouldPauseProcessing
-          ? latestIntegration.feedbackProcessingLastError
-          : args.result.kind === "failed"
-            ? args.result.error
-            : undefined,
+      feedbackProcessingLastError: shouldPauseProcessing
+        ? latestIntegration.feedbackProcessingLastError
+        : args.result.kind === "failed"
+          ? args.result.error
+          : undefined,
     })
   },
 })
@@ -628,6 +651,7 @@ export const handleFeedbackProcessingComplete = internalMutation({
 export const processFeedbackWindow = internalAction({
   args: {
     integrationId: v.id("slackWorkspaceIntegrations"),
+    retryAttempt: v.optional(v.number()),
   },
   handler: async (ctx, args): Promise<ProcessFeedbackWindowResult> => {
     const processingStart = Date.now()
@@ -682,12 +706,13 @@ export const processFeedbackWindow = internalAction({
         return { skipped: true, reason: "events_exhausted" }
       }
 
-      const pendingMessagesBeforeIgnore = feedbackWindow.messages.filter((message) =>
-        isMessageAfterCursor(message, {
-          messageId: feedbackWindow.integration.lastProcessedMessageId,
-          messageCreatedAt:
-            feedbackWindow.integration.lastProcessedMessageCreatedAt,
-        })
+      const pendingMessagesBeforeIgnore = feedbackWindow.messages.filter(
+        (message) =>
+          isMessageAfterCursor(message, {
+            messageId: feedbackWindow.integration.lastProcessedMessageId,
+            messageCreatedAt:
+              feedbackWindow.integration.lastProcessedMessageCreatedAt,
+          })
       )
 
       if (pendingMessagesBeforeIgnore.length === 0) {
@@ -938,6 +963,7 @@ export const processFeedbackWindow = internalAction({
               workspaceId: feedbackWindow.integration.workspaceId,
             }
           )
+          throw parsedExtraction.error
         }
 
         await trackLLMGeneration({
@@ -972,6 +998,7 @@ export const processFeedbackWindow = internalAction({
           integrationId: args.integrationId,
           workspaceId: feedbackWindow.integration.workspaceId,
         })
+        throw error
       }
 
       const totalAiCost =

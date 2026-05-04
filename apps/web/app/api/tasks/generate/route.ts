@@ -22,13 +22,21 @@ const requestSchema = z.object({
 const generatedTasksSchema = z.object({
   tasks: z
     .array(
-      z.object({
-        title: z.string().min(1).max(140),
-        description: z.string().max(2000).nullable(),
-        status: z.enum(TASK_STATUSES).nullable(),
-        priority: z.enum(TASK_PRIORITIES).nullable(),
-        labels: z.array(z.string()).max(5),
-      })
+      z
+        .object({
+          title: z.string().min(1).max(140),
+          description: z.string().max(2000).nullable(),
+          status: z.enum(TASK_STATUSES).nullable(),
+          priority: z.enum(TASK_PRIORITIES).nullable(),
+          tags: z.array(z.string()).max(5).optional(),
+          labels: z.array(z.string()).max(5).optional(),
+        })
+        .refine(
+          (task) => task.tags !== undefined || task.labels !== undefined,
+          {
+            message: "Every generated task must include tags.",
+          }
+        )
     )
     .min(1)
     .max(12),
@@ -48,6 +56,7 @@ function extractJsonObject(text: string) {
 type TaskGenerationMode = "single" | "smart" | "multiple"
 
 const SMART_TASK_LIMIT = 5
+const MAX_AI_TASK_GENERATION_RETRIES = 3
 
 function getTaskGenerationMode(prompt: string): TaskGenerationMode {
   const normalized = prompt.toLowerCase()
@@ -74,12 +83,16 @@ function getTaskGenerationMode(prompt: string): TaskGenerationMode {
     return "multiple"
   }
 
-  if (explicitSingleIntentPatterns.some((pattern) => pattern.test(normalized))) {
+  if (
+    explicitSingleIntentPatterns.some((pattern) => pattern.test(normalized))
+  ) {
     return "single"
   }
 
   // If the prompt already enumerates separate deliverables, keep the full breakdown.
-  const numberedListItemMatches = normalized.match(/(?:^|\n)\s*(?:\d+[.)]|[-*])\s+/g)
+  const numberedListItemMatches = normalized.match(
+    /(?:^|\n)\s*(?:\d+[.)]|[-*])\s+/g
+  )
   if ((numberedListItemMatches?.length ?? 0) >= 2) {
     return "multiple"
   }
@@ -116,6 +129,48 @@ function finalizeGeneratedTasks(
     case "multiple":
       return tasks
   }
+}
+
+async function generateAndValidateTasks({
+  prompt,
+  system,
+  userId,
+}: {
+  prompt: string
+  system: string
+  userId: string
+}) {
+  let lastError: unknown
+
+  for (let attempt = 0; attempt <= MAX_AI_TASK_GENERATION_RETRIES; attempt++) {
+    try {
+      const result = await generateText({
+        model: AI_MODELS.taskGeneration,
+        system,
+        prompt,
+      })
+      const rawObject = JSON.parse(extractJsonObject(result.text))
+      const validatedObject = generatedTasksSchema.parse(rawObject)
+
+      return { result, validatedObject }
+    } catch (error) {
+      lastError = error
+
+      if (attempt >= MAX_AI_TASK_GENERATION_RETRIES) {
+        break
+      }
+
+      logger.warn("AI task generation attempt failed; retrying", {
+        userId,
+        attempt: attempt + 1,
+        nextAttempt: attempt + 2,
+        maxRetries: MAX_AI_TASK_GENERATION_RETRIES,
+        error: error instanceof Error ? error.message : "Unknown error",
+      })
+    }
+  }
+
+  throw lastError
 }
 
 export const POST = withAxiom(async (request: Request) => {
@@ -166,7 +221,10 @@ export const POST = withAxiom(async (request: Request) => {
     const { prompt, workspaceId } = parsed.data
     const convexToken = await getToken({ template: "convex" })
     if (!convexToken) {
-      logger.warn("Missing Convex token for task generation", { userId, workspaceId })
+      logger.warn("Missing Convex token for task generation", {
+        userId,
+        workspaceId,
+      })
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -206,7 +264,8 @@ export const POST = withAxiom(async (request: Request) => {
       logger.warn("Quota check failed — allowing AI generation", {
         userId,
         workspaceId,
-        error: quotaError instanceof Error ? quotaError.message : "Unknown error",
+        error:
+          quotaError instanceof Error ? quotaError.message : "Unknown error",
       })
     }
 
@@ -225,38 +284,43 @@ export const POST = withAxiom(async (request: Request) => {
     const model = AI_MODEL_IDS.taskGeneration
     const generationMode = getTaskGenerationMode(prompt)
     const allowMultipleTasks = generationMode !== "single"
-    const result = await generateText({
-      model: AI_MODELS.taskGeneration,
-      system: [
-        "You generate actionable task objects for a project management app.",
-        `Workspace: ${workspaceName}.`,
-        `Allowed statuses: ${TASK_STATUSES.join(", ")}.`,
-        `Allowed priorities: ${TASK_PRIORITIES.join(", ")}.`,
-        `Allowed labels: ${labelsText}`,
-        getTaskGenerationInstruction(generationMode),
-        "Every task must have a concise title.",
-        "Every task object must include title, description, status, priority, and labels.",
-        "Use null for description, status, or priority when not specified.",
-        "Use an empty array for labels when none apply.",
-        "Descriptions should be plain text.",
-        "Only use labels from the allowed labels list.",
-        "Use sensible defaults when the user does not specify status or priority.",
-        "Return valid JSON only. No markdown. No code fences. No commentary.",
-        'The JSON format must be: {"tasks":[{"title":"...","description":null,"status":"todo","priority":"none","labels":[]}]}',
-      ].join(" "),
+    const taskGenerationSystem = [
+      "You generate actionable task objects for a project management app.",
+      `Workspace: ${workspaceName}.`,
+      `Allowed statuses: ${TASK_STATUSES.join(", ")}.`,
+      `Allowed priorities: ${TASK_PRIORITIES.join(", ")}.`,
+      `Allowed tags: ${labelsText}`,
+      getTaskGenerationInstruction(generationMode),
+      "Every task must have a concise title.",
+      "Every task object must include title, description, status, priority, and tags.",
+      "Use null for description, status, or priority when not specified.",
+      "Use an empty array for tags when none apply.",
+      "Descriptions should be plain text.",
+      "Only use tags from the allowed tags list.",
+      "Use sensible defaults when the user does not specify status or priority.",
+      "Return valid JSON only. No markdown. No code fences. No commentary.",
+      'The JSON format must be: {"tasks":[{"title":"...","description":null,"status":"todo","priority":"none","tags":[]}]}',
+    ].join(" ")
+
+    const { result, validatedObject } = await generateAndValidateTasks({
       prompt,
+      system: taskGenerationSystem,
+      userId,
     })
 
-    const rawObject = JSON.parse(extractJsonObject(result.text))
-    const validatedObject = generatedTasksSchema.parse(rawObject)
+    const normalizedTasks = validatedObject.tasks.map((task) => {
+      const candidateLabels = [...(task.tags ?? []), ...(task.labels ?? [])]
 
-    const normalizedTasks = validatedObject.tasks.map((task) => ({
-      title: task.title,
-      description: task.description ?? undefined,
-      status: task.status ?? undefined,
-      priority: task.priority ?? undefined,
-      labels: task.labels.filter((label) => availableLabels.includes(label)),
-    }))
+      return {
+        title: task.title,
+        description: task.description ?? undefined,
+        status: task.status ?? undefined,
+        priority: task.priority ?? undefined,
+        labels: [...new Set(candidateLabels)].filter((label) =>
+          availableLabels.includes(label)
+        ),
+      }
+    })
     const finalTasks = finalizeGeneratedTasks(normalizedTasks, generationMode)
 
     const durationMs = Date.now() - start
@@ -273,11 +337,14 @@ export const POST = withAxiom(async (request: Request) => {
     const outputTokens = result.usage?.outputTokens ?? 0
 
     if (inputTokens === 0 && outputTokens === 0) {
-      logger.warn("AI generation returned zero token usage — billing will not track", {
-        userId,
-        workspaceId,
-        model,
-      })
+      logger.warn(
+        "AI generation returned zero token usage — billing will not track",
+        {
+          userId,
+          workspaceId,
+          model,
+        }
+      )
     }
 
     // Track LLM generation metrics in PostHog
@@ -321,7 +388,10 @@ export const POST = withAxiom(async (request: Request) => {
       outputTokens,
     })
 
-    return NextResponse.json({ tasks: finalTasks, cost: cost > 0 ? cost : undefined })
+    return NextResponse.json({
+      tasks: finalTasks,
+      cost: cost > 0 ? cost : undefined,
+    })
   } catch (error) {
     const durationMs = Date.now() - start
 

@@ -24,6 +24,7 @@ const FEEDBACK_CONTEXT_LIMIT = 10
 const EXISTING_TASK_CONTEXT_LIMIT = 50
 const FEEDBACK_PROCESSING_DEBOUNCE_MS = 8_000
 const FEEDBACK_PROCESSING_RETRY_DELAY_MS = 5_000
+const FEEDBACK_PROCESSING_MAX_RETRIES = 3
 const DEFAULT_WORKPOOL_PARALLELISM = 2
 const MAX_EXTRACTED_TASK_ACTIONS = 5
 const MAX_EXTRACTED_TASK_LABELS = 5
@@ -156,7 +157,10 @@ const xFeedbackPool = new Workpool(components.xFeedbackWorkpool, {
 
 const processFeedbackWindowAction = makeFunctionReference<
   "action",
-  { integrationId: Id<"xWorkspaceIntegrations"> },
+  {
+    integrationId: Id<"xWorkspaceIntegrations">
+    retryAttempt?: number
+  },
   ProcessFeedbackWindowResult
 >("xFeedback:processFeedbackWindow")
 
@@ -164,7 +168,10 @@ const handleFeedbackProcessingCompleteMutation = makeFunctionReference<
   "mutation",
   {
     workId: string
-    context: { integrationId: Id<"xWorkspaceIntegrations"> }
+    context: {
+      integrationId: Id<"xWorkspaceIntegrations">
+      retryAttempt?: number
+    }
     result: WorkpoolResult
   },
   null
@@ -385,17 +392,18 @@ async function loadPendingFeedbackWindow(
 async function enqueueFeedbackProcessingWork(
   ctx: MutationCtx,
   integrationId: Id<"xWorkspaceIntegrations">,
-  delayMs: number
+  delayMs: number,
+  retryAttempt = 0
 ): Promise<string> {
   const workId = await xFeedbackPool.enqueueAction(
     ctx,
     processFeedbackWindowAction,
-    { integrationId },
+    { integrationId, retryAttempt },
     {
       runAfter: Math.max(0, delayMs),
       retry: false,
       onComplete: handleFeedbackProcessingCompleteMutation,
-      context: { integrationId },
+      context: { integrationId, retryAttempt },
     }
   )
 
@@ -537,6 +545,7 @@ export const handleFeedbackProcessingComplete = internalMutation({
   args: vOnCompleteArgs(
     v.object({
       integrationId: v.id("xWorkspaceIntegrations"),
+      retryAttempt: v.optional(v.number()),
     })
   ),
   handler: async (ctx, args) => {
@@ -557,7 +566,7 @@ export const handleFeedbackProcessingComplete = internalMutation({
       ? isPostAfterCursor(latestPost, {
           postId: integration.lastProcessedPostId ?? null,
           postCreatedAt: integration.lastProcessedPostCreatedAt ?? null,
-      })
+        })
       : false
     const completionReason = getCompletedProcessingReason(args.result)
     const shouldPauseProcessing =
@@ -577,19 +586,27 @@ export const handleFeedbackProcessingComplete = internalMutation({
       startedAt: integration.feedbackProcessingStartedAt,
     })
 
+    const retryAttempt = args.context.retryAttempt ?? 0
+    const canRetryFailure =
+      args.result.kind === "failed" &&
+      retryAttempt < FEEDBACK_PROCESSING_MAX_RETRIES
     const shouldRerun =
       !shouldPauseProcessing &&
-      (args.result.kind === "failed" ||
-        integration.feedbackProcessingNeedsRerun === true ||
-        hasPendingPosts)
+      (args.result.kind === "failed"
+        ? canRetryFailure
+        : integration.feedbackProcessingNeedsRerun === true ||
+          hasPendingPosts)
 
     if (shouldRerun) {
+      const nextRetryAttempt =
+        args.result.kind === "failed" ? retryAttempt + 1 : 0
       const workId = await enqueueFeedbackProcessingWork(
         ctx,
         args.context.integrationId,
         args.result.kind === "failed"
           ? FEEDBACK_PROCESSING_RETRY_DELAY_MS
-          : FEEDBACK_PROCESSING_DEBOUNCE_MS
+          : FEEDBACK_PROCESSING_DEBOUNCE_MS,
+        nextRetryAttempt
       )
 
       await ctx.db.patch(args.context.integrationId, {
@@ -600,6 +617,7 @@ export const handleFeedbackProcessingComplete = internalMutation({
       logInfo("Re-queued X feedback work", {
         integrationId: args.context.integrationId,
         workId,
+        retryAttempt: nextRetryAttempt,
         reason:
           args.result.kind === "failed"
             ? "failed"
@@ -617,12 +635,11 @@ export const handleFeedbackProcessingComplete = internalMutation({
       feedbackProcessingQueuedAt: undefined,
       feedbackProcessingStartedAt: undefined,
       feedbackProcessingCompletedAt: Date.now(),
-      feedbackProcessingLastError:
-        shouldPauseProcessing
-          ? integration.feedbackProcessingLastError
-          : args.result.kind === "failed"
-            ? args.result.error
-            : undefined,
+      feedbackProcessingLastError: shouldPauseProcessing
+        ? integration.feedbackProcessingLastError
+        : args.result.kind === "failed"
+          ? args.result.error
+          : undefined,
     })
   },
 })
@@ -630,6 +647,7 @@ export const handleFeedbackProcessingComplete = internalMutation({
 export const processFeedbackWindow = internalAction({
   args: {
     integrationId: v.id("xWorkspaceIntegrations"),
+    retryAttempt: v.optional(v.number()),
   },
   handler: async (ctx, args): Promise<ProcessFeedbackWindowResult> => {
     const processingStart = Date.now()
@@ -894,10 +912,15 @@ export const processFeedbackWindow = internalAction({
         if (parsedExtraction.success) {
           extracted = parsedExtraction.data
         } else {
-          logError("X feedback extractor schema mismatch", parsedExtraction.error, {
-            integrationId: args.integrationId,
-            workspaceId: feedbackWindow.integration.workspaceId,
-          })
+          logError(
+            "X feedback extractor schema mismatch",
+            parsedExtraction.error,
+            {
+              integrationId: args.integrationId,
+              workspaceId: feedbackWindow.integration.workspaceId,
+            }
+          )
+          throw parsedExtraction.error
         }
 
         await trackLLMGeneration({
@@ -931,6 +954,7 @@ export const processFeedbackWindow = internalAction({
           integrationId: args.integrationId,
           workspaceId: feedbackWindow.integration.workspaceId,
         })
+        throw error
       }
 
       const totalAiCost =

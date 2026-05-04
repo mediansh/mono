@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, type ReactNode } from "react"
 import { useMutation } from "convex/react"
 import { Image, Trash } from "@phosphor-icons/react"
 import { Facehash } from "facehash"
+import { toast } from "sonner"
 import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
 import { useInstantNavigation } from "@/hooks/use-instant-navigation"
@@ -132,13 +133,21 @@ export default function GeneralSettingsPage() {
         index: workspaces.findIndex((workspace) => workspace._id === currentWorkspace._id),
       })
       trackWorkspaceDeleted()
+      setDeleteModalOpen(false)
+      setDeleteConfirm("")
+      toast.success("Workspace deleted")
       if (remaining[0]) {
         switchWorkspace(remaining[0]._id)
         navigate("/app")
       } else {
         navigate("/app/setup")
       }
-    } catch {
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Something went wrong while deleting the workspace."
+      toast.error(message)
       setDeleting(false)
     }
   }
