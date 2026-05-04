@@ -958,9 +958,10 @@ export const handleFeedbackProcessingComplete = internalMutation({
       retryAttempt < FEEDBACK_PROCESSING_MAX_RETRIES
     const shouldRerun =
       !shouldPauseProcessing &&
-      (canRetryFailure ||
-        latestIntegration.feedbackProcessingNeedsRerun === true ||
-        hasPendingMessages)
+      (args.result.kind === "failed"
+        ? canRetryFailure
+        : latestIntegration.feedbackProcessingNeedsRerun === true ||
+          hasPendingMessages)
 
     if (shouldRerun) {
       const nextRetryAttempt =

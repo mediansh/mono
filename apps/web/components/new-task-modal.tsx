@@ -603,17 +603,22 @@ export function NewTaskModal({
       const generationCost =
         typeof payload.cost === "number" ? payload.cost : undefined
 
+      const allowedLabelIds = new Set(labelOptions.map((option) => option.id))
       const createdTasks = (await createTasks({
         workspaceId: workspace._id,
-        tasks: generatedTasks.map((task) => ({
-          title: task.title,
-          description: task.description,
-          status: task.status ?? defaultStatus,
-          priority: task.priority ?? "none",
-          labels: (task.tags ?? task.labels ?? []).filter((label) =>
-            labelOptions.some((option) => option.id === label)
-          ),
-        })),
+        tasks: generatedTasks.map((task) => {
+          const candidateLabels = [...(task.tags ?? []), ...(task.labels ?? [])]
+
+          return {
+            title: task.title,
+            description: task.description,
+            status: task.status ?? defaultStatus,
+            priority: task.priority ?? "none",
+            labels: [...new Set(candidateLabels)].filter((label) =>
+              allowedLabelIds.has(label)
+            ),
+          }
+        }),
         cost: generationCost,
       })) as Doc<"tasks">[]
 

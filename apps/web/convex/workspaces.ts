@@ -1,7 +1,12 @@
 import { v } from "convex/values"
-import { internalMutation, mutation, query } from "./_generated/server"
+import {
+  internalMutation,
+  mutation,
+  query,
+  type MutationCtx,
+} from "./_generated/server"
 import { internal } from "./_generated/api"
-import type { Doc } from "./_generated/dataModel"
+import type { Doc, Id } from "./_generated/dataModel"
 import {
   getIdentityProfile,
   requireIdentity,
@@ -336,7 +341,26 @@ export const updateWorkspace = mutation({
 // mutation. Convex caps each mutation at ~8k document writes / ~16k reads, so
 // we stay well under that to allow headroom for the queries themselves.
 const PURGE_BATCH_SIZE = 200
-const MEMBER_DELETE_LIMIT = 500
+
+async function drainWorkspaceMemberships(
+  ctx: MutationCtx,
+  workspaceId: Id<"workspaces">
+) {
+  while (true) {
+    const members = await ctx.db
+      .query("workspaceMembers")
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
+      .take(PURGE_BATCH_SIZE)
+
+    for (const member of members) {
+      await ctx.db.delete(member._id)
+    }
+
+    if (members.length < PURGE_BATCH_SIZE) {
+      break
+    }
+  }
+}
 
 export const deleteWorkspace = mutation({
   args: {
@@ -353,13 +377,7 @@ export const deleteWorkspace = mutation({
 
     // Step 1: remove every membership so the workspace immediately disappears
     // from getUserWorkspaces for everyone (including other members).
-    const members = await ctx.db
-      .query("workspaceMembers")
-      .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
-      .take(MEMBER_DELETE_LIMIT)
-    for (const member of members) {
-      await ctx.db.delete(member._id)
-    }
+    await drainWorkspaceMemberships(ctx, args.workspaceId)
 
     // Step 2: delete the workspace document and its icon synchronously so the
     // workspace is gone the moment this mutation resolves, regardless of how
@@ -407,6 +425,60 @@ export const purgeWorkspaceData = internalMutation({
       return docs.length < limit
     }
 
+    async function drainTasksWithAttachments(): Promise<boolean> {
+      if (budget <= 0) return false
+      const limit = budget
+      const tasks = await ctx.db
+        .query("tasks")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
+        .take(limit)
+
+      for (const task of tasks) {
+        for (const attachment of task.attachments ?? []) {
+          await ctx.storage.delete(attachment.storageId)
+        }
+        await ctx.db.delete(task._id)
+      }
+
+      budget -= tasks.length
+      return tasks.length < limit
+    }
+
+    async function drainLinearIntegrationsWithDeliveries(): Promise<boolean> {
+      if (budget <= 0) return false
+      const integrationLimit = budget
+      const integrations = await ctx.db
+        .query("linearWorkspaceIntegrations")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
+        .take(integrationLimit)
+
+      for (const integration of integrations) {
+        if (budget <= 0) return false
+
+        const deliveryLimit = budget
+        const deliveries = await ctx.db
+          .query("linearWebhookDeliveries")
+          .withIndex("by_integration", (q) =>
+            q.eq("integrationId", integration._id)
+          )
+          .take(deliveryLimit)
+
+        for (const delivery of deliveries) {
+          await ctx.db.delete(delivery._id)
+        }
+
+        budget -= deliveries.length
+        if (deliveries.length === deliveryLimit || budget <= 0) {
+          return false
+        }
+
+        await ctx.db.delete(integration._id)
+        budget -= 1
+      }
+
+      return integrations.length < integrationLimit
+    }
+
     // Cleanup steps. Each closure builds the query lazily so it picks up the
     // latest `budget` value when invoked. Order matters only insofar as parent
     // rows should generally be removed after their children — we delete
@@ -421,14 +493,7 @@ export const purgeWorkspaceData = internalMutation({
               q.eq("workspaceId", workspaceId)
             )
         ),
-      () =>
-        drain(() =>
-          ctx.db
-            .query("tasks")
-            .withIndex("by_workspace", (q) =>
-              q.eq("workspaceId", workspaceId)
-            )
-        ),
+      drainTasksWithAttachments,
       () =>
         drain(() =>
           ctx.db
@@ -528,14 +593,7 @@ export const purgeWorkspaceData = internalMutation({
               q.eq("workspaceId", workspaceId)
             )
         ),
-      () =>
-        drain(() =>
-          ctx.db
-            .query("linearWorkspaceIntegrations")
-            .withIndex("by_workspace", (q) =>
-              q.eq("workspaceId", workspaceId)
-            )
-        ),
+      drainLinearIntegrationsWithDeliveries,
       // GitHub
       () =>
         drain(() =>
@@ -620,8 +678,8 @@ export const purgeWorkspaceData = internalMutation({
             )
         ),
       // Memberships are normally cleared by the public mutation. Re-running
-      // here covers the (rare) case where a workspace had more members than
-      // MEMBER_DELETE_LIMIT could fit synchronously.
+      // here keeps cleanup idempotent if this internal mutation is invoked
+      // directly or retried after a partial failure.
       () =>
         drain(() =>
           ctx.db

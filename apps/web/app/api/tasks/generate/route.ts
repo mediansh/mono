@@ -308,15 +308,19 @@ export const POST = withAxiom(async (request: Request) => {
       userId,
     })
 
-    const normalizedTasks = validatedObject.tasks.map((task) => ({
-      title: task.title,
-      description: task.description ?? undefined,
-      status: task.status ?? undefined,
-      priority: task.priority ?? undefined,
-      labels: (task.tags ?? task.labels ?? []).filter((label) =>
-        availableLabels.includes(label)
-      ),
-    }))
+    const normalizedTasks = validatedObject.tasks.map((task) => {
+      const candidateLabels = [...(task.tags ?? []), ...(task.labels ?? [])]
+
+      return {
+        title: task.title,
+        description: task.description ?? undefined,
+        status: task.status ?? undefined,
+        priority: task.priority ?? undefined,
+        labels: [...new Set(candidateLabels)].filter((label) =>
+          availableLabels.includes(label)
+        ),
+      }
+    })
     const finalTasks = finalizeGeneratedTasks(normalizedTasks, generationMode)
 
     const durationMs = Date.now() - start

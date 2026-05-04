@@ -278,7 +278,9 @@ export default defineSchema({
     integrationId: v.id("linearWorkspaceIntegrations"),
     eventType: v.string(),
     receivedAt: v.number(),
-  }).index("by_delivery", ["deliveryId"]),
+  })
+    .index("by_delivery", ["deliveryId"])
+    .index("by_integration", ["integrationId"]),
 
   githubInstallStates: defineTable({
     workspaceId: v.id("workspaces"),
