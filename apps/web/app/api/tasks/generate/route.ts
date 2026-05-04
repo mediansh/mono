@@ -56,6 +56,7 @@ function extractJsonObject(text: string) {
 type TaskGenerationMode = "single" | "smart" | "multiple"
 
 const SMART_TASK_LIMIT = 5
+const MAX_AI_TASK_GENERATION_RETRIES = 3
 
 function getTaskGenerationMode(prompt: string): TaskGenerationMode {
   const normalized = prompt.toLowerCase()
@@ -128,6 +129,48 @@ function finalizeGeneratedTasks(
     case "multiple":
       return tasks
   }
+}
+
+async function generateAndValidateTasks({
+  prompt,
+  system,
+  userId,
+}: {
+  prompt: string
+  system: string
+  userId: string
+}) {
+  let lastError: unknown
+
+  for (let attempt = 0; attempt <= MAX_AI_TASK_GENERATION_RETRIES; attempt++) {
+    try {
+      const result = await generateText({
+        model: AI_MODELS.taskGeneration,
+        system,
+        prompt,
+      })
+      const rawObject = JSON.parse(extractJsonObject(result.text))
+      const validatedObject = generatedTasksSchema.parse(rawObject)
+
+      return { result, validatedObject }
+    } catch (error) {
+      lastError = error
+
+      if (attempt >= MAX_AI_TASK_GENERATION_RETRIES) {
+        break
+      }
+
+      logger.warn("AI task generation attempt failed; retrying", {
+        userId,
+        attempt: attempt + 1,
+        nextAttempt: attempt + 2,
+        maxRetries: MAX_AI_TASK_GENERATION_RETRIES,
+        error: error instanceof Error ? error.message : "Unknown error",
+      })
+    }
+  }
+
+  throw lastError
 }
 
 export const POST = withAxiom(async (request: Request) => {
@@ -241,30 +284,29 @@ export const POST = withAxiom(async (request: Request) => {
     const model = AI_MODEL_IDS.taskGeneration
     const generationMode = getTaskGenerationMode(prompt)
     const allowMultipleTasks = generationMode !== "single"
-    const result = await generateText({
-      model: AI_MODELS.taskGeneration,
-      system: [
-        "You generate actionable task objects for a project management app.",
-        `Workspace: ${workspaceName}.`,
-        `Allowed statuses: ${TASK_STATUSES.join(", ")}.`,
-        `Allowed priorities: ${TASK_PRIORITIES.join(", ")}.`,
-        `Allowed tags: ${labelsText}`,
-        getTaskGenerationInstruction(generationMode),
-        "Every task must have a concise title.",
-        "Every task object must include title, description, status, priority, and tags.",
-        "Use null for description, status, or priority when not specified.",
-        "Use an empty array for tags when none apply.",
-        "Descriptions should be plain text.",
-        "Only use tags from the allowed tags list.",
-        "Use sensible defaults when the user does not specify status or priority.",
-        "Return valid JSON only. No markdown. No code fences. No commentary.",
-        'The JSON format must be: {"tasks":[{"title":"...","description":null,"status":"todo","priority":"none","tags":[]}]}',
-      ].join(" "),
-      prompt,
-    })
+    const taskGenerationSystem = [
+      "You generate actionable task objects for a project management app.",
+      `Workspace: ${workspaceName}.`,
+      `Allowed statuses: ${TASK_STATUSES.join(", ")}.`,
+      `Allowed priorities: ${TASK_PRIORITIES.join(", ")}.`,
+      `Allowed tags: ${labelsText}`,
+      getTaskGenerationInstruction(generationMode),
+      "Every task must have a concise title.",
+      "Every task object must include title, description, status, priority, and tags.",
+      "Use null for description, status, or priority when not specified.",
+      "Use an empty array for tags when none apply.",
+      "Descriptions should be plain text.",
+      "Only use tags from the allowed tags list.",
+      "Use sensible defaults when the user does not specify status or priority.",
+      "Return valid JSON only. No markdown. No code fences. No commentary.",
+      'The JSON format must be: {"tasks":[{"title":"...","description":null,"status":"todo","priority":"none","tags":[]}]}',
+    ].join(" ")
 
-    const rawObject = JSON.parse(extractJsonObject(result.text))
-    const validatedObject = generatedTasksSchema.parse(rawObject)
+    const { result, validatedObject } = await generateAndValidateTasks({
+      prompt,
+      system: taskGenerationSystem,
+      userId,
+    })
 
     const normalizedTasks = validatedObject.tasks.map((task) => ({
       title: task.title,
