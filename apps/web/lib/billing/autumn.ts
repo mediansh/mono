@@ -1,10 +1,10 @@
 import { Autumn } from "autumn-js"
 import {
-  AUTUMN_AI_USAGE_FEATURE_ID,
-  AUTUMN_EVENTS_FEATURE_ID,
+  AUTUMN_CREDITS_FEATURE_ID,
   BILLING_BIN_SIZE,
   BILLING_RANGE,
   BILLING_RECORD_PAGE_SIZE,
+  EVENT_CREDIT_COST,
   TrackedAiModel,
   getAiCostForTokens,
   getAutumnCustomerId,
@@ -107,9 +107,10 @@ export async function trackAiUsage(args: {
 
   await getAutumnClient().track({
     customerId,
-    featureId: AUTUMN_AI_USAGE_FEATURE_ID,
+    featureId: AUTUMN_CREDITS_FEATURE_ID,
     value: cost,
     properties: {
+      kind: "ai",
       workspace_id: args.workspaceId,
       workspace_name: args.workspaceName ?? undefined,
       model: args.model,
@@ -134,12 +135,14 @@ export async function trackIntegrationEvent(args: {
 
   await getAutumnClient().track({
     customerId: getAutumnCustomerId(args.workspaceId),
-    featureId: AUTUMN_EVENTS_FEATURE_ID,
-    value: 1,
+    featureId: AUTUMN_CREDITS_FEATURE_ID,
+    value: EVENT_CREDIT_COST,
     properties: {
+      kind: "event",
       workspace_id: args.workspaceId,
       workspace_name: args.workspaceName ?? undefined,
       source: args.source,
+      cost: EVENT_CREDIT_COST,
       ...args.properties,
     },
   })
@@ -232,17 +235,11 @@ export async function loadWorkspaceBillingSnapshot(args: {
     balanceKeys: Object.keys(customer.balances ?? {}),
   })
 
-  const [plans, aiUsage, eventUsage, recentEvents] = await Promise.all([
+  const [plans, creditsUsage, recentEvents] = await Promise.all([
     client.plans.list({ customerId }),
     client.events.aggregate({
       customerId,
-      featureId: AUTUMN_AI_USAGE_FEATURE_ID,
-      range: BILLING_RANGE,
-      binSize: BILLING_BIN_SIZE,
-    }),
-    client.events.aggregate({
-      customerId,
-      featureId: AUTUMN_EVENTS_FEATURE_ID,
+      featureId: AUTUMN_CREDITS_FEATURE_ID,
       range: BILLING_RANGE,
       binSize: BILLING_BIN_SIZE,
     }),
@@ -263,8 +260,7 @@ export async function loadWorkspaceBillingSnapshot(args: {
   return {
     customer,
     plans: plans.list,
-    aiUsage,
-    eventUsage,
+    creditsUsage,
     recentEvents: recentEvents.list,
   }
 }

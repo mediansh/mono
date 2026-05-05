@@ -236,9 +236,9 @@ export const POST = withAxiom(async (request: Request) => {
 
     const { workspaceName, availableLabels } = generationContext
 
-    // Hard-stop AI generation when the workspace has disabled overages and the
-    // AI budget is exhausted. Access is already verified above, so a flaky
-    // billing read should not become a cross-workspace spend bypass.
+    // Hard-stop AI generation when the workspace has disabled overages and
+    // their credits are exhausted. Access is already verified above, so a
+    // flaky billing read should not become a cross-workspace spend bypass.
     try {
       const quota = await fetchAction(
         api.billing.getWorkspaceQuotaStatus,
@@ -246,16 +246,16 @@ export const POST = withAxiom(async (request: Request) => {
         { token: convexToken }
       )
 
-      if (quota.aiExhausted) {
-        logger.info("Blocking AI task generation — budget exhausted", {
+      if (quota.creditsExhausted) {
+        logger.info("Blocking AI task generation — credits exhausted", {
           userId,
           workspaceId,
         })
         return NextResponse.json(
           {
             error:
-              "AI budget exhausted. Overages are disabled for this workspace — upgrade your plan to keep generating tasks.",
-            code: "ai_budget_exhausted",
+              "Credits exhausted. Overages are disabled for this workspace — upgrade your plan to keep generating tasks.",
+            code: "credits_exhausted",
           },
           { status: 402 }
         )

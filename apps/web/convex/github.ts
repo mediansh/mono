@@ -2500,7 +2500,7 @@ export const githubWebhook = httpAction(async (ctx, request) => {
         internal.billing.getWorkspaceQuotaStatusInternal,
         { workspaceId: integration.workspaceId }
       )
-      if (quota.eventsExhausted) {
+      if (quota.creditsExhausted) {
         console.info(
           "[github] Skipping webhook — events exhausted (overages disabled)",
           {

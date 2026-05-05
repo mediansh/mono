@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "motion/react"
 import { CreditCard, Check, Info, ArrowRight } from "@phosphor-icons/react"
 import {
   AUTUMN_BILLING_PLANS,
-  AUTUMN_EVENT_OVERAGE_PRICE,
+  EVENT_CREDIT_COST,
   getPlanCopy,
 } from "@/lib/billing/config"
 
@@ -68,7 +68,8 @@ export function LandingPricing() {
             Simple, transparent pricing
           </h2>
           <p className="mt-3 text-muted-foreground sm:text-lg">
-            Start small, scale as you grow. Every plan includes all features.
+            Pay-as-you-go credits. Every dollar you spend becomes a dollar of
+            credits — every plan unlocks all features.
           </p>
         </motion.div>
 
@@ -88,9 +89,9 @@ export function LandingPricing() {
           className="mt-6 text-center"
         >
           <p className="text-sm text-muted-foreground">
-            All plans include full access to every feature. Overages are billed
-            at ${AUTUMN_EVENT_OVERAGE_PRICE}/event beyond your plan&apos;s
-            included events.
+            Each plan grants $1 of credits per $1 paid. Events cost $
+            {EVENT_CREDIT_COST.toFixed(3)} each, AI is charged at cost. Overages
+            beyond your monthly credits are auto-charged.
           </p>
         </motion.div>
       </div>
@@ -225,8 +226,8 @@ function PlanCard({
               <Check size={16} weight="bold" className="mt-0.5 shrink-0 text-foreground/40" />
               <span className="flex items-center gap-1.5">
                 {feature}
-                {feature.includes("events included") && (
-                  <EventTooltip eventLimit={plan.eventLimit} />
+                {feature.includes("credits") && (
+                  <CreditsTooltip credits={plan.credits} />
                 )}
               </span>
             </li>
@@ -237,7 +238,7 @@ function PlanCard({
   )
 }
 
-function EventTooltip({ eventLimit }: { eventLimit: number }) {
+function CreditsTooltip({ credits }: { credits: number }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLSpanElement>(null)
 
@@ -284,12 +285,12 @@ function EventTooltip({ eventLimit }: { eventLimit: number }) {
             transition={{ duration: 0.15, ease }}
             className="absolute bottom-full right-0 z-50 mb-2 w-56 rounded-xl border border-foreground/10 bg-background/95 p-3 shadow-lg backdrop-blur-xl sm:right-auto sm:left-1/2 sm:-translate-x-1/2"
           >
-            <p className="text-xs font-medium text-foreground">Event pricing</p>
+            <p className="text-xs font-medium text-foreground">How credits work</p>
             <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-              Your plan includes {eventLimit.toLocaleString("en-US")} events per month.
-              After that, each additional event costs $
-              {AUTUMN_EVENT_OVERAGE_PRICE}. Events are tracked from all
-              connected integrations (Discord, GitHub, Linear, X).
+              Your plan includes ${credits} of credits each month. Integration
+              events cost ${EVENT_CREDIT_COST.toFixed(3)} each, AI is charged at
+              cost. Usage beyond your credits is auto-charged at the end of the
+              cycle.
             </p>
             {/* Arrow */}
             <div className="absolute -bottom-1 right-[3px] h-2 w-2 rotate-45 border-r border-b border-foreground/10 bg-background/95 sm:right-auto sm:left-1/2 sm:-translate-x-1/2" />

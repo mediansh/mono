@@ -9,8 +9,7 @@ import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
 
 type QuotaState = {
-  aiExhausted: boolean
-  eventsExhausted: boolean
+  creditsExhausted: boolean
 }
 
 export function QuotaBanner() {
@@ -31,8 +30,7 @@ export function QuotaBanner() {
         if (cancelled) return
         if (result.overagesDisabled) {
           setQuota({
-            aiExhausted: result.aiExhausted,
-            eventsExhausted: result.eventsExhausted,
+            creditsExhausted: result.creditsExhausted,
           })
         } else {
           setQuota(null)
@@ -50,7 +48,7 @@ export function QuotaBanner() {
     }
   }, [currentWorkspace?._id, getQuotaStatus])
 
-  const showBanner = quota !== null && (quota.aiExhausted || quota.eventsExhausted)
+  const showBanner = quota !== null && quota.creditsExhausted
 
   return (
     <AnimatePresence>
@@ -64,11 +62,7 @@ export function QuotaBanner() {
         >
           <Warning size={14} weight="fill" className="shrink-0 text-amber-500" />
           <span className="text-center">
-            {quota.aiExhausted && quota.eventsExhausted
-              ? "AI budget and events are exhausted. AI generation and integration syncs are paused. "
-              : quota.aiExhausted
-                ? "AI budget exhausted. Task generation is paused. "
-                : "Events exhausted. Discord, Linear, GitHub, and X syncs are paused. "}
+            Credits exhausted. AI generation and integration syncs are paused.{" "}
             <Link
               href="/app/billing"
               className="underline underline-offset-2 hover:text-amber-700"

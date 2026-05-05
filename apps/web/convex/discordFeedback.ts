@@ -1061,7 +1061,7 @@ export const processFeedbackWindow = internalAction({
         { workspaceId: feedbackWindow.integration.workspaceId }
       )) as WorkspaceQuotaStatus
 
-      if (quotaStatus.eventsExhausted) {
+      if (quotaStatus.creditsExhausted) {
         logInfo("Skipping Discord feedback scan — events exhausted", {
           integrationId: args.integrationId,
           workspaceId: feedbackWindow.integration.workspaceId,

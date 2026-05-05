@@ -67,7 +67,7 @@ export default function IntegrationsPage() {
       try {
         const quota = await getQuotaStatus({ workspaceId: currentWorkspace._id })
         if (!cancelled) {
-          setEventsPaused(quota.eventsExhausted && quota.overagesDisabled)
+          setEventsPaused(quota.creditsExhausted && quota.overagesDisabled)
         }
       } catch {
         if (!cancelled) setEventsPaused(false)
