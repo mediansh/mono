@@ -152,24 +152,11 @@ interface Task extends Omit<TaskDoc, "attachments"> {
   attachments?: TaskAttachment[]
 }
 
-// Normalize a task's assignees, treating the legacy single-assignee field as
-// a one-element list so older tasks participate in bulk-selection logic.
-function getNormalizedTaskAssignees(
-  task: Pick<Task, "assignees" | "assignee">
-): TaskAssignee[] {
-  if (task.assignees) return task.assignees as TaskAssignee[]
-  if (!task.assignee) return []
-  return [
-    {
-      userId: task.assignee.name,
-      name: task.assignee.name,
-      imageUrl: task.assignee.avatar || undefined,
-    },
-  ]
-}
-
 // Compute the intersection of assignees across the selected tasks. Only
-// assignees present on every selected task are returned.
+// assignees present on every selected task are returned. Legacy
+// single-assignee tasks (`task.assignee`) are intentionally excluded — that
+// field uses display-name as the identifier, which would write fake user IDs
+// back through the picker's onChange.
 function computeCommonAssignees(
   tasks: Task[],
   selectedTaskIds: Set<string>
@@ -177,13 +164,13 @@ function computeCommonAssignees(
   if (selectedTaskIds.size === 0) return []
   const selected = tasks.filter((t) => selectedTaskIds.has(t.id))
   if (selected.length === 0) return []
-  const first = getNormalizedTaskAssignees(selected[0]!)
+  const first = (selected[0]!.assignees ?? []) as TaskAssignee[]
   if (first.length === 0) return []
   const common = new Map<string, TaskAssignee>()
   for (const a of first) common.set(a.userId, a)
   for (let i = 1; i < selected.length; i++) {
     const ids = new Set(
-      getNormalizedTaskAssignees(selected[i]!).map((a) => a.userId)
+      (selected[i]!.assignees ?? []).map((a) => a.userId)
     )
     for (const userId of Array.from(common.keys())) {
       if (!ids.has(userId)) common.delete(userId)
