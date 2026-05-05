@@ -191,12 +191,16 @@ const TASK_PANEL_WIDTH_STORAGE_KEY = "median_task_panel_width_v1"
 const TASK_PANEL_DEFAULT_WIDTH = 480
 const TASK_PANEL_MIN_WIDTH = 360
 const TASK_PANEL_MAX_WIDTH_PX = 960
+const MOBILE_BREAKPOINT = 768
 
 function clampTaskPanelWidth(width: number): number {
+  if (typeof window !== "undefined" && window.innerWidth < MOBILE_BREAKPOINT) {
+    return Math.min(Math.max(width, 0), window.innerWidth)
+  }
   const ceiling =
     typeof window === "undefined"
       ? TASK_PANEL_MAX_WIDTH_PX
-      : Math.min(TASK_PANEL_MAX_WIDTH_PX, Math.max(TASK_PANEL_MIN_WIDTH, window.innerWidth * 0.7))
+      : Math.min(TASK_PANEL_MAX_WIDTH_PX, window.innerWidth * 0.7)
   return Math.min(Math.max(width, TASK_PANEL_MIN_WIDTH), ceiling)
 }
 
@@ -1710,6 +1714,17 @@ function TaskDetailSidePanel({
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const titleRef = useRef<HTMLTextAreaElement>(null)
+  const normalizedAssignees: TaskAssignee[] =
+    task?.assignees ??
+    (task?.assignee
+      ? [
+          {
+            userId: task.assignee.name,
+            name: task.assignee.name,
+            imageUrl: task.assignee.avatar || undefined,
+          },
+        ]
+      : [])
 
   // The portal target lives in the (app) layout as a flex sibling of
   // SidebarInset. Resolving it on mount keeps the panel out of the inset card
@@ -1717,6 +1732,14 @@ function TaskDetailSidePanel({
   useEffect(() => {
     setPortalTarget(document.getElementById("task-panel-portal"))
   }, [])
+
+  useEffect(() => {
+    setEditingTitle(false)
+    setTitleValue("")
+    setEditingDesc(false)
+    setDescValue("")
+  }, [task?.id])
+
   const attachmentsRef = useRef<{
     taskId: string | null
     attachments: TaskAttachment[] | undefined
@@ -2161,16 +2184,16 @@ function TaskDetailSidePanel({
                     disabled={!canManageTasks}
                     className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {(task.assignees ?? []).length > 0 ? (
+                    {normalizedAssignees.length > 0 ? (
                       <div className="flex items-center gap-1.5">
                         <AssigneeStack
-                          assignees={task.assignees ?? []}
+                          assignees={normalizedAssignees}
                           size={16}
                         />
                         <span>
-                          {(task.assignees ?? []).length === 1
-                            ? ((task.assignees ?? [])[0]?.name ?? "Assignee")
-                            : `${(task.assignees ?? []).length} assignees`}
+                          {normalizedAssignees.length === 1
+                            ? (normalizedAssignees[0]?.name ?? "Assignee")
+                            : `${normalizedAssignees.length} assignees`}
                         </span>
                       </div>
                     ) : (
@@ -2187,7 +2210,7 @@ function TaskDetailSidePanel({
                   >
                     <AssigneePickerContent
                       workspaceId={task.workspaceId}
-                      assignees={(task.assignees ?? []) as TaskAssignee[]}
+                      assignees={normalizedAssignees}
                       onChange={(next) =>
                         onUpdate(task.id, {
                           assignees: next.map((a) => ({
