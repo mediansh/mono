@@ -2039,66 +2039,8 @@ function TaskDetailSidePanel({
                 </div>
               </div>
 
-              {/* ── Action buttons row (above properties, below title) ── */}
-              <div className="flex flex-wrap items-center gap-1.5 px-5 pt-3">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  onChange={handleFileSelect}
-                  className="hidden"
-                />
-                <button
-                  disabled={!canManageTasks || uploading}
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                  title="Attach files"
-                >
-                  {uploading ? (
-                    <SpinnerGap size={14} className="animate-spin" />
-                  ) : (
-                    <Paperclip size={14} />
-                  )}
-                  {uploading ? "Uploading..." : "Attach"}
-                </button>
-                {task.status === "requests" && onAccept && onDeny && (
-                  <>
-                    <button
-                      disabled={!canManageTasks}
-                      onClick={() => {
-                        onAccept(task)
-                        handleClose()
-                      }}
-                      className="flex items-center gap-1.5 rounded-[4px] border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
-                    >
-                      <CheckCircle size={13} weight="fill" />
-                      Accept
-                    </button>
-                    <button
-                      disabled={!canManageTasks}
-                      onClick={() => {
-                        onDeny(task)
-                        handleClose()
-                      }}
-                      className="flex items-center gap-1.5 rounded-[4px] border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-[11px] font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
-                    >
-                      <XCircle size={13} />
-                      Deny
-                    </button>
-                  </>
-                )}
-                <button
-                  disabled={!canManageTasks}
-                  onClick={() => onDelete(task.id)}
-                  className="flex items-center justify-center rounded-[4px] px-[7px] py-[7px] text-muted-foreground/40 ring-1 ring-border transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-60"
-                  title="Delete task"
-                >
-                  <Trash size={14} />
-                </button>
-              </div>
-
               {/* ── Properties row (Status, Priority, Labels, Assignees) ── */}
-              <div className="flex flex-wrap items-center gap-2 border-b border-border px-5 pt-2.5 pb-3">
+              <div className="flex flex-wrap items-center gap-2 px-5 pt-3 pb-3">
                 {/* Status */}
                 <DropdownMenu>
                   <DropdownMenuTrigger
@@ -2255,6 +2197,67 @@ function TaskDetailSidePanel({
                     />
                   </DropdownMenuContent>
                 </DropdownMenu>
+              </div>
+
+              {/* ── Separator between properties and actions ── */}
+              <div className="mx-5 border-t border-border" />
+
+              {/* ── Action buttons row (below properties) ── */}
+              <div className="flex flex-wrap items-center gap-1.5 border-b border-border px-5 pt-3 pb-3">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                <button
+                  disabled={!canManageTasks || uploading}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                  title="Attach files"
+                >
+                  {uploading ? (
+                    <SpinnerGap size={14} className="animate-spin" />
+                  ) : (
+                    <Paperclip size={14} />
+                  )}
+                  {uploading ? "Uploading..." : "Attach"}
+                </button>
+                {task.status === "requests" && onAccept && onDeny && (
+                  <>
+                    <button
+                      disabled={!canManageTasks}
+                      onClick={() => {
+                        onAccept(task)
+                        handleClose()
+                      }}
+                      className="flex items-center gap-1.5 rounded-[4px] border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
+                    >
+                      <CheckCircle size={13} weight="fill" />
+                      Accept
+                    </button>
+                    <button
+                      disabled={!canManageTasks}
+                      onClick={() => {
+                        onDeny(task)
+                        handleClose()
+                      }}
+                      className="flex items-center gap-1.5 rounded-[4px] border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-[11px] font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
+                    >
+                      <XCircle size={13} />
+                      Deny
+                    </button>
+                  </>
+                )}
+                <button
+                  disabled={!canManageTasks}
+                  onClick={() => onDelete(task.id)}
+                  className="flex items-center justify-center rounded-[4px] px-[7px] py-[7px] text-muted-foreground/40 ring-1 ring-border transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-60"
+                  title="Delete task"
+                >
+                  <Trash size={14} />
+                </button>
               </div>
 
               {/* ── Body: Description (scrollable) ── */}
