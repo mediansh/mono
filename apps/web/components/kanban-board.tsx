@@ -1674,8 +1674,16 @@ function TaskDetailSidePanel({
   const [descValue, setDescValue] = useState("")
   const [uploading, setUploading] = useState(false)
   const [isResizing, setIsResizing] = useState(false)
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const titleRef = useRef<HTMLTextAreaElement>(null)
+
+  // The portal target lives in the (app) layout as a flex sibling of
+  // SidebarInset. Resolving it on mount keeps the panel out of the inset card
+  // so it can sit at the layout's top level alongside the sidebar/inset.
+  useEffect(() => {
+    setPortalTarget(document.getElementById("task-panel-portal"))
+  }, [])
   const attachmentsRef = useRef<{
     taskId: string | null
     attachments: TaskAttachment[] | undefined
@@ -1889,7 +1897,7 @@ function TaskDetailSidePanel({
     [width, onWidthChange]
   )
 
-  return (
+  const panelContent = (
     <AnimatePresence initial={false}>
       {task && (
         <motion.aside
@@ -1902,7 +1910,7 @@ function TaskDetailSidePanel({
               ? { duration: 0 }
               : { type: "spring", stiffness: 320, damping: 34, mass: 0.8 }
           }
-          className="relative h-full shrink-0 overflow-hidden bg-sidebar"
+          className="relative shrink-0 self-stretch overflow-hidden"
         >
           {/* Resize handle (left edge) — sibling of inner card so it isn't clipped */}
           <div
@@ -1928,13 +1936,17 @@ function TaskDetailSidePanel({
             </div>
           </div>
 
+          {/* Inner card — sits as its own top-level card on the bg-sidebar
+              gap, mirroring SidebarInset's rounded + ring treatment. The 6px
+              left inset (width - 6) leaves a visible gap between this card
+              and SidebarInset on the left. */}
           <motion.div
             initial={{ opacity: 0, x: 16 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 16 }}
             transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute inset-y-1.5 right-1.5 flex flex-col overflow-hidden rounded-[4px] bg-background ring-1 ring-sidebar-border"
-            style={{ width: `${Math.max(width - 12, 1)}px` }}
+            className="absolute inset-y-0 right-0 flex flex-col overflow-hidden rounded-[4px] bg-background ring-1 ring-sidebar-border"
+            style={{ width: `${Math.max(width - 6, 1)}px` }}
           >
             {/* ── Header: Title + Date + Close ── */}
             <div className="relative px-5 pt-5 pb-0">
@@ -2304,6 +2316,12 @@ function TaskDetailSidePanel({
       )}
     </AnimatePresence>
   )
+
+  if (!portalTarget) {
+    return null
+  }
+
+  return createPortal(panelContent, portalTarget)
 }
 
 // ── Bulk Action Toolbar ──
