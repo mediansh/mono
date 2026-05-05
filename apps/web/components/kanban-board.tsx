@@ -1902,40 +1902,40 @@ function TaskDetailSidePanel({
               ? { duration: 0 }
               : { type: "spring", stiffness: 320, damping: 34, mass: 0.8 }
           }
-          className="relative h-full shrink-0 overflow-hidden border-l border-border bg-background"
+          className="relative h-full shrink-0 overflow-hidden bg-sidebar"
         >
+          {/* Resize handle (left edge) — sibling of inner card so it isn't clipped */}
+          <div
+            onPointerDown={handleResizeStart}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize task panel"
+            className="group absolute inset-y-0 left-0 z-30 flex w-3 cursor-col-resize items-center justify-center"
+          >
+            <div
+              className={`absolute inset-y-0 left-0 w-px transition-colors ${
+                isResizing
+                  ? "bg-primary"
+                  : "bg-transparent group-hover:bg-primary/40"
+              }`}
+            />
+            <div
+              className={`relative flex h-8 w-3 items-center justify-center rounded-full text-muted-foreground/60 opacity-0 ring-1 ring-border bg-background transition-opacity group-hover:opacity-100 ${
+                isResizing ? "opacity-100 text-primary ring-primary/50" : ""
+              }`}
+            >
+              <DotsSixVertical size={10} weight="bold" />
+            </div>
+          </div>
+
           <motion.div
             initial={{ opacity: 0, x: 16 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 16 }}
             transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-            className="relative flex h-full flex-col"
-            style={{ width: `${width}px` }}
+            className="absolute inset-y-1.5 right-1.5 flex flex-col overflow-hidden rounded-[4px] bg-background ring-1 ring-sidebar-border"
+            style={{ width: `${Math.max(width - 12, 1)}px` }}
           >
-            {/* Resize handle (left edge) */}
-            <div
-              onPointerDown={handleResizeStart}
-              role="separator"
-              aria-orientation="vertical"
-              aria-label="Resize task panel"
-              className="group absolute top-0 left-0 z-30 flex h-full w-1.5 -translate-x-1/2 cursor-col-resize items-center justify-center"
-            >
-              <div
-                className={`absolute inset-y-0 left-1/2 w-px -translate-x-1/2 transition-colors ${
-                  isResizing
-                    ? "bg-primary"
-                    : "bg-transparent group-hover:bg-primary/40"
-                }`}
-              />
-              <div
-                className={`relative flex h-8 w-3 items-center justify-center rounded-full text-muted-foreground/60 opacity-0 ring-1 ring-border bg-background transition-opacity group-hover:opacity-100 ${
-                  isResizing ? "opacity-100 text-primary ring-primary/50" : ""
-                }`}
-              >
-                <DotsSixVertical size={10} weight="bold" />
-              </div>
-            </div>
-
             {/* ── Header: Title + Date + Close ── */}
             <div className="relative px-5 pt-5 pb-0">
                 {/* Close button */}
