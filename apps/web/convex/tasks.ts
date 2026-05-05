@@ -53,6 +53,12 @@ const taskSourceValidator = v.object({
   author: v.string(),
 })
 
+const assigneeValidator = v.object({
+  userId: v.string(),
+  name: v.string(),
+  imageUrl: v.optional(v.string()),
+})
+
 const taskInputValidator = v.object({
   title: v.string(),
   description: v.optional(v.string()),
@@ -62,7 +68,14 @@ const taskInputValidator = v.object({
   source: v.optional(taskSourceValidator),
   createdAtLabel: v.optional(v.string()),
   attachments: v.optional(v.array(attachmentValidator)),
+  assignees: v.optional(v.array(assigneeValidator)),
 })
+
+type TaskAssigneeInput = {
+  userId: string
+  name: string
+  imageUrl?: string
+}
 
 type CreateTaskInput = {
   title: string
@@ -85,6 +98,7 @@ type CreateTaskInput = {
     height?: number
     displayWidth?: number
   }[]
+  assignees?: TaskAssigneeInput[]
 }
 
 type FeedbackTaskUpdateInput = {
@@ -405,10 +419,7 @@ async function insertTasksForWorkspace(
       order: nextOrder,
       project: workspace.name,
       updatedAt: now,
-      assignee: {
-        name: "Abdul",
-        avatar: "",
-      },
+      assignees: taskInput.assignees?.length ? taskInput.assignees : undefined,
       source: taskInput.source,
       sources: taskInput.source ? [taskInput.source] : undefined,
       createdAtLabel: taskInput.createdAtLabel,
@@ -1393,6 +1404,7 @@ export const updateTask = mutation({
     ),
     labels: v.optional(v.array(v.string())),
     attachments: v.optional(v.array(attachmentValidator)),
+    assignees: v.optional(v.array(assigneeValidator)),
   },
   handler: async (ctx, args) => {
     const task = await ctx.db.get(args.taskId)
@@ -1411,13 +1423,18 @@ export const updateTask = mutation({
       updates.attachments =
         args.attachments.length > 0 ? args.attachments : undefined
     }
+    if (args.assignees !== undefined) {
+      updates.assignees =
+        args.assignees.length > 0 ? args.assignees : undefined
+    }
     if (
       args.title !== undefined ||
       args.description !== undefined ||
       args.status !== undefined ||
       args.priority !== undefined ||
       args.labels !== undefined ||
-      args.attachments !== undefined
+      args.attachments !== undefined ||
+      args.assignees !== undefined
     ) {
       updates.updatedAt = Date.now()
     }
@@ -1461,7 +1478,8 @@ export const updateTask = mutation({
       args.description !== undefined ||
       args.priority !== undefined ||
       args.labels !== undefined ||
-      args.attachments !== undefined
+      args.attachments !== undefined ||
+      args.assignees !== undefined
     ) {
       await logTaskUpdated(ctx, task)
     }

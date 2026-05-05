@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import { createPortal } from "react-dom"
 import { AnimatePresence, motion } from "motion/react"
 import { useMutation } from "convex/react"
-import { useUser } from "@clerk/nextjs"
 import { toast } from "sonner"
 import {
   X,
@@ -24,6 +23,7 @@ import {
   Sparkle,
   ArrowRight,
   PaperPlaneRight,
+  Users,
 } from "@phosphor-icons/react"
 import {
   DropdownMenu,
@@ -61,6 +61,11 @@ import {
   TaskAttachmentGallery,
   type TaskAttachment,
 } from "@/components/task-attachments"
+import {
+  AssigneePickerContent,
+  AssigneeStack,
+  type TaskAssignee,
+} from "@/components/assignee-picker"
 
 const STATUS_OPTIONS: { id: Status; label: string }[] = [
   { id: "todo", label: "Todo" },
@@ -125,6 +130,7 @@ type TaskDraftPayload = {
   priority: Priority
   labels: Label[]
   attachments?: (TaskAttachment & { previewUrl?: string })[]
+  assignees?: TaskAssignee[]
 }
 
 type GeneratedTaskPayload = {
@@ -141,7 +147,6 @@ export function NewTaskModal({
   onOpenChange,
   defaultStatus = "todo",
 }: NewTaskModalProps) {
-  const { user } = useUser()
   const { currentWorkspace } = useWorkspace()
   const canManageTasks = hasTaskWritePermission(currentWorkspace?.role)
   const [title, setTitle] = useState("")
@@ -158,6 +163,7 @@ export function NewTaskModal({
   const [activeTab, setActiveTab] = useState<"manual" | "ai">("manual")
   const [aiPrompt, setAiPrompt] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
+  const [assignees, setAssignees] = useState<TaskAssignee[]>([])
 
   const labelOptions = useMemo(() => {
     const wsLabels = currentWorkspace?.labels
@@ -364,17 +370,24 @@ export function NewTaskModal({
         status: payload.status,
         priority: payload.priority,
         labels: payload.labels,
+        assignees: payload.assignees?.length
+          ? payload.assignees.map((a) => ({
+              userId: a.userId,
+              name: a.name,
+              imageUrl: a.imageUrl ?? undefined,
+            }))
+          : undefined,
       }
 
       if (!attachmentsWithMetadata?.length) {
-        return await createTask(baseArgs)
+        return await createTask(baseArgs as any)
       }
 
       try {
         return await createTask({
           ...baseArgs,
           attachments: attachmentsWithMetadata as any,
-        })
+        } as any)
       } catch (error) {
         const shouldRetryWithoutAttachmentMetadata =
           error instanceof Error &&
@@ -392,7 +405,7 @@ export function NewTaskModal({
         return await createTask({
           ...baseArgs,
           attachments: legacyAttachments as any,
-        })
+        } as any)
       }
     },
     [createTask, currentWorkspace, sanitizeAttachmentsForMutation]
@@ -429,10 +442,13 @@ export function NewTaskModal({
         order: existingTasks.filter((task) => task.status === payload.status)
           .length,
         project: currentWorkspace.name,
-        assignee: {
-          name: user?.fullName ?? user?.firstName ?? "You",
-          avatar: user?.imageUrl ?? "",
-        },
+        assignees: payload.assignees?.length
+          ? payload.assignees.map((a) => ({
+              userId: a.userId,
+              name: a.name,
+              imageUrl: a.imageUrl ?? undefined,
+            }))
+          : undefined,
         attachments: payload.attachments?.length
           ? (payload.attachments as any)
           : undefined,
@@ -471,13 +487,7 @@ export function NewTaskModal({
         throw new Error("Task creation failed. Try again.")
       }
     },
-    [
-      createTaskWithFallback,
-      currentWorkspace,
-      user?.firstName,
-      user?.fullName,
-      user?.imageUrl,
-    ]
+    [createTaskWithFallback, currentWorkspace]
   )
 
   function handleCreate() {
@@ -496,6 +506,7 @@ export function NewTaskModal({
       priority,
       labels,
       attachments,
+      assignees,
     }
 
     preserveAttachmentPreviews(payload.attachments)
@@ -660,6 +671,7 @@ export function NewTaskModal({
     setPriority("none")
     setLabels([])
     setAttachments([])
+    setAssignees([])
     setAiPrompt("")
     if (!options?.keepOpen) {
       setError("")
@@ -1009,6 +1021,46 @@ export function NewTaskModal({
                               {opt.label}
                             </DropdownMenuCheckboxItem>
                           ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+
+                      {/* Assignees */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
+                          {assignees.length > 0 ? (
+                            <div className="flex items-center gap-1.5">
+                              <AssigneeStack
+                                assignees={assignees}
+                                size={16}
+                              />
+                              <span>
+                                {assignees.length === 1
+                                  ? (assignees[0]?.name ?? "Assignee")
+                                  : `${assignees.length} assignees`}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5">
+                              <Users
+                                size={12}
+                                className="text-muted-foreground"
+                              />
+                              <span className="text-muted-foreground">
+                                Assign
+                              </span>
+                            </div>
+                          )}
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          side="top"
+                          align="start"
+                          className="w-auto p-0"
+                        >
+                          <AssigneePickerContent
+                            workspaceId={currentWorkspace?._id}
+                            assignees={assignees}
+                            onChange={setAssignees}
+                          />
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>

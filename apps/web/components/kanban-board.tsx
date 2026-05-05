@@ -43,8 +43,15 @@ import {
   FunnelSimple,
   MagnifyingGlass,
   DotsSixVertical,
+  Users,
 } from "@phosphor-icons/react"
 import { NewTaskModal } from "@/components/new-task-modal"
+import {
+  AssigneeContextSubmenu,
+  AssigneePickerContent,
+  AssigneeStack,
+  type TaskAssignee,
+} from "@/components/assignee-picker"
 import {
   TaskAttachmentGallery,
   cacheAttachmentPreview,
@@ -365,6 +372,7 @@ function patchTaskDocs(
       | "priority"
       | "labels"
       | "attachments"
+      | "assignees"
       | "_syncStatus"
     >
   >
@@ -1185,6 +1193,21 @@ function TaskContextMenuContent({
         </ContextMenuSubContent>
       </ContextMenuSub>
 
+      <AssigneeContextSubmenu
+        workspaceId={task.workspaceId}
+        assignees={(task.assignees ?? []) as TaskAssignee[]}
+        disabled={!canManageTasks}
+        onChange={(next) =>
+          onUpdate(task.id, {
+            assignees: next.map((a) => ({
+              userId: a.userId,
+              name: a.name,
+              imageUrl: a.imageUrl ?? undefined,
+            })),
+          })
+        }
+      />
+
       <ContextMenuSeparator />
 
       <ContextMenuItem
@@ -1242,6 +1265,13 @@ const ListRowContent = memo(function ListRowContent({ task }: { task: Task }) {
             {label}
           </span>
         ))}
+        {(task.assignees ?? []).length > 0 ? (
+          <AssigneeStack
+            assignees={(task.assignees ?? []) as TaskAssignee[]}
+            size={18}
+            max={3}
+          />
+        ) : null}
         <span className="ml-1 text-[11px] text-muted-foreground/60">
           {task.createdAt}
         </span>
@@ -2247,6 +2277,58 @@ function TaskDetailSidePanel({
                         ))}
                       </DropdownMenuContent>
                     </DropdownMenu>
+
+                    {/* Assignees */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        disabled={!canManageTasks}
+                        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {(task.assignees ?? []).length > 0 ? (
+                          <div className="flex items-center gap-1.5">
+                            <AssigneeStack
+                              assignees={task.assignees ?? []}
+                              size={16}
+                            />
+                            <span>
+                              {(task.assignees ?? []).length === 1
+                                ? ((task.assignees ?? [])[0]?.name ??
+                                  "Assignee")
+                                : `${(task.assignees ?? []).length} assignees`}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <Users
+                              size={12}
+                              className="text-muted-foreground"
+                            />
+                            <span className="text-muted-foreground">
+                              Assign
+                            </span>
+                          </div>
+                        )}
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        side="top"
+                        align="start"
+                        className="w-auto p-0"
+                      >
+                        <AssigneePickerContent
+                          workspaceId={task.workspaceId}
+                          assignees={(task.assignees ?? []) as TaskAssignee[]}
+                          onChange={(next) =>
+                            onUpdate(task.id, {
+                              assignees: next.map((a) => ({
+                                userId: a.userId,
+                                name: a.name,
+                                imageUrl: a.imageUrl ?? undefined,
+                              })),
+                            })
+                          }
+                        />
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
 
                   {/* Attach + Accept/Deny + Delete */}
@@ -2620,13 +2702,22 @@ const KanbanCard = memo(function KanbanCard({
         </div>
 
         {/* Footer: date + task code */}
-        <div className="flex items-center justify-between border-t border-border px-2.5 py-1.5">
+        <div className="flex items-center justify-between gap-2 border-t border-border px-2.5 py-1.5">
           <span className="text-[10px] text-muted-foreground/50">
             {task.createdAt}
           </span>
-          <span className="font-mono text-[10px] text-muted-foreground/50 tabular-nums">
-            {task.taskCode}
-          </span>
+          <div className="flex items-center gap-2">
+            {(task.assignees ?? []).length > 0 ? (
+              <AssigneeStack
+                assignees={(task.assignees ?? []) as TaskAssignee[]}
+                size={16}
+                max={3}
+              />
+            ) : null}
+            <span className="font-mono text-[10px] text-muted-foreground/50 tabular-nums">
+              {task.taskCode}
+            </span>
+          </div>
         </div>
       </ContextMenuTrigger>
       <TaskContextMenuContent
@@ -4277,6 +4368,7 @@ export function KanbanBoard() {
       priority,
       labels,
       attachments,
+      assignees,
     }: {
       taskId: Id<"tasks">
       title?: string
@@ -4294,6 +4386,9 @@ export function KanbanBoard() {
             displayWidth?: number
           }[]
         | undefined
+      assignees?:
+        | { userId: string; name: string; imageUrl?: string }[]
+        | undefined
     }) => {
       try {
         return await updateTask({
@@ -4303,7 +4398,8 @@ export function KanbanBoard() {
           priority,
           labels,
           attachments,
-        })
+          assignees,
+        } as any)
       } catch (error) {
         const shouldRetryWithoutAttachmentMetadata =
           attachments !== undefined &&
@@ -4329,7 +4425,8 @@ export function KanbanBoard() {
             type: string
             size: number
           }[],
-        })
+          assignees,
+        } as any)
       }
     },
     [updateTask]
@@ -4564,6 +4661,7 @@ export function KanbanBoard() {
         priority: updates.priority,
         labels: updates.labels,
         attachments: updates.attachments as TaskDoc["attachments"],
+        assignees: updates.assignees as TaskDoc["assignees"],
         ...(updates.attachments !== undefined
           ? { _syncStatus: undefined }
           : {}),
@@ -4593,6 +4691,9 @@ export function KanbanBoard() {
       priority: updates.priority,
       labels: updates.labels,
       attachments: nextAttachments,
+      assignees: updates.assignees as
+        | { userId: string; name: string; imageUrl?: string }[]
+        | undefined,
     }).catch((error) => {
       const isAttachmentUpdate = updates.attachments !== undefined
       const shouldKeepLocalAttachmentState =
