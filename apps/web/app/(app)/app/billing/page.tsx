@@ -558,17 +558,28 @@ export default function BillingPage() {
               Credits, usage, and plans for your workspace.
             </p>
           </div>
-          <button
-            onClick={() => void handleManageBilling()}
-            disabled={
-              !dashboard.canManageBilling ||
-              managingBilling
-            }
-            className="flex h-7 shrink-0 items-center gap-1.5 rounded-[4px] bg-card px-2.5 text-[12px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Manage billing
-            <ArrowUpRight size={11} weight="bold" />
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <a
+              href="https://docs.median.sh/pricing"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex h-7 items-center gap-1.5 rounded-[4px] px-2.5 text-[12px] font-medium whitespace-nowrap text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              Learn more
+              <ArrowUpRight size={11} weight="bold" />
+            </a>
+            <button
+              onClick={() => void handleManageBilling()}
+              disabled={
+                !dashboard.canManageBilling ||
+                managingBilling
+              }
+              className="flex h-7 items-center gap-1.5 rounded-[4px] bg-card px-2.5 text-[12px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Manage billing
+              <ArrowUpRight size={11} weight="bold" />
+            </button>
+          </div>
         </motion.div>
 
         {error && (
