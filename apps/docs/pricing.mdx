@@ -1,0 +1,170 @@
+---
+title: "Pricing"
+description: "Plans, credits, and how usage is billed."
+---
+
+Median uses a simple credit-based model. Pick a plan, get an equal-dollar
+amount of credits each month, and spend them on whatever you use — events
+from your integrations, AI task generation, or both.
+
+<Tip>
+  **One dollar in, one dollar of credits.** Whatever you pay for your plan
+  becomes credits in your workspace. Nothing is held back.
+</Tip>
+
+## Plans
+
+<Columns cols={3}>
+  <Card title="Starter" icon="rocket">
+    **$5** / month
+    <br />
+    $5 in credits monthly
+    <br />
+    7-day free trial
+  </Card>
+  <Card title="Plus" icon="star">
+    **$10** / month
+    <br />
+    $10 in credits monthly
+    <br />
+    Most popular
+  </Card>
+  <Card title="Scale" icon="crown">
+    **$20** / month
+    <br />
+    $20 in credits monthly
+    <br />
+    Priority support
+  </Card>
+</Columns>
+
+Every plan unlocks every feature — Discord, GitHub, Linear, Slack, X, the
+CLI, AI task generation, and unlimited team members. Plans differ only in
+how many credits you get.
+
+## How credits work
+
+Each workspace has a single pool of **credits**. Credits replenish every
+month at the start of your billing cycle. Two things draw from the pool:
+
+<Columns cols={2}>
+  <Card title="Events" icon="bolt">
+    **$0.007 per event**
+    <br />
+    Any event ingested from a connected integration (Discord, GitHub,
+    Linear, Slack, X).
+  </Card>
+  <Card title="AI usage" icon="sparkles">
+    **Charged at cost**
+    <br />
+    AI task generation is billed at the underlying model's token price —
+    no markup.
+  </Card>
+</Columns>
+
+### AI model pricing
+
+Median uses Anthropic's Claude models. You're charged the actual
+per-token price the model provider charges us.
+
+| Model | Input (per 1M tokens) | Output (per 1M tokens) |
+| --- | --- | --- |
+| Claude Haiku 4.5 | $2.00 | $8.00 |
+| Claude Sonnet 4.6 | $5.00 | $20.00 |
+
+<Note>
+  Most generations run on Haiku. Sonnet is reserved for harder tasks where
+  a stronger model materially improves output quality.
+</Note>
+
+### Worked example
+
+A workspace on **Plus** ($10 / month) with $10 in credits:
+
+- 700 integration events at $0.007 → **$4.90**
+- 200 Haiku generations averaging ~3K input + 1K output tokens →
+  ~200 × ($0.006 + $0.008) = **~$2.80**
+- Remaining credits at month end → **~$2.30**
+
+If usage exceeded $10, the difference would be auto-charged at the end of
+the cycle (see [Overages](#overages) below).
+
+## Overages
+
+If you use more credits than your plan includes, the overage is **billed
+automatically** at the end of the cycle at the same rates ($0.007/event,
+AI at cost). No multipliers, no surprise tiers.
+
+### Hard cap
+
+Prefer to stop instead of pay for overage? Toggle **"Hard cap usage at
+plan credits"** in [Billing](https://median.sh/app/billing).
+
+When enabled and your credits are exhausted:
+
+- AI task generation pauses
+- Integrations stop ingesting new events from Discord, Linear, GitHub,
+  Slack, and X
+- The task board keeps working — you can still create, update, and
+  complete tasks
+- Service resumes at the next billing cycle, or immediately on plan upgrade
+
+<Warning>
+  Hard cap is the conservative choice for predictable spend. Overages are
+  the default because most workspaces prefer never to be paused.
+</Warning>
+
+## Trial and cancellation
+
+- **Starter** includes a 7-day free trial. No charge until day 8 — cancel
+  anytime to avoid being billed.
+- Plans can be upgraded, downgraded, or canceled from the Billing page.
+- Upgrades take effect immediately and prorate. Downgrades take effect at
+  the end of the current cycle.
+- Canceling stops future charges; service runs through the end of the
+  paid period.
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="Do unused credits roll over?">
+    No. Credits reset at the start of each billing cycle. If you regularly
+    don't use your full allocation, downgrade — every dollar you save is a
+    dollar you still get back as credits on the smaller plan.
+  </Accordion>
+
+  <Accordion title="Why one credit pool instead of separate buckets for AI and events?">
+    A single pool means the dollar you didn't spend on events is available
+    for AI, and vice versa. You're never told you've run out of one thing
+    while sitting on a surplus of another.
+  </Accordion>
+
+  <Accordion title="How are events counted?">
+    One event = one inbound message, comment, issue, PR update, mention,
+    or similar item ingested from a connected integration. Events you
+    create yourself in the app or CLI are not metered.
+  </Accordion>
+
+  <Accordion title="Can I see exactly what I've spent?">
+    Yes. The [Billing dashboard](https://median.sh/app/billing) shows a
+    live progress bar of credits used, a daily consumption chart, and
+    per-request breakdowns of AI calls (with token counts and cost) in
+    [Logs](https://median.sh/app/logs).
+  </Accordion>
+
+  <Accordion title="What happens to overage charges if I cancel mid-cycle?">
+    You're billed for credits used above your plan limit at the time of
+    cancellation, on the same invoice that closes out the cycle.
+  </Accordion>
+
+  <Accordion title="Can I bring my own AI keys?">
+    Not currently. AI is provisioned through Median so we can guarantee
+    rate limits, model availability, and consistent pricing across the
+    fleet.
+  </Accordion>
+</AccordionGroup>
+
+## Manage billing
+
+Subscribe, upgrade, change payment methods, or download invoices from the
+[Billing page](https://median.sh/app/billing) in your workspace.
