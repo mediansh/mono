@@ -54,15 +54,10 @@ it.
 
 ### AI pricing
 
-AI is billed at the underlying model rate — no markup.
-
-| Model | Input (per 1M tokens) | Output (per 1M tokens) |
-| --- | --- | --- |
-| Claude Haiku 4.5 | $2.00 | $8.00 |
-| Claude Sonnet 4.6 | $5.00 | $20.00 |
-
-A typical task generation runs on Haiku and costs a fraction of a cent.
-Heavy reasoning tasks may route to Sonnet.
+AI is billed at the underlying model rate — no markup. Median routes most
+work to a **fast, low-cost model** and reserves a **larger, more capable
+model** for heavier reasoning tasks. Most everyday actions cost a fraction
+of a cent.
 
 ## Overages
 
@@ -88,25 +83,25 @@ dashboard.
 <AccordionGroup>
   <Accordion title="Solo developer, $5 starter plan">
     A solo developer ingests ~300 GitHub events and runs ~50 AI task
-    generations through Haiku in a month.
+    generations in a month.
 
     - Events: 300 × $0.007 = **$2.10**
-    - AI: ~$1.20 in Haiku tokens
+    - AI: ~$1.20
     - **Total used: ~$3.30** of $5 in credits — no overage.
   </Accordion>
   <Accordion title="Small team, $10 plus plan">
     A team ingests ~1,000 events across Discord and Linear, with ~150 AI
-    runs split between Haiku and Sonnet.
+    runs.
 
     - Events: 1,000 × $0.007 = **$7.00**
-    - AI: ~$3.50 in mixed tokens
+    - AI: ~$3.50
     - **Total used: ~$10.50** — $0.50 overage, billed at cycle end.
   </Accordion>
   <Accordion title="Power user, $20 scale plan">
     Heavy GitHub + Linear ingest (~2,500 events) with ~400 AI runs.
 
     - Events: 2,500 × $0.007 = **$17.50**
-    - AI: ~$2.40 in tokens
+    - AI: ~$2.40
     - **Total used: ~$19.90** of $20 — no overage. Priority support
       included.
   </Accordion>
