@@ -499,6 +499,8 @@ function areTaskDocListsEqual(left: TaskDoc[] | undefined, right: TaskDoc[]) {
       current._syncStatus !== next._syncStatus ||
       JSON.stringify(current.assignee ?? null) !==
         JSON.stringify(next.assignee ?? null) ||
+      JSON.stringify(current.assignees ?? null) !==
+        JSON.stringify(next.assignees ?? null) ||
       JSON.stringify(current.source ?? null) !==
         JSON.stringify(next.source ?? null) ||
       JSON.stringify(current.sources ?? null) !==
@@ -4565,11 +4567,14 @@ export function KanbanBoard() {
         }
       }
       if (search.length > 0) {
+        const assigneeNames =
+          task.assignees?.map((assignee) => assignee.name).join(" ") ?? ""
         const haystack = [
           task.title,
           task.description ?? "",
           task.taskCode,
           task.assignee?.name ?? "",
+          assigneeNames,
           taskLabels.join(" "),
         ]
           .join(" ")
