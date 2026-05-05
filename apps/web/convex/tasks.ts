@@ -1591,6 +1591,7 @@ export const bulkUpdateTasks = mutation({
     status: v.optional(taskStatusValidator),
     priority: v.optional(taskPriorityValidator),
     labels: v.optional(v.array(v.string())),
+    assignees: v.optional(v.array(assigneeValidator)),
   },
   handler: async (ctx, args) => {
     await requireTaskWriteAccess(ctx, args.workspaceId)
@@ -1600,10 +1601,15 @@ export const bulkUpdateTasks = mutation({
     if (args.status !== undefined) updates.status = args.status
     if (args.priority !== undefined) updates.priority = args.priority
     if (args.labels !== undefined) updates.labels = args.labels
+    if (args.assignees !== undefined) {
+      updates.assignees =
+        args.assignees.length > 0 ? args.assignees : undefined
+    }
     if (
       args.status !== undefined ||
       args.priority !== undefined ||
-      args.labels !== undefined
+      args.labels !== undefined ||
+      args.assignees !== undefined
     ) {
       updates.updatedAt = Date.now()
     }
@@ -1633,7 +1639,11 @@ export const bulkUpdateTasks = mutation({
           message: `${task.taskCode} moved from "${TASK_STATUS_LABELS[task.status]}" to "${TASK_STATUS_LABELS[args.status]}"`,
           source: getWorkspaceLogSource(task.source?.platform),
         })
-      } else if (args.priority !== undefined || args.labels !== undefined) {
+      } else if (
+        args.priority !== undefined ||
+        args.labels !== undefined ||
+        args.assignees !== undefined
+      ) {
         taskLogs.push({
           workspaceId: task.workspaceId,
           category: "tasks",

@@ -152,6 +152,31 @@ interface Task extends Omit<TaskDoc, "attachments"> {
   attachments?: TaskAttachment[]
 }
 
+// Compute the intersection of assignees across the selected tasks. Only
+// assignees present on every selected task are returned.
+function computeCommonAssignees(
+  tasks: Task[],
+  selectedTaskIds: Set<string>
+): TaskAssignee[] {
+  if (selectedTaskIds.size === 0) return []
+  const selected = tasks.filter((t) => selectedTaskIds.has(t.id))
+  if (selected.length === 0) return []
+  const first = (selected[0]!.assignees ?? []) as TaskAssignee[]
+  if (first.length === 0) return []
+  const common = new Map<string, TaskAssignee>()
+  for (const a of first) common.set(a.userId, a)
+  for (let i = 1; i < selected.length; i++) {
+    const ids = new Set(
+      (selected[i]!.assignees ?? []).map((a) => a.userId)
+    )
+    for (const userId of Array.from(common.keys())) {
+      if (!ids.has(userId)) common.delete(userId)
+    }
+    if (common.size === 0) break
+  }
+  return Array.from(common.values())
+}
+
 // Column config
 const COLUMNS: { id: Status; label: string }[] = [
   { id: "requests", label: "Requests" },
@@ -2425,16 +2450,22 @@ function TaskDetailSidePanel({
 
 function BulkActionToolbar({
   selectedCount,
+  workspaceId,
+  commonAssignees,
   onChangeStatus,
   onChangePriority,
   onChangeLabels,
+  onChangeAssignees,
   onDelete,
   onClearSelection,
 }: {
   selectedCount: number
+  workspaceId: Id<"workspaces"> | undefined
+  commonAssignees: TaskAssignee[]
   onChangeStatus: (status: Status) => void
   onChangePriority: (priority: Priority) => void
   onChangeLabels: (labels: string[]) => void
+  onChangeAssignees: (assignees: TaskAssignee[]) => void
   onDelete: () => void
   onClearSelection: () => void
 }) {
@@ -2520,6 +2551,43 @@ function BulkActionToolbar({
             <div className="flex items-center gap-2">
               <XCircle size={12} className="text-muted-foreground" />
               <span>Clear labels</span>
+            </div>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Assignees */}
+      <DropdownMenu>
+        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[12px] font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
+          {commonAssignees.length > 0 ? (
+            <AssigneeStack
+              assignees={commonAssignees}
+              size={16}
+              max={3}
+              ringColorClass="ring-popover"
+            />
+          ) : (
+            <Users size={13} />
+          )}
+          <span>
+            {commonAssignees.length === 0
+              ? "Assignees"
+              : commonAssignees.length === 1
+                ? commonAssignees[0]!.name
+                : `${commonAssignees.length} assignees`}
+          </span>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent side="top" align="center" className="p-0">
+          <AssigneePickerContent
+            workspaceId={workspaceId}
+            assignees={commonAssignees}
+            onChange={onChangeAssignees}
+          />
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => onChangeAssignees([])}>
+            <div className="flex items-center gap-2">
+              <XCircle size={12} className="text-muted-foreground" />
+              <span>Clear assignees</span>
             </div>
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -3117,7 +3185,7 @@ function ColumnBoardView({
   onDeleteTask: (taskId: string) => void
   onBulkUpdateTasks: (
     taskIds: string[],
-    updates: Partial<Pick<Task, "status" | "priority" | "labels">>
+    updates: Partial<Pick<Task, "status" | "priority" | "labels" | "assignees">>
   ) => void
   onBulkDeleteTasks: (taskIds: string[]) => void
   onAcceptRequest: (task: Task) => void
@@ -3249,6 +3317,19 @@ function ColumnBoardView({
     [selectedTaskIds, onBulkUpdateTasks, handleClearSelection]
   )
 
+  const handleBulkChangeAssignees = useCallback(
+    (assignees: TaskAssignee[]) => {
+      onBulkUpdateTasks(Array.from(selectedTaskIds), {
+        assignees: assignees.map((a) => ({
+          userId: a.userId,
+          name: a.name,
+          imageUrl: a.imageUrl ?? undefined,
+        })),
+      })
+    },
+    [selectedTaskIds, onBulkUpdateTasks]
+  )
+
   const handleBulkDelete = useCallback(() => {
     onBulkDeleteTasks(Array.from(selectedTaskIds))
     handleClearSelection()
@@ -3274,6 +3355,14 @@ function ColumnBoardView({
     }
     return map
   }, [tasks])
+
+  const commonBulkAssignees = useMemo(
+    () => computeCommonAssignees(tasks, selectedTaskIds),
+    [tasks, selectedTaskIds]
+  )
+  const bulkWorkspaceId = (tasks[0]?.workspaceId ?? undefined) as
+    | Id<"workspaces">
+    | undefined
 
   const {
     activeTask,
@@ -3529,9 +3618,12 @@ function ColumnBoardView({
       {canManageTasks && selectedTaskIds.size > 0 && (
         <BulkActionToolbar
           selectedCount={selectedTaskIds.size}
+          workspaceId={bulkWorkspaceId}
+          commonAssignees={commonBulkAssignees}
           onChangeStatus={handleBulkChangeStatus}
           onChangePriority={handleBulkChangePriority}
           onChangeLabels={handleBulkChangeLabels}
+          onChangeAssignees={handleBulkChangeAssignees}
           onDelete={handleBulkDelete}
           onClearSelection={handleClearSelection}
         />
@@ -3620,7 +3712,7 @@ function ListView({
   onDeleteTask: (taskId: string) => void
   onBulkUpdateTasks: (
     taskIds: string[],
-    updates: Partial<Pick<Task, "status" | "priority" | "labels">>
+    updates: Partial<Pick<Task, "status" | "priority" | "labels" | "assignees">>
   ) => void
   onBulkDeleteTasks: (taskIds: string[]) => void
   onAcceptRequest: (task: Task) => void
@@ -3764,6 +3856,19 @@ function ListView({
     [selectedTaskIds, onBulkUpdateTasks, handleClearSelection]
   )
 
+  const handleBulkChangeAssignees = useCallback(
+    (assignees: TaskAssignee[]) => {
+      onBulkUpdateTasks(Array.from(selectedTaskIds), {
+        assignees: assignees.map((a) => ({
+          userId: a.userId,
+          name: a.name,
+          imageUrl: a.imageUrl ?? undefined,
+        })),
+      })
+    },
+    [selectedTaskIds, onBulkUpdateTasks]
+  )
+
   const handleBulkDelete = useCallback(() => {
     onBulkDeleteTasks(Array.from(selectedTaskIds))
     handleClearSelection()
@@ -3789,6 +3894,14 @@ function ListView({
     }
     return map
   }, [tasks])
+
+  const commonBulkAssignees = useMemo(
+    () => computeCommonAssignees(tasks, selectedTaskIds),
+    [tasks, selectedTaskIds]
+  )
+  const bulkWorkspaceId = (tasks[0]?.workspaceId ?? undefined) as
+    | Id<"workspaces">
+    | undefined
 
   const {
     activeTask,
@@ -3885,9 +3998,12 @@ function ListView({
       {canManageTasks && selectedTaskIds.size > 0 && (
         <BulkActionToolbar
           selectedCount={selectedTaskIds.size}
+          workspaceId={bulkWorkspaceId}
+          commonAssignees={commonBulkAssignees}
           onChangeStatus={handleBulkChangeStatus}
           onChangePriority={handleBulkChangePriority}
           onChangeLabels={handleBulkChangeLabels}
+          onChangeAssignees={handleBulkChangeAssignees}
           onDelete={handleBulkDelete}
           onClearSelection={handleClearSelection}
         />
@@ -4898,7 +5014,7 @@ export function KanbanBoard() {
 
   function handleBulkUpdateTasks(
     taskIds: string[],
-    updates: Partial<Pick<Task, "status" | "priority" | "labels">>
+    updates: Partial<Pick<Task, "status" | "priority" | "labels" | "assignees">>
   ) {
     if (!workspaceId || !canManageTasks) return
     lastLocalChangeRef.current = Date.now()
@@ -4910,9 +5026,15 @@ export function KanbanBoard() {
       ? "status"
       : updates.priority
         ? "priority"
-        : "labels"
+        : updates.labels
+          ? "labels"
+          : "assignees"
     const value =
-      updates.status ?? updates.priority ?? (updates.labels ?? []).join(",")
+      updates.status ??
+      updates.priority ??
+      (updates.labels !== undefined
+        ? updates.labels.join(",")
+        : (updates.assignees ?? []).map((a) => a.userId).join(","))
     trackTasksBulkUpdated({ taskCount: validIds.length, field, value })
 
     const realIds = validIds.filter((id) => !isDevTask(id))
@@ -4970,6 +5092,7 @@ export function KanbanBoard() {
           taskIds: realIds as Id<"tasks">[],
           priority: updates.priority,
           labels: updates.labels,
+          assignees: updates.assignees,
         }).then(() => {
           toast.success(
             `Updated ${validIds.length} task${validIds.length > 1 ? "s" : ""}.`
