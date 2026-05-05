@@ -13,7 +13,6 @@ import {
 import { motion } from "motion/react"
 import {
   CreditCard,
-  Check,
   ArrowUpRight,
   Warning,
   Crown,
@@ -168,7 +167,7 @@ function BillingSkeleton() {
         <div className="h-4 w-20 rounded-[4px] bg-muted/40" />
         <div className="mt-2 h-3 w-56 rounded-[4px] bg-muted/30" />
       </div>
-      <div className="mb-4 rounded-[6px] p-5 ring-1 ring-border">
+      <div className="mb-6 rounded-[6px] p-5 ring-1 ring-border">
         <div className="h-3.5 w-24 rounded-[3px] bg-muted/40" />
         <div className="mt-3 h-7 w-40 rounded-[3px] bg-muted/40" />
         <div className="mt-4 h-2 w-full rounded-full bg-muted/30" />
@@ -230,19 +229,19 @@ function CreditsProgressCard({
 
   return (
     <div className="relative overflow-hidden rounded-[6px] p-5 ring-1 ring-border">
-      {/* subtle accent gradient */}
+      {/* subtle foreground gradient — adapts to theme */}
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.04]"
+        className="pointer-events-none absolute inset-0 opacity-[0.05]"
         style={{
           background:
-            "radial-gradient(120% 80% at 0% 0%, var(--chart-1), transparent 60%)",
+            "radial-gradient(120% 80% at 0% 0%, var(--foreground), transparent 60%)",
         }}
       />
       <div className="relative">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              <Coins size={12} weight="bold" />
+            <div className="flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground">
+              <Coins size={13} weight="bold" />
               Credits used this cycle
             </div>
             <div className="mt-1.5 flex items-baseline gap-2">
@@ -596,7 +595,7 @@ export default function BillingPage() {
         )}
 
         {/* Hero credits card */}
-        <motion.div variants={fadeUp} className="mb-4">
+        <motion.div variants={fadeUp} className="mb-6">
           <CreditsProgressCard
             used={dashboard.summary.creditsUsed}
             budget={dashboard.summary.creditsBudget}
@@ -756,10 +755,10 @@ export default function BillingPage() {
               return (
                 <div
                   key={plan.id}
-                  className={`relative flex flex-col rounded-[4px] p-4 ring-1 transition-colors ${
+                  className={`relative flex flex-col rounded-[6px] p-5 ring-1 transition-colors ${
                     isCurrent
                       ? "bg-card ring-foreground/20"
-                      : "ring-border hover:ring-foreground/10"
+                      : "ring-border hover:ring-foreground/15"
                   }`}
                 >
                   {isCurrent && (
@@ -768,45 +767,41 @@ export default function BillingPage() {
                       Current
                     </div>
                   )}
-                  <div className="mb-3">
-                    <div className="flex items-center gap-1.5">
-                      <h4 className="text-[13px] font-semibold">{plan.name}</h4>
-                      {plan.trialDays > 0 && (
-                        <span className="rounded-full bg-foreground/10 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-foreground/70">
-                          {plan.trialDays}-day trial
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-1 flex items-baseline gap-0.5">
-                      <span className="text-[22px] font-bold tracking-tight">
-                        ${plan.price}
+
+                  <div className="flex items-baseline justify-between">
+                    <h4 className="text-[14px] font-semibold">{plan.name}</h4>
+                    {plan.trialDays > 0 && (
+                      <span className="text-[10px] text-muted-foreground">
+                        {plan.trialDays}-day trial
                       </span>
-                      <span className="text-[11px] text-muted-foreground">/month</span>
-                    </div>
-                    <p className="mt-1 inline-flex items-center gap-1 rounded-[3px] bg-foreground/5 px-1.5 py-0.5 text-[10px] font-medium text-foreground/70">
-                      <Coins size={10} weight="bold" />${plan.credits} credits
-                      included
-                    </p>
+                    )}
                   </div>
-                  <div className="mb-4 flex-1 space-y-2">
-                    {plan.features.map((feature) => (
-                      <div
-                        key={feature}
-                        className="flex items-start gap-1.5 text-[12px] text-muted-foreground"
-                      >
-                        <Check
-                          size={12}
-                          weight="bold"
-                          className="mt-0.5 shrink-0 text-foreground/50"
-                        />
-                        {feature}
-                      </div>
-                    ))}
+
+                  <div className="mt-3 flex items-baseline gap-1">
+                    <span className="text-[28px] font-bold tracking-tight">
+                      ${plan.price}
+                    </span>
+                    <span className="text-[12px] text-muted-foreground">
+                      /month
+                    </span>
                   </div>
+
+                  <div className="mt-1 flex items-center gap-1.5 text-[12px] text-foreground/80">
+                    <Coins size={12} weight="bold" className="text-foreground/60" />
+                    <span>
+                      <span className="font-medium text-foreground">
+                        ${plan.credits}
+                      </span>{" "}
+                      in credits monthly
+                    </span>
+                  </div>
+
+                  <div className="mt-5 flex-1" />
+
                   <button
                     onClick={() => handlePlanSubscribeClick(plan.id)}
                     disabled={isDisabled}
-                    className={`flex h-7 items-center justify-center rounded-[4px] text-[12px] font-medium transition-colors ${
+                    className={`flex h-8 items-center justify-center rounded-[4px] text-[12px] font-medium transition-colors ${
                       isDisabled
                         ? "cursor-default bg-muted text-muted-foreground"
                         : "bg-primary text-primary-foreground hover:bg-primary/90"
