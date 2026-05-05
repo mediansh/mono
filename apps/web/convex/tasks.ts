@@ -1604,6 +1604,7 @@ export const bulkUpdateTasks = mutation({
     if (args.assignees !== undefined) {
       updates.assignees =
         args.assignees.length > 0 ? args.assignees : undefined
+      updates.assignee = undefined
     }
     if (
       args.status !== undefined ||
