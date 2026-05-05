@@ -2200,7 +2200,7 @@ function TaskDetailSidePanel({
               </div>
 
               {/* ── Separator between properties and actions ── */}
-              <div className="mx-5 border-t border-border" />
+              <div className="border-t border-border" />
 
               {/* ── Action buttons row (below properties) ── */}
               <div className="flex flex-wrap items-center gap-1.5 border-b border-border px-5 pt-3 pb-3">
