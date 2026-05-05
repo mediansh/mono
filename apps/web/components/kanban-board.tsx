@@ -15,6 +15,7 @@ import {
 import { createPortal } from "react-dom"
 import { AnimatePresence, motion } from "motion/react"
 import { useConvexAuth, useMutation, useQuery } from "convex/react"
+import { useUser } from "@clerk/nextjs"
 import { toast } from "sonner"
 import {
   CellSignalFull,
@@ -3878,6 +3879,7 @@ type BoardFilterState = {
   priorities: Priority[]
   labels: string[]
   sources: RequestSource[]
+  assignedToMe: boolean
 }
 
 const EMPTY_FILTER_STATE: BoardFilterState = {
@@ -3886,6 +3888,7 @@ const EMPTY_FILTER_STATE: BoardFilterState = {
   priorities: [],
   labels: [],
   sources: [],
+  assignedToMe: false,
 }
 
 const ALL_SOURCES: RequestSource[] = [
@@ -3916,6 +3919,7 @@ function BoardFilter({
 
   const filterCount =
     (filter.search.trim() ? 1 : 0) +
+    (filter.assignedToMe ? 1 : 0) +
     filter.statuses.length +
     filter.priorities.length +
     filter.labels.length +
@@ -4097,6 +4101,43 @@ function BoardFilter({
                 </div>
 
                 <div className="max-h-[60vh] overflow-y-auto">
+                  {/* Assignee */}
+                  <div className="px-2 pt-2 pb-1">
+                    <div className="px-1 pb-1 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
+                      Assignee
+                    </div>
+                    <div className="flex flex-col">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onFilterChange({
+                            ...filter,
+                            assignedToMe: !filter.assignedToMe,
+                          })
+                        }
+                        className={`flex items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-accent ${
+                          filter.assignedToMe
+                            ? "text-foreground"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        <span
+                          className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px] ring-1 transition-colors ${
+                            filter.assignedToMe
+                              ? "bg-primary text-primary-foreground ring-primary"
+                              : "bg-transparent ring-border"
+                          }`}
+                        >
+                          {filter.assignedToMe && (
+                            <Check size={10} weight="bold" />
+                          )}
+                        </span>
+                        <Users size={12} />
+                        <span className="truncate">My tasks</span>
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Status */}
                   <div className="px-2 pt-2 pb-1">
                     <div className="px-1 pb-1 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
@@ -4296,6 +4337,8 @@ export function KanbanBoard() {
   const [isCleaningDemoTasks, setIsCleaningDemoTasks] = useState(false)
   const [boardMounted, setBoardMounted] = useState(false)
   const [filter, setFilter] = useState<BoardFilterState>(EMPTY_FILTER_STATE)
+  const { user: clerkUser } = useUser()
+  const currentUserId = clerkUser?.id ?? null
 
   // Side panel state — lifted here so the panel is a layout sibling of the
   // board content and shifts the main view when open.
@@ -4482,10 +4525,19 @@ export function KanbanBoard() {
       filter.statuses.length > 0 ||
       filter.priorities.length > 0 ||
       filter.labels.length > 0 ||
-      filter.sources.length > 0
+      filter.sources.length > 0 ||
+      filter.assignedToMe
     if (!hasFilter) return tasks
     return tasks.filter((task) => {
       const taskLabels = task.labels ?? []
+
+      if (filter.assignedToMe) {
+        if (!currentUserId) return false
+        const assignees = task.assignees ?? []
+        if (!assignees.some((a) => a.userId === currentUserId)) {
+          return false
+        }
+      }
 
       if (filter.statuses.length > 0 && !filter.statuses.includes(task.status)) {
         return false
@@ -4526,7 +4578,7 @@ export function KanbanBoard() {
       }
       return true
     })
-  }, [tasks, filter])
+  }, [tasks, filter, currentUserId])
 
   function handleAddTask(status: Status) {
     if (!canManageTasks) {
