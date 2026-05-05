@@ -1908,7 +1908,7 @@ function TaskDetailSidePanel({
           transition={
             isResizing
               ? { duration: 0 }
-              : { type: "spring", stiffness: 320, damping: 34, mass: 0.8 }
+              : { duration: 0.45, ease: "anticipate" }
           }
           className="relative shrink-0 self-stretch overflow-hidden"
         >
@@ -1944,8 +1944,8 @@ function TaskDetailSidePanel({
             initial={{ opacity: 0, x: 16 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 16 }}
-            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute inset-y-0 right-0 flex flex-col overflow-hidden rounded-[4px] bg-background ring-1 ring-sidebar-border"
+            transition={{ duration: 0.45, ease: "anticipate" }}
+            className="absolute top-px right-0 bottom-px flex flex-col overflow-hidden rounded-[4px] bg-background ring-1 ring-sidebar-border"
             style={{ width: `${Math.max(width - 6, 1)}px` }}
           >
             {/* ── Header: Title + Date + Close ── */}
