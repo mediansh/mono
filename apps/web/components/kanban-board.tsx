@@ -2039,6 +2039,224 @@ function TaskDetailSidePanel({
                 </div>
               </div>
 
+              {/* ── Action buttons row (above properties, below title) ── */}
+              <div className="flex flex-wrap items-center gap-1.5 px-5 pt-3">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                <button
+                  disabled={!canManageTasks || uploading}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                  title="Attach files"
+                >
+                  {uploading ? (
+                    <SpinnerGap size={14} className="animate-spin" />
+                  ) : (
+                    <Paperclip size={14} />
+                  )}
+                  {uploading ? "Uploading..." : "Attach"}
+                </button>
+                {task.status === "requests" && onAccept && onDeny && (
+                  <>
+                    <button
+                      disabled={!canManageTasks}
+                      onClick={() => {
+                        onAccept(task)
+                        handleClose()
+                      }}
+                      className="flex items-center gap-1.5 rounded-[4px] border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
+                    >
+                      <CheckCircle size={13} weight="fill" />
+                      Accept
+                    </button>
+                    <button
+                      disabled={!canManageTasks}
+                      onClick={() => {
+                        onDeny(task)
+                        handleClose()
+                      }}
+                      className="flex items-center gap-1.5 rounded-[4px] border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-[11px] font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
+                    >
+                      <XCircle size={13} />
+                      Deny
+                    </button>
+                  </>
+                )}
+                <button
+                  disabled={!canManageTasks}
+                  onClick={() => onDelete(task.id)}
+                  className="flex items-center justify-center rounded-[4px] px-[7px] py-[7px] text-muted-foreground/40 ring-1 ring-border transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-60"
+                  title="Delete task"
+                >
+                  <Trash size={14} />
+                </button>
+              </div>
+
+              {/* ── Properties row (Status, Priority, Labels, Assignees) ── */}
+              <div className="flex flex-wrap items-center gap-2 border-b border-border px-5 pt-2.5 pb-3">
+                {/* Status */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    disabled={!canManageTasks}
+                    className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {getStatusIcon(task.status, 12)}
+                    <span>{STATUS_LABELS[task.status]}</span>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent side="bottom" align="start">
+                    {ALL_STATUSES.map((s) => (
+                      <DropdownMenuItem
+                        key={s}
+                        className={task.status === s ? "font-medium" : ""}
+                        onClick={() => onUpdate(task.id, { status: s })}
+                      >
+                        <div className="flex items-center gap-2">
+                          {getStatusIcon(s, 14)}
+                          <span>{STATUS_LABELS[s]}</span>
+                        </div>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Priority */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    disabled={!canManageTasks}
+                    className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {getPriorityIcon(task.priority, 12)}
+                    <span>{PRIORITY_LABELS[task.priority]}</span>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent side="bottom" align="start">
+                    {ALL_PRIORITIES.map((p) => (
+                      <DropdownMenuItem
+                        key={p}
+                        className={task.priority === p ? "font-medium" : ""}
+                        onClick={() => onUpdate(task.id, { priority: p })}
+                      >
+                        <div className="flex items-center gap-2">
+                          {getPriorityIcon(p, 14)}
+                          <span>{PRIORITY_LABELS[p]}</span>
+                        </div>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Labels */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    disabled={!canManageTasks}
+                    className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {(task.labels ?? []).length > 0 ? (
+                      <div className="flex items-center gap-1.5">
+                        <div className="flex -space-x-0.5">
+                          {(task.labels ?? []).map((label) => (
+                            <div
+                              key={label}
+                              className="size-2 rounded-full ring-1 ring-background"
+                              style={{
+                                backgroundColor:
+                                  labelConfig.colors[label] ?? "#888",
+                              }}
+                            />
+                          ))}
+                        </div>
+                        <span>
+                          {(task.labels ?? []).length === 1
+                            ? (task.labels ?? [])[0]
+                            : `${(task.labels ?? []).length} labels`}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <Tag size={12} className="text-muted-foreground" />
+                        <span className="text-muted-foreground">Labels</span>
+                      </div>
+                    )}
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent side="bottom" align="start">
+                    {labelConfig.names.map((label) => (
+                      <DropdownMenuItem
+                        key={label}
+                        onClick={() => toggleLabel(label)}
+                      >
+                        <div className="flex w-full items-center gap-2 capitalize">
+                          <div
+                            className="size-2.5 rounded-full"
+                            style={{
+                              backgroundColor:
+                                labelConfig.colors[label] ?? "#888",
+                            }}
+                          />
+                          <span>{label}</span>
+                          {(task.labels ?? []).includes(label) && (
+                            <Check
+                              size={12}
+                              weight="bold"
+                              className="ml-auto text-primary"
+                            />
+                          )}
+                        </div>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Assignees */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    disabled={!canManageTasks}
+                    className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {(task.assignees ?? []).length > 0 ? (
+                      <div className="flex items-center gap-1.5">
+                        <AssigneeStack
+                          assignees={task.assignees ?? []}
+                          size={16}
+                        />
+                        <span>
+                          {(task.assignees ?? []).length === 1
+                            ? ((task.assignees ?? [])[0]?.name ?? "Assignee")
+                            : `${(task.assignees ?? []).length} assignees`}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <Users size={12} className="text-muted-foreground" />
+                        <span className="text-muted-foreground">Assign</span>
+                      </div>
+                    )}
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    side="bottom"
+                    align="start"
+                    className="w-auto p-0"
+                  >
+                    <AssigneePickerContent
+                      workspaceId={task.workspaceId}
+                      assignees={(task.assignees ?? []) as TaskAssignee[]}
+                      onChange={(next) =>
+                        onUpdate(task.id, {
+                          assignees: next.map((a) => ({
+                            userId: a.userId,
+                            name: a.name,
+                            imageUrl: a.imageUrl ?? undefined,
+                          })),
+                        })
+                      }
+                    />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
               {/* ── Body: Description (scrollable) ── */}
               <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-4 pb-4">
                 {task._syncStatus === "error" ? (
@@ -2116,283 +2334,51 @@ function TaskDetailSidePanel({
 
               </div>
 
-              {/* ── Bottom toolbar ── */}
-              <div>
-                {/* Row 1: Sources (Linear, Agent, Discord, etc.) */}
-                {(taskSources.length > 0 || activeAgent) && (
-                  <div className="flex flex-wrap items-center gap-2 px-4 pt-2.5 pb-2.5">
-                    {taskSources.map((src) => {
-                      const cfg = SOURCE_CONFIG[src.platform]
-                      return src.url ? (
-                        <a
-                          key={`${src.platform}-${src.url}-${src.author}`}
-                          href={src.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium transition-opacity hover:opacity-80"
-                          style={{
-                            backgroundColor: cfg.bg,
-                            color: cfg.color,
-                          }}
-                        >
-                          <SourceIcon platform={src.platform} size={12} />
-                          <span>{src.author}</span>
-                          <LinkIcon size={10} className="opacity-50" />
-                        </a>
-                      ) : (
-                        <span
-                          key={`${src.platform}-${src.url}-${src.author}`}
-                          className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium"
-                          style={{
-                            backgroundColor: cfg.bg,
-                            color: cfg.color,
-                          }}
-                        >
-                          <SourceIcon platform={src.platform} size={12} />
-                          <span>{src.author}</span>
-                        </span>
-                      )
-                    })}
-                    {activeAgent && (
-                      <span className="flex items-center gap-1.5 rounded-[4px] bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                        <span className="text-[12px]">
-                          {getAgentIcon(activeAgent)}
-                        </span>
-                        <span className="capitalize">{activeAgent}</span>
+              {/* ── Bottom toolbar: Sources only ── */}
+              {(taskSources.length > 0 || activeAgent) && (
+                <div className="flex flex-wrap items-center gap-2 border-t border-border px-4 py-2.5">
+                  {taskSources.map((src) => {
+                    const cfg = SOURCE_CONFIG[src.platform]
+                    return src.url ? (
+                      <a
+                        key={`${src.platform}-${src.url}-${src.author}`}
+                        href={src.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium transition-opacity hover:opacity-80"
+                        style={{
+                          backgroundColor: cfg.bg,
+                          color: cfg.color,
+                        }}
+                      >
+                        <SourceIcon platform={src.platform} size={12} />
+                        <span>{src.author}</span>
+                        <LinkIcon size={10} className="opacity-50" />
+                      </a>
+                    ) : (
+                      <span
+                        key={`${src.platform}-${src.url}-${src.author}`}
+                        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium"
+                        style={{
+                          backgroundColor: cfg.bg,
+                          color: cfg.color,
+                        }}
+                      >
+                        <SourceIcon platform={src.platform} size={12} />
+                        <span>{src.author}</span>
                       </span>
-                    )}
-                  </div>
-                )}
-
-                {/* Row 2: Status, Priority, Labels + Delete */}
-                <div className="flex items-center justify-between gap-2 border-t border-border px-4 pt-2.5 pb-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {/* Status */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        disabled={!canManageTasks}
-                        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {getStatusIcon(task.status, 12)}
-                        <span>{STATUS_LABELS[task.status]}</span>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent side="top" align="start">
-                        {ALL_STATUSES.map((s) => (
-                          <DropdownMenuItem
-                            key={s}
-                            className={task.status === s ? "font-medium" : ""}
-                            onClick={() => onUpdate(task.id, { status: s })}
-                          >
-                            <div className="flex items-center gap-2">
-                              {getStatusIcon(s, 14)}
-                              <span>{STATUS_LABELS[s]}</span>
-                            </div>
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    {/* Priority */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        disabled={!canManageTasks}
-                        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {getPriorityIcon(task.priority, 12)}
-                        <span>{PRIORITY_LABELS[task.priority]}</span>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent side="top" align="start">
-                        {ALL_PRIORITIES.map((p) => (
-                          <DropdownMenuItem
-                            key={p}
-                            className={task.priority === p ? "font-medium" : ""}
-                            onClick={() => onUpdate(task.id, { priority: p })}
-                          >
-                            <div className="flex items-center gap-2">
-                              {getPriorityIcon(p, 14)}
-                              <span>{PRIORITY_LABELS[p]}</span>
-                            </div>
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    {/* Labels */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        disabled={!canManageTasks}
-                        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {(task.labels ?? []).length > 0 ? (
-                          <div className="flex items-center gap-1.5">
-                            <div className="flex -space-x-0.5">
-                              {(task.labels ?? []).map((label) => (
-                                <div
-                                  key={label}
-                                  className="size-2 rounded-full ring-1 ring-background"
-                                  style={{
-                                    backgroundColor:
-                                      labelConfig.colors[label] ?? "#888",
-                                  }}
-                                />
-                              ))}
-                            </div>
-                            <span>
-                              {(task.labels ?? []).length === 1
-                                ? (task.labels ?? [])[0]
-                                : `${(task.labels ?? []).length} labels`}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5">
-                            <Tag size={12} className="text-muted-foreground" />
-                            <span className="text-muted-foreground">Labels</span>
-                          </div>
-                        )}
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent side="top" align="start">
-                        {labelConfig.names.map((label) => (
-                          <DropdownMenuItem
-                            key={label}
-                            onClick={() => toggleLabel(label)}
-                          >
-                            <div className="flex w-full items-center gap-2 capitalize">
-                              <div
-                                className="size-2.5 rounded-full"
-                                style={{
-                                  backgroundColor:
-                                    labelConfig.colors[label] ?? "#888",
-                                }}
-                              />
-                              <span>{label}</span>
-                              {(task.labels ?? []).includes(label) && (
-                                <Check
-                                  size={12}
-                                  weight="bold"
-                                  className="ml-auto text-primary"
-                                />
-                              )}
-                            </div>
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    {/* Assignees */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        disabled={!canManageTasks}
-                        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {(task.assignees ?? []).length > 0 ? (
-                          <div className="flex items-center gap-1.5">
-                            <AssigneeStack
-                              assignees={task.assignees ?? []}
-                              size={16}
-                            />
-                            <span>
-                              {(task.assignees ?? []).length === 1
-                                ? ((task.assignees ?? [])[0]?.name ??
-                                  "Assignee")
-                                : `${(task.assignees ?? []).length} assignees`}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5">
-                            <Users
-                              size={12}
-                              className="text-muted-foreground"
-                            />
-                            <span className="text-muted-foreground">
-                              Assign
-                            </span>
-                          </div>
-                        )}
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        side="top"
-                        align="start"
-                        className="w-auto p-0"
-                      >
-                        <AssigneePickerContent
-                          workspaceId={task.workspaceId}
-                          assignees={(task.assignees ?? []) as TaskAssignee[]}
-                          onChange={(next) =>
-                            onUpdate(task.id, {
-                              assignees: next.map((a) => ({
-                                userId: a.userId,
-                                name: a.name,
-                                imageUrl: a.imageUrl ?? undefined,
-                              })),
-                            })
-                          }
-                        />
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-
-                  {/* Attach + Accept/Deny + Delete */}
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      multiple
-                      onChange={handleFileSelect}
-                      className="hidden"
-                    />
-                    <button
-                      disabled={!canManageTasks || uploading}
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                      title="Attach files"
-                    >
-                      {uploading ? (
-                        <SpinnerGap
-                          size={14}
-                          className="animate-spin"
-                        />
-                      ) : (
-                        <Paperclip size={14} />
-                      )}
-                      {uploading ? "Uploading..." : "Attach"}
-                    </button>
-                    {task.status === "requests" && onAccept && onDeny && (
-                      <>
-                        <button
-                          disabled={!canManageTasks}
-                          onClick={() => {
-                            onAccept(task)
-                            handleClose()
-                          }}
-                          className="flex items-center gap-1.5 rounded-[4px] border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
-                        >
-                          <CheckCircle size={13} weight="fill" />
-                          Accept
-                        </button>
-                        <button
-                          disabled={!canManageTasks}
-                          onClick={() => {
-                            onDeny(task)
-                            handleClose()
-                          }}
-                          className="flex items-center gap-1.5 rounded-[4px] border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-[11px] font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
-                        >
-                          <XCircle size={13} />
-                          Deny
-                        </button>
-                      </>
-                    )}
-                    <button
-                      disabled={!canManageTasks}
-                      onClick={() => onDelete(task.id)}
-                      className="flex items-center justify-center rounded-[4px] px-[7px] py-[7px] text-muted-foreground/40 ring-1 ring-border transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-60"
-                      title="Delete task"
-                    >
-                      <Trash size={14} />
-                    </button>
-                  </div>
+                    )
+                  })}
+                  {activeAgent && (
+                    <span className="flex items-center gap-1.5 rounded-[4px] bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                      <span className="text-[12px]">
+                        {getAgentIcon(activeAgent)}
+                      </span>
+                      <span className="capitalize">{activeAgent}</span>
+                    </span>
+                  )}
                 </div>
-              </div>
+              )}
           </motion.div>
         </motion.aside>
       )}
