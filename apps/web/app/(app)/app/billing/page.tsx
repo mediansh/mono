@@ -20,6 +20,7 @@ import {
   Coins,
   Sparkle,
   Lightning,
+  Star,
 } from "@phosphor-icons/react"
 import {
   AreaChart,
@@ -795,6 +796,13 @@ export default function BillingPage() {
                       in credits monthly
                     </span>
                   </div>
+
+                  {plan.id === "scale" && (
+                    <div className="mt-1.5 flex items-center gap-1.5 text-[12px] text-foreground/80">
+                      <Star size={12} weight="bold" className="text-foreground/60" />
+                      <span>Priority support</span>
+                    </div>
+                  )}
 
                   <div className="mt-5 flex-1" />
 
