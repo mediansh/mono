@@ -155,6 +155,26 @@ export const getWorkspaceMembers = query({
   },
 })
 
+export const getAssignableMembers = query({
+  args: {
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args) => {
+    await requireWorkspaceAccess(ctx, args.workspaceId)
+
+    const members = await ctx.db
+      .query("workspaceMembers")
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .collect()
+
+    return sortMembers(members).map((member) => ({
+      userId: member.userId,
+      name: member.name ?? member.email ?? "Member",
+      imageUrl: member.imageUrl ?? null,
+    }))
+  },
+})
+
 export const getWorkspaceTaskGenerationContext = query({
   args: {
     workspaceId: v.id("workspaces"),

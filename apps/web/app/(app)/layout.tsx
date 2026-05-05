@@ -56,6 +56,10 @@ export default function AppLayout({
                 <PageTransition>{children}</PageTransition>
               </PlanGuard>
             </SidebarInset>
+            {/* Portal mount for the task detail side panel — renders as a flex
+                sibling of SidebarInset so it lives at the layout's top level
+                rather than nested inside the inset card. */}
+            <div id="task-panel-portal" className="contents" />
           </SidebarProvider>
         )}
       </WorkspaceGuard>

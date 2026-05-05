@@ -15,6 +15,7 @@ import {
 import { createPortal } from "react-dom"
 import { AnimatePresence, motion } from "motion/react"
 import { useConvexAuth, useMutation, useQuery } from "convex/react"
+import { useUser } from "@clerk/nextjs"
 import { toast } from "sonner"
 import {
   CellSignalFull,
@@ -42,8 +43,16 @@ import {
   Plus,
   FunnelSimple,
   MagnifyingGlass,
+  DotsSixVertical,
+  Users,
 } from "@phosphor-icons/react"
 import { NewTaskModal } from "@/components/new-task-modal"
+import {
+  AssigneeContextSubmenu,
+  AssigneePickerContent,
+  AssigneeStack,
+  type TaskAssignee,
+} from "@/components/assignee-picker"
 import {
   TaskAttachmentGallery,
   cacheAttachmentPreview,
@@ -175,6 +184,46 @@ function useLabelConfig() {
 const BoardMountedContext = createContext(false)
 function useBoardMounted() {
   return useContext(BoardMountedContext)
+}
+
+// ── Task detail side panel: width persistence ──
+const TASK_PANEL_WIDTH_STORAGE_KEY = "median_task_panel_width_v1"
+const TASK_PANEL_DEFAULT_WIDTH = 480
+const TASK_PANEL_MIN_WIDTH = 360
+const TASK_PANEL_MAX_WIDTH_PX = 960
+const MOBILE_BREAKPOINT = 768
+
+function clampTaskPanelWidth(width: number): number {
+  if (typeof window !== "undefined" && window.innerWidth < MOBILE_BREAKPOINT) {
+    return Math.min(Math.max(width, 0), window.innerWidth)
+  }
+  const ceiling =
+    typeof window === "undefined"
+      ? TASK_PANEL_MAX_WIDTH_PX
+      : Math.min(TASK_PANEL_MAX_WIDTH_PX, window.innerWidth * 0.7)
+  return Math.min(Math.max(width, TASK_PANEL_MIN_WIDTH), ceiling)
+}
+
+function loadTaskPanelWidth(): number {
+  if (typeof window === "undefined") return TASK_PANEL_DEFAULT_WIDTH
+  try {
+    const raw = window.localStorage.getItem(TASK_PANEL_WIDTH_STORAGE_KEY)
+    if (!raw) return TASK_PANEL_DEFAULT_WIDTH
+    const parsed = Number(raw)
+    if (!Number.isFinite(parsed)) return TASK_PANEL_DEFAULT_WIDTH
+    return clampTaskPanelWidth(parsed)
+  } catch {
+    return TASK_PANEL_DEFAULT_WIDTH
+  }
+}
+
+function saveTaskPanelWidth(width: number) {
+  if (typeof window === "undefined") return
+  try {
+    window.localStorage.setItem(TASK_PANEL_WIDTH_STORAGE_KEY, String(width))
+  } catch {
+    // ignore storage errors (private mode, full storage, etc.)
+  }
 }
 
 const STATUS_LABELS = TASK_STATUS_LABELS
@@ -328,6 +377,7 @@ function patchTaskDocs(
       | "priority"
       | "labels"
       | "attachments"
+      | "assignees"
       | "_syncStatus"
     >
   >
@@ -453,6 +503,8 @@ function areTaskDocListsEqual(left: TaskDoc[] | undefined, right: TaskDoc[]) {
       current._syncStatus !== next._syncStatus ||
       JSON.stringify(current.assignee ?? null) !==
         JSON.stringify(next.assignee ?? null) ||
+      JSON.stringify(current.assignees ?? null) !==
+        JSON.stringify(next.assignees ?? null) ||
       JSON.stringify(current.source ?? null) !==
         JSON.stringify(next.source ?? null) ||
       JSON.stringify(current.sources ?? null) !==
@@ -1148,6 +1200,21 @@ function TaskContextMenuContent({
         </ContextMenuSubContent>
       </ContextMenuSub>
 
+      <AssigneeContextSubmenu
+        workspaceId={task.workspaceId}
+        assignees={(task.assignees ?? []) as TaskAssignee[]}
+        disabled={!canManageTasks}
+        onChange={(next) =>
+          onUpdate(task.id, {
+            assignees: next.map((a) => ({
+              userId: a.userId,
+              name: a.name,
+              imageUrl: a.imageUrl ?? undefined,
+            })),
+          })
+        }
+      />
+
       <ContextMenuSeparator />
 
       <ContextMenuItem
@@ -1205,6 +1272,13 @@ const ListRowContent = memo(function ListRowContent({ task }: { task: Task }) {
             {label}
           </span>
         ))}
+        {(task.assignees ?? []).length > 0 ? (
+          <AssigneeStack
+            assignees={(task.assignees ?? []) as TaskAssignee[]}
+            size={18}
+            max={3}
+          />
+        ) : null}
         <span className="ml-1 text-[11px] text-muted-foreground/60">
           {task.createdAt}
         </span>
@@ -1609,8 +1683,10 @@ const PRIORITY_LABELS: Record<Priority, string> = {
   none: "No priority",
 }
 
-function TaskDetailModal({
+function TaskDetailSidePanel({
   task,
+  width,
+  onWidthChange,
   onClose,
   onUpdate,
   onDelete,
@@ -1619,6 +1695,8 @@ function TaskDetailModal({
   canManageTasks,
 }: {
   task: Task | null
+  width: number
+  onWidthChange: (width: number) => void
   onClose: () => void
   onUpdate: (taskId: string, updates: Partial<Task>) => void
   onDelete: (taskId: string) => void
@@ -1632,8 +1710,36 @@ function TaskDetailModal({
   const [editingDesc, setEditingDesc] = useState(false)
   const [descValue, setDescValue] = useState("")
   const [uploading, setUploading] = useState(false)
+  const [isResizing, setIsResizing] = useState(false)
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const titleRef = useRef<HTMLTextAreaElement>(null)
+  const normalizedAssignees: TaskAssignee[] =
+    task?.assignees ??
+    (task?.assignee
+      ? [
+          {
+            userId: task.assignee.name,
+            name: task.assignee.name,
+            imageUrl: task.assignee.avatar || undefined,
+          },
+        ]
+      : [])
+
+  // The portal target lives in the (app) layout as a flex sibling of
+  // SidebarInset. Resolving it on mount keeps the panel out of the inset card
+  // so it can sit at the layout's top level alongside the sidebar/inset.
+  useEffect(() => {
+    setPortalTarget(document.getElementById("task-panel-portal"))
+  }, [])
+
+  useEffect(() => {
+    setEditingTitle(false)
+    setTitleValue("")
+    setEditingDesc(false)
+    setDescValue("")
+  }, [task?.id])
+
   const attachmentsRef = useRef<{
     taskId: string | null
     attachments: TaskAttachment[] | undefined
@@ -1798,32 +1904,108 @@ function TaskDetailModal({
     el.style.height = `${el.scrollHeight}px`
   }, [editingTitle, titleValue])
 
-  return createPortal(
-    <AnimatePresence>
-      {task && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.08 }}
-            className="fixed inset-0 z-50 bg-black/40"
-            onClick={handleClose}
-          />
+  // Persist width changes to localStorage when not actively resizing
+  useEffect(() => {
+    if (isResizing) return
+    saveTaskPanelWidth(width)
+  }, [isResizing, width])
 
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" onClick={handleClose}>
-            {/* Panel */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.97, y: 6 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.98, y: 6 }}
-              transition={{ duration: 0.1, ease: [0.32, 0, 0.67, 0] }}
-              className="relative flex max-h-[85vh] w-[min(92vw,40rem)] max-w-2xl flex-col overflow-hidden rounded-[8px] bg-background shadow-2xl ring-1 ring-border"
-              onClick={(e) => e.stopPropagation()}
+  // Re-clamp width when the viewport size changes
+  useEffect(() => {
+    function handleResize() {
+      const next = clampTaskPanelWidth(width)
+      if (next !== width) onWidthChange(next)
+    }
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [width, onWidthChange])
+
+  const handleResizeStart = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      event.preventDefault()
+      const startX = event.clientX
+      const startWidth = width
+      setIsResizing(true)
+
+      // Disable text selection while dragging
+      const previousUserSelect = document.body.style.userSelect
+      const previousCursor = document.body.style.cursor
+      document.body.style.userSelect = "none"
+      document.body.style.cursor = "col-resize"
+
+      function onMove(ev: PointerEvent) {
+        // Dragging the handle leftward grows the panel (handle on left edge)
+        const dx = startX - ev.clientX
+        onWidthChange(clampTaskPanelWidth(startWidth + dx))
+      }
+
+      function onUp() {
+        setIsResizing(false)
+        document.body.style.userSelect = previousUserSelect
+        document.body.style.cursor = previousCursor
+        window.removeEventListener("pointermove", onMove)
+        window.removeEventListener("pointerup", onUp)
+      }
+
+      window.addEventListener("pointermove", onMove)
+      window.addEventListener("pointerup", onUp)
+    },
+    [width, onWidthChange]
+  )
+
+  const panelContent = (
+    <AnimatePresence initial={false}>
+      {task && (
+        <motion.aside
+          key="task-detail-panel"
+          initial={{ width: 0 }}
+          animate={{ width }}
+          exit={{ width: 0 }}
+          transition={
+            isResizing
+              ? { duration: 0 }
+              : { duration: 0.45, ease: "anticipate" }
+          }
+          className="relative shrink-0 self-stretch overflow-hidden"
+        >
+          {/* Resize handle (left edge) — sibling of inner card so it isn't clipped */}
+          <div
+            onPointerDown={handleResizeStart}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize task panel"
+            className="group absolute inset-y-0 left-0 z-30 flex w-3 cursor-col-resize items-center justify-center"
+          >
+            <div
+              className={`absolute inset-y-0 left-0 w-px transition-colors ${
+                isResizing
+                  ? "bg-primary"
+                  : "bg-transparent group-hover:bg-primary/40"
+              }`}
+            />
+            <div
+              className={`relative flex h-8 w-3 items-center justify-center rounded-full text-muted-foreground/60 opacity-0 ring-1 ring-border bg-background transition-opacity group-hover:opacity-100 ${
+                isResizing ? "opacity-100 text-primary ring-primary/50" : ""
+              }`}
             >
-              {/* ── Header: Title + Date + Close ── */}
-              <div className="relative px-5 pt-5 pb-0">
+              <DotsSixVertical size={10} weight="bold" />
+            </div>
+          </div>
+
+          {/* Inner card — sits as its own top-level card on the bg-sidebar
+              gap, mirroring SidebarInset's rounded + ring treatment. The 6px
+              left inset (width - 6) leaves a visible gap between this card
+              and SidebarInset on the left. */}
+          <motion.div
+            initial={{ opacity: 0, x: 16 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 16 }}
+            transition={{ duration: 0.45, ease: "anticipate" }}
+            className="absolute top-px right-0 bottom-px flex flex-col overflow-hidden rounded-[4px] bg-background ring-1 ring-sidebar-border"
+            style={{ width: `${Math.max(width - 6, 1)}px` }}
+          >
+            {/* ── Header: Title + Date + Close ── */}
+            <div className="relative px-5 pt-5 pb-0">
                 {/* Close button */}
                 <button
                   onClick={handleClose}
@@ -1881,6 +2063,227 @@ function TaskDetailModal({
                     {task.createdAt}
                   </span>
                 </div>
+              </div>
+
+              {/* ── Properties row (Status, Priority, Labels, Assignees) ── */}
+              <div className="flex flex-wrap items-center gap-2 px-5 pt-3 pb-3">
+                {/* Status */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    disabled={!canManageTasks}
+                    className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {getStatusIcon(task.status, 12)}
+                    <span>{STATUS_LABELS[task.status]}</span>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent side="bottom" align="start">
+                    {ALL_STATUSES.map((s) => (
+                      <DropdownMenuItem
+                        key={s}
+                        className={task.status === s ? "font-medium" : ""}
+                        onClick={() => onUpdate(task.id, { status: s })}
+                      >
+                        <div className="flex items-center gap-2">
+                          {getStatusIcon(s, 14)}
+                          <span>{STATUS_LABELS[s]}</span>
+                        </div>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Priority */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    disabled={!canManageTasks}
+                    className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {getPriorityIcon(task.priority, 12)}
+                    <span>{PRIORITY_LABELS[task.priority]}</span>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent side="bottom" align="start">
+                    {ALL_PRIORITIES.map((p) => (
+                      <DropdownMenuItem
+                        key={p}
+                        className={task.priority === p ? "font-medium" : ""}
+                        onClick={() => onUpdate(task.id, { priority: p })}
+                      >
+                        <div className="flex items-center gap-2">
+                          {getPriorityIcon(p, 14)}
+                          <span>{PRIORITY_LABELS[p]}</span>
+                        </div>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Labels */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    disabled={!canManageTasks}
+                    className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {(task.labels ?? []).length > 0 ? (
+                      <div className="flex items-center gap-1.5">
+                        <div className="flex -space-x-0.5">
+                          {(task.labels ?? []).map((label) => (
+                            <div
+                              key={label}
+                              className="size-2 rounded-full ring-1 ring-background"
+                              style={{
+                                backgroundColor:
+                                  labelConfig.colors[label] ?? "#888",
+                              }}
+                            />
+                          ))}
+                        </div>
+                        <span>
+                          {(task.labels ?? []).length === 1
+                            ? (task.labels ?? [])[0]
+                            : `${(task.labels ?? []).length} labels`}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <Tag size={12} className="text-muted-foreground" />
+                        <span className="text-muted-foreground">Labels</span>
+                      </div>
+                    )}
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent side="bottom" align="start">
+                    {labelConfig.names.map((label) => (
+                      <DropdownMenuItem
+                        key={label}
+                        onClick={() => toggleLabel(label)}
+                      >
+                        <div className="flex w-full items-center gap-2 capitalize">
+                          <div
+                            className="size-2.5 rounded-full"
+                            style={{
+                              backgroundColor:
+                                labelConfig.colors[label] ?? "#888",
+                            }}
+                          />
+                          <span>{label}</span>
+                          {(task.labels ?? []).includes(label) && (
+                            <Check
+                              size={12}
+                              weight="bold"
+                              className="ml-auto text-primary"
+                            />
+                          )}
+                        </div>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Assignees */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    disabled={!canManageTasks}
+                    className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {normalizedAssignees.length > 0 ? (
+                      <div className="flex items-center gap-1.5">
+                        <AssigneeStack
+                          assignees={normalizedAssignees}
+                          size={16}
+                        />
+                        <span>
+                          {normalizedAssignees.length === 1
+                            ? (normalizedAssignees[0]?.name ?? "Assignee")
+                            : `${normalizedAssignees.length} assignees`}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <Users size={12} className="text-muted-foreground" />
+                        <span className="text-muted-foreground">Assign</span>
+                      </div>
+                    )}
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    side="bottom"
+                    align="start"
+                    className="w-auto p-0"
+                  >
+                    <AssigneePickerContent
+                      workspaceId={task.workspaceId}
+                      assignees={normalizedAssignees}
+                      onChange={(next) =>
+                        onUpdate(task.id, {
+                          assignees: next.map((a) => ({
+                            userId: a.userId,
+                            name: a.name,
+                            imageUrl: a.imageUrl ?? undefined,
+                          })),
+                        })
+                      }
+                    />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              {/* ── Separator between properties and actions ── */}
+              <div className="border-t border-border" />
+
+              {/* ── Action buttons row (below properties) ── */}
+              <div className="flex flex-wrap items-center gap-1.5 border-b border-border px-5 pt-3 pb-3">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                <button
+                  disabled={!canManageTasks || uploading}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                  title="Attach files"
+                >
+                  {uploading ? (
+                    <SpinnerGap size={14} className="animate-spin" />
+                  ) : (
+                    <Paperclip size={14} />
+                  )}
+                  {uploading ? "Uploading..." : "Attach"}
+                </button>
+                {task.status === "requests" && onAccept && onDeny && (
+                  <>
+                    <button
+                      disabled={!canManageTasks}
+                      onClick={() => {
+                        onAccept(task)
+                        handleClose()
+                      }}
+                      className="flex items-center gap-1.5 rounded-[4px] border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
+                    >
+                      <CheckCircle size={13} weight="fill" />
+                      Accept
+                    </button>
+                    <button
+                      disabled={!canManageTasks}
+                      onClick={() => {
+                        onDeny(task)
+                        handleClose()
+                      }}
+                      className="flex items-center gap-1.5 rounded-[4px] border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-[11px] font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
+                    >
+                      <XCircle size={13} />
+                      Deny
+                    </button>
+                  </>
+                )}
+                <button
+                  disabled={!canManageTasks}
+                  onClick={() => onDelete(task.id)}
+                  className="flex items-center justify-center rounded-[4px] px-[7px] py-[7px] text-muted-foreground/40 ring-1 ring-border transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-60"
+                  title="Delete task"
+                >
+                  <Trash size={14} />
+                </button>
               </div>
 
               {/* ── Body: Description (scrollable) ── */}
@@ -1960,238 +2363,62 @@ function TaskDetailModal({
 
               </div>
 
-              {/* ── Bottom toolbar ── */}
-              <div>
-                {/* Row 1: Sources (Linear, Agent, Discord, etc.) */}
-                {(taskSources.length > 0 || activeAgent) && (
-                  <div className="flex flex-wrap items-center gap-2 px-4 pt-2.5 pb-2.5">
-                    {taskSources.map((src) => {
-                      const cfg = SOURCE_CONFIG[src.platform]
-                      return src.url ? (
-                        <a
-                          key={`${src.platform}-${src.url}-${src.author}`}
-                          href={src.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium transition-opacity hover:opacity-80"
-                          style={{
-                            backgroundColor: cfg.bg,
-                            color: cfg.color,
-                          }}
-                        >
-                          <SourceIcon platform={src.platform} size={12} />
-                          <span>{src.author}</span>
-                          <LinkIcon size={10} className="opacity-50" />
-                        </a>
-                      ) : (
-                        <span
-                          key={`${src.platform}-${src.url}-${src.author}`}
-                          className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium"
-                          style={{
-                            backgroundColor: cfg.bg,
-                            color: cfg.color,
-                          }}
-                        >
-                          <SourceIcon platform={src.platform} size={12} />
-                          <span>{src.author}</span>
-                        </span>
-                      )
-                    })}
-                    {activeAgent && (
-                      <span className="flex items-center gap-1.5 rounded-[4px] bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                        <span className="text-[12px]">
-                          {getAgentIcon(activeAgent)}
-                        </span>
-                        <span className="capitalize">{activeAgent}</span>
+              {/* ── Bottom toolbar: Sources only ── */}
+              {(taskSources.length > 0 || activeAgent) && (
+                <div className="flex flex-wrap items-center gap-2 border-t border-border px-4 py-2.5">
+                  {taskSources.map((src) => {
+                    const cfg = SOURCE_CONFIG[src.platform]
+                    return src.url ? (
+                      <a
+                        key={`${src.platform}-${src.url}-${src.author}`}
+                        href={src.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium transition-opacity hover:opacity-80"
+                        style={{
+                          backgroundColor: cfg.bg,
+                          color: cfg.color,
+                        }}
+                      >
+                        <SourceIcon platform={src.platform} size={12} />
+                        <span>{src.author}</span>
+                        <LinkIcon size={10} className="opacity-50" />
+                      </a>
+                    ) : (
+                      <span
+                        key={`${src.platform}-${src.url}-${src.author}`}
+                        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium"
+                        style={{
+                          backgroundColor: cfg.bg,
+                          color: cfg.color,
+                        }}
+                      >
+                        <SourceIcon platform={src.platform} size={12} />
+                        <span>{src.author}</span>
                       </span>
-                    )}
-                  </div>
-                )}
-
-                {/* Row 2: Status, Priority, Labels + Delete */}
-                <div className="flex items-center justify-between gap-2 border-t border-border px-4 pt-2.5 pb-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {/* Status */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        disabled={!canManageTasks}
-                        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {getStatusIcon(task.status, 12)}
-                        <span>{STATUS_LABELS[task.status]}</span>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent side="top" align="start">
-                        {ALL_STATUSES.map((s) => (
-                          <DropdownMenuItem
-                            key={s}
-                            className={task.status === s ? "font-medium" : ""}
-                            onClick={() => onUpdate(task.id, { status: s })}
-                          >
-                            <div className="flex items-center gap-2">
-                              {getStatusIcon(s, 14)}
-                              <span>{STATUS_LABELS[s]}</span>
-                            </div>
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    {/* Priority */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        disabled={!canManageTasks}
-                        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {getPriorityIcon(task.priority, 12)}
-                        <span>{PRIORITY_LABELS[task.priority]}</span>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent side="top" align="start">
-                        {ALL_PRIORITIES.map((p) => (
-                          <DropdownMenuItem
-                            key={p}
-                            className={task.priority === p ? "font-medium" : ""}
-                            onClick={() => onUpdate(task.id, { priority: p })}
-                          >
-                            <div className="flex items-center gap-2">
-                              {getPriorityIcon(p, 14)}
-                              <span>{PRIORITY_LABELS[p]}</span>
-                            </div>
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    {/* Labels */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        disabled={!canManageTasks}
-                        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {(task.labels ?? []).length > 0 ? (
-                          <div className="flex items-center gap-1.5">
-                            <div className="flex -space-x-0.5">
-                              {(task.labels ?? []).map((label) => (
-                                <div
-                                  key={label}
-                                  className="size-2 rounded-full ring-1 ring-background"
-                                  style={{
-                                    backgroundColor:
-                                      labelConfig.colors[label] ?? "#888",
-                                  }}
-                                />
-                              ))}
-                            </div>
-                            <span>
-                              {(task.labels ?? []).length === 1
-                                ? (task.labels ?? [])[0]
-                                : `${(task.labels ?? []).length} labels`}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5">
-                            <Tag size={12} className="text-muted-foreground" />
-                            <span className="text-muted-foreground">Labels</span>
-                          </div>
-                        )}
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent side="top" align="start">
-                        {labelConfig.names.map((label) => (
-                          <DropdownMenuItem
-                            key={label}
-                            onClick={() => toggleLabel(label)}
-                          >
-                            <div className="flex w-full items-center gap-2 capitalize">
-                              <div
-                                className="size-2.5 rounded-full"
-                                style={{
-                                  backgroundColor:
-                                    labelConfig.colors[label] ?? "#888",
-                                }}
-                              />
-                              <span>{label}</span>
-                              {(task.labels ?? []).includes(label) && (
-                                <Check
-                                  size={12}
-                                  weight="bold"
-                                  className="ml-auto text-primary"
-                                />
-                              )}
-                            </div>
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-
-                  {/* Attach + Accept/Deny + Delete */}
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      multiple
-                      onChange={handleFileSelect}
-                      className="hidden"
-                    />
-                    <button
-                      disabled={!canManageTasks || uploading}
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                      title="Attach files"
-                    >
-                      {uploading ? (
-                        <SpinnerGap
-                          size={14}
-                          className="animate-spin"
-                        />
-                      ) : (
-                        <Paperclip size={14} />
-                      )}
-                      {uploading ? "Uploading..." : "Attach"}
-                    </button>
-                    {task.status === "requests" && onAccept && onDeny && (
-                      <>
-                        <button
-                          disabled={!canManageTasks}
-                          onClick={() => {
-                            onAccept(task)
-                            handleClose()
-                          }}
-                          className="flex items-center gap-1.5 rounded-[4px] border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
-                        >
-                          <CheckCircle size={13} weight="fill" />
-                          Accept
-                        </button>
-                        <button
-                          disabled={!canManageTasks}
-                          onClick={() => {
-                            onDeny(task)
-                            handleClose()
-                          }}
-                          className="flex items-center gap-1.5 rounded-[4px] border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-[11px] font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
-                        >
-                          <XCircle size={13} />
-                          Deny
-                        </button>
-                      </>
-                    )}
-                    <button
-                      disabled={!canManageTasks}
-                      onClick={() => onDelete(task.id)}
-                      className="flex items-center justify-center rounded-[4px] px-[7px] py-[7px] text-muted-foreground/40 ring-1 ring-border transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-60"
-                      title="Delete task"
-                    >
-                      <Trash size={14} />
-                    </button>
-                  </div>
+                    )
+                  })}
+                  {activeAgent && (
+                    <span className="flex items-center gap-1.5 rounded-[4px] bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                      <span className="text-[12px]">
+                        {getAgentIcon(activeAgent)}
+                      </span>
+                      <span className="capitalize">{activeAgent}</span>
+                    </span>
+                  )}
                 </div>
-              </div>
-            </motion.div>
-          </div>
-        </>
+              )}
+          </motion.div>
+        </motion.aside>
       )}
-    </AnimatePresence>,
-    document.body
+    </AnimatePresence>
   )
+
+  if (!portalTarget) {
+    return null
+  }
+
+  return createPortal(panelContent, portalTarget)
 }
 
 // ── Bulk Action Toolbar ──
@@ -2490,13 +2717,22 @@ const KanbanCard = memo(function KanbanCard({
         </div>
 
         {/* Footer: date + task code */}
-        <div className="flex items-center justify-between border-t border-border px-2.5 py-1.5">
+        <div className="flex items-center justify-between gap-2 border-t border-border px-2.5 py-1.5">
           <span className="text-[10px] text-muted-foreground/50">
             {task.createdAt}
           </span>
-          <span className="font-mono text-[10px] text-muted-foreground/50 tabular-nums">
-            {task.taskCode}
-          </span>
+          <div className="flex items-center gap-2">
+            {(task.assignees ?? []).length > 0 ? (
+              <AssigneeStack
+                assignees={(task.assignees ?? []) as TaskAssignee[]}
+                size={16}
+                max={3}
+              />
+            ) : null}
+            <span className="font-mono text-[10px] text-muted-foreground/50 tabular-nums">
+              {task.taskCode}
+            </span>
+          </div>
         </div>
       </ContextMenuTrigger>
       <TaskContextMenuContent
@@ -2854,6 +3090,8 @@ function ColumnBoardView({
   tasks,
   hiddenColumns,
   canManageTasks,
+  selectedTaskId,
+  onSelectTaskId,
   onMoveTask,
   onMoveMultipleTasks,
   onUpdateTask,
@@ -2867,6 +3105,8 @@ function ColumnBoardView({
   tasks: Task[]
   hiddenColumns: Status[]
   canManageTasks: boolean
+  selectedTaskId: string | null
+  onSelectTaskId: (taskId: string | null) => void
   onMoveTask: (taskId: string, toStatus: Status, toIndex: number) => void
   onMoveMultipleTasks: (
     taskIds: string[],
@@ -2888,13 +3128,8 @@ function ColumnBoardView({
     (c) => !hiddenColumns.includes(c.id) && c.id !== "requests"
   )
   const showRequests = !hiddenColumns.includes("requests")
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
   const lastToggledTaskIdRef = useRef<string | null>(null)
-
-  const selectedTask = selectedTaskId
-    ? (tasks.find((t) => t.id === selectedTaskId) ?? null)
-    : null
 
   const orderedTaskIds = useMemo(() => {
     const ids: string[] = []
@@ -2906,18 +3141,24 @@ function ColumnBoardView({
     return ids
   }, [tasks, visibleColumns])
 
-  const handleSelectTask = useCallback((task: Task) => {
-    setSelectedTaskId(task.id)
-  }, [])
+  const handleSelectTask = useCallback(
+    (task: Task) => {
+      onSelectTaskId(task.id)
+    },
+    [onSelectTaskId]
+  )
 
   useEffect(() => {
     window.dispatchEvent(new CustomEvent("search-palette:board-ready"))
   }, [])
 
   useSearchPaletteTaskEvent(
-    useCallback((taskId: string) => {
-      setSelectedTaskId(taskId)
-    }, [])
+    useCallback(
+      (taskId: string) => {
+        onSelectTaskId(taskId)
+      },
+      [onSelectTaskId]
+    )
   )
 
   const handleToggleSelectTask = useCallback(
@@ -3285,25 +3526,6 @@ function ColumnBoardView({
         </DragOverlay>
       </DndContext>
 
-      <TaskDetailModal
-        task={selectedTask}
-        onClose={() => setSelectedTaskId(null)}
-        onUpdate={onUpdateTask}
-        onDelete={(taskId) => {
-          onDeleteTask(taskId)
-          setSelectedTaskId(null)
-        }}
-        onAccept={(task) => {
-          onAcceptRequest(task)
-          setSelectedTaskId(null)
-        }}
-        onDeny={(task) => {
-          onDenyRequest(task)
-          setSelectedTaskId(null)
-        }}
-        canManageTasks={canManageTasks}
-      />
-
       {canManageTasks && selectedTaskIds.size > 0 && (
         <BulkActionToolbar
           selectedCount={selectedTaskIds.size}
@@ -3368,6 +3590,8 @@ function ListView({
   hiddenColumns,
   collapsedColumns,
   canManageTasks,
+  selectedTaskId,
+  onSelectTaskId,
   onToggleCollapsedColumn,
   onMoveTask,
   onMoveMultipleTasks,
@@ -3383,6 +3607,8 @@ function ListView({
   hiddenColumns: Status[]
   collapsedColumns: Status[]
   canManageTasks: boolean
+  selectedTaskId: string | null
+  onSelectTaskId: (taskId: string | null) => void
   onToggleCollapsedColumn: (status: Status) => void
   onMoveTask: (taskId: string, toStatus: Status, toIndex: number) => void
   onMoveMultipleTasks: (
@@ -3406,13 +3632,8 @@ function ListView({
     (c) => !hiddenColumns.includes(c.id) && c.id !== "requests"
   )
   const showRequests = !hiddenColumns.includes("requests")
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
   const lastToggledTaskIdRef = useRef<string | null>(null)
-
-  const selectedTask = selectedTaskId
-    ? (tasks.find((t) => t.id === selectedTaskId) ?? null)
-    : null
 
   // Build ordered flat list of non-request tasks for shift-click range selection
   const orderedTaskIds = useMemo(() => {
@@ -3430,9 +3651,12 @@ function ListView({
     return ids
   }, [tasks, hiddenColumns, collapsedColumns])
 
-  const handleSelectTask = useCallback((task: Task) => {
-    setSelectedTaskId(task.id)
-  }, [])
+  const handleSelectTask = useCallback(
+    (task: Task) => {
+      onSelectTaskId(task.id)
+    },
+    [onSelectTaskId]
+  )
 
   // Signal that the board is mounted and ready to receive task-open events
   useEffect(() => {
@@ -3441,9 +3665,12 @@ function ListView({
 
   // Listen for task-open events from search palette
   useSearchPaletteTaskEvent(
-    useCallback((taskId: string) => {
-      setSelectedTaskId(taskId)
-    }, [])
+    useCallback(
+      (taskId: string) => {
+        onSelectTaskId(taskId)
+      },
+      [onSelectTaskId]
+    )
   )
 
   const handleToggleSelectTask = useCallback(
@@ -3654,25 +3881,6 @@ function ListView({
         </DragOverlay>
       </DndContext>
 
-      <TaskDetailModal
-        task={selectedTask}
-        onClose={() => setSelectedTaskId(null)}
-        onUpdate={onUpdateTask}
-        onDelete={(taskId) => {
-          onDeleteTask(taskId)
-          setSelectedTaskId(null)
-        }}
-        onAccept={(task) => {
-          onAcceptRequest(task)
-          setSelectedTaskId(null)
-        }}
-        onDeny={(task) => {
-          onDenyRequest(task)
-          setSelectedTaskId(null)
-        }}
-        canManageTasks={canManageTasks}
-      />
-
       {/* Bulk action toolbar */}
       {canManageTasks && selectedTaskIds.size > 0 && (
         <BulkActionToolbar
@@ -3696,6 +3904,7 @@ type BoardFilterState = {
   priorities: Priority[]
   labels: string[]
   sources: RequestSource[]
+  assignedToMe: boolean
 }
 
 const EMPTY_FILTER_STATE: BoardFilterState = {
@@ -3704,6 +3913,7 @@ const EMPTY_FILTER_STATE: BoardFilterState = {
   priorities: [],
   labels: [],
   sources: [],
+  assignedToMe: false,
 }
 
 const ALL_SOURCES: RequestSource[] = [
@@ -3734,6 +3944,7 @@ function BoardFilter({
 
   const filterCount =
     (filter.search.trim() ? 1 : 0) +
+    (filter.assignedToMe ? 1 : 0) +
     filter.statuses.length +
     filter.priorities.length +
     filter.labels.length +
@@ -3915,6 +4126,43 @@ function BoardFilter({
                 </div>
 
                 <div className="max-h-[60vh] overflow-y-auto">
+                  {/* Assignee */}
+                  <div className="px-2 pt-2 pb-1">
+                    <div className="px-1 pb-1 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
+                      Assignee
+                    </div>
+                    <div className="flex flex-col">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onFilterChange({
+                            ...filter,
+                            assignedToMe: !filter.assignedToMe,
+                          })
+                        }
+                        className={`flex items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-accent ${
+                          filter.assignedToMe
+                            ? "text-foreground"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        <span
+                          className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px] ring-1 transition-colors ${
+                            filter.assignedToMe
+                              ? "bg-primary text-primary-foreground ring-primary"
+                              : "bg-transparent ring-border"
+                          }`}
+                        >
+                          {filter.assignedToMe && (
+                            <Check size={10} weight="bold" />
+                          )}
+                        </span>
+                        <Users size={12} />
+                        <span className="truncate">My tasks</span>
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Status */}
                   <div className="px-2 pt-2 pb-1">
                     <div className="px-1 pb-1 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
@@ -4114,6 +4362,20 @@ export function KanbanBoard() {
   const [isCleaningDemoTasks, setIsCleaningDemoTasks] = useState(false)
   const [boardMounted, setBoardMounted] = useState(false)
   const [filter, setFilter] = useState<BoardFilterState>(EMPTY_FILTER_STATE)
+  const { user: clerkUser } = useUser()
+  const currentUserId = clerkUser?.id ?? null
+
+  // Side panel state — lifted here so the panel is a layout sibling of the
+  // board content and shifts the main view when open.
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+  const [taskPanelWidth, setTaskPanelWidth] = useState<number>(
+    TASK_PANEL_DEFAULT_WIDTH
+  )
+
+  // Hydrate the persisted panel width on the client only (avoids SSR mismatch)
+  useEffect(() => {
+    setTaskPanelWidth(loadTaskPanelWidth())
+  }, [])
 
   // Mark board as mounted after initial render to suppress entry animations on subsequent updates
   useEffect(() => {
@@ -4163,6 +4425,7 @@ export function KanbanBoard() {
       priority,
       labels,
       attachments,
+      assignees,
     }: {
       taskId: Id<"tasks">
       title?: string
@@ -4180,6 +4443,9 @@ export function KanbanBoard() {
             displayWidth?: number
           }[]
         | undefined
+      assignees?:
+        | { userId: string; name: string; imageUrl?: string }[]
+        | undefined
     }) => {
       try {
         return await updateTask({
@@ -4189,7 +4455,8 @@ export function KanbanBoard() {
           priority,
           labels,
           attachments,
-        })
+          assignees,
+        } as any)
       } catch (error) {
         const shouldRetryWithoutAttachmentMetadata =
           attachments !== undefined &&
@@ -4215,7 +4482,8 @@ export function KanbanBoard() {
             type: string
             size: number
           }[],
-        })
+          assignees,
+        } as any)
       }
     },
     [updateTask]
@@ -4282,10 +4550,19 @@ export function KanbanBoard() {
       filter.statuses.length > 0 ||
       filter.priorities.length > 0 ||
       filter.labels.length > 0 ||
-      filter.sources.length > 0
+      filter.sources.length > 0 ||
+      filter.assignedToMe
     if (!hasFilter) return tasks
     return tasks.filter((task) => {
       const taskLabels = task.labels ?? []
+
+      if (filter.assignedToMe) {
+        if (!currentUserId) return false
+        const assignees = task.assignees ?? []
+        if (!assignees.some((a) => a.userId === currentUserId)) {
+          return false
+        }
+      }
 
       if (filter.statuses.length > 0 && !filter.statuses.includes(task.status)) {
         return false
@@ -4313,11 +4590,14 @@ export function KanbanBoard() {
         }
       }
       if (search.length > 0) {
+        const assigneeNames =
+          task.assignees?.map((assignee) => assignee.name).join(" ") ?? ""
         const haystack = [
           task.title,
           task.description ?? "",
           task.taskCode,
           task.assignee?.name ?? "",
+          assigneeNames,
           taskLabels.join(" "),
         ]
           .join(" ")
@@ -4326,7 +4606,7 @@ export function KanbanBoard() {
       }
       return true
     })
-  }, [tasks, filter])
+  }, [tasks, filter, currentUserId])
 
   function handleAddTask(status: Status) {
     if (!canManageTasks) {
@@ -4450,6 +4730,7 @@ export function KanbanBoard() {
         priority: updates.priority,
         labels: updates.labels,
         attachments: updates.attachments as TaskDoc["attachments"],
+        assignees: updates.assignees as TaskDoc["assignees"],
         ...(updates.attachments !== undefined
           ? { _syncStatus: undefined }
           : {}),
@@ -4479,6 +4760,9 @@ export function KanbanBoard() {
       priority: updates.priority,
       labels: updates.labels,
       attachments: nextAttachments,
+      assignees: updates.assignees as
+        | { userId: string; name: string; imageUrl?: string }[]
+        | undefined,
     }).catch((error) => {
       const isAttachmentUpdate = updates.attachments !== undefined
       const shouldKeepLocalAttachmentState =
@@ -4757,75 +5041,129 @@ export function KanbanBoard() {
     return <BoardLoadingState />
   }
 
+  const selectedTask = selectedTaskId
+    ? (filteredTasks.find((task) => task.id === selectedTaskId) ??
+       tasks.find((task) => task.id === selectedTaskId) ??
+       null)
+    : null
+
+  const handleClosePanel = useCallback(() => {
+    setSelectedTaskId(null)
+  }, [])
+
+  const handlePanelDelete = useCallback(
+    (taskId: string) => {
+      handleDeleteTask(taskId)
+      setSelectedTaskId(null)
+    },
+    [handleDeleteTask]
+  )
+
+  const handlePanelAccept = useCallback(
+    (task: Task) => {
+      handleAcceptRequest(task)
+      setSelectedTaskId(null)
+    },
+    [handleAcceptRequest]
+  )
+
+  const handlePanelDeny = useCallback(
+    (task: Task) => {
+      handleDenyRequest(task)
+      setSelectedTaskId(null)
+    },
+    [handleDenyRequest]
+  )
+
   return (
     <BoardMountedContext.Provider value={boardMounted}>
       <LabelConfigContext.Provider value={labelConfig}>
-        <div className="flex h-full flex-col">
-          {!canManageTasks ? (
-            <div className="mx-4 mt-4 rounded-[4px] bg-card px-3 py-3 text-[13px] text-muted-foreground ring-1 ring-border">
-              You’re in guest mode. Tasks are read-only in this workspace.
-            </div>
-          ) : null}
+        <div className="flex h-full">
+          {/* Main content — shrinks to make room for the side panel */}
+          <div className="flex min-w-0 flex-1 flex-col">
+            {!canManageTasks ? (
+              <div className="mx-4 mt-4 rounded-[4px] bg-card px-3 py-3 text-[13px] text-muted-foreground ring-1 ring-border">
+                You’re in guest mode. Tasks are read-only in this workspace.
+              </div>
+            ) : null}
 
-          {/* Toolbar */}
-          <div className="scrollbar-hide flex items-center gap-1 overflow-x-auto border-b border-border bg-sidebar/60 px-3 py-2 dark:bg-accent/30">
-            <ViewToggle view={boardView} onViewChange={handleViewChange} />
-            {hiddenColumns.length > 0 && (
-              <HiddenColumnsToolbar
-                hiddenColumns={hiddenColumns}
-                onShow={handleShowColumn}
-                tasks={filteredTasks}
-              />
-            )}
-            <div className="ml-auto flex items-center gap-1">
-              <BoardFilter
-                filter={filter}
-                onFilterChange={setFilter}
-                availableLabels={
-                  currentWorkspace?.labels && currentWorkspace.labels.length > 0
-                    ? currentWorkspace.labels
-                    : DEFAULT_WORKSPACE_LABELS
-                }
-              />
+            {/* Toolbar */}
+            <div className="scrollbar-hide flex items-center gap-1 overflow-x-auto border-b border-border bg-sidebar/60 px-3 py-2 dark:bg-accent/30">
+              <ViewToggle view={boardView} onViewChange={handleViewChange} />
+              {hiddenColumns.length > 0 && (
+                <HiddenColumnsToolbar
+                  hiddenColumns={hiddenColumns}
+                  onShow={handleShowColumn}
+                  tasks={filteredTasks}
+                />
+              )}
+              <div className="ml-auto flex items-center gap-1">
+                <BoardFilter
+                  filter={filter}
+                  onFilterChange={setFilter}
+                  availableLabels={
+                    currentWorkspace?.labels && currentWorkspace.labels.length > 0
+                      ? currentWorkspace.labels
+                      : DEFAULT_WORKSPACE_LABELS
+                  }
+                />
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="min-h-0 flex-1">
+              {boardView === "board" ? (
+                <ColumnBoardView
+                  tasks={filteredTasks}
+                  hiddenColumns={hiddenColumns}
+                  canManageTasks={canManageTasks}
+                  selectedTaskId={selectedTaskId}
+                  onSelectTaskId={setSelectedTaskId}
+                  onMoveTask={handleMoveTask}
+                  onMoveMultipleTasks={handleMoveMultipleTasks}
+                  onUpdateTask={handleUpdateTask}
+                  onDeleteTask={handleDeleteTask}
+                  onBulkUpdateTasks={handleBulkUpdateTasks}
+                  onBulkDeleteTasks={handleBulkDeleteTasks}
+                  onAcceptRequest={handleAcceptRequest}
+                  onDenyRequest={handleDenyRequest}
+                  onAddTask={handleAddTask}
+                />
+              ) : (
+                <ListView
+                  tasks={filteredTasks}
+                  hiddenColumns={hiddenColumns}
+                  collapsedColumns={collapsedColumns}
+                  canManageTasks={canManageTasks}
+                  selectedTaskId={selectedTaskId}
+                  onSelectTaskId={setSelectedTaskId}
+                  onToggleCollapsedColumn={handleToggleCollapsedColumn}
+                  onMoveTask={handleMoveTask}
+                  onMoveMultipleTasks={handleMoveMultipleTasks}
+                  onUpdateTask={handleUpdateTask}
+                  onDeleteTask={handleDeleteTask}
+                  onBulkUpdateTasks={handleBulkUpdateTasks}
+                  onBulkDeleteTasks={handleBulkDeleteTasks}
+                  onAcceptRequest={handleAcceptRequest}
+                  onDenyRequest={handleDenyRequest}
+                  onAddTask={handleAddTask}
+                />
+              )}
             </div>
           </div>
 
-          {/* Content */}
-          <div className="min-h-0 flex-1">
-            {boardView === "board" ? (
-              <ColumnBoardView
-                tasks={filteredTasks}
-                hiddenColumns={hiddenColumns}
-                canManageTasks={canManageTasks}
-                onMoveTask={handleMoveTask}
-                onMoveMultipleTasks={handleMoveMultipleTasks}
-                onUpdateTask={handleUpdateTask}
-                onDeleteTask={handleDeleteTask}
-                onBulkUpdateTasks={handleBulkUpdateTasks}
-                onBulkDeleteTasks={handleBulkDeleteTasks}
-                onAcceptRequest={handleAcceptRequest}
-                onDenyRequest={handleDenyRequest}
-                onAddTask={handleAddTask}
-              />
-            ) : (
-              <ListView
-                tasks={filteredTasks}
-                hiddenColumns={hiddenColumns}
-                collapsedColumns={collapsedColumns}
-                canManageTasks={canManageTasks}
-                onToggleCollapsedColumn={handleToggleCollapsedColumn}
-                onMoveTask={handleMoveTask}
-                onMoveMultipleTasks={handleMoveMultipleTasks}
-                onUpdateTask={handleUpdateTask}
-                onDeleteTask={handleDeleteTask}
-                onBulkUpdateTasks={handleBulkUpdateTasks}
-                onBulkDeleteTasks={handleBulkDeleteTasks}
-                onAcceptRequest={handleAcceptRequest}
-                onDenyRequest={handleDenyRequest}
-                onAddTask={handleAddTask}
-              />
-            )}
-          </div>
+          {/* Side panel — slides in from the right and shifts the layout */}
+          <TaskDetailSidePanel
+            task={selectedTask}
+            width={taskPanelWidth}
+            onWidthChange={setTaskPanelWidth}
+            onClose={handleClosePanel}
+            onUpdate={handleUpdateTask}
+            onDelete={handlePanelDelete}
+            onAccept={handlePanelAccept}
+            onDeny={handlePanelDeny}
+            canManageTasks={canManageTasks}
+          />
 
           {/* New task modal */}
           <NewTaskModal

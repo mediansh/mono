@@ -615,6 +615,15 @@ export default defineSchema({
         avatar: v.string(),
       })
     ),
+    assignees: v.optional(
+      v.array(
+        v.object({
+          userId: v.string(),
+          name: v.string(),
+          imageUrl: v.optional(v.string()),
+        })
+      )
+    ),
     source: v.optional(
       v.object({
         platform: v.union(
