@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from "react"
+import { createPortal } from "react-dom"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AnimatePresence, motion } from "motion/react"
 import { useQuery } from "convex/react"
@@ -472,48 +473,14 @@ export function RequestsPage() {
         </div>
       </div>
 
-      {/* Bulk action bar */}
-      <AnimatePresence initial={false}>
-        {bulkSelectedIds.size > 0 && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.15, ease: "easeOut" }}
-            className="shrink-0 overflow-hidden border-b border-border bg-background"
-          >
-            <div className="flex items-center gap-2 px-3 py-1.5">
-              <span className="text-[12px] font-medium">
-                {bulkSelectedIds.size} selected
-              </span>
-              <div className="ml-auto flex items-center gap-1.5">
-                <button
-                  onClick={clearBulkSelection}
-                  className="rounded-[4px] px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                >
-                  Clear
-                </button>
-                <button
-                  disabled={!canManageTasks}
-                  onClick={handleAcceptBulk}
-                  className="flex items-center gap-1.5 rounded-[4px] bg-emerald-500/10 px-2 py-1 text-[11px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
-                >
-                  <CheckCircle size={12} weight="fill" />
-                  Accept all
-                </button>
-                <button
-                  disabled={!canManageTasks}
-                  onClick={handleDenyBulk}
-                  className="flex items-center gap-1.5 rounded-[4px] bg-red-500/10 px-2 py-1 text-[11px] font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
-                >
-                  <XCircle size={12} />
-                  Deny all
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Floating bulk action bar — portaled so it overlays the layout */}
+      <BulkActionBar
+        count={bulkSelectedIds.size}
+        canManageTasks={canManageTasks}
+        onClear={clearBulkSelection}
+        onAccept={handleAcceptBulk}
+        onDeny={handleDenyBulk}
+      />
 
       {/* Body */}
       <div className="flex min-h-0 flex-1">
@@ -1064,6 +1031,69 @@ function SortMenu({
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
+  )
+}
+
+function BulkActionBar({
+  count,
+  canManageTasks,
+  onClear,
+  onAccept,
+  onDeny,
+}: {
+  count: number
+  canManageTasks: boolean
+  onClear: () => void
+  onAccept: () => void
+  onDeny: () => void
+}) {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+
+  if (!mounted) return null
+
+  return createPortal(
+    <AnimatePresence>
+      {count > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 12 }}
+          transition={{ duration: 0.18, ease: "easeOut" }}
+          className="scrollbar-hide fixed bottom-6 left-1/2 z-50 flex w-[calc(100%-2rem)] max-w-fit -translate-x-1/2 items-center gap-1.5 overflow-x-auto rounded-[4px] border-2 border-border bg-popover px-3 py-2 shadow-none"
+        >
+          <div className="mr-1 flex items-center gap-2 border-r border-border pr-2">
+            <span className="text-[12px] font-semibold tabular-nums text-foreground">
+              {count} selected
+            </span>
+            <button
+              onClick={onClear}
+              className="rounded-[4px] p-0.5 text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
+              title="Clear selection"
+            >
+              <X size={13} />
+            </button>
+          </div>
+          <button
+            disabled={!canManageTasks}
+            onClick={onAccept}
+            className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[12px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/15 disabled:opacity-50 dark:text-emerald-400"
+          >
+            <CheckCircle size={13} weight="fill" />
+            Accept all
+          </button>
+          <button
+            disabled={!canManageTasks}
+            onClick={onDeny}
+            className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[12px] font-medium text-red-600 transition-colors hover:bg-red-500/15 disabled:opacity-50 dark:text-red-400"
+          >
+            <XCircle size={13} />
+            Deny all
+          </button>
+        </motion.div>
+      )}
+    </AnimatePresence>,
+    document.body
   )
 }
 
