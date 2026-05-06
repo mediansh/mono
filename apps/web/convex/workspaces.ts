@@ -51,6 +51,26 @@ function normalizeEmail(email: string) {
   return email.trim().toLowerCase()
 }
 
+function normalizeLabelName(label: string) {
+  return label.trim().toLowerCase()
+}
+
+function dedupeLabelsByName(labels: { name: string; color: string }[]) {
+  const deduped = new Map<string, { name: string; color: string }>()
+
+  for (const label of labels) {
+    const trimmedName = label.name.trim()
+    if (!trimmedName) continue
+
+    deduped.set(normalizeLabelName(trimmedName), {
+      name: trimmedName,
+      color: label.color,
+    })
+  }
+
+  return Array.from(deduped.values())
+}
+
 function generateInviteToken() {
   return crypto.randomUUID().replace(/-/g, "")
 }
@@ -318,15 +338,54 @@ export const updateWorkspaceLabels = mutation({
     const workspace = await ctx.db.get(args.workspaceId)
     if (!workspace) throw new Error("Workspace not found")
 
-    await ctx.db.patch(args.workspaceId, { labels: args.labels })
+    const nextLabels = dedupeLabelsByName(args.labels)
+    const canonicalByNormalizedName = new Map(
+      nextLabels.map((label) => [normalizeLabelName(label.name), label.name] as const)
+    )
+
+    const workspaceTasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .collect()
+
+    for (const task of workspaceTasks) {
+      if (!task.labels || task.labels.length === 0) continue
+
+      const nextTaskLabels: string[] = []
+      const seen = new Set<string>()
+
+      for (const label of task.labels) {
+        const canonicalLabel = canonicalByNormalizedName.get(normalizeLabelName(label))
+        if (!canonicalLabel) continue
+
+        const key = normalizeLabelName(canonicalLabel)
+        if (seen.has(key)) continue
+
+        seen.add(key)
+        nextTaskLabels.push(canonicalLabel)
+      }
+
+      const labelsChanged =
+        nextTaskLabels.length !== task.labels.length ||
+        nextTaskLabels.some((label, index) => label !== task.labels[index])
+
+      if (!labelsChanged) continue
+
+      await ctx.db.patch(task._id, {
+        labels: nextTaskLabels,
+        updatedAt: Date.now(),
+      })
+    }
+
+    await ctx.db.patch(args.workspaceId, { labels: nextLabels })
     await insertWorkspaceLog(ctx, {
       workspaceId: args.workspaceId,
       category: "members",
       type: "labels_saved",
       message:
-        args.labels.length === 1
+        nextLabels.length === 1
           ? "Labels updated: 1 label saved"
-          : `Labels updated: ${args.labels.length} labels saved`,
+          : `Labels updated: ${nextLabels.length} labels saved`,
       source: "manual",
     })
   },
