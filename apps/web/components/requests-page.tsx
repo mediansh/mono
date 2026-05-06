@@ -12,7 +12,18 @@ import {
   ArrowLeft,
   Link as LinkIcon,
   X,
+  FunnelSimple,
+  Check,
 } from "@phosphor-icons/react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@workspace/ui/components/dropdown-menu"
 import { api } from "@/convex/_generated/api"
 import type { Doc } from "@/convex/_generated/dataModel"
 import { useWorkspace } from "@/components/workspace-provider"
@@ -61,6 +72,23 @@ const PRIORITY_COLOR: Record<TaskPriority, string> = {
   none: "text-muted-foreground",
 }
 
+const PRIORITY_RANK: Record<TaskPriority, number> = {
+  urgent: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+  none: 4,
+}
+
+type SortKey = "newest" | "oldest" | "priority" | "title"
+
+const SORT_LABEL: Record<SortKey, string> = {
+  newest: "Newest first",
+  oldest: "Oldest first",
+  priority: "Priority",
+  title: "Title (A–Z)",
+}
+
 // github and x render as monochrome marks — let them inherit the foreground
 // color so they remain visible in both light and dark mode.
 const THEME_FOLLOWING_SOURCES = new Set<RequestSource>(["github", "x"])
@@ -103,16 +131,17 @@ export function RequestsPage() {
   const { canManageTasks, acceptRequest, denyRequest, acceptMany, denyMany } =
     useRequestActions()
 
-  // ── filter / search state ──────────────────────────
+  // ── filter / search / sort state ───────────────────
   const [searchTerm, setSearchTerm] = useState("")
   const [activeSources, setActiveSources] = useState<Set<RequestSource>>(
     () => new Set()
   )
+  const [sortKey, setSortKey] = useState<SortKey>("newest")
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   const filteredRequests = useMemo(() => {
     const term = searchTerm.trim().toLowerCase()
-    return requests.filter((task) => {
+    const filtered = requests.filter((task) => {
       const sources = getTaskSources(task)
 
       if (activeSources.size > 0) {
@@ -125,7 +154,28 @@ export function RequestsPage() {
       if (sources.some((src) => src.author.toLowerCase().includes(term))) return true
       return false
     })
-  }, [requests, searchTerm, activeSources])
+
+    const sorted = [...filtered]
+    switch (sortKey) {
+      case "newest":
+        sorted.sort((a, b) => b._creationTime - a._creationTime)
+        break
+      case "oldest":
+        sorted.sort((a, b) => a._creationTime - b._creationTime)
+        break
+      case "priority":
+        sorted.sort(
+          (a, b) =>
+            PRIORITY_RANK[a.priority as TaskPriority] -
+            PRIORITY_RANK[b.priority as TaskPriority]
+        )
+        break
+      case "title":
+        sorted.sort((a, b) => a.title.localeCompare(b.title))
+        break
+    }
+    return sorted
+  }, [requests, searchTerm, activeSources, sortKey])
 
   // ── selection (URL param) ──────────────────────────
   const selectedIdParam = searchParams.get("id")
@@ -324,14 +374,11 @@ export function RequestsPage() {
           <span className="rounded-[4px] bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
             {requests.length}
           </span>
-          <span className="hidden text-[12px] text-muted-foreground sm:inline">
-            Review incoming requests from your integrations.
-          </span>
         </div>
 
-        {/* Toolbar: search + source filter chips */}
+        {/* Toolbar: search + filter/sort dropdown */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex h-8 min-w-[220px] flex-1 items-center gap-2 rounded-[4px] bg-card px-2.5 ring-1 ring-border focus-within:ring-foreground/30">
+          <div className="flex h-8 w-full max-w-[320px] items-center gap-2 rounded-[4px] bg-card px-2.5 ring-1 ring-border focus-within:ring-foreground/30">
             <MagnifyingGlass size={13} className="text-muted-foreground" />
             <input
               ref={searchInputRef}
@@ -354,43 +401,23 @@ export function RequestsPage() {
             </kbd>
           </div>
 
-          <div className="flex flex-wrap items-center gap-1">
-            {REQUEST_SOURCES.map((source) => {
-              const cfg = SOURCE_CONFIG[source]
-              const active = activeSources.has(source)
-              const themeFollowing = THEME_FOLLOWING_SOURCES.has(source)
-              return (
-                <button
-                  key={source}
-                  onClick={() => toggleSourceFilter(source)}
-                  className={`flex h-7 items-center gap-1.5 rounded-[4px] px-2 text-[11px] font-medium transition-colors ring-1 ${
-                    active
-                      ? themeFollowing
-                        ? "bg-foreground/10 text-foreground ring-foreground/40"
-                        : "ring-foreground/40"
-                      : "ring-border text-muted-foreground hover:text-foreground hover:ring-foreground/30"
-                  }`}
-                  style={
-                    active && !themeFollowing
-                      ? { backgroundColor: cfg.bg, color: cfg.color }
-                      : undefined
-                  }
-                >
-                  <SourceGlyph platform={source} size={11} />
-                  <span>{cfg.label}</span>
-                </button>
-              )
-            })}
-            {activeSources.size > 0 && (
-              <button
-                onClick={() => setActiveSources(new Set())}
-                className="flex h-7 items-center gap-1 rounded-[4px] px-2 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
-              >
-                Clear
-                <X size={11} />
-              </button>
-            )}
-          </div>
+          <FilterSortMenu
+            activeSources={activeSources}
+            onToggleSource={toggleSourceFilter}
+            onClearSources={() => setActiveSources(new Set())}
+            sortKey={sortKey}
+            onSortChange={setSortKey}
+          />
+
+          {activeSources.size > 0 && (
+            <button
+              onClick={() => setActiveSources(new Set())}
+              className="flex h-8 items-center gap-1 rounded-[4px] px-2 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Clear filters
+              <X size={11} />
+            </button>
+          )}
         </div>
 
         {/* Bulk action bar */}
@@ -441,7 +468,7 @@ export function RequestsPage() {
       <div className="flex min-h-0 flex-1">
         {/* List pane */}
         <aside
-          className={`flex w-full shrink-0 flex-col border-r border-border bg-background md:w-[360px] ${
+          className={`w-full shrink-0 flex-col border-r border-border bg-muted/20 md:w-[360px] ${
             userPickedId ? "hidden md:flex" : "flex"
           }`}
         >
@@ -455,7 +482,7 @@ export function RequestsPage() {
               }}
             />
           ) : (
-            <ul className="flex-1 overflow-y-auto">
+            <ul className="flex-1 space-y-1.5 overflow-y-auto p-2">
               {filteredRequests.map((task) => (
                 <RequestListItem
                   key={task._id}
@@ -536,10 +563,10 @@ function RequestListItem({
     <li>
       <button
         onClick={onSelect}
-        className={`group flex w-full items-start gap-2 border-b border-border px-3 py-2.5 text-left transition-colors ${
+        className={`group flex w-full items-start gap-2 rounded-[6px] border bg-background px-3 py-2.5 text-left shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all hover:shadow-[0_2px_6px_rgba(0,0,0,0.08)] ${
           isSelected
-            ? "bg-accent"
-            : "hover:bg-accent/40"
+            ? "border-foreground/30 bg-accent shadow-[0_2px_6px_rgba(0,0,0,0.08)]"
+            : "border-border hover:border-foreground/20"
         }`}
       >
         <span
@@ -803,6 +830,91 @@ function EmptyState() {
         ))}
       </div>
     </div>
+  )
+}
+
+function FilterSortMenu({
+  activeSources,
+  onToggleSource,
+  onClearSources,
+  sortKey,
+  onSortChange,
+}: {
+  activeSources: Set<RequestSource>
+  onToggleSource: (source: RequestSource) => void
+  onClearSources: () => void
+  sortKey: SortKey
+  onSortChange: (key: SortKey) => void
+}) {
+  const filterCount = activeSources.size
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        className={`flex h-8 items-center gap-1.5 rounded-[4px] px-2.5 text-[12px] font-medium ring-1 transition-colors outline-none ${
+          filterCount > 0
+            ? "bg-accent text-foreground ring-foreground/30"
+            : "bg-card text-muted-foreground ring-border hover:text-foreground hover:ring-foreground/30"
+        }`}
+      >
+        <FunnelSimple size={13} />
+        <span>Filter & sort</span>
+        {filterCount > 0 && (
+          <span className="rounded-[3px] bg-foreground px-1 py-px text-[10px] font-semibold text-background">
+            {filterCount}
+          </span>
+        )}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-[220px]">
+        <DropdownMenuLabel className="flex items-center justify-between">
+          <span>Sources</span>
+          {filterCount > 0 && (
+            <button
+              onClick={(e) => {
+                e.preventDefault()
+                onClearSources()
+              }}
+              className="text-[10px] font-normal text-muted-foreground hover:text-foreground"
+            >
+              Clear
+            </button>
+          )}
+        </DropdownMenuLabel>
+        {REQUEST_SOURCES.map((source) => {
+          const cfg = SOURCE_CONFIG[source]
+          const checked = activeSources.has(source)
+          return (
+            <button
+              key={source}
+              onClick={(e) => {
+                e.preventDefault()
+                onToggleSource(source)
+              }}
+              className="flex w-full items-center gap-2 rounded-[4px] px-2 py-1.5 text-[12px] hover:bg-accent"
+            >
+              <span className="flex size-4 items-center justify-center">
+                {checked ? <Check size={12} /> : null}
+              </span>
+              <SourceGlyph platform={source} size={12} />
+              <span className="flex-1 text-left">{cfg.label}</span>
+            </button>
+          )
+        })}
+
+        <DropdownMenuSeparator />
+
+        <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          value={sortKey}
+          onValueChange={(value) => onSortChange(value as SortKey)}
+        >
+          {(Object.keys(SORT_LABEL) as SortKey[]).map((key) => (
+            <DropdownMenuRadioItem key={key} value={key} className="text-[12px]">
+              {SORT_LABEL[key]}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
