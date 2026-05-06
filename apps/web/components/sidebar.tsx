@@ -24,6 +24,9 @@ import {
   ShieldCheck,
   ArrowSquareOut,
   Tray,
+  BookOpen,
+  ChatCircle,
+  Copy,
 } from "@phosphor-icons/react"
 import { Facehash } from "facehash"
 import {
@@ -274,11 +277,93 @@ function CreateWorkspaceModal({
   )
 }
 
+const CONTACT_EMAIL = "contact@median.sh"
+const DISCORD_INVITE_URL = "https://discord.gg/SrgwbaGHqE"
+
+function ContactModal({
+  open,
+  onOpenChange,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  const [copied, setCopied] = useState(false)
+
+  function handleCopy() {
+    navigator.clipboard.writeText(CONTACT_EMAIL)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Contact us</DialogTitle>
+          <DialogDescription>
+            Reach out by email or join our Discord community.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-[13px] font-medium">Email</label>
+            <div className="group flex items-center gap-2 rounded-[4px] bg-card px-2.5 py-1.5 ring-1 ring-border">
+              <code className="flex-1 select-all font-mono text-[13px]">
+                {CONTACT_EMAIL}
+              </code>
+              <button
+                type="button"
+                onClick={handleCopy}
+                className="flex h-6 items-center gap-1 rounded-[3px] px-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                aria-label="Copy email"
+              >
+                {copied ? (
+                  <>
+                    <Check size={12} weight="bold" />
+                    Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy size={12} weight="regular" />
+                    Copy
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-[13px] font-medium">Discord</label>
+            <a
+              href={DISCORD_INVITE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex items-center gap-2 rounded-[4px] bg-card px-2.5 py-1.5 ring-1 ring-border transition-colors hover:bg-muted"
+            >
+              <span style={{ lineHeight: 0 }}>
+                <DiscordIcon size={14} />
+              </span>
+              <span className="flex-1 text-[13px]">Join the Discord server</span>
+              <ArrowSquareOut
+                size={12}
+                weight="regular"
+                className="text-muted-foreground transition-colors group-hover:text-foreground"
+              />
+            </a>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export function AppSidebar() {
   const [mounted, setMounted] = useState(false)
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [newTaskOpen, setNewTaskOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [contactOpen, setContactOpen] = useState(false)
   const pathname = usePathname()
   const { signOut, openUserProfile } = useClerk()
   const { user } = useUser()
@@ -478,6 +563,35 @@ export function AppSidebar() {
             )}
             <SidebarMenuItem>
               <SidebarMenuButton
+                render={
+                  <a
+                    href="https://docs.median.sh"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  />
+                }
+                className="text-sidebar-foreground/70"
+              >
+                <BookOpen size={15} weight="regular" />
+                <span>Docs</span>
+                <ArrowSquareOut
+                  size={12}
+                  weight="regular"
+                  className="ml-auto text-sidebar-foreground/40 group-data-[collapsible=icon]:hidden"
+                />
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setContactOpen(true)}
+                className="text-sidebar-foreground/70"
+              >
+                <ChatCircle size={15} weight="regular" />
+                <span>Contact</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
                 render={<Link href="/app/settings" />}
                 isActive={pathname.startsWith("/app/settings")}
                 className={
@@ -638,6 +752,11 @@ export function AppSidebar() {
       <SearchPalette
         open={searchOpen}
         onOpenChange={setSearchOpen}
+      />
+
+      <ContactModal
+        open={contactOpen}
+        onOpenChange={setContactOpen}
       />
     </>
   )
