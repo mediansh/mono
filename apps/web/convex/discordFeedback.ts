@@ -229,6 +229,25 @@ const extractedFeedbackTasksSchema = z.object({
   ),
 })
 
+function normalizeExtractedFeedbackPayload(
+  rawPayload: unknown
+): z.infer<typeof extractedFeedbackTasksSchema> {
+  if (Array.isArray(rawPayload)) {
+    return { actions: rawPayload as z.infer<typeof extractedFeedbackTasksSchema>["actions"] }
+  }
+
+  if (
+    rawPayload &&
+    typeof rawPayload === "object" &&
+    "action" in rawPayload &&
+    typeof (rawPayload as { action?: unknown }).action === "string"
+  ) {
+    return { actions: [rawPayload as z.infer<typeof extractedFeedbackTasksSchema>["actions"][number]] }
+  }
+
+  return rawPayload as z.infer<typeof extractedFeedbackTasksSchema>
+}
+
 function getFeedbackWorkpoolParallelism() {
   const parsed = Number(
     process.env.DISCORD_FEEDBACK_WORKPOOL_PARALLELISM ??
@@ -1399,7 +1418,9 @@ export const processFeedbackWindow = internalAction({
         extractorDurationMs = Date.now() - extractorStart
         extractorUsage = extractorResult.usage
         const parsedExtraction = extractedFeedbackTasksSchema.safeParse(
-          JSON.parse(extractJsonObject(extractorResult.text))
+          normalizeExtractedFeedbackPayload(
+            JSON.parse(extractJsonObject(extractorResult.text))
+          )
         )
         if (parsedExtraction.success) {
           extracted = parsedExtraction.data
