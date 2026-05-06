@@ -18,6 +18,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuRadioGroup,
@@ -865,54 +866,60 @@ function FilterSortMenu({
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-[220px]">
-        <DropdownMenuLabel className="flex items-center justify-between">
-          <span>Sources</span>
-          {filterCount > 0 && (
-            <button
-              onClick={(e) => {
-                e.preventDefault()
-                onClearSources()
-              }}
-              className="text-[10px] font-normal text-muted-foreground hover:text-foreground"
-            >
-              Clear
-            </button>
-          )}
-        </DropdownMenuLabel>
-        {REQUEST_SOURCES.map((source) => {
-          const cfg = SOURCE_CONFIG[source]
-          const checked = activeSources.has(source)
-          return (
-            <button
-              key={source}
-              onClick={(e) => {
-                e.preventDefault()
-                onToggleSource(source)
-              }}
-              className="flex w-full items-center gap-2 rounded-[4px] px-2 py-1.5 text-[12px] hover:bg-accent"
-            >
-              <span className="flex size-4 items-center justify-center">
-                {checked ? <Check size={12} /> : null}
-              </span>
-              <SourceGlyph platform={source} size={12} />
-              <span className="flex-1 text-left">{cfg.label}</span>
-            </button>
-          )
-        })}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="flex items-center justify-between">
+            <span>Sources</span>
+            {filterCount > 0 && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault()
+                  onClearSources()
+                }}
+                className="text-[10px] font-normal text-muted-foreground hover:text-foreground"
+              >
+                Clear
+              </button>
+            )}
+          </DropdownMenuLabel>
+          {REQUEST_SOURCES.map((source) => {
+            const cfg = SOURCE_CONFIG[source]
+            const checked = activeSources.has(source)
+            return (
+              <button
+                key={source}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  onToggleSource(source)
+                }}
+                className="flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[12px] outline-none hover:bg-accent"
+              >
+                <span className="flex size-3.5 items-center justify-center">
+                  {checked ? <Check size={11} /> : null}
+                </span>
+                <SourceGlyph platform={source} size={12} />
+                <span className="flex-1 text-left">{cfg.label}</span>
+              </button>
+            )
+          })}
+        </DropdownMenuGroup>
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuLabel>Sort by</DropdownMenuLabel>
-        <DropdownMenuRadioGroup
-          value={sortKey}
-          onValueChange={(value) => onSortChange(value as SortKey)}
-        >
-          {(Object.keys(SORT_LABEL) as SortKey[]).map((key) => (
-            <DropdownMenuRadioItem key={key} value={key} className="text-[12px]">
-              {SORT_LABEL[key]}
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+          <DropdownMenuRadioGroup
+            value={sortKey}
+            onValueChange={(value) => onSortChange(value as SortKey)}
+          >
+            {(Object.keys(SORT_LABEL) as SortKey[]).map((key) => (
+              <DropdownMenuRadioItem key={key} value={key} className="text-[12px]">
+                {SORT_LABEL[key]}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   )
