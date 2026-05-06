@@ -45,6 +45,8 @@
     --navbar-border: #EBEBEB;
     --navbar-foreground: #252728;
     --navbar-accent: #252728;
+    --toolbar: #FAFAFA;
+    --toolbar-foreground: #252728;
 }
 
 .dark {
@@ -84,6 +86,8 @@
     --navbar-border: #2E2E2E;
     --navbar-foreground: #F7F7F4;
     --navbar-accent: #F7F7F4;
+    --toolbar: #1C1C1C;
+    --toolbar-foreground: #F7F7F4;
 }
 
 @theme inline {
@@ -130,6 +134,8 @@
     --color-navbar-border: var(--navbar-border);
     --color-navbar-foreground: var(--navbar-foreground);
     --color-navbar-accent: var(--navbar-accent);
+    --color-toolbar: var(--toolbar);
+    --color-toolbar-foreground: var(--toolbar-foreground);
     --font-sans: var(--font-sans);
 }
 

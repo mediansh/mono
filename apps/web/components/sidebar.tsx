@@ -23,6 +23,7 @@ import {
   CreditCard,
   ShieldCheck,
   ArrowSquareOut,
+  Tray,
 } from "@phosphor-icons/react"
 import { Facehash } from "facehash"
 import {
@@ -77,6 +78,7 @@ import {
 
 const mainNav = [
   { label: "Home", href: "/app", icon: House },
+  { label: "Requests", href: "/app/requests", icon: Tray },
   { label: "Logs", href: "/app/logs", icon: ClockCounterClockwise },
   { label: "Billing", href: "/app/billing", icon: CreditCard },
 ]
@@ -284,6 +286,13 @@ export function AppSidebar() {
   const { theme, setTheme } = useTheme()
   const { workspaces, currentWorkspace, switchWorkspace } = useWorkspace()
   const canManageTasks = hasTaskWritePermission(currentWorkspace?.role)
+  const workspaceTasks = useQuery(
+    api.tasks.listByWorkspace,
+    currentWorkspace?._id ? { workspaceId: currentWorkspace._id } : "skip"
+  )
+  const requestsCount = workspaceTasks
+    ? workspaceTasks.filter((task) => task.status === "requests").length
+    : 0
 
   useEffect(() => setMounted(true), [])
 
@@ -378,6 +387,8 @@ export function AppSidebar() {
                   const isActive = item.href === "/app"
                     ? pathname === "/app"
                     : pathname.startsWith(item.href)
+                  const showRequestsBadge =
+                    item.href === "/app/requests" && requestsCount > 0
                   return (
                     <SidebarMenuItem key={item.href}>
                       <SidebarMenuButton
@@ -391,6 +402,11 @@ export function AppSidebar() {
                       >
                         <item.icon size={15} weight={isActive ? "fill" : "regular"} />
                         <span>{item.label}</span>
+                        {showRequestsBadge && (
+                          <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-[4px] bg-sidebar-accent px-1 font-mono text-[10px] font-medium text-sidebar-accent-foreground tabular-nums group-data-[collapsible=icon]:hidden">
+                            {requestsCount}
+                          </span>
+                        )}
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   )
