@@ -100,11 +100,12 @@ export default function IntegrationsPage() {
           <Warning size={14} weight="fill" className="mt-0.5 shrink-0 text-amber-500" />
           <div className="min-w-0 flex-1">
             <p className="text-[12px] font-medium text-foreground">
-              Ingest paused — you&apos;re out of events
+              Ingest paused — you&apos;re out of credits
             </p>
             <p className="mt-0.5 text-[11px] text-muted-foreground">
-              Discord scanning, Slack, Linear, GitHub, and X webhooks are not syncing new
-              events because overages are disabled for this workspace.{" "}
+              Discord scanning, Slack, Linear, GitHub, and X webhooks are paused
+              because this workspace has exhausted its credits and overages are
+              disabled.{" "}
               <Link
                 href="/app/billing"
                 className="underline underline-offset-2 hover:text-foreground"

@@ -56,6 +56,12 @@ export const AUTUMN_BILLING_PLANS = [
   },
 ] as const
 
+const PAID_PLAN_IDS: Set<string> = new Set(
+  AUTUMN_BILLING_PLANS
+    .filter((plan) => plan.id !== FREE_PLAN_ID)
+    .map((plan) => plan.id)
+)
+
 export function isFreePlan(planId: string | null | undefined): boolean {
   return planId === FREE_PLAN_ID
 }
@@ -63,11 +69,11 @@ export function isFreePlan(planId: string | null | undefined): boolean {
 // Free tier is restricted to the lower-cost AI tier — no advanced model access,
 // and no paid overages beyond the included credits.
 export function planAllowsAdvancedAi(planId: string | null | undefined): boolean {
-  return !isFreePlan(planId)
+  return typeof planId === "string" && PAID_PLAN_IDS.has(planId)
 }
 
 export function planAllowsOverages(planId: string | null | undefined): boolean {
-  return !isFreePlan(planId)
+  return typeof planId === "string" && PAID_PLAN_IDS.has(planId)
 }
 
 export const BILLING_RECORD_PAGE_SIZE = 100

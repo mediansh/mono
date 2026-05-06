@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, createContext, useContext } from "react"
+import { useState, useEffect, useRef, useId, createContext, useContext } from "react"
 import { useTheme } from "next-themes"
 import Link from "next/link"
 import { motion, AnimatePresence } from "motion/react"
@@ -70,7 +70,7 @@ export function LandingPricing() {
           </h2>
           <p className="mt-3 text-muted-foreground sm:text-lg">
             Pay-as-you-go credits. Every dollar you spend becomes a dollar of
-            credits — every plan unlocks all features.
+            credits — features and model access vary by plan.
           </p>
         </motion.div>
 
@@ -371,6 +371,7 @@ function FreePlanCard({
 function CreditsTooltip({ credits }: { credits: number }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLSpanElement>(null)
+  const tooltipId = useId()
 
   useEffect(() => {
     if (!open) return
@@ -397,18 +398,36 @@ function CreditsTooltip({ credits }: { credits: number }) {
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
     >
-      <Info
-        size={14}
-        weight="fill"
-        className="cursor-help text-foreground/30 transition-colors hover:text-foreground/50"
+      <button
+        type="button"
+        aria-label="Explain credits pricing"
+        aria-expanded={open}
+        aria-controls={open ? tooltipId : undefined}
+        aria-haspopup="dialog"
+        className="inline-flex rounded-sm text-foreground/30 transition-colors hover:text-foreground/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30"
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            setOpen(false)
+            e.currentTarget.blur()
+          }
+        }}
         onTouchEnd={(e) => {
           e.preventDefault()
           setOpen((prev) => !prev)
         }}
-      />
+      >
+        <Info
+          size={14}
+          weight="fill"
+          className="cursor-help"
+        />
+      </button>
       <AnimatePresence>
         {open && (
           <motion.div
+            id={tooltipId}
             initial={{ opacity: 0, y: 4, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 4, scale: 0.96 }}

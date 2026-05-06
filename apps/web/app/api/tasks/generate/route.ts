@@ -261,12 +261,20 @@ export const POST = withAxiom(async (request: Request) => {
         )
       }
     } catch (quotaError) {
-      logger.warn("Quota check failed — allowing AI generation", {
+      logger.warn("Quota check failed — blocking AI generation", {
         userId,
         workspaceId,
         error:
           quotaError instanceof Error ? quotaError.message : "Unknown error",
       })
+      return NextResponse.json(
+        {
+          error:
+            "Credits exhausted. Overages are disabled for this workspace — upgrade your plan to keep generating tasks.",
+          code: "credits_exhausted",
+        },
+        { status: 402 }
+      )
     }
 
     logger.info("Generating tasks with AI", {

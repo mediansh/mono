@@ -235,7 +235,36 @@ export async function loadWorkspaceBillingSnapshot(args: {
     balanceKeys: Object.keys(customer.balances ?? {}),
   })
 
-  const [plans, creditsUsage, recentEvents] = await Promise.all([
+  const activeSubscription = customer.subscriptions.find(
+    (subscription) => subscription.status === "active"
+  )
+  const cycleRange = {
+    start:
+      activeSubscription?.currentPeriodStart ??
+      Date.now() - 30 * 24 * 60 * 60 * 1000,
+    end: Date.now(),
+  }
+
+  async function loadCycleEvents() {
+    const events = []
+    let offset = 0
+
+    while (true) {
+      const page = await client.events.list({
+        customerId,
+        limit: BILLING_RECORD_PAGE_SIZE,
+        offset,
+        customRange: cycleRange,
+      })
+      events.push(...page.list)
+      if (page.list.length < BILLING_RECORD_PAGE_SIZE) {
+        return events
+      }
+      offset += BILLING_RECORD_PAGE_SIZE
+    }
+  }
+
+  const [plans, creditsUsage, recentEvents, cycleEvents] = await Promise.all([
     client.plans.list({ customerId }),
     client.events.aggregate({
       customerId,
@@ -247,14 +276,9 @@ export async function loadWorkspaceBillingSnapshot(args: {
       customerId,
       limit: BILLING_RECORD_PAGE_SIZE,
       offset: 0,
-      customRange: {
-        start:
-          customer.subscriptions.find(
-            (subscription) => subscription.status === "active"
-          )?.currentPeriodStart ?? Date.now() - 30 * 24 * 60 * 60 * 1000,
-        end: Date.now(),
-      },
+      customRange: cycleRange,
     }),
+    loadCycleEvents(),
   ])
 
   return {
@@ -262,6 +286,7 @@ export async function loadWorkspaceBillingSnapshot(args: {
     plans: plans.list,
     creditsUsage,
     recentEvents: recentEvents.list,
+    cycleEvents,
   }
 }
 

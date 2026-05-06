@@ -936,7 +936,7 @@ export const handleFeedbackProcessingComplete = internalMutation({
     }
     const completionReason = getCompletedProcessingReason(args.result)
     const shouldPauseProcessing =
-      completionReason === "events_exhausted" ||
+      completionReason === "credits_exhausted" ||
       completionReason === "no_active_plan"
 
     await recordRunDirect(ctx, {
@@ -1054,7 +1054,7 @@ export const processFeedbackWindow = internalAction({
       }
 
       // Hard-stop scanning when overages are disabled and the workspace has
-      // run out of events. We bail before any LLM call so the workspace isn't
+      // run out of credits. We bail before any LLM call so the workspace isn't
       // billed for AI usage tied to ingest the user has paused.
       const quotaStatus = (await ctx.runAction(
         internal.billing.getWorkspaceQuotaStatusInternal,
@@ -1062,15 +1062,15 @@ export const processFeedbackWindow = internalAction({
       )) as WorkspaceQuotaStatus
 
       if (quotaStatus.creditsExhausted) {
-        logInfo("Skipping Discord feedback scan — events exhausted", {
+        logInfo("Skipping Discord feedback scan — credits exhausted", {
           integrationId: args.integrationId,
           workspaceId: feedbackWindow.integration.workspaceId,
         })
         await ctx.runMutation(markFeedbackProcessingPausedMutation, {
           integrationId: args.integrationId,
-          reason: "Paused — events exhausted (overages disabled)",
+          reason: "Paused — credits exhausted (overages disabled)",
         })
-        return { skipped: true, reason: "events_exhausted" }
+        return { skipped: true, reason: "credits_exhausted" }
       }
 
       const pendingMessagesBeforeIgnore = feedbackWindow.messages.filter(

@@ -36,6 +36,7 @@ import { toast } from "sonner"
 import Link from "next/link"
 import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
+import { EVENT_CREDIT_COST } from "@/lib/billing/config"
 
 function Stagger({ children, className }: { children: ReactNode; className?: string }) {
   return (
@@ -66,6 +67,7 @@ type BillingPlan = {
   credits: number
   trialDays: number
   features: string[]
+  hasPrioritySupport: boolean
   eligibility: {
     attachAction: "activate" | "upgrade" | "downgrade" | "purchase" | "none"
     status: "active" | "scheduled" | null
@@ -543,6 +545,10 @@ export default function BillingPage() {
     dashboard.plans.find((plan) => plan.id === dashboard.currentPlanId) ?? null
   const overageConfirmPlan =
     dashboard.plans.find((plan) => plan.id === overageConfirmPlanId) ?? null
+  const showCreditsWarning =
+    dashboard.summary.creditsOverage > 0 ||
+    (dashboard.disableOveragesWhenExhausted &&
+      dashboard.summary.creditsRemaining <= 0)
 
   return (
     <Stagger className="h-full overflow-y-auto">
@@ -749,7 +755,7 @@ export default function BillingPage() {
             </span>
             <span className="text-muted-foreground/50">·</span>
             <span>
-              Events at $0.007 · AI charged at cost
+              Events at ${EVENT_CREDIT_COST.toFixed(3)} · AI charged at cost
             </span>
           </div>
         </motion.div>
@@ -813,7 +819,7 @@ export default function BillingPage() {
                     </span>
                   </div>
 
-                  {plan.id === "scale" && (
+                  {plan.hasPrioritySupport && (
                     <div className="mt-1.5 flex items-center gap-1.5 text-[12px] text-foreground/80">
                       <Star size={12} weight="bold" className="text-foreground/60" />
                       <span>Priority support</span>
@@ -865,7 +871,7 @@ export default function BillingPage() {
           />
         </motion.div>
 
-        {dashboard.summary.creditsOverage > 0 && (
+        {showCreditsWarning && (
           <motion.div
             variants={fadeUp}
             className="mb-6 flex items-start gap-2.5 rounded-[4px] bg-amber-500/5 p-3 ring-1 ring-amber-500/20"
@@ -878,10 +884,11 @@ export default function BillingPage() {
                   : "You have credit overages this cycle"}
               </p>
               <p className="mt-0.5 text-[11px] text-muted-foreground">
-                {`${formatCurrency(dashboard.summary.creditsOverage)} in usage beyond your ${formatCurrency(dashboard.summary.creditsBudget)} credit budget. `}
                 {dashboard.disableOveragesWhenExhausted
-                  ? "Ingest is paused — overages are disabled. Upgrade your plan to resume."
-                  : "Overages are automatically charged at the end of the billing cycle."}
+                  ? dashboard.summary.creditsOverage > 0
+                    ? `${formatCurrency(dashboard.summary.creditsOverage)} in usage beyond your ${formatCurrency(dashboard.summary.creditsBudget)} credit budget. Ingest is paused — overages are disabled. Upgrade your plan to resume.`
+                    : `You've used your ${formatCurrency(dashboard.summary.creditsBudget)} credit budget. Ingest is paused — overages are disabled. Upgrade your plan to resume.`
+                  : `${formatCurrency(dashboard.summary.creditsOverage)} in usage beyond your ${formatCurrency(dashboard.summary.creditsBudget)} credit budget. Overages are automatically charged at the end of the billing cycle.`}
               </p>
             </div>
           </motion.div>

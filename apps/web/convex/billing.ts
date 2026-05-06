@@ -10,12 +10,12 @@ import { internal } from "./_generated/api"
 import {
   AUTUMN_BILLING_PLANS,
   AUTUMN_CREDITS_FEATURE_ID,
-  BILLING_RECORD_PAGE_SIZE,
   EVENT_CREDIT_COST,
   formatTrackedModelName,
   getCurrentMonthLabel,
   getPlanCopy,
   isFreePlan,
+  isTrackedAiModel,
   planAllowsOverages,
 } from "../lib/billing/config"
 import {
@@ -30,7 +30,6 @@ import {
   requireWorkspaceAccess,
   requireWorkspaceAdminAccess,
 } from "./permissions"
-import type { TrackedAiModel } from "../lib/billing/config"
 
 type AggregateRow = {
   period: number
@@ -100,6 +99,7 @@ type WorkspaceBillingDashboard = {
     credits: number
     trialDays: number
     features: string[]
+    hasPrioritySupport: boolean
     eligibility: {
       attachAction: "activate" | "upgrade" | "downgrade" | "purchase" | "none"
       status: "active" | "scheduled" | null
@@ -208,8 +208,8 @@ function buildUsageRecords(events: ListEvent[]) {
     }
 
     if (kind === "ai") {
-      const model = typeof event.properties.model === "string"
-        ? event.properties.model as TrackedAiModel
+      const modelString = typeof event.properties.model === "string"
+        ? event.properties.model
         : null
       const feature =
         typeof event.properties.feature === "string"
@@ -226,7 +226,11 @@ function buildUsageRecords(events: ListEvent[]) {
         ? event.properties.cost
         : event.value
 
-      const modelLabel = model ? formatTrackedModelName(model) : "AI"
+      const modelLabel = modelString
+        ? isTrackedAiModel(modelString)
+          ? formatTrackedModelName(modelString)
+          : modelString
+        : "AI"
 
       records.push({
         id: event.id,
@@ -416,12 +420,12 @@ async function computeWorkspaceQuotaStatus(settings: {
       workspaceName: settings.workspaceName,
     })
 
-    const creditsBalance = getBalance(balances, AUTUMN_CREDITS_FEATURE_ID)
+    const creditsBalance = balances[AUTUMN_CREDITS_FEATURE_ID] ?? null
 
     return {
       overagesDisabled: true,
       creditsExhausted:
-        creditsBalance.granted > 0 && creditsBalance.remaining <= 0,
+        creditsBalance !== null && creditsBalance.remaining <= 0,
     }
   } catch (error) {
     console.error(
@@ -584,12 +588,12 @@ export const getWorkspaceBillingDashboard = action({
       }
     })
 
-    // Reconstruct AI vs event breakdown from recent events (best-effort,
-    // bounded to BILLING_RECORD_PAGE_SIZE).
+    // Reconstruct AI vs event breakdown from the full billing cycle. The
+    // display list stays capped, but summary totals must not depend on it.
     let aiSpend = 0
     let aiCalls = 0
     let eventCount = 0
-    for (const event of snapshot.recentEvents as Array<ListEvent>) {
+    for (const event of snapshot.cycleEvents as Array<ListEvent>) {
       if (event.featureId !== AUTUMN_CREDITS_FEATURE_ID) continue
       const kind =
         typeof event.properties.kind === "string"
@@ -605,9 +609,7 @@ export const getWorkspaceBillingDashboard = action({
       }
     }
 
-    const usageRecords = buildUsageRecords(
-      (snapshot.recentEvents as Array<ListEvent>).slice(0, BILLING_RECORD_PAGE_SIZE)
-    )
+    const usageRecords = buildUsageRecords(snapshot.recentEvents as Array<ListEvent>)
 
     const planOrder = new Map<string, number>(
       AUTUMN_BILLING_PLANS.map((plan, index) => [plan.id, index] as [string, number])
@@ -629,6 +631,9 @@ export const getWorkspaceBillingDashboard = action({
           credits: planCopy.credits,
           trialDays: planCopy.trialDays,
           features: planCopy.features,
+          hasPrioritySupport: planCopy.features.some((feature) =>
+            feature.toLowerCase().includes("priority support")
+          ),
           eligibility: {
             attachAction: normalizeAttachAction(
               plan.customerEligibility?.attachAction
