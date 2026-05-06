@@ -139,11 +139,10 @@ import {
   trackTaskMoved,
   trackTasksBulkUpdated,
   trackTasksBulkDeleted,
-  trackRequestAccepted,
-  trackRequestDenied,
   trackColumnToggled,
   trackNewTaskModalOpened,
 } from "@/lib/analytics"
+import { useRequestActions } from "@/hooks/use-request-actions"
 import { useIsMobile } from "@workspace/ui/hooks/use-mobile"
 
 interface Task extends Omit<TaskDoc, "attachments"> {
@@ -180,9 +179,9 @@ function computeCommonAssignees(
   return Array.from(common.values())
 }
 
-// Column config
+// Column config — note: "requests" is intentionally absent. Requests now
+// have their own dedicated tab at /app/requests.
 const COLUMNS: { id: Status; label: string }[] = [
-  { id: "requests", label: "Requests" },
   { id: "todo", label: "Todo" },
   { id: "in_progress", label: "In Progress" },
   { id: "ready", label: "Ready" },
@@ -881,246 +880,6 @@ function SourceIcon({
   )
 }
 
-// ── Request Row Component ──
-
-const RequestRow = memo(function RequestRow({
-  task,
-  dismissed,
-  onAccept,
-  onDeny,
-  onSelect,
-  canManageTasks,
-}: {
-  task: Task
-  dismissed: boolean
-  onAccept: (task: Task) => void
-  onDeny: (task: Task) => void
-  onSelect: (task: Task) => void
-  canManageTasks: boolean
-}) {
-  const sources = getTaskSources(task)
-  const { colors: labelColors } = useLabelConfig()
-
-  if (dismissed) {
-    return <div className="invisible" aria-hidden />
-  }
-
-  return (
-    <div
-      onClick={() => onSelect(task)}
-      className="flex h-full min-w-0 cursor-pointer flex-col rounded-[4px] bg-background ring-1 ring-border transition-colors hover:border-border/80 hover:bg-accent/20 dark:bg-card"
-    >
-      {/* Card body */}
-      <div className="flex flex-1 flex-col p-2.5 pb-0">
-        {/* Title */}
-        <p className="mb-2 text-[13px] leading-snug font-medium break-words text-foreground/90">
-          {task.title}
-        </p>
-
-        {/* Middle: priority + labels (left) | integration icons (right) */}
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-1.5">
-            {(task.labels ?? []).map((label) => (
-              <span
-                key={label}
-                className="rounded-[4px] px-1.5 py-0.5 text-[9px] font-medium capitalize"
-                style={{
-                  backgroundColor: (labelColors[label] ?? "#6b7280") + "18",
-                  color: labelColors[label] ?? "#6b7280",
-                }}
-              >
-                {label}
-              </span>
-            ))}
-          </div>
-          <SourceIcons task={task} />
-        </div>
-      </div>
-
-      {/* Footer: date + task code */}
-      <div className="flex items-center justify-between border-t border-border px-2.5 py-1.5">
-        <span className="text-[10px] text-muted-foreground/50">
-          {task.createdAt}
-        </span>
-        <span className="font-mono text-[10px] text-muted-foreground/50 tabular-nums">
-          {task.taskCode}
-        </span>
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-stretch border-t border-border">
-        <button
-          disabled={!canManageTasks}
-          onClick={(e) => {
-            e.stopPropagation()
-            onAccept(task)
-          }}
-          className="flex flex-1 items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/10 disabled:opacity-50 dark:text-emerald-400"
-        >
-          <CheckCircle size={12} weight="fill" />
-          Accept
-        </button>
-        <div className="w-px bg-border" />
-        <button
-          disabled={!canManageTasks}
-          onClick={(e) => {
-            e.stopPropagation()
-            onDeny(task)
-          }}
-          className="flex flex-1 items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium text-red-600 transition-colors hover:bg-red-500/10 disabled:opacity-50 dark:text-red-400"
-        >
-          <XCircle size={12} />
-          Deny
-        </button>
-      </div>
-    </div>
-  )
-})
-
-// ── Requests Group (non-draggable, distinct design) ──
-
-const REQUESTS_PREVIEW_LIMIT = 3
-
-function RequestsGroup({
-  tasks,
-  groupIndex,
-  collapsed,
-  canManageTasks,
-  onToggleCollapsed,
-  onAccept,
-  onDeny,
-  onSelectTask,
-}: {
-  tasks: Task[]
-  groupIndex: number
-  collapsed: boolean
-  canManageTasks: boolean
-  onToggleCollapsed: () => void
-  onAccept: (task: Task) => void
-  onDeny: (task: Task) => void
-  onSelectTask: (task: Task) => void
-}) {
-  const [showAll, setShowAll] = useState(false)
-  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set())
-
-  // Clean up dismissed IDs that are no longer in the task list
-  useEffect(() => {
-    if (dismissedIds.size === 0) return
-    const taskIdSet = new Set(tasks.map((t) => t.id))
-    setDismissedIds((prev) => {
-      const next = new Set<string>()
-      for (const id of prev) {
-        if (taskIdSet.has(id)) next.add(id)
-      }
-      return next.size === prev.size ? prev : next
-    })
-  }, [tasks]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleAccept = useCallback(
-    (task: Task) => {
-      setDismissedIds((prev) => new Set(prev).add(task.id))
-      onAccept(task)
-    },
-    [onAccept]
-  )
-
-  const handleDeny = useCallback(
-    (task: Task) => {
-      setDismissedIds((prev) => new Set(prev).add(task.id))
-      onDeny(task)
-    },
-    [onDeny]
-  )
-
-  const hasMore = tasks.length > REQUESTS_PREVIEW_LIMIT
-  const visibleTasks = showAll ? tasks : tasks.slice(0, REQUESTS_PREVIEW_LIMIT)
-  const hiddenCount = tasks.length - REQUESTS_PREVIEW_LIMIT
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.25, ease: "easeOut" }}
-      className="mb-1.5 overflow-hidden rounded-[4px] ring-1 ring-border"
-    >
-      {/* Group header — distinct style */}
-      <button
-        onClick={onToggleCollapsed}
-        className="flex w-full items-center gap-2.5 bg-card px-3 py-1.5 text-left transition-colors hover:bg-accent dark:bg-card dark:hover:bg-accent/40"
-      >
-        <span
-          className="text-[10px] text-muted-foreground/60"
-          style={{
-            display: "inline-block",
-            transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)",
-          }}
-        >
-          ▼
-        </span>
-        {getColumnIcon("requests")}
-        <span className="text-[13px] font-semibold tracking-tight">
-          Requests
-        </span>
-        <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
-          {tasks.length}
-        </span>
-        <span className="ml-1 text-[11px] text-muted-foreground/50">
-          from users
-        </span>
-      </button>
-
-      {/* Cards — no drag, no sortable context */}
-      <AnimatePresence initial={false}>
-        {!collapsed && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
-            className="overflow-hidden"
-          >
-          <div className="grid grid-cols-1 gap-2 px-3 py-3 sm:grid-cols-2 lg:grid-cols-3">
-            {visibleTasks.map((task) => (
-              <RequestRow
-                key={task.id}
-                task={task}
-                dismissed={dismissedIds.has(task.id)}
-                canManageTasks={canManageTasks}
-                onAccept={handleAccept}
-                onDeny={handleDeny}
-                onSelect={onSelectTask}
-              />
-            ))}
-          </div>
-          {hasMore && !showAll && (
-            <div className="px-3 pb-3">
-              <button
-                onClick={() => setShowAll(true)}
-                className="ring-dashed flex w-full items-center justify-center gap-1.5 rounded-[4px] py-2 text-[12px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent/40 hover:text-foreground"
-              >
-                View all requests
-                <span className="rounded-[4px] bg-muted px-1.5 py-0.5 text-[10px]">
-                  {hiddenCount} more
-                </span>
-              </button>
-            </div>
-          )}
-          {hasMore && showAll && (
-            <div className="px-3 pb-3">
-              <button
-                onClick={() => setShowAll(false)}
-                className="ring-dashed flex w-full items-center justify-center gap-1.5 rounded-[4px] py-2 text-[12px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent/40 hover:text-foreground"
-              >
-                Show fewer
-              </button>
-            </div>
-          )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
-  )
-}
 
 // ── Context Menu ──
 //
@@ -3169,8 +2928,6 @@ function ColumnBoardView({
   onDeleteTask,
   onBulkUpdateTasks,
   onBulkDeleteTasks,
-  onAcceptRequest,
-  onDenyRequest,
   onAddTask,
 }: {
   tasks: Task[]
@@ -3191,14 +2948,9 @@ function ColumnBoardView({
     updates: Partial<Pick<Task, "status" | "priority" | "labels" | "assignees">>
   ) => void
   onBulkDeleteTasks: (taskIds: string[]) => void
-  onAcceptRequest: (task: Task) => void
-  onDenyRequest: (task: Task) => void
   onAddTask: (status: Status) => void
 }) {
-  const visibleColumns = COLUMNS.filter(
-    (c) => !hiddenColumns.includes(c.id) && c.id !== "requests"
-  )
-  const showRequests = !hiddenColumns.includes("requests")
+  const visibleColumns = COLUMNS.filter((c) => !hiddenColumns.includes(c.id))
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
   const lastToggledTaskIdRef = useRef<string | null>(null)
 
@@ -3529,55 +3281,9 @@ function ColumnBoardView({
           ref={scrollContainerRef}
           className="scrollbar-hide flex h-full gap-2 overflow-x-auto p-2"
         >
-          {/* Requests column — special treatment */}
-          {showRequests && tasksByColumn.requests.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-              className="flex h-full w-[260px] shrink-0 flex-col overflow-hidden rounded-[4px] ring-1 ring-border"
-            >
-              <div className="flex items-center gap-2 bg-card px-3 py-1.5 shadow-[inset_0_-1px_0_var(--border)] dark:bg-card">
-                {getColumnIcon("requests")}
-                <span className="text-[13px] font-semibold tracking-tight">
-                  Requests
-                </span>
-                <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
-                  {tasksByColumn.requests.length}
-                </span>
-                <span className="ml-1 text-[11px] text-muted-foreground/50">
-                  from users
-                </span>
-              </div>
-              <div
-                data-column-scroll
-                className="scrollbar-hide flex-1 overflow-y-auto p-2"
-              >
-                <div className="flex flex-col gap-2">
-                  {tasksByColumn.requests.map((task) => (
-                    <RequestRow
-                      key={task.id}
-                      task={task}
-                      dismissed={false}
-                      canManageTasks={canManageTasks}
-                      onAccept={onAcceptRequest}
-                      onDeny={onDenyRequest}
-                      onSelect={handleSelectTask}
-                    />
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Regular columns */}
           {visibleColumns.map((column, colIdx) => {
             const columnTasks = tasksByColumn[column.id]
-            // Offset columnIndex if requests column is showing
-            const columnIndex =
-              showRequests && tasksByColumn.requests.length > 0
-                ? colIdx + 1
-                : colIdx
+            const columnIndex = colIdx
             return (
               <div
                 key={column.id}
@@ -3694,8 +3400,6 @@ function ListView({
   onDeleteTask,
   onBulkUpdateTasks,
   onBulkDeleteTasks,
-  onAcceptRequest,
-  onDenyRequest,
   onAddTask,
 }: {
   tasks: Task[]
@@ -3718,25 +3422,15 @@ function ListView({
     updates: Partial<Pick<Task, "status" | "priority" | "labels" | "assignees">>
   ) => void
   onBulkDeleteTasks: (taskIds: string[]) => void
-  onAcceptRequest: (task: Task) => void
-  onDenyRequest: (task: Task) => void
   onAddTask: (status: Status) => void
 }) {
-  // Non-request columns only for DnD
-  const visibleColumns = COLUMNS.filter(
-    (c) => !hiddenColumns.includes(c.id) && c.id !== "requests"
-  )
-  const showRequests = !hiddenColumns.includes("requests")
+  const visibleColumns = COLUMNS.filter((c) => !hiddenColumns.includes(c.id))
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
   const lastToggledTaskIdRef = useRef<string | null>(null)
 
-  // Build ordered flat list of non-request tasks for shift-click range selection
   const orderedTaskIds = useMemo(() => {
-    const nonRequestCols = COLUMNS.filter(
-      (c) => c.id !== "requests" && !hiddenColumns.includes(c.id)
-    )
     const ids: string[] = []
-    for (const col of nonRequestCols) {
+    for (const col of visibleColumns) {
       if (!collapsedColumns.includes(col.id)) {
         for (const task of tasks) {
           if (task.status === col.id) ids.push(task.id)
@@ -3744,7 +3438,7 @@ function ListView({
       }
     }
     return ids
-  }, [tasks, hiddenColumns, collapsedColumns])
+  }, [tasks, visibleColumns, collapsedColumns])
 
   const handleSelectTask = useCallback(
     (task: Task) => {
@@ -3942,21 +3636,6 @@ function ListView({
         onDragEnd={handleDragEnd}
       >
         <div className="scrollbar-hide h-full overflow-y-auto px-3 py-2">
-          {/* Requests group — rendered separately, outside DnD sortable */}
-          {showRequests && tasksByColumn.requests.length > 0 && (
-            <RequestsGroup
-              tasks={tasksByColumn.requests}
-              groupIndex={0}
-              collapsed={collapsedColumns.includes("requests")}
-              canManageTasks={canManageTasks}
-              onToggleCollapsed={() => onToggleCollapsedColumn("requests")}
-              onAccept={onAcceptRequest}
-              onDeny={onDenyRequest}
-              onSelectTask={handleSelectTask}
-            />
-          )}
-
-          {/* Regular columns with DnD */}
           {visibleColumns.map((column, groupIndex) => {
             const columnTasks = tasksByColumn[column.id]
             return (
@@ -3964,7 +3643,7 @@ function ListView({
                 key={column.id}
                 column={column}
                 tasks={columnTasks}
-                groupIndex={showRequests ? groupIndex + 1 : groupIndex}
+                groupIndex={groupIndex}
                 isDropTarget={
                   overColumn === column.id &&
                   activeTaskSource !== null &&
@@ -4506,6 +4185,12 @@ export function KanbanBoard() {
   const lastLoadedWorkspaceIdRef = useRef<string | null>(null)
   const lastLocalChangeRef = useRef<number>(0)
 
+  const { acceptRequest, denyRequest } = useRequestActions({
+    onLocalChange: () => {
+      lastLocalChangeRef.current = Date.now()
+    },
+  })
+
   const workspaceId = currentWorkspace?._id
   const canManageTasks = hasTaskWritePermission(currentWorkspace?.role)
   const taskDocs = workspaceId ? tasksByWorkspace[workspaceId] : undefined
@@ -4660,7 +4345,13 @@ export function KanbanBoard() {
     }
   }, [cleanedWorkspaceIds, clearDemoTasks, taskDocs, workspaceId])
 
-  const tasks = useMemo(() => (taskDocs ?? []).map(mapTaskDoc), [taskDocs])
+  const tasks = useMemo(
+    () =>
+      (taskDocs ?? [])
+        .filter((doc) => doc.status !== "requests")
+        .map(mapTaskDoc),
+    [taskDocs]
+  )
 
   const filteredTasks = useMemo(() => {
     const search = filter.search.trim().toLowerCase()
@@ -4752,57 +4443,6 @@ export function KanbanBoard() {
       : collapsedColumns.filter((column) => column !== status)
 
     setCollapsedWorkspaceColumns(workspaceId, nextCollapsed)
-  }
-
-  function handleAcceptRequest(task: Task) {
-    if (!workspaceId || !canManageTasks) return
-    lastLocalChangeRef.current = Date.now()
-    let snapshotBefore: TaskDoc[] | undefined
-    updateWorkspaceTasks(workspaceId, (current) => {
-      snapshotBefore = current
-      return moveTaskDocs(current, task.id, "todo", 0)
-    })
-    toast.success(`Accepted "${task.title}" → Todo`)
-    trackRequestAccepted({ taskId: task.id })
-    if (isDevTask(task.id)) return
-    // Read the freshly-written state for the server call
-    const freshTasks =
-      getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
-    void reorderTasks({
-      workspaceId,
-      changes: freshTasks
-        .filter((item) => !isDevTask(item._id))
-        .map((item) => ({
-          taskId: item._id as Id<"tasks">,
-          status: item.status,
-          order: item.order,
-        })),
-    }).catch(() => {
-      if (snapshotBefore) setWorkspaceTasks(workspaceId, snapshotBefore)
-      toast.error("Failed to accept request. Try again.")
-    })
-  }
-
-  function handleDenyRequest(task: Task) {
-    if (!workspaceId || !canManageTasks || task.id.startsWith("optimistic:"))
-      return
-    lastLocalChangeRef.current = Date.now()
-    let removedTask: TaskDoc | undefined
-    updateWorkspaceTasks(workspaceId, (current) => {
-      removedTask = current.find((item) => item._id === task.id)
-      return current.filter((item) => item._id !== task.id)
-    })
-    toast.success(`Denied "${task.title}".`)
-    trackRequestDenied({ taskId: task.id })
-    if (isDevTask(task.id)) return
-    void deleteTask({ taskId: task.id as Id<"tasks"> }).catch(() => {
-      if (removedTask) {
-        updateWorkspaceTasks(workspaceId, (current) =>
-          sortTaskDocs([...current, removedTask!])
-        )
-      }
-      toast.error("Failed to deny request. Try again.")
-    })
   }
 
   function handleUpdateTask(taskId: string, updates: Partial<Task>) {
@@ -5187,18 +4827,18 @@ export function KanbanBoard() {
 
   const handlePanelAccept = useCallback(
     (task: Task) => {
-      handleAcceptRequest(task)
+      acceptRequest(task)
       setSelectedTaskId(null)
     },
-    [handleAcceptRequest]
+    [acceptRequest]
   )
 
   const handlePanelDeny = useCallback(
     (task: Task) => {
-      handleDenyRequest(task)
+      denyRequest(task)
       setSelectedTaskId(null)
     },
-    [handleDenyRequest]
+    [denyRequest]
   )
 
   return (
@@ -5251,8 +4891,6 @@ export function KanbanBoard() {
                   onDeleteTask={handleDeleteTask}
                   onBulkUpdateTasks={handleBulkUpdateTasks}
                   onBulkDeleteTasks={handleBulkDeleteTasks}
-                  onAcceptRequest={handleAcceptRequest}
-                  onDenyRequest={handleDenyRequest}
                   onAddTask={handleAddTask}
                 />
               ) : (
@@ -5270,8 +4908,6 @@ export function KanbanBoard() {
                   onDeleteTask={handleDeleteTask}
                   onBulkUpdateTasks={handleBulkUpdateTasks}
                   onBulkDeleteTasks={handleBulkDeleteTasks}
-                  onAcceptRequest={handleAcceptRequest}
-                  onDenyRequest={handleDenyRequest}
                   onAddTask={handleAddTask}
                 />
               )}
