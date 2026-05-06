@@ -11,12 +11,25 @@ charged at cost, and integration events draw a flat per-event price.
 
 | Plan | Price | Credits / mo | Trial | Extras |
 | --- | --- | --- | --- | --- |
-| Starter | \$5 | \$5 | 7 days | — |
-| Plus | \$10 | \$10 | — | — |
-| Scale | \$20 | \$20 | — | Priority support |
+| Free | \$0 | \$0.50 | — | Standard AI model only · hard-capped |
+| Starter | \$5 | \$5 | 7 days | Advanced AI model |
+| Plus | \$10 | \$10 | — | Advanced AI model |
+| Scale | \$20 | \$20 | — | Advanced AI model · Priority support |
 
-Every plan unlocks every feature. The only difference between plans is the
-amount of credits granted each cycle.
+Paid plans unlock every feature, including the advanced AI model. The only
+difference between paid plans is the amount of credits granted each cycle.
+
+### Free tier caveats
+
+The Free plan is meant for evaluating Median end-to-end without a card. It
+has a few hard limits that paid plans don't:
+
+- **Standard AI model only** — feedback extraction and task generation run
+  on the lower-cost model. The advanced model is reserved for paid plans.
+- **Hard-capped at \$0.50 of credits per month** — usage stops cleanly when
+  credits run out; nothing is billed beyond that.
+- **No paid overages** — the "Hard cap usage at plan credits" toggle is
+  permanently on. To exceed \$0.50 in a month, upgrade to a paid plan.
 
 ## How credits are spent
 
@@ -37,10 +50,14 @@ of a cent.
 
 ## Overages
 
-Usage beyond your monthly credits is **auto-charged at the end of the
-billing cycle** at the same per-event and per-token rates. There is no
-overage premium — \$1 of usage costs \$1 whether it is inside or outside
-your included credits.
+On paid plans, usage beyond your monthly credits is **auto-charged at the
+end of the billing cycle** at the same per-event and per-token rates. There
+is no overage premium — \$1 of usage costs \$1 whether it is inside or
+outside your included credits.
+
+The Free plan does not support paid overages. Once your \$0.50 of credits
+is spent, ingest and AI generation pause until the next cycle or an
+upgrade.
 
 ### Hard-cap mode
 
@@ -57,6 +74,14 @@ dashboard.
 ## Worked examples
 
 <AccordionGroup>
+  <Accordion title="Trying Median, free plan">
+    A developer signs up to evaluate Median, ingests ~30 Discord messages
+    and runs a handful of AI task generations.
+
+    - Events: 30 × \$0.007 = **\$0.21**
+    - AI: ~\$0.10 (standard model only)
+    - **Total used: ~\$0.31** of \$0.50 — well within the free cap.
+  </Accordion>
   <Accordion title="Solo developer, $5 starter plan">
     A solo developer ingests ~300 GitHub events and runs ~50 AI task
     generations in a month.
@@ -92,6 +117,10 @@ dashboard.
   <Accordion title="Can I change plans mid-cycle?">
     Yes. Upgrades take effect immediately and are pro-rated. Downgrades
     schedule for the next cycle.
+  </Accordion>
+  <Accordion title="Can I stay on the free plan forever?">
+    Yes. The free plan has no time limit — it just hard-caps at \$0.50 in
+    credits per month and routes AI work to the standard model.
   </Accordion>
   <Accordion title="What counts as an integration event?">
     Anything ingested from a connected source — a new Discord message in a
