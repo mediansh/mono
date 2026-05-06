@@ -15,6 +15,8 @@ import {
   formatTrackedModelName,
   getCurrentMonthLabel,
   getPlanCopy,
+  isFreePlan,
+  planAllowsOverages,
 } from "../lib/billing/config"
 import {
   attachWorkspacePlan,
@@ -50,6 +52,7 @@ type WorkspaceBillingContext = {
   workspaceName: string
   canManageBilling: boolean
   disableOveragesWhenExhausted: boolean
+  currentPlanId: string | null
   user: {
     id: string
     email: string | null
@@ -66,6 +69,7 @@ type WorkspaceBillingDashboard = {
   currentPlanName: string
   canManageBilling: boolean
   disableOveragesWhenExhausted: boolean
+  overagesToggleLocked: boolean
   monthLabel: string
   cycleStart: number | null
   cycleEnd: number | null
@@ -267,11 +271,15 @@ export const getWorkspaceBillingContext = internalQuery({
       throw new Error("Workspace not found")
     }
 
+    const currentPlanId = workspace.currentPlanId ?? null
     return {
       workspaceId: workspace._id,
       workspaceName: workspace.name,
       canManageBilling: membership.role === "owner" || membership.role === "admin",
-      disableOveragesWhenExhausted: workspace.disableOveragesWhenExhausted ?? false,
+      disableOveragesWhenExhausted:
+        !planAllowsOverages(currentPlanId) ||
+        (workspace.disableOveragesWhenExhausted ?? false),
+      currentPlanId,
       user: {
         id: identity.subject,
         email:
@@ -294,16 +302,25 @@ export const getWorkspaceOverageSettings = internalQuery({
     workspaceId: string
     workspaceName: string
     disableOveragesWhenExhausted: boolean
+    currentPlanId: string | null
   } | null> => {
     const workspace = await ctx.db.get(args.workspaceId)
     if (!workspace) {
       return null
     }
 
+    const currentPlanId = workspace.currentPlanId ?? null
+    // Free-tier workspaces always hard-cap at the included credits — they
+    // never get billed overages, regardless of the user-facing toggle.
+    const overagesDisabled =
+      !planAllowsOverages(currentPlanId) ||
+      (workspace.disableOveragesWhenExhausted ?? false)
+
     return {
       workspaceId: workspace._id,
       workspaceName: workspace.name,
-      disableOveragesWhenExhausted: workspace.disableOveragesWhenExhausted ?? false,
+      disableOveragesWhenExhausted: overagesDisabled,
+      currentPlanId,
     }
   },
 })
@@ -357,6 +374,19 @@ export const setWorkspaceDisableOverages = mutation({
   },
   handler: async (ctx, args): Promise<{ disableOveragesWhenExhausted: boolean }> => {
     await requireWorkspaceAdminAccess(ctx, args.workspaceId)
+    const workspace = await ctx.db.get(args.workspaceId)
+    if (!workspace) {
+      throw new Error("Workspace not found")
+    }
+
+    // Free-tier workspaces have overages permanently disabled and cannot
+    // toggle paid overages on without upgrading.
+    if (isFreePlan(workspace.currentPlanId ?? null) && !args.disableOveragesWhenExhausted) {
+      throw new Error(
+        "Free plan does not support paid overages. Upgrade your plan to enable overages."
+      )
+    }
+
     await ctx.db.patch(args.workspaceId, {
       disableOveragesWhenExhausted: args.disableOveragesWhenExhausted,
     })
@@ -611,12 +641,16 @@ export const getWorkspaceBillingDashboard = action({
 
     const totalCredits = creditsBalance.usage > 0 ? creditsBalance.usage : 0
 
+    const resolvedPlanId = activeSubscription?.planId ?? null
     return {
-      currentPlanId: activeSubscription?.planId ?? null,
+      currentPlanId: resolvedPlanId,
       currentPlanName:
-        plans.find((plan) => plan.id === activeSubscription?.planId)?.name ?? "No plan",
+        plans.find((plan) => plan.id === resolvedPlanId)?.name ?? "No plan",
       canManageBilling: billingContext.canManageBilling,
-      disableOveragesWhenExhausted: billingContext.disableOveragesWhenExhausted,
+      disableOveragesWhenExhausted:
+        !planAllowsOverages(resolvedPlanId) ||
+        billingContext.disableOveragesWhenExhausted,
+      overagesToggleLocked: !planAllowsOverages(resolvedPlanId),
       monthLabel: getCurrentMonthLabel(),
       cycleStart: activeSubscription?.currentPeriodStart ?? null,
       cycleEnd: activeSubscription?.currentPeriodEnd ?? null,

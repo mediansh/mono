@@ -1,6 +1,6 @@
 import { generateText } from "ai"
 import { trackLLMGeneration, trackFeedbackProcessing } from "./posthog"
-import { AI_MODEL_IDS, AI_MODELS } from "../lib/ai"
+import { AI_MODEL_IDS, AI_MODELS, getAiModelForPlan } from "../lib/ai"
 import { safeTrackAiUsage } from "../lib/billing/autumn"
 import { getAiCostForTokens } from "../lib/billing/config"
 import { Workpool, vOnCompleteArgs } from "@convex-dev/workpool"
@@ -887,9 +887,14 @@ export const processFeedbackWindow = internalAction({
         | undefined
       let extracted: z.infer<typeof extractedFeedbackTasksSchema> | null = null
 
+      const extractorSelection = getAiModelForPlan(
+        "feedbackExtractor",
+        planStatus.currentPlanId
+      )
+
       try {
         const extractorResult = await generateText({
-          model: AI_MODELS.feedbackExtractor,
+          model: extractorSelection.model,
           system: extractorSystemParts.join(" "),
           prompt: [
             `Classifier summary: ${classification.summary ?? classification.reason}`,
@@ -925,7 +930,7 @@ export const processFeedbackWindow = internalAction({
 
         await trackLLMGeneration({
           distinctId: feedbackWindow.integration.workspaceId,
-          model: AI_MODEL_IDS.feedbackExtractor,
+          model: extractorSelection.modelId,
           feature: "x_feedback_extractor",
           inputTokens: extractorResult.usage?.inputTokens,
           outputTokens: extractorResult.usage?.outputTokens,
@@ -940,7 +945,7 @@ export const processFeedbackWindow = internalAction({
         await safeTrackAiUsage({
           workspaceId: feedbackWindow.integration.workspaceId,
           workspaceName: feedbackWindow.integration.workspaceName,
-          model: AI_MODEL_IDS.feedbackExtractor,
+          model: extractorSelection.modelId,
           inputTokens: extractorResult.usage?.inputTokens,
           outputTokens: extractorResult.usage?.outputTokens,
           properties: {
@@ -964,7 +969,7 @@ export const processFeedbackWindow = internalAction({
           outputTokens: classifierResult.usage?.outputTokens,
         }) +
         getAiCostForTokens({
-          model: AI_MODEL_IDS.feedbackExtractor,
+          model: extractorSelection.modelId,
           inputTokens: extractorUsage?.inputTokens,
           outputTokens: extractorUsage?.outputTokens,
         })

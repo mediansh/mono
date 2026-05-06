@@ -23,10 +23,18 @@ export const AI_TOKEN_PRICING_PER_MILLION: Record<
 
 export const STARTER_TRIAL_DAYS = 7
 
+export const FREE_PLAN_ID = "free"
+
 // Each integration event consumes this many credits ($0.007).
 export const EVENT_CREDIT_COST = 0.007
 
 export const AUTUMN_BILLING_PLANS = [
+  {
+    id: "free",
+    name: "Free",
+    price: 0,
+    credits: 0.5,
+  },
   {
     id: "starter",
     name: "Starter",
@@ -47,6 +55,20 @@ export const AUTUMN_BILLING_PLANS = [
     credits: 20,
   },
 ] as const
+
+export function isFreePlan(planId: string | null | undefined): boolean {
+  return planId === FREE_PLAN_ID
+}
+
+// Free tier is restricted to the lower-cost AI tier — no advanced model access,
+// and no paid overages beyond the included credits.
+export function planAllowsAdvancedAi(planId: string | null | undefined): boolean {
+  return !isFreePlan(planId)
+}
+
+export function planAllowsOverages(planId: string | null | undefined): boolean {
+  return !isFreePlan(planId)
+}
 
 export const BILLING_RECORD_PAGE_SIZE = 100
 export const BILLING_RANGE = "last_cycle" as const
@@ -106,6 +128,21 @@ export function getPlanCopy(planId: string, price?: number | null) {
   const trialDays =
     "trialDays" in fallbackPlan ? (fallbackPlan as { trialDays?: number }).trialDays ?? 0 : 0
 
+  if (fallbackPlan.id === FREE_PLAN_ID) {
+    return {
+      name: fallbackPlan.name,
+      price: displayPrice,
+      credits: fallbackPlan.credits,
+      trialDays: 0,
+      features: [
+        `$${fallbackPlan.credits.toFixed(2)} in credits / month`,
+        `Standard AI model only`,
+        `Events at $${EVENT_CREDIT_COST.toFixed(3)}/event`,
+        `No overages — usage hard-capped`,
+      ],
+    }
+  }
+
   return {
     name: fallbackPlan.name,
     price: displayPrice,
@@ -114,6 +151,7 @@ export function getPlanCopy(planId: string, price?: number | null) {
     features: [
       ...(trialDays > 0 ? [`${trialDays}-day free trial`] : []),
       `$${fallbackPlan.credits} in credits / month`,
+      `Advanced AI model included`,
       `Events at $${EVENT_CREDIT_COST.toFixed(3)}/event`,
       `AI charged at cost`,
       `Overages auto-charged`,

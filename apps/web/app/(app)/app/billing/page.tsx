@@ -78,6 +78,7 @@ type BillingDashboard = {
   currentPlanName: string
   canManageBilling: boolean
   disableOveragesWhenExhausted: boolean
+  overagesToggleLocked: boolean
   monthLabel: string
   cycleStart: number | null
   cycleEnd: number | null
@@ -190,8 +191,8 @@ function BillingSkeleton() {
         <div className="h-[220px] rounded-[4px] bg-muted/20" />
       </div>
       <div className="mb-3 h-3.5 w-16 rounded-[4px] bg-muted/40" />
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, i) => (
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="rounded-[4px] p-4 ring-1 ring-border">
             <div className="h-3.5 w-20 rounded-[3px] bg-muted/40" />
             <div className="mt-2 h-6 w-24 rounded-[3px] bg-muted/40" />
@@ -410,6 +411,7 @@ export default function BillingPage() {
     if (
       !currentWorkspace ||
       !dashboard?.canManageBilling ||
+      dashboard?.overagesToggleLocked ||
       disableOveragesPending
     )
       return
@@ -754,7 +756,7 @@ export default function BillingPage() {
 
         <motion.div variants={fadeUp} className="mb-6">
           <h3 className="mb-3 text-[13px] font-medium">Plans</h3>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {dashboard.plans.map((plan) => {
               const isCurrent = plan.id === dashboard.currentPlanId
               const buttonLabel = getPlanButtonLabel(plan, isCurrent)
@@ -802,7 +804,10 @@ export default function BillingPage() {
                     <Coins size={12} weight="bold" className="text-foreground/60" />
                     <span>
                       <span className="font-medium text-foreground">
-                        ${plan.credits}
+                        $
+                        {plan.credits < 1
+                          ? plan.credits.toFixed(2)
+                          : plan.credits}
                       </span>{" "}
                       in credits monthly
                     </span>
@@ -843,10 +848,9 @@ export default function BillingPage() {
               Hard cap usage at plan credits
             </p>
             <p className="mt-0.5 text-[11px] text-muted-foreground">
-              When enabled, AI task generation pauses and integrations stop
-              ingesting events once your monthly credits are spent. The task
-              board stays available — Linear, GitHub, and Discord just won&apos;t
-              sync until the next cycle or an upgrade.
+              {dashboard.overagesToggleLocked
+                ? "Your plan does not support paid overages. Usage is hard-capped at your monthly credits — upgrade to enable overages."
+                : "When enabled, AI task generation pauses and integrations stop ingesting events once your monthly credits are spent. The task board stays available — Linear, GitHub, and Discord just won't sync until the next cycle or an upgrade."}
             </p>
           </div>
           <Switch
@@ -854,6 +858,7 @@ export default function BillingPage() {
             onCheckedChange={handleSwitchDisableOverages}
             disabled={
               !dashboard.canManageBilling ||
+              dashboard.overagesToggleLocked ||
               disableOveragesPending
             }
             aria-label="Disable overages when credits run out"
@@ -950,14 +955,30 @@ export default function BillingPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Overages are charged by default</DialogTitle>
+            <DialogTitle>
+              {overageConfirmPlan?.id === "free"
+                ? "Free plan — usage is hard-capped"
+                : "Overages are charged by default"}
+            </DialogTitle>
             <DialogDescription>
-              When you subscribe to
-              {overageConfirmPlan ? ` ${overageConfirmPlan.name}` : " a plan"},
-              usage beyond your ${overageConfirmPlan?.credits ?? 0} of included
-              credits is automatically charged to your account by default. You
-              can disable overages anytime in Billing to hard-cap usage at your
-              credit budget.
+              {overageConfirmPlan?.id === "free" ? (
+                <>
+                  Free plan is hard-capped at $
+                  {(overageConfirmPlan?.credits ?? 0).toFixed(2)} of credits per
+                  month — overages are never billed. Once credits run out,
+                  ingest and AI generation pause until the next cycle or an
+                  upgrade.
+                </>
+              ) : (
+                <>
+                  When you subscribe to
+                  {overageConfirmPlan ? ` ${overageConfirmPlan.name}` : " a plan"},
+                  usage beyond your ${overageConfirmPlan?.credits ?? 0} of
+                  included credits is automatically charged to your account by
+                  default. You can disable overages anytime in Billing to
+                  hard-cap usage at your credit budget.
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-2">

@@ -4,10 +4,11 @@ import { useState, useEffect, useRef, createContext, useContext } from "react"
 import { useTheme } from "next-themes"
 import Link from "next/link"
 import { motion, AnimatePresence } from "motion/react"
-import { CreditCard, Check, Info, ArrowRight } from "@phosphor-icons/react"
+import { CreditCard, Check, Info, ArrowRight, Warning } from "@phosphor-icons/react"
 import {
   AUTUMN_BILLING_PLANS,
   EVENT_CREDIT_COST,
+  FREE_PLAN_ID,
   getPlanCopy,
 } from "@/lib/billing/config"
 
@@ -73,12 +74,22 @@ export function LandingPricing() {
           </p>
         </motion.div>
 
-        {/* Plan cards */}
+        {/* Paid plan cards */}
         <div className="grid gap-4 sm:grid-cols-3">
-          {AUTUMN_BILLING_PLANS.map((plan, i) => (
-            <PlanCard key={plan.id} plan={plan} index={i} />
-          ))}
+          {AUTUMN_BILLING_PLANS.filter((plan) => plan.id !== FREE_PLAN_ID).map(
+            (plan, i) => (
+              <PlanCard key={plan.id} plan={plan} index={i} />
+            )
+          )}
         </div>
+
+        {/* Free plan — wide card with caveats */}
+        {(() => {
+          const freePlan = AUTUMN_BILLING_PLANS.find(
+            (plan) => plan.id === FREE_PLAN_ID
+          )
+          return freePlan ? <FreePlanCard plan={freePlan} /> : null
+        })()}
 
         {/* Event pricing footer */}
         <motion.div
@@ -89,9 +100,10 @@ export function LandingPricing() {
           className="mt-6 text-center"
         >
           <p className="text-sm text-muted-foreground">
-            Each plan grants $1 of credits per $1 paid. Events cost $
-            {EVENT_CREDIT_COST.toFixed(3)} each, AI is charged at cost. Overages
-            beyond your monthly credits are auto-charged.
+            Free includes $0.50 in credits and the standard AI model. Paid plans
+            grant $1 of credits per $1 paid and unlock the advanced AI model.
+            Events cost ${EVENT_CREDIT_COST.toFixed(3)} each. Overages on paid
+            plans are auto-charged; Free is hard-capped.
           </p>
         </motion.div>
       </div>
@@ -238,6 +250,124 @@ function PlanCard({
   )
 }
 
+function FreePlanCard({
+  plan,
+}: {
+  plan: (typeof AUTUMN_BILLING_PLANS)[number]
+}) {
+  const { styles } = useContext(PricingThemeContext)
+  const copy = getPlanCopy(plan.id)
+  const creditsLabel =
+    plan.credits < 1 ? plan.credits.toFixed(2) : String(plan.credits)
+
+  const caveats = [
+    "Standard AI model only — no advanced model access",
+    "Hard-capped at $0.50 of credits monthly",
+    "No paid overages — ingest pauses when credits run out",
+  ]
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.5, delay: 0.3, ease }}
+      className="relative mt-4 rounded-2xl"
+    >
+      {/* Background */}
+      <div
+        className="absolute inset-0 rounded-2xl"
+        style={{ background: styles.bg }}
+      />
+      {/* Border */}
+      <div
+        className="pointer-events-none absolute inset-0 rounded-2xl"
+        style={{
+          padding: "1px",
+          background: styles.border,
+          WebkitMask:
+            "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+          WebkitMaskComposite: "xor",
+          maskComposite: "exclude",
+        }}
+      />
+      {/* Shadow */}
+      <div
+        className="pointer-events-none absolute inset-0 rounded-2xl"
+        style={{ boxShadow: styles.shadow }}
+      />
+
+      <div className="relative flex flex-col gap-5 p-6 md:flex-row md:items-center md:justify-between md:gap-8">
+        {/* Left: name, price, blurb */}
+        <div className="md:max-w-xs">
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-semibold">{copy.name}</h3>
+            <span className="rounded-full bg-foreground/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-foreground/70">
+              No card required
+            </span>
+          </div>
+          <div className="mt-2 flex items-baseline gap-1">
+            <span className="text-3xl font-bold tracking-tight">$0</span>
+            <span className="text-sm text-muted-foreground">/month</span>
+          </div>
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            ${creditsLabel} in monthly credits to try Median end-to-end.
+          </p>
+        </div>
+
+        {/* Middle: caveats */}
+        <ul className="flex flex-1 flex-col gap-2 md:px-4">
+          {caveats.map((caveat) => (
+            <li
+              key={caveat}
+              className="flex items-start gap-2 text-xs text-muted-foreground"
+            >
+              <Warning
+                size={13}
+                weight="fill"
+                className="mt-0.5 shrink-0 text-amber-500/80"
+              />
+              <span>{caveat}</span>
+            </li>
+          ))}
+        </ul>
+
+        {/* Right: CTA */}
+        <div className="shrink-0">
+          <Link
+            href="/sign-up"
+            className="relative flex h-10 items-center justify-center gap-2 overflow-hidden rounded-full px-5 text-sm font-medium md:px-6"
+          >
+            <div
+              className="pointer-events-none absolute inset-0 rounded-full"
+              style={{ background: styles.ctaBg }}
+            />
+            <div
+              className="pointer-events-none absolute inset-0 rounded-full"
+              style={{
+                padding: "1px",
+                background: styles.ctaBorder,
+                WebkitMask:
+                  "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                WebkitMaskComposite: "xor",
+                maskComposite: "exclude",
+              }}
+            />
+            <span className="relative z-10 text-foreground">
+              Start free
+            </span>
+            <ArrowRight
+              size={14}
+              weight="bold"
+              className="relative z-10 text-foreground"
+            />
+          </Link>
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
 function CreditsTooltip({ credits }: { credits: number }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLSpanElement>(null)
@@ -287,10 +417,10 @@ function CreditsTooltip({ credits }: { credits: number }) {
           >
             <p className="text-xs font-medium text-foreground">How credits work</p>
             <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-              Your plan includes ${credits} of credits each month. Integration
-              events cost ${EVENT_CREDIT_COST.toFixed(3)} each, AI is charged at
-              cost. Usage beyond your credits is auto-charged at the end of the
-              cycle.
+              Your plan includes ${credits < 1 ? credits.toFixed(2) : credits} of
+              credits each month. Integration events cost ${EVENT_CREDIT_COST.toFixed(3)} each,
+              AI is charged at cost. Usage beyond your credits is auto-charged
+              at the end of the cycle (Free plan is hard-capped).
             </p>
             {/* Arrow */}
             <div className="absolute -bottom-1 right-[3px] h-2 w-2 rotate-45 border-r border-b border-foreground/10 bg-background/95 sm:right-auto sm:left-1/2 sm:-translate-x-1/2" />

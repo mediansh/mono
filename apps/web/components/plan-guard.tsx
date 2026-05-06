@@ -74,7 +74,9 @@ export function PlanGuard({ children }: { children: React.ReactNode }) {
           <div>
             <h2 className="text-[14px] font-semibold">Choose a plan to continue</h2>
             <p className="mt-1 text-[12px] text-muted-foreground">
-              You need an active plan to use Median. Start with a {STARTER_TRIAL_DAYS}-day free trial on Starter.
+              You need an active plan to use Median. Start free with $0.50 in
+              monthly credits, or pick a paid plan with a {STARTER_TRIAL_DAYS}-day
+              free trial.
             </p>
           </div>
           <button
