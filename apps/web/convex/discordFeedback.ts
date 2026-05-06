@@ -1,6 +1,6 @@
 import { generateText } from "ai"
 import { trackLLMGeneration, trackFeedbackProcessing } from "./posthog"
-import { AI_MODEL_IDS, AI_MODELS } from "../lib/ai"
+import { AI_MODEL_IDS, AI_MODELS, getAiModelForPlan } from "../lib/ai"
 import { safeTrackAiUsage } from "../lib/billing/autumn"
 import { getAiCostForTokens } from "../lib/billing/config"
 import { Workpool, vOnCompleteArgs } from "@convex-dev/workpool"
@@ -936,7 +936,7 @@ export const handleFeedbackProcessingComplete = internalMutation({
     }
     const completionReason = getCompletedProcessingReason(args.result)
     const shouldPauseProcessing =
-      completionReason === "events_exhausted" ||
+      completionReason === "credits_exhausted" ||
       completionReason === "no_active_plan"
 
     await recordRunDirect(ctx, {
@@ -1054,23 +1054,23 @@ export const processFeedbackWindow = internalAction({
       }
 
       // Hard-stop scanning when overages are disabled and the workspace has
-      // run out of events. We bail before any LLM call so the workspace isn't
+      // run out of credits. We bail before any LLM call so the workspace isn't
       // billed for AI usage tied to ingest the user has paused.
       const quotaStatus = (await ctx.runAction(
         internal.billing.getWorkspaceQuotaStatusInternal,
         { workspaceId: feedbackWindow.integration.workspaceId }
       )) as WorkspaceQuotaStatus
 
-      if (quotaStatus.eventsExhausted) {
-        logInfo("Skipping Discord feedback scan — events exhausted", {
+      if (quotaStatus.creditsExhausted) {
+        logInfo("Skipping Discord feedback scan — credits exhausted", {
           integrationId: args.integrationId,
           workspaceId: feedbackWindow.integration.workspaceId,
         })
         await ctx.runMutation(markFeedbackProcessingPausedMutation, {
           integrationId: args.integrationId,
-          reason: "Paused — events exhausted (overages disabled)",
+          reason: "Paused — credits exhausted (overages disabled)",
         })
-        return { skipped: true, reason: "events_exhausted" }
+        return { skipped: true, reason: "credits_exhausted" }
       }
 
       const pendingMessagesBeforeIgnore = feedbackWindow.messages.filter(
@@ -1353,9 +1353,14 @@ export const processFeedbackWindow = internalAction({
         | undefined
       let extracted: z.infer<typeof extractedFeedbackTasksSchema> | null = null
 
+      const extractorSelection = getAiModelForPlan(
+        "feedbackExtractor",
+        planStatus.currentPlanId
+      )
+
       try {
         const extractorResult = await generateText({
-          model: AI_MODELS.feedbackExtractor,
+          model: extractorSelection.model,
           system: extractorSystemParts.join(" "),
           prompt: [
             `Classifier summary: ${classification.summary ?? classification.reason}`,
@@ -1412,7 +1417,7 @@ export const processFeedbackWindow = internalAction({
 
         await trackLLMGeneration({
           distinctId: feedbackWindow.integration.workspaceId,
-          model: AI_MODEL_IDS.feedbackExtractor,
+          model: extractorSelection.modelId,
           feature: "discord_feedback_extractor",
           inputTokens: extractorResult.usage?.inputTokens,
           outputTokens: extractorResult.usage?.outputTokens,
@@ -1428,7 +1433,7 @@ export const processFeedbackWindow = internalAction({
         await safeTrackAiUsage({
           workspaceId: feedbackWindow.integration.workspaceId,
           workspaceName: feedbackWindow.integration.workspaceName,
-          model: AI_MODEL_IDS.feedbackExtractor,
+          model: extractorSelection.modelId,
           inputTokens: extractorResult.usage?.inputTokens,
           outputTokens: extractorResult.usage?.outputTokens,
           properties: {
@@ -1452,7 +1457,7 @@ export const processFeedbackWindow = internalAction({
           outputTokens: classifierResult.usage?.outputTokens,
         }) +
         getAiCostForTokens({
-          model: AI_MODEL_IDS.feedbackExtractor,
+          model: extractorSelection.modelId,
           inputTokens: extractorUsage?.inputTokens,
           outputTokens: extractorUsage?.outputTokens,
         })

@@ -1,5 +1,4 @@
-export const AUTUMN_AI_USAGE_FEATURE_ID = "ai_usage"
-export const AUTUMN_EVENTS_FEATURE_ID = "events"
+export const AUTUMN_CREDITS_FEATURE_ID = "credits"
 
 export const AUTUMN_TRACKED_AI_MODELS = [
   "anthropic/claude-haiku-4.5",
@@ -24,32 +23,59 @@ export const AI_TOKEN_PRICING_PER_MILLION: Record<
 
 export const STARTER_TRIAL_DAYS = 7
 
+export const FREE_PLAN_ID = "free"
+
+// Each integration event consumes this many credits ($0.007).
+export const EVENT_CREDIT_COST = 0.007
+
 export const AUTUMN_BILLING_PLANS = [
+  {
+    id: "free",
+    name: "Free",
+    price: 0,
+    credits: 0.5,
+  },
   {
     id: "starter",
     name: "Starter",
-    price: 4.99,
-    aiBudget: 5,
-    eventLimit: 500,
+    price: 5,
+    credits: 5,
     trialDays: STARTER_TRIAL_DAYS,
   },
   {
     id: "plus",
     name: "Plus",
-    price: 9.99,
-    aiBudget: 10,
-    eventLimit: 1000,
+    price: 10,
+    credits: 10,
   },
   {
     id: "scale",
     name: "Scale",
-    price: 19.99,
-    aiBudget: 20,
-    eventLimit: 2000,
+    price: 20,
+    credits: 20,
   },
 ] as const
 
-export const AUTUMN_EVENT_OVERAGE_PRICE = 0.015
+const PAID_PLAN_IDS: Set<string> = new Set(
+  AUTUMN_BILLING_PLANS
+    .filter((plan) => plan.id !== FREE_PLAN_ID)
+    .map((plan) => plan.id)
+)
+
+export function isFreePlan(planId: string | null | undefined): boolean {
+  return planId === FREE_PLAN_ID
+}
+
+// Free tier is restricted to the lower-cost AI tier — no advanced model access,
+// and no paid overages beyond the included credits.
+export function planAllowsAdvancedAi(planId: string | null | undefined): boolean {
+  return typeof planId === "string" && PAID_PLAN_IDS.has(planId)
+}
+
+export function planAllowsOverages(planId: string | null | undefined): boolean {
+  return typeof planId === "string" && PAID_PLAN_IDS.has(planId)
+}
+
 export const BILLING_RECORD_PAGE_SIZE = 100
 export const BILLING_RANGE = "last_cycle" as const
 export const BILLING_BIN_SIZE = "day" as const
@@ -97,8 +123,7 @@ export function getPlanCopy(planId: string, price?: number | null) {
     return {
       name: planId,
       price: price ?? 0,
-      aiBudget: 0,
-      eventLimit: 0,
+      credits: 0,
       trialDays: 0,
       features: [],
     }
@@ -109,17 +134,33 @@ export function getPlanCopy(planId: string, price?: number | null) {
   const trialDays =
     "trialDays" in fallbackPlan ? (fallbackPlan as { trialDays?: number }).trialDays ?? 0 : 0
 
+  if (fallbackPlan.id === FREE_PLAN_ID) {
+    return {
+      name: fallbackPlan.name,
+      price: displayPrice,
+      credits: fallbackPlan.credits,
+      trialDays: 0,
+      features: [
+        `$${fallbackPlan.credits.toFixed(2)} in credits / month`,
+        `Standard AI model only`,
+        `Events at $${EVENT_CREDIT_COST.toFixed(3)}/event`,
+        `No overages — usage hard-capped`,
+      ],
+    }
+  }
+
   return {
     name: fallbackPlan.name,
     price: displayPrice,
-    aiBudget: fallbackPlan.aiBudget,
-    eventLimit: fallbackPlan.eventLimit,
+    credits: fallbackPlan.credits,
     trialDays,
     features: [
       ...(trialDays > 0 ? [`${trialDays}-day free trial`] : []),
-      `$${fallbackPlan.aiBudget} AI budget / month`,
-      `${fallbackPlan.eventLimit.toLocaleString("en-US")} events included, then $0.015/event`,
-      "Overages auto-charged",
+      `$${fallbackPlan.credits} in credits / month`,
+      `Advanced AI model included`,
+      `Events at $${EVENT_CREDIT_COST.toFixed(3)}/event`,
+      `AI charged at cost`,
+      `Overages auto-charged`,
       ...(fallbackPlan.id === "scale" ? ["Priority support"] : []),
     ],
   }

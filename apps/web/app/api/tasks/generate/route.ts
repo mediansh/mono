@@ -236,9 +236,9 @@ export const POST = withAxiom(async (request: Request) => {
 
     const { workspaceName, availableLabels } = generationContext
 
-    // Hard-stop AI generation when the workspace has disabled overages and the
-    // AI budget is exhausted. Access is already verified above, so a flaky
-    // billing read should not become a cross-workspace spend bypass.
+    // Hard-stop AI generation when the workspace has disabled overages and
+    // their credits are exhausted. Access is already verified above, so a
+    // flaky billing read should not become a cross-workspace spend bypass.
     try {
       const quota = await fetchAction(
         api.billing.getWorkspaceQuotaStatus,
@@ -246,27 +246,35 @@ export const POST = withAxiom(async (request: Request) => {
         { token: convexToken }
       )
 
-      if (quota.aiExhausted) {
-        logger.info("Blocking AI task generation — budget exhausted", {
+      if (quota.creditsExhausted) {
+        logger.info("Blocking AI task generation — credits exhausted", {
           userId,
           workspaceId,
         })
         return NextResponse.json(
           {
             error:
-              "AI budget exhausted. Overages are disabled for this workspace — upgrade your plan to keep generating tasks.",
-            code: "ai_budget_exhausted",
+              "Credits exhausted. Overages are disabled for this workspace — upgrade your plan to keep generating tasks.",
+            code: "credits_exhausted",
           },
           { status: 402 }
         )
       }
     } catch (quotaError) {
-      logger.warn("Quota check failed — allowing AI generation", {
+      logger.warn("Quota check failed — blocking AI generation", {
         userId,
         workspaceId,
         error:
           quotaError instanceof Error ? quotaError.message : "Unknown error",
       })
+      return NextResponse.json(
+        {
+          error:
+            "Credits exhausted. Overages are disabled for this workspace — upgrade your plan to keep generating tasks.",
+          code: "credits_exhausted",
+        },
+        { status: 402 }
+      )
     }
 
     logger.info("Generating tasks with AI", {

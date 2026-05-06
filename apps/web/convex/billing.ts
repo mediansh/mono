@@ -8,15 +8,15 @@ import {
 } from "./_generated/server"
 import { internal } from "./_generated/api"
 import {
-  AUTUMN_AI_USAGE_FEATURE_ID,
   AUTUMN_BILLING_PLANS,
-  AUTUMN_EVENT_OVERAGE_PRICE,
-  AUTUMN_EVENTS_FEATURE_ID,
-  BILLING_RECORD_PAGE_SIZE,
+  AUTUMN_CREDITS_FEATURE_ID,
+  EVENT_CREDIT_COST,
   formatTrackedModelName,
-  getAiCostForTokens,
   getCurrentMonthLabel,
   getPlanCopy,
+  isFreePlan,
+  isTrackedAiModel,
+  planAllowsOverages,
 } from "../lib/billing/config"
 import {
   attachWorkspacePlan,
@@ -30,7 +30,6 @@ import {
   requireWorkspaceAccess,
   requireWorkspaceAdminAccess,
 } from "./permissions"
-import type { TrackedAiModel } from "../lib/billing/config"
 
 type AggregateRow = {
   period: number
@@ -52,6 +51,7 @@ type WorkspaceBillingContext = {
   workspaceName: string
   canManageBilling: boolean
   disableOveragesWhenExhausted: boolean
+  currentPlanId: string | null
   user: {
     id: string
     email: string | null
@@ -60,8 +60,7 @@ type WorkspaceBillingContext = {
 
 export type WorkspaceQuotaStatus = {
   overagesDisabled: boolean
-  aiExhausted: boolean
-  eventsExhausted: boolean
+  creditsExhausted: boolean
 }
 
 type WorkspaceBillingDashboard = {
@@ -69,44 +68,38 @@ type WorkspaceBillingDashboard = {
   currentPlanName: string
   canManageBilling: boolean
   disableOveragesWhenExhausted: boolean
+  overagesToggleLocked: boolean
   monthLabel: string
+  cycleStart: number | null
+  cycleEnd: number | null
   summary: {
-    aiBudget: number
+    creditsBudget: number
+    creditsUsed: number
+    creditsRemaining: number
+    creditsOverage: number
     aiSpend: number
-    aiRemaining: number
-    aiOverage: number
-    eventLimit: number
-    eventUsage: number
-    eventRemaining: number
-    eventOverage: number
-    overageTotal: number
+    aiCalls: number
+    eventCount: number
+    eventCost: number
   }
-  tokens: {
-    totalInput: number
-    totalOutput: number
-    days: Array<{
-      timestamp: number
-      day: string
-      input: number
-      output: number
-    }>
-  }
-  events: {
+  credits: {
     total: number
+    budget: number
     days: Array<{
       timestamp: number
       day: string
-      events: number
+      credits: number
+      cumulative: number
     }>
   }
   plans: Array<{
     id: string
     name: string
     price: number
-    aiBudget: number
-    eventLimit: number
+    credits: number
     trialDays: number
     features: string[]
+    hasPrioritySupport: boolean
     eligibility: {
       attachAction: "activate" | "upgrade" | "downgrade" | "purchase" | "none"
       status: "active" | "scheduled" | null
@@ -129,6 +122,8 @@ function getActiveSubscription(customer: {
     startedAt: number
     canceledAt: number | null
     planId: string
+    currentPeriodStart?: number | null
+    currentPeriodEnd?: number | null
   }>
 }) {
   return [...customer.subscriptions]
@@ -181,7 +176,14 @@ function buildUsageRecords(events: ListEvent[]) {
   const records: DashboardUsageRecord[] = []
 
   for (const event of events) {
-    if (event.featureId === AUTUMN_EVENTS_FEATURE_ID) {
+    if (event.featureId !== AUTUMN_CREDITS_FEATURE_ID) continue
+
+    const kind =
+      typeof event.properties.kind === "string"
+        ? event.properties.kind
+        : null
+
+    if (kind === "event") {
       const source =
         typeof event.properties.source === "string"
           ? event.properties.source
@@ -197,14 +199,17 @@ function buildUsageRecords(events: ListEvent[]) {
         description: eventType
           ? `${source} event ingested: ${eventType}`
           : `${source} event ingested`,
+        cost: typeof event.properties.cost === "number"
+          ? event.properties.cost
+          : event.value,
         timestamp: event.timestamp,
       })
       continue
     }
 
-    if (event.featureId === AUTUMN_AI_USAGE_FEATURE_ID) {
-      const model = typeof event.properties.model === "string"
-        ? event.properties.model as TrackedAiModel
+    if (kind === "ai") {
+      const modelString = typeof event.properties.model === "string"
+        ? event.properties.model
         : null
       const feature =
         typeof event.properties.feature === "string"
@@ -221,7 +226,11 @@ function buildUsageRecords(events: ListEvent[]) {
         ? event.properties.cost
         : event.value
 
-      const modelLabel = model ? formatTrackedModelName(model) : "AI"
+      const modelLabel = modelString
+        ? isTrackedAiModel(modelString)
+          ? formatTrackedModelName(modelString)
+          : modelString
+        : "AI"
 
       records.push({
         id: event.id,
@@ -231,7 +240,6 @@ function buildUsageRecords(events: ListEvent[]) {
         cost,
         timestamp: event.timestamp,
       })
-      continue
     }
   }
 
@@ -267,11 +275,15 @@ export const getWorkspaceBillingContext = internalQuery({
       throw new Error("Workspace not found")
     }
 
+    const currentPlanId = workspace.currentPlanId ?? null
     return {
       workspaceId: workspace._id,
       workspaceName: workspace.name,
       canManageBilling: membership.role === "owner" || membership.role === "admin",
-      disableOveragesWhenExhausted: workspace.disableOveragesWhenExhausted ?? false,
+      disableOveragesWhenExhausted:
+        !planAllowsOverages(currentPlanId) ||
+        (workspace.disableOveragesWhenExhausted ?? false),
+      currentPlanId,
       user: {
         id: identity.subject,
         email:
@@ -294,16 +306,25 @@ export const getWorkspaceOverageSettings = internalQuery({
     workspaceId: string
     workspaceName: string
     disableOveragesWhenExhausted: boolean
+    currentPlanId: string | null
   } | null> => {
     const workspace = await ctx.db.get(args.workspaceId)
     if (!workspace) {
       return null
     }
 
+    const currentPlanId = workspace.currentPlanId ?? null
+    // Free-tier workspaces always hard-cap at the included credits — they
+    // never get billed overages, regardless of the user-facing toggle.
+    const overagesDisabled =
+      !planAllowsOverages(currentPlanId) ||
+      (workspace.disableOveragesWhenExhausted ?? false)
+
     return {
       workspaceId: workspace._id,
       workspaceName: workspace.name,
-      disableOveragesWhenExhausted: workspace.disableOveragesWhenExhausted ?? false,
+      disableOveragesWhenExhausted: overagesDisabled,
+      currentPlanId,
     }
   },
 })
@@ -357,6 +378,19 @@ export const setWorkspaceDisableOverages = mutation({
   },
   handler: async (ctx, args): Promise<{ disableOveragesWhenExhausted: boolean }> => {
     await requireWorkspaceAdminAccess(ctx, args.workspaceId)
+    const workspace = await ctx.db.get(args.workspaceId)
+    if (!workspace) {
+      throw new Error("Workspace not found")
+    }
+
+    // Free-tier workspaces have overages permanently disabled and cannot
+    // toggle paid overages on without upgrading.
+    if (isFreePlan(workspace.currentPlanId ?? null) && !args.disableOveragesWhenExhausted) {
+      throw new Error(
+        "Free plan does not support paid overages. Upgrade your plan to enable overages."
+      )
+    }
+
     await ctx.db.patch(args.workspaceId, {
       disableOveragesWhenExhausted: args.disableOveragesWhenExhausted,
     })
@@ -372,12 +406,12 @@ async function computeWorkspaceQuotaStatus(settings: {
   disableOveragesWhenExhausted: boolean
 }): Promise<WorkspaceQuotaStatus> {
   if (!settings.disableOveragesWhenExhausted) {
-    return { overagesDisabled: false, aiExhausted: false, eventsExhausted: false }
+    return { overagesDisabled: false, creditsExhausted: false }
   }
 
   if (!isAutumnConfigured()) {
     // Local dev with no Autumn configured — never block ingest or generation.
-    return { overagesDisabled: true, aiExhausted: false, eventsExhausted: false }
+    return { overagesDisabled: true, creditsExhausted: false }
   }
 
   try {
@@ -386,13 +420,12 @@ async function computeWorkspaceQuotaStatus(settings: {
       workspaceName: settings.workspaceName,
     })
 
-    const aiBalance = getBalance(balances, AUTUMN_AI_USAGE_FEATURE_ID)
-    const eventBalance = getBalance(balances, AUTUMN_EVENTS_FEATURE_ID)
+    const creditsBalance = balances[AUTUMN_CREDITS_FEATURE_ID] ?? null
 
     return {
       overagesDisabled: true,
-      aiExhausted: aiBalance.granted > 0 && aiBalance.remaining <= 0,
-      eventsExhausted: eventBalance.granted > 0 && eventBalance.remaining <= 0,
+      creditsExhausted:
+        creditsBalance !== null && creditsBalance.remaining <= 0,
     }
   } catch (error) {
     console.error(
@@ -400,7 +433,7 @@ async function computeWorkspaceQuotaStatus(settings: {
       { workspaceId: settings.workspaceId },
       error
     )
-    return { overagesDisabled: true, aiExhausted: false, eventsExhausted: false }
+    return { overagesDisabled: true, creditsExhausted: false }
   }
 }
 
@@ -419,7 +452,7 @@ export const getWorkspaceQuotaStatus = action({
     })
 
     if (!settings) {
-      return { overagesDisabled: false, aiExhausted: false, eventsExhausted: false }
+      return { overagesDisabled: false, creditsExhausted: false }
     }
 
     return await computeWorkspaceQuotaStatus(settings)
@@ -436,7 +469,7 @@ export const getWorkspaceQuotaStatusInternal = internalAction({
     })
 
     if (!settings) {
-      return { overagesDisabled: false, aiExhausted: false, eventsExhausted: false }
+      return { overagesDisabled: false, creditsExhausted: false }
     }
 
     return await computeWorkspaceQuotaStatus(settings)
@@ -536,59 +569,47 @@ export const getWorkspaceBillingDashboard = action({
     })
 
     const activeSubscription = getActiveSubscription(snapshot.customer)
-    const aiBalance = getBalance(
+    const creditsBalance = getBalance(
       snapshot.customer.balances,
-      AUTUMN_AI_USAGE_FEATURE_ID
-    )
-    const eventBalance = getBalance(
-      snapshot.customer.balances,
-      AUTUMN_EVENTS_FEATURE_ID
+      AUTUMN_CREDITS_FEATURE_ID
     )
 
-    // Build AI spend chart from aggregate (gives every day in the period)
-    const aiUsageRows = snapshot.aiUsage.list as Array<AggregateRow>
-    let cumulativeSpend = 0
-    const tokenSeries = aiUsageRows.map((row) => {
-      const dayCost = row.values[AUTUMN_AI_USAGE_FEATURE_ID] ?? 0
-      cumulativeSpend += dayCost
+    // Daily credits consumed from Autumn aggregate.
+    const creditRows = snapshot.creditsUsage.list as Array<AggregateRow>
+    let cumulativeCredits = 0
+    const creditSeries = creditRows.map((row) => {
+      const dayCost = row.values[AUTUMN_CREDITS_FEATURE_ID] ?? 0
+      cumulativeCredits += dayCost
       return {
         timestamp: row.period,
         day: new Date(row.period).getDate().toString(),
-        input: cumulativeSpend,
-        output: 0,
+        credits: dayCost,
+        cumulative: cumulativeCredits,
       }
     })
 
-    // Reconstruct token totals from recent events for the summary
-    let totalInput = 0
-    let totalOutput = 0
-    for (const event of snapshot.recentEvents as Array<ListEvent>) {
-      if (event.featureId === AUTUMN_AI_USAGE_FEATURE_ID) {
-        totalInput += typeof event.properties.input_tokens === "number"
-          ? event.properties.input_tokens : 0
-        totalOutput += typeof event.properties.output_tokens === "number"
-          ? event.properties.output_tokens : 0
+    // Reconstruct AI vs event breakdown from the full billing cycle. The
+    // display list stays capped, but summary totals must not depend on it.
+    let aiSpend = 0
+    let aiCalls = 0
+    let eventCount = 0
+    for (const event of snapshot.cycleEvents as Array<ListEvent>) {
+      if (event.featureId !== AUTUMN_CREDITS_FEATURE_ID) continue
+      const kind =
+        typeof event.properties.kind === "string"
+          ? event.properties.kind
+          : null
+      if (kind === "ai") {
+        aiCalls += 1
+        aiSpend += typeof event.properties.cost === "number"
+          ? event.properties.cost
+          : event.value
+      } else if (kind === "event") {
+        eventCount += 1
       }
     }
 
-    let cumulativeEvents = 0
-    const eventSeries = (snapshot.eventUsage.list as Array<AggregateRow>).map((row) => {
-      const events = row.values[AUTUMN_EVENTS_FEATURE_ID] ?? 0
-      cumulativeEvents += events
-      return {
-        timestamp: row.period,
-        day: new Date(row.period).getDate().toString(),
-        events: cumulativeEvents,
-      }
-    })
-
-    const totalAiSpend = aiBalance.usage > 0
-      ? aiBalance.usage
-      : 0
-
-    const usageRecords = buildUsageRecords(
-      (snapshot.recentEvents as Array<ListEvent>).slice(0, BILLING_RECORD_PAGE_SIZE)
-    )
+    const usageRecords = buildUsageRecords(snapshot.recentEvents as Array<ListEvent>)
 
     const planOrder = new Map<string, number>(
       AUTUMN_BILLING_PLANS.map((plan, index) => [plan.id, index] as [string, number])
@@ -607,10 +628,12 @@ export const getWorkspaceBillingDashboard = action({
           id: plan.id,
           name: planCopy.name,
           price: planCopy.price,
-          aiBudget: planCopy.aiBudget,
-          eventLimit: planCopy.eventLimit,
+          credits: planCopy.credits,
           trialDays: planCopy.trialDays,
           features: planCopy.features,
+          hasPrioritySupport: planCopy.features.some((feature) =>
+            feature.toLowerCase().includes("priority support")
+          ),
           eligibility: {
             attachAction: normalizeAttachAction(
               plan.customerEligibility?.attachAction
@@ -621,35 +644,35 @@ export const getWorkspaceBillingDashboard = action({
         }
       })
 
+    const totalCredits = creditsBalance.usage > 0 ? creditsBalance.usage : 0
+
+    const resolvedPlanId = activeSubscription?.planId ?? null
     return {
-      currentPlanId: activeSubscription?.planId ?? null,
+      currentPlanId: resolvedPlanId,
       currentPlanName:
-        plans.find((plan) => plan.id === activeSubscription?.planId)?.name ?? "No plan",
+        plans.find((plan) => plan.id === resolvedPlanId)?.name ?? "No plan",
       canManageBilling: billingContext.canManageBilling,
-      disableOveragesWhenExhausted: billingContext.disableOveragesWhenExhausted,
+      disableOveragesWhenExhausted:
+        !planAllowsOverages(resolvedPlanId) ||
+        billingContext.disableOveragesWhenExhausted,
+      overagesToggleLocked: !planAllowsOverages(resolvedPlanId),
       monthLabel: getCurrentMonthLabel(),
+      cycleStart: activeSubscription?.currentPeriodStart ?? null,
+      cycleEnd: activeSubscription?.currentPeriodEnd ?? null,
       summary: {
-        aiBudget: aiBalance.granted,
-        aiSpend: totalAiSpend,
-        aiRemaining: aiBalance.remaining,
-        aiOverage: Math.max(0, totalAiSpend - aiBalance.granted),
-        eventLimit: eventBalance.granted,
-        eventUsage: eventBalance.usage,
-        eventRemaining: eventBalance.remaining,
-        eventOverage: Math.max(0, eventBalance.usage - eventBalance.granted),
-        overageTotal:
-          Math.max(0, totalAiSpend - aiBalance.granted) +
-          Math.max(0, eventBalance.usage - eventBalance.granted) *
-            AUTUMN_EVENT_OVERAGE_PRICE,
+        creditsBudget: creditsBalance.granted,
+        creditsUsed: totalCredits,
+        creditsRemaining: Math.max(0, creditsBalance.remaining),
+        creditsOverage: Math.max(0, totalCredits - creditsBalance.granted),
+        aiSpend,
+        aiCalls,
+        eventCount,
+        eventCost: eventCount * EVENT_CREDIT_COST,
       },
-      tokens: {
-        totalInput,
-        totalOutput,
-        days: tokenSeries,
-      },
-      events: {
-        total: eventBalance.usage,
-        days: eventSeries,
+      credits: {
+        total: totalCredits,
+        budget: creditsBalance.granted,
+        days: creditSeries,
       },
       plans,
       usageRecords,

@@ -13,11 +13,14 @@ import {
 import { motion } from "motion/react"
 import {
   CreditCard,
-  Check,
   ArrowUpRight,
   Warning,
   Crown,
   Info,
+  Coins,
+  Sparkle,
+  Lightning,
+  Star,
 } from "@phosphor-icons/react"
 import {
   AreaChart,
@@ -26,11 +29,14 @@ import {
   YAxis,
   Tooltip as RechartsTooltip,
   ResponsiveContainer,
+  CartesianGrid,
+  ReferenceLine,
 } from "recharts"
 import { toast } from "sonner"
 import Link from "next/link"
 import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
+import { EVENT_CREDIT_COST } from "@/lib/billing/config"
 
 function Stagger({ children, className }: { children: ReactNode; className?: string }) {
   return (
@@ -58,10 +64,10 @@ type BillingPlan = {
   id: string
   name: string
   price: number
-  aiBudget: number
-  eventLimit: number
+  credits: number
   trialDays: number
   features: string[]
+  hasPrioritySupport: boolean
   eligibility: {
     attachAction: "activate" | "upgrade" | "downgrade" | "purchase" | "none"
     status: "active" | "scheduled" | null
@@ -74,47 +80,35 @@ type BillingDashboard = {
   currentPlanName: string
   canManageBilling: boolean
   disableOveragesWhenExhausted: boolean
+  overagesToggleLocked: boolean
   monthLabel: string
+  cycleStart: number | null
+  cycleEnd: number | null
   summary: {
-    aiBudget: number
+    creditsBudget: number
+    creditsUsed: number
+    creditsRemaining: number
+    creditsOverage: number
     aiSpend: number
-    aiRemaining: number
-    aiOverage: number
-    eventLimit: number
-    eventUsage: number
-    eventRemaining: number
-    eventOverage: number
-    overageTotal: number
+    aiCalls: number
+    eventCount: number
+    eventCost: number
   }
-  tokens: {
-    totalInput: number
-    totalOutput: number
-    days: Array<{
-      timestamp: number
-      day: string
-      input: number
-      output: number
-    }>
-  }
-  events: {
+  credits: {
     total: number
+    budget: number
     days: Array<{
       timestamp: number
       day: string
-      events: number
+      credits: number
+      cumulative: number
     }>
   }
   plans: BillingPlan[]
 }
 
-function formatTokens(tokens: number) {
-  if (tokens >= 1000000) return `${(tokens / 1000000).toFixed(1)}M`
-  if (tokens >= 1000) return `${(tokens / 1000).toFixed(1)}K`
-  return tokens.toString()
-}
-
 function formatCurrency(amount: number) {
-  return `$${amount.toFixed(amount < 0.01 ? 4 : 2)}`
+  return `$${amount.toFixed(amount < 0.01 && amount > 0 ? 4 : 2)}`
 }
 
 function getPlanButtonLabel(plan: BillingPlan, isCurrent: boolean) {
@@ -162,11 +156,7 @@ function ChartTooltip({
           />
           <span>{entry.name}:</span>
           <span className="font-medium text-foreground">
-            {entry.name === "Events"
-              ? entry.value.toLocaleString()
-              : entry.name === "Spend"
-                ? formatCurrency(entry.value)
-                : formatTokens(entry.value)}
+            {formatCurrency(entry.value)}
           </span>
         </div>
       ))}
@@ -181,27 +171,30 @@ function BillingSkeleton() {
         <div className="h-4 w-20 rounded-[4px] bg-muted/40" />
         <div className="mt-2 h-3 w-56 rounded-[4px] bg-muted/30" />
       </div>
-      <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
+      <div className="mb-6 rounded-[6px] p-5 ring-1 ring-border">
+        <div className="h-3.5 w-24 rounded-[3px] bg-muted/40" />
+        <div className="mt-3 h-7 w-40 rounded-[3px] bg-muted/40" />
+        <div className="mt-4 h-2 w-full rounded-full bg-muted/30" />
+        <div className="mt-3 flex gap-3">
+          <div className="h-3 w-24 rounded-[3px] bg-muted/30" />
+          <div className="h-3 w-24 rounded-[3px] bg-muted/30" />
+        </div>
+      </div>
+      <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="rounded-[4px] p-3 ring-1 ring-border">
             <div className="h-3 w-16 rounded-[3px] bg-muted/30" />
             <div className="mt-2 h-4 w-20 rounded-[3px] bg-muted/40" />
           </div>
         ))}
       </div>
-      <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-2">
-        <div className="rounded-[4px] p-4 ring-1 ring-border">
-          <div className="mb-3 h-3.5 w-24 rounded-[4px] bg-muted/40" />
-          <div className="h-[180px] rounded-[4px] bg-muted/20" />
-        </div>
-        <div className="rounded-[4px] p-4 ring-1 ring-border">
-          <div className="mb-3 h-3.5 w-28 rounded-[4px] bg-muted/40" />
-          <div className="h-[180px] rounded-[4px] bg-muted/20" />
-        </div>
+      <div className="mb-6 rounded-[4px] p-4 ring-1 ring-border">
+        <div className="mb-3 h-3.5 w-24 rounded-[4px] bg-muted/40" />
+        <div className="h-[220px] rounded-[4px] bg-muted/20" />
       </div>
       <div className="mb-3 h-3.5 w-16 rounded-[4px] bg-muted/40" />
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, i) => (
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="rounded-[4px] p-4 ring-1 ring-border">
             <div className="h-3.5 w-20 rounded-[3px] bg-muted/40" />
             <div className="mt-2 h-6 w-24 rounded-[3px] bg-muted/40" />
@@ -213,6 +206,107 @@ function BillingSkeleton() {
             <div className="mt-4 h-7 w-full rounded-[3px] bg-muted/30" />
           </div>
         ))}
+      </div>
+    </div>
+  )
+}
+
+function CreditsProgressCard({
+  used,
+  budget,
+  overage,
+  cycleEnd,
+  monthLabel,
+}: {
+  used: number
+  budget: number
+  overage: number
+  cycleEnd: number | null
+  monthLabel: string
+}) {
+  const ratio = budget > 0 ? Math.min(used / budget, 1) : 0
+  const percent = Math.round(ratio * 100)
+  const inOverage = overage > 0
+  const remainingDays = cycleEnd
+    ? Math.max(0, Math.ceil((cycleEnd - Date.now()) / (24 * 60 * 60 * 1000)))
+    : null
+
+  return (
+    <div className="relative overflow-hidden rounded-[6px] p-5 ring-1 ring-border">
+      {/* subtle foreground gradient — adapts to theme */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.05]"
+        style={{
+          background:
+            "radial-gradient(120% 80% at 0% 0%, var(--foreground), transparent 60%)",
+        }}
+      />
+      <div className="relative">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground">
+              <Coins size={13} weight="bold" />
+              Credits used this cycle
+            </div>
+            <div className="mt-1.5 flex items-baseline gap-2">
+              <span className="text-[26px] font-bold tracking-tight">
+                {formatCurrency(used)}
+              </span>
+              <span className="text-[12px] text-muted-foreground">
+                of {formatCurrency(budget)}
+              </span>
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-0.5">
+            <span
+              className={`text-[18px] font-semibold tabular-nums ${
+                inOverage ? "text-amber-500" : "text-foreground"
+              }`}
+            >
+              {percent}%
+            </span>
+            <span className="text-[10px] text-muted-foreground">
+              {monthLabel}
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-muted/40">
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${percent}%` }}
+            transition={{ duration: 0.6, ease: [0.25, 0.1, 0.25, 1] }}
+            className={`h-full rounded-full ${
+              inOverage
+                ? "bg-amber-500"
+                : ratio > 0.8
+                  ? "bg-foreground/80"
+                  : "bg-foreground/70"
+            }`}
+          />
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground">
+          <div className="flex items-center gap-3">
+            {!inOverage && (
+              <span>
+                {formatCurrency(Math.max(0, budget - used))} remaining
+              </span>
+            )}
+            {inOverage && (
+              <span className="font-medium text-amber-500">
+                {formatCurrency(overage)} in overages
+              </span>
+            )}
+          </div>
+          {remainingDays !== null && (
+            <span>
+              {remainingDays === 0
+                ? "Resets today"
+                : `Resets in ${remainingDays} day${remainingDays === 1 ? "" : "s"}`}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -319,14 +413,12 @@ export default function BillingPage() {
     if (
       !currentWorkspace ||
       !dashboard?.canManageBilling ||
+      dashboard?.overagesToggleLocked ||
       disableOveragesPending
     )
       return
 
     if (nextValue) {
-      // Hard-cap is destructive (can pause syncs / block AI generation), so
-      // confirm before enabling. Turning it back off is not destructive and
-      // applies immediately.
       setConfirmDisableOveragesOpen(true)
       return
     }
@@ -453,10 +545,11 @@ export default function BillingPage() {
     dashboard.plans.find((plan) => plan.id === dashboard.currentPlanId) ?? null
   const overageConfirmPlan =
     dashboard.plans.find((plan) => plan.id === overageConfirmPlanId) ?? null
-  const aiBudgetUsed =
-    dashboard.summary.aiBudget > 0
-      ? Math.min(dashboard.summary.aiSpend, dashboard.summary.aiBudget)
-      : dashboard.summary.aiSpend
+  const showCreditsWarning =
+    dashboard.summary.creditsOverage > 0 ||
+    (dashboard.disableOveragesWhenExhausted &&
+      dashboard.summary.creditsRemaining <= 0)
+
   return (
     <Stagger className="h-full overflow-y-auto">
       <div className="mx-auto w-full max-w-4xl px-6 py-6">
@@ -470,20 +563,31 @@ export default function BillingPage() {
               <h2 className="text-[14px] font-semibold">Billing</h2>
             </div>
             <p className="mt-0.5 text-[12px] text-muted-foreground">
-              Usage, plans, and billing for your workspace.
+              Credits, usage, and plans for your workspace.
             </p>
           </div>
-          <button
-            onClick={() => void handleManageBilling()}
-            disabled={
-              !dashboard.canManageBilling ||
-              managingBilling
-            }
-            className="flex h-7 shrink-0 items-center gap-1.5 rounded-[4px] bg-card px-2.5 text-[12px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Manage billing
-            <ArrowUpRight size={11} weight="bold" />
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <a
+              href="https://docs.median.sh/pricing"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex h-7 items-center gap-1.5 rounded-[4px] px-2.5 text-[12px] font-medium whitespace-nowrap text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              Learn more
+              <ArrowUpRight size={11} weight="bold" />
+            </a>
+            <button
+              onClick={() => void handleManageBilling()}
+              disabled={
+                !dashboard.canManageBilling ||
+                managingBilling
+              }
+              className="flex h-7 items-center gap-1.5 rounded-[4px] bg-card px-2.5 text-[12px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Manage billing
+              <ArrowUpRight size={11} weight="bold" />
+            </button>
+          </div>
         </motion.div>
 
         {error && (
@@ -510,148 +614,155 @@ export default function BillingPage() {
           </motion.div>
         )}
 
-        <motion.div variants={fadeUp} className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+        {/* Hero credits card */}
+        <motion.div variants={fadeUp} className="mb-6">
+          <CreditsProgressCard
+            used={dashboard.summary.creditsUsed}
+            budget={dashboard.summary.creditsBudget}
+            overage={dashboard.summary.creditsOverage}
+            cycleEnd={dashboard.cycleEnd}
+            monthLabel={dashboard.monthLabel}
+          />
+        </motion.div>
+
+        {/* Compact stat row */}
+        <motion.div
+          variants={fadeUp}
+          className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3"
+        >
           <div className="rounded-[4px] p-3 ring-1 ring-border">
-            <p className="text-[11px] text-muted-foreground">Current plan</p>
+            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <CreditCard size={11} weight="bold" />
+              Current plan
+            </div>
             <p className="mt-0.5 text-[15px] font-semibold">
               {currentPlan?.name ?? dashboard.currentPlanName}
             </p>
           </div>
           <div className="rounded-[4px] p-3 ring-1 ring-border">
-            <p className="text-[11px] text-muted-foreground">AI spend</p>
-            <div className="mt-0.5 flex items-baseline gap-1">
-              <p className="text-[15px] font-semibold">{formatCurrency(aiBudgetUsed)}</p>
-              <span className="text-[11px] text-muted-foreground">
-                / {formatCurrency(dashboard.summary.aiBudget)}
-              </span>
+            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <Sparkle size={11} weight="bold" />
+              AI usage
             </div>
-          </div>
-          <div className="rounded-[4px] p-3 ring-1 ring-border">
-            <p className="text-[11px] text-muted-foreground">Events ingested</p>
             <div className="mt-0.5 flex items-baseline gap-1">
               <p className="text-[15px] font-semibold">
-                {dashboard.summary.eventUsage.toLocaleString()}
+                {formatCurrency(dashboard.summary.aiSpend)}
               </p>
               <span className="text-[11px] text-muted-foreground">
-                / {dashboard.summary.eventLimit.toLocaleString()}
+                · {dashboard.summary.aiCalls.toLocaleString()} call
+                {dashboard.summary.aiCalls === 1 ? "" : "s"}
               </span>
             </div>
           </div>
-          <div className="rounded-[4px] p-3 ring-1 ring-border">
-            <p className="text-[11px] text-muted-foreground">Overages</p>
-            <p
-              className={`mt-0.5 text-[15px] font-semibold ${
-                dashboard.summary.aiOverage > 0 || dashboard.summary.eventOverage > 0
-                  ? "text-amber-500"
-                  : ""
-              }`}
-            >
-              {dashboard.summary.overageTotal > 0
-                ? formatCurrency(dashboard.summary.overageTotal)
-                : "$0.00"}
-            </p>
+          <div className="col-span-2 rounded-[4px] p-3 ring-1 ring-border md:col-span-1">
+            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <Lightning size={11} weight="bold" />
+              Events
+            </div>
+            <div className="mt-0.5 flex items-baseline gap-1">
+              <p className="text-[15px] font-semibold">
+                {dashboard.summary.eventCount.toLocaleString()}
+              </p>
+              <span className="text-[11px] text-muted-foreground">
+                · {formatCurrency(dashboard.summary.eventCost)}
+              </span>
+            </div>
           </div>
         </motion.div>
 
-        <motion.div variants={fadeUp} className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-2">
-          <div className="rounded-[4px] p-4 ring-1 ring-border">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-[13px] font-medium">AI spend</h3>
-              <span className="text-[11px] text-muted-foreground">
-                {dashboard.monthLabel}
-              </span>
+        {/* Single combined chart: daily credits consumed */}
+        <motion.div
+          variants={fadeUp}
+          className="mb-6 rounded-[4px] p-4 ring-1 ring-border"
+        >
+          <div className="mb-3 flex items-center justify-between">
+            <div>
+              <h3 className="text-[13px] font-medium">Credit consumption</h3>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                Daily credits used (cumulative)
+              </p>
             </div>
-            <div className="h-[180px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={dashboard.tokens.days} margin={{ top: 4, right: 4, left: 4, bottom: 16 }}>
-                  <defs>
-                    <linearGradient id="gradSpend" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.2} />
-                      <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis
-                    dataKey="day"
-                    tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis hide />
-                  <RechartsTooltip content={<ChartTooltip />} />
-                  <Area
-                    type="monotone"
-                    dataKey="input"
-                    name="Spend"
-                    stroke="var(--chart-1)"
-                    fill="url(#gradSpend)"
-                    strokeWidth={1.5}
-                    dot={false}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="mt-2 flex items-center justify-center gap-4">
-              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                <div
-                  className="size-1.5 rounded-full"
-                  style={{ backgroundColor: "var(--chart-1)" }}
-                />
-                {formatCurrency(dashboard.summary.aiSpend)} spent
-              </div>
-            </div>
+            <span className="text-[11px] text-muted-foreground">
+              {dashboard.monthLabel}
+            </span>
           </div>
-
-          <div className="rounded-[4px] p-4 ring-1 ring-border">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-[13px] font-medium">Events ingested</h3>
-              <span className="text-[11px] text-muted-foreground">
-                {dashboard.monthLabel}
-              </span>
-            </div>
-            <div className="h-[180px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={dashboard.events.days} margin={{ top: 4, right: 4, left: 4, bottom: 16 }}>
-                  <defs>
-                    <linearGradient id="gradEvents" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--chart-2)" stopOpacity={0.2} />
-                      <stop offset="100%" stopColor="var(--chart-2)" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis
-                    dataKey="day"
-                    tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis hide />
-                  <RechartsTooltip content={<ChartTooltip />} />
-                  <Area
-                    type="monotone"
-                    dataKey="events"
-                    name="Events"
-                    stroke="var(--chart-2)"
-                    fill="url(#gradEvents)"
-                    strokeWidth={1.5}
-                    dot={false}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="mt-2 flex items-center justify-center">
-              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                <div
-                  className="size-1.5 rounded-full"
-                  style={{ backgroundColor: "var(--chart-2)" }}
+          <div className="h-[220px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart
+                data={dashboard.credits.days}
+                margin={{ top: 4, right: 8, left: 0, bottom: 16 }}
+              >
+                <defs>
+                  <linearGradient id="gradCredits" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.28} />
+                    <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  strokeDasharray="2 4"
+                  stroke="var(--border)"
+                  vertical={false}
                 />
-                {dashboard.events.total.toLocaleString()} events this cycle
-              </div>
-            </div>
+                <XAxis
+                  dataKey="day"
+                  tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={40}
+                  tickFormatter={(value: number) =>
+                    value >= 1 ? `$${value.toFixed(0)}` : `$${value.toFixed(2)}`
+                  }
+                />
+                <RechartsTooltip content={<ChartTooltip />} />
+                {dashboard.summary.creditsBudget > 0 && (
+                  <ReferenceLine
+                    y={dashboard.summary.creditsBudget}
+                    stroke="var(--muted-foreground)"
+                    strokeDasharray="3 3"
+                    strokeOpacity={0.5}
+                    label={{
+                      value: `Budget ${formatCurrency(dashboard.summary.creditsBudget)}`,
+                      position: "insideTopRight",
+                      fill: "var(--muted-foreground)",
+                      fontSize: 10,
+                    }}
+                  />
+                )}
+                <Area
+                  type="monotone"
+                  dataKey="cumulative"
+                  name="Credits"
+                  stroke="var(--chart-1)"
+                  fill="url(#gradCredits)"
+                  strokeWidth={1.75}
+                  dot={false}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="mt-2 flex items-center justify-center gap-3 text-[11px] text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <span
+                className="size-1.5 rounded-full"
+                style={{ backgroundColor: "var(--chart-1)" }}
+              />
+              {formatCurrency(dashboard.credits.total)} consumed
+            </span>
+            <span className="text-muted-foreground/50">·</span>
+            <span>
+              Events at ${EVENT_CREDIT_COST.toFixed(3)} · AI charged at cost
+            </span>
           </div>
         </motion.div>
 
         <motion.div variants={fadeUp} className="mb-6">
           <h3 className="mb-3 text-[13px] font-medium">Plans</h3>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {dashboard.plans.map((plan) => {
               const isCurrent = plan.id === dashboard.currentPlanId
               const buttonLabel = getPlanButtonLabel(plan, isCurrent)
@@ -664,10 +775,10 @@ export default function BillingPage() {
               return (
                 <div
                   key={plan.id}
-                  className={`relative flex flex-col rounded-[4px] p-4 ring-1 transition-colors ${
+                  className={`relative flex flex-col rounded-[6px] p-5 ring-1 transition-colors ${
                     isCurrent
                       ? "bg-card ring-foreground/20"
-                      : "ring-border hover:ring-foreground/10"
+                      : "ring-border hover:ring-foreground/15"
                   }`}
                 >
                   {isCurrent && (
@@ -676,46 +787,51 @@ export default function BillingPage() {
                       Current
                     </div>
                   )}
-                  <div className="mb-3">
-                    <div className="flex items-center gap-1.5">
-                      <h4 className="text-[13px] font-semibold">{plan.name}</h4>
-                      {plan.trialDays > 0 && (
-                        <span className="rounded-full bg-foreground/10 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-foreground/70">
-                          {plan.trialDays}-day trial
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-1 flex items-baseline gap-0.5">
-                      <span className="text-[22px] font-bold tracking-tight">
-                        ${plan.price}
+
+                  <div className="flex items-baseline justify-between">
+                    <h4 className="text-[14px] font-semibold">{plan.name}</h4>
+                    {plan.trialDays > 0 && (
+                      <span className="text-[10px] text-muted-foreground">
+                        {plan.trialDays}-day trial
                       </span>
-                      <span className="text-[11px] text-muted-foreground">/month</span>
-                    </div>
-                    {plan.trialDays > 0 && !isCurrent && (
-                      <p className="mt-1 text-[10px] text-muted-foreground">
-                        Free for {plan.trialDays} days
-                      </p>
                     )}
                   </div>
-                  <div className="mb-4 flex-1 space-y-2">
-                    {plan.features.map((feature) => (
-                      <div
-                        key={feature}
-                        className="flex items-start gap-1.5 text-[12px] text-muted-foreground"
-                      >
-                        <Check
-                          size={12}
-                          weight="bold"
-                          className="mt-0.5 shrink-0 text-foreground/50"
-                        />
-                        {feature}
-                      </div>
-                    ))}
+
+                  <div className="mt-3 flex items-baseline gap-1">
+                    <span className="text-[28px] font-bold tracking-tight">
+                      ${plan.price}
+                    </span>
+                    <span className="text-[12px] text-muted-foreground">
+                      /month
+                    </span>
                   </div>
+
+                  <div className="mt-1 flex items-center gap-1.5 text-[12px] text-foreground/80">
+                    <Coins size={12} weight="bold" className="text-foreground/60" />
+                    <span>
+                      <span className="font-medium text-foreground">
+                        $
+                        {plan.credits < 1
+                          ? plan.credits.toFixed(2)
+                          : plan.credits}
+                      </span>{" "}
+                      in credits monthly
+                    </span>
+                  </div>
+
+                  {plan.hasPrioritySupport && (
+                    <div className="mt-1.5 flex items-center gap-1.5 text-[12px] text-foreground/80">
+                      <Star size={12} weight="bold" className="text-foreground/60" />
+                      <span>Priority support</span>
+                    </div>
+                  )}
+
+                  <div className="mt-5 flex-1" />
+
                   <button
                     onClick={() => handlePlanSubscribeClick(plan.id)}
                     disabled={isDisabled}
-                    className={`flex h-7 items-center justify-center rounded-[4px] text-[12px] font-medium transition-colors ${
+                    className={`flex h-8 items-center justify-center rounded-[4px] text-[12px] font-medium transition-colors ${
                       isDisabled
                         ? "cursor-default bg-muted text-muted-foreground"
                         : "bg-primary text-primary-foreground hover:bg-primary/90"
@@ -735,13 +851,12 @@ export default function BillingPage() {
         >
           <div className="min-w-0 flex-1">
             <p className="text-[13px] font-medium text-foreground">
-              Hard cap usage at plan limits
+              Hard cap usage at plan credits
             </p>
             <p className="mt-0.5 text-[11px] text-muted-foreground">
-              When enabled, AI task generation pauses once your monthly budget is spent and
-              integrations stop ingesting new events past your plan&apos;s allowance. The task
-              board stays available — Linear, GitHub, and Discord just won&apos;t sync new
-              events until the next cycle or an upgrade.
+              {dashboard.overagesToggleLocked
+                ? "Your plan does not support paid overages. Usage is hard-capped at your monthly credits — upgrade to enable overages."
+                : "When enabled, AI task generation pauses and integrations stop ingesting events once your monthly credits are spent. The task board stays available — Linear, GitHub, and Discord just won't sync until the next cycle or an upgrade."}
             </p>
           </div>
           <Switch
@@ -749,13 +864,14 @@ export default function BillingPage() {
             onCheckedChange={handleSwitchDisableOverages}
             disabled={
               !dashboard.canManageBilling ||
+              dashboard.overagesToggleLocked ||
               disableOveragesPending
             }
-            aria-label="Disable overages when plan limits are reached"
+            aria-label="Disable overages when credits run out"
           />
         </motion.div>
 
-        {(dashboard.summary.aiOverage > 0 || dashboard.summary.eventOverage > 0) && (
+        {showCreditsWarning && (
           <motion.div
             variants={fadeUp}
             className="mb-6 flex items-start gap-2.5 rounded-[4px] bg-amber-500/5 p-3 ring-1 ring-amber-500/20"
@@ -764,17 +880,15 @@ export default function BillingPage() {
             <div>
               <p className="text-[12px] font-medium text-foreground">
                 {dashboard.disableOveragesWhenExhausted
-                  ? "You've reached your plan limits"
-                  : "You have overages this billing cycle"}
+                  ? "You've used all your credits this cycle"
+                  : "You have credit overages this cycle"}
               </p>
               <p className="mt-0.5 text-[11px] text-muted-foreground">
-                {dashboard.summary.aiOverage > 0 &&
-                  `AI spend exceeds budget by ${formatCurrency(dashboard.summary.aiOverage)}. `}
-                {dashboard.summary.eventOverage > 0 &&
-                  `${dashboard.summary.eventOverage.toLocaleString()} events over your ${dashboard.summary.eventLimit.toLocaleString()} limit. `}
                 {dashboard.disableOveragesWhenExhausted
-                  ? "Ingest is paused — overages are disabled. Upgrade your plan to resume."
-                  : "Overages are automatically charged at the end of the billing cycle."}
+                  ? dashboard.summary.creditsOverage > 0
+                    ? `${formatCurrency(dashboard.summary.creditsOverage)} in usage beyond your ${formatCurrency(dashboard.summary.creditsBudget)} credit budget. Ingest is paused — overages are disabled. Upgrade your plan to resume.`
+                    : `You've used your ${formatCurrency(dashboard.summary.creditsBudget)} credit budget. Ingest is paused — overages are disabled. Upgrade your plan to resume.`
+                  : `${formatCurrency(dashboard.summary.creditsOverage)} in usage beyond your ${formatCurrency(dashboard.summary.creditsBudget)} credit budget. Overages are automatically charged at the end of the billing cycle.`}
               </p>
             </div>
           </motion.div>
@@ -809,7 +923,7 @@ export default function BillingPage() {
           <DialogHeader>
             <DialogTitle>Disable overages?</DialogTitle>
             <DialogDescription>
-              When you reach your plan limits, Median will stop generating AI tasks
+              When you run out of credits, Median will stop generating AI tasks
               and stop ingesting new events from Discord, Linear, GitHub, and X
               until the next billing cycle or an upgrade. Your task board will
               keep working — but Linear and GitHub syncs will pause.
@@ -848,13 +962,30 @@ export default function BillingPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Overages are charged by default</DialogTitle>
+            <DialogTitle>
+              {overageConfirmPlan?.id === "free"
+                ? "Free plan — usage is hard-capped"
+                : "Overages are charged by default"}
+            </DialogTitle>
             <DialogDescription>
-              When you subscribe to
-              {overageConfirmPlan ? ` ${overageConfirmPlan.name}` : " a plan"},
-              usage beyond the included plan limits is automatically charged to
-              your account by default. You can disable overages anytime in
-              Billing to hard-cap usage at your plan limits.
+              {overageConfirmPlan?.id === "free" ? (
+                <>
+                  Free plan is hard-capped at $
+                  {(overageConfirmPlan?.credits ?? 0).toFixed(2)} of credits per
+                  month — overages are never billed. Once credits run out,
+                  ingest and AI generation pause until the next cycle or an
+                  upgrade.
+                </>
+              ) : (
+                <>
+                  When you subscribe to
+                  {overageConfirmPlan ? ` ${overageConfirmPlan.name}` : " a plan"},
+                  usage beyond your ${overageConfirmPlan?.credits ?? 0} of
+                  included credits is automatically charged to your account by
+                  default. You can disable overages anytime in Billing to
+                  hard-cap usage at your credit budget.
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-2">

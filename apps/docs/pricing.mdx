@@ -1,0 +1,134 @@
+---
+title: "Pricing"
+description: "Plans, credits, and how usage is billed."
+---
+
+Median runs on a **credit-based model**. Every dollar you pay becomes a
+dollar of credits — and you spend them as you use the product. AI usage is
+charged at cost, and integration events draw a flat per-event price.
+
+## Plans
+
+| Plan | Price | Credits / mo | Trial | Extras |
+| --- | --- | --- | --- | --- |
+| Free | \$0 | \$0.50 | — | Standard AI model only · hard-capped |
+| Starter | \$5 | \$5 | 7 days | Advanced AI model |
+| Plus | \$10 | \$10 | — | Advanced AI model |
+| Scale | \$20 | \$20 | — | Advanced AI model · Priority support |
+
+Paid plans unlock every feature, including the advanced AI model. The only
+difference between paid plans is the amount of credits granted each cycle.
+
+### Free tier caveats
+
+The Free plan is meant for evaluating Median end-to-end without a card. It
+has a few hard limits that paid plans don't:
+
+- **Standard AI model only** — feedback extraction and task generation run
+  on the lower-cost model. The advanced model is reserved for paid plans.
+- **Hard-capped at \$0.50 of credits per month** — usage stops cleanly when
+  credits run out; nothing is billed beyond that.
+- **No paid overages** — the "Hard cap usage at plan credits" toggle is
+  permanently on. To exceed \$0.50 in a month, upgrade to a paid plan.
+
+## How credits are spent
+
+Credits are a single shared pool. Both AI and integration events draw from
+it.
+
+| Activity | Cost |
+| --- | --- |
+| Integration event ingested (Discord, Slack, GitHub, Linear, X) | \$0.007 |
+| AI task generation, summaries, replies | At model cost |
+
+### AI pricing
+
+AI is billed at the underlying model rate — no markup. Median routes most
+work to a **fast, low-cost model** and reserves a **larger, more capable
+model** for heavier reasoning tasks. Most everyday actions cost a fraction
+of a cent.
+
+## Overages
+
+On paid plans, usage beyond your monthly credits is **auto-charged at the
+end of the billing cycle** at the same per-event and per-token rates. There
+is no overage premium — \$1 of usage costs \$1 whether it is inside or
+outside your included credits.
+
+The Free plan does not support paid overages. Once your \$0.50 of credits
+is spent, ingest and AI generation pause until the next cycle or an
+upgrade.
+
+### Hard-cap mode
+
+You can hard-cap usage at your plan's credits. With this enabled:
+
+- AI generation pauses once credits are exhausted
+- Integrations stop ingesting new events
+- The task board stays available — Linear, GitHub, and Discord syncs
+  resume on the next cycle or after an upgrade
+
+Toggle this from **Billing → "Hard cap usage at plan credits"** in the
+dashboard.
+
+## Worked examples
+
+<AccordionGroup>
+  <Accordion title="Trying Median, free plan">
+    A developer signs up to evaluate Median, ingests ~30 Discord messages
+    and runs a handful of AI task generations.
+
+    - Events: 30 × \$0.007 = **\$0.21**
+    - AI: ~\$0.10 (standard model only)
+    - **Total used: ~\$0.31** of \$0.50 — well within the free cap.
+  </Accordion>
+  <Accordion title="Solo developer, $5 starter plan">
+    A solo developer ingests ~300 GitHub events and runs ~50 AI task
+    generations in a month.
+
+    - Events: 300 × \$0.007 = **\$2.10**
+    - AI: ~\$1.20
+    - **Total used: ~\$3.30** of \$5 in credits — no overage.
+  </Accordion>
+  <Accordion title="Small team, $10 plus plan">
+    A team ingests ~1,000 events across Discord and Linear, with ~150 AI
+    runs.
+
+    - Events: 1,000 × \$0.007 = **\$7.00**
+    - AI: ~\$3.50
+    - **Total used: ~\$10.50** — \$0.50 overage, billed at cycle end.
+  </Accordion>
+  <Accordion title="Power user, $20 scale plan">
+    Heavy GitHub + Linear ingest (~2,500 events) with ~400 AI runs.
+
+    - Events: 2,500 × \$0.007 = **\$17.50**
+    - AI: ~\$2.40
+    - **Total used: ~\$19.90** of \$20 — no overage. Priority support
+      included.
+  </Accordion>
+</AccordionGroup>
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="Do unused credits roll over?">
+    No. Credits reset at the start of each billing cycle.
+  </Accordion>
+  <Accordion title="Can I change plans mid-cycle?">
+    Yes. Upgrades take effect immediately and are pro-rated. Downgrades
+    schedule for the next cycle.
+  </Accordion>
+  <Accordion title="Can I stay on the free plan forever?">
+    Yes. The free plan has no time limit — it just hard-caps at \$0.50 in
+    credits per month and routes AI work to the standard model.
+  </Accordion>
+  <Accordion title="What counts as an integration event?">
+    Anything ingested from a connected source — a new Discord message in a
+    feedback channel, a GitHub issue, a Linear ticket, a Slack message in a
+    feedback channel, or a tweet.
+  </Accordion>
+  <Accordion title="Where do I see my usage?">
+    The [Billing page](https://median.sh/app/billing) shows current
+    credits, daily consumption, AI vs event breakdown, and any overages.
+  </Accordion>
+</AccordionGroup>

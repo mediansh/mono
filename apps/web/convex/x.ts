@@ -1820,7 +1820,7 @@ export const xWebhook = httpAction(async (ctx, request) => {
       internal.billing.getWorkspaceQuotaStatusInternal,
       { workspaceId: integration.workspaceId }
     )
-    if (quota.eventsExhausted) {
+    if (quota.creditsExhausted) {
       logInfo("Skipping X webhook — events exhausted (overages disabled)", {
         workspaceId: integration.workspaceId,
         forUserId,

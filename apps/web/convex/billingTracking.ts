@@ -32,7 +32,7 @@ export const trackIntegrationEvent = internalAction({
         { workspaceId: args.workspaceId as Id<"workspaces"> }
       )) as WorkspaceQuotaStatus
 
-      if (quota.eventsExhausted) {
+      if (quota.creditsExhausted) {
         console.info(
           `[billing] Skipping integration event — events exhausted: source=${args.source} workspace=${args.workspaceId}`
         )

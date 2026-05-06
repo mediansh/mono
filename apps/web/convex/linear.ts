@@ -2438,7 +2438,7 @@ export const linearWebhook = httpAction(async (ctx, request) => {
       internal.billing.getWorkspaceQuotaStatusInternal,
       { workspaceId: integration.workspaceId }
     )
-    if (quota.eventsExhausted) {
+    if (quota.creditsExhausted) {
       console.info(
         "[linear] Skipping webhook — events exhausted (overages disabled)",
         { workspaceId: integration.workspaceId, deliveryId }
