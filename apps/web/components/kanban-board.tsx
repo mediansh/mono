@@ -5159,20 +5159,6 @@ export function KanbanBoard() {
     }
   }, [currentWorkspace?.labels])
 
-  if (
-    !workspaceId ||
-    (taskDocs === undefined &&
-      (isAuthLoading || !hasFetchedTasks || isCleaningDemoTasks))
-  ) {
-    return <BoardLoadingState />
-  }
-
-  const selectedTask = selectedTaskId
-    ? (filteredTasks.find((task) => task.id === selectedTaskId) ??
-       tasks.find((task) => task.id === selectedTaskId) ??
-       null)
-    : null
-
   const handleClosePanel = useCallback(() => {
     setSelectedTaskId(null)
   }, [])
@@ -5200,6 +5186,20 @@ export function KanbanBoard() {
     },
     [handleDenyRequest]
   )
+
+  if (
+    !workspaceId ||
+    (taskDocs === undefined &&
+      (isAuthLoading || !hasFetchedTasks || isCleaningDemoTasks))
+  ) {
+    return <BoardLoadingState />
+  }
+
+  const selectedTask = selectedTaskId
+    ? (filteredTasks.find((task) => task.id === selectedTaskId) ??
+       tasks.find((task) => task.id === selectedTaskId) ??
+       null)
+    : null
 
   return (
     <BoardMountedContext.Provider value={boardMounted}>
