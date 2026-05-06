@@ -31,6 +31,12 @@ import { api } from "@/convex/_generated/api"
 import type { Doc } from "@/convex/_generated/dataModel"
 import { useWorkspace } from "@/components/workspace-provider"
 import {
+  useLocalFirstStore,
+  updateWorkspaceTasks,
+  type LocalTaskDoc,
+} from "@/lib/local-first-store"
+import { sortTaskDocs } from "@/lib/task-docs"
+import {
   DiscordIcon,
   SlackIcon,
   LinearIcon,
@@ -133,15 +139,59 @@ export function RequestsPage() {
     workspaceId ? { workspaceId } : "skip"
   )
 
+  // Read from the local-first store so optimistic accept/deny shows instantly.
+  // The kanban-board mounts the same merge pipeline; we duplicate it here so
+  // the requests tab stays responsive whether or not the board is mounted.
+  const { tasksByWorkspace } = useLocalFirstStore()
+  const taskDocs = workspaceId ? tasksByWorkspace[workspaceId] : undefined
+
+  // Suppress live-data merges for a short window after a local change so a
+  // late server snapshot doesn't briefly resurrect a task the user just
+  // accepted/denied (which is what made the buttons feel unresponsive).
+  const lastLocalChangeRef = useRef<number>(0)
+  const lastLoadedWorkspaceIdRef = useRef<string | null>(null)
+  const [hasFetchedTasks, setHasFetchedTasks] = useState(false)
+
+  useEffect(() => {
+    if (workspaceId !== lastLoadedWorkspaceIdRef.current) {
+      setHasFetchedTasks(false)
+      lastLoadedWorkspaceIdRef.current = workspaceId ?? null
+    }
+  }, [workspaceId])
+
+  useEffect(() => {
+    if (!workspaceId || liveTasks === undefined) return
+
+    const msSinceLocalChange = Date.now() - lastLocalChangeRef.current
+    if (msSinceLocalChange < 2000 && hasFetchedTasks) return
+
+    updateWorkspaceTasks(workspaceId, (current) => {
+      const liveIds = new Set(liveTasks.map((t) => String(t._id)))
+      const pending = current.filter(
+        (t) => t._syncStatus === "pending" && !liveIds.has(t._id)
+      )
+      return sortTaskDocs([
+        ...(liveTasks as unknown as LocalTaskDoc[]),
+        ...pending,
+      ])
+    })
+    if (!hasFetchedTasks) setHasFetchedTasks(true)
+  }, [liveTasks, workspaceId, hasFetchedTasks])
+
   const requests = useMemo<RequestTask[]>(() => {
-    if (!liveTasks) return []
-    return liveTasks
+    const source = taskDocs ?? liveTasks
+    if (!source) return []
+    return (source as unknown as RequestTask[])
       .filter((task) => task.status === "requests")
       .sort((a, b) => a.order - b.order)
-  }, [liveTasks])
+  }, [taskDocs, liveTasks])
 
   const { canManageTasks, acceptRequest, denyRequest, acceptMany, denyMany } =
-    useRequestActions()
+    useRequestActions({
+      onLocalChange: () => {
+        lastLocalChangeRef.current = Date.now()
+      },
+    })
 
   // ── list pane width (resizable, persisted) ─────────
   // Default during SSR. After mount, hydrate from localStorage once.
@@ -418,7 +468,7 @@ export function RequestsPage() {
   }, [filteredRequests, selectedId, selectedTask, setSelectedId, handleAccept, handleDeny])
 
   // ── render ─────────────────────────────────────────
-  const isLoading = liveTasks === undefined
+  const isLoading = taskDocs === undefined && liveTasks === undefined
   const hasNoRequests = !isLoading && requests.length === 0
   const hasNoMatches = !isLoading && requests.length > 0 && filteredRequests.length === 0
 
