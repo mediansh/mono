@@ -4854,7 +4854,7 @@ export function KanbanBoard() {
             ) : null}
 
             {/* Toolbar */}
-            <div className="scrollbar-hide flex items-center gap-1 overflow-x-auto border-b border-border bg-sidebar/60 px-3 py-2 dark:bg-accent/30">
+            <div className="scrollbar-hide flex items-center gap-1 overflow-x-auto border-b border-border bg-toolbar text-toolbar-foreground px-3 py-2">
               <ViewToggle view={boardView} onViewChange={handleViewChange} />
               {hiddenColumns.length > 0 && (
                 <HiddenColumnsToolbar

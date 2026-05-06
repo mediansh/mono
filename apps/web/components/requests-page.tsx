@@ -14,13 +14,14 @@ import {
   X,
   FunnelSimple,
   Check,
+  DotsSixVertical,
+  ArrowsDownUp,
 } from "@phosphor-icons/react"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
@@ -90,6 +91,15 @@ const SORT_LABEL: Record<SortKey, string> = {
   title: "Title (A–Z)",
 }
 
+const LIST_PANE_WIDTH_KEY = "requests:listPaneWidth"
+const LIST_PANE_MIN = 260
+const LIST_PANE_MAX = 560
+const LIST_PANE_DEFAULT = 360
+
+function clampListPaneWidth(value: number) {
+  return Math.min(LIST_PANE_MAX, Math.max(LIST_PANE_MIN, value))
+}
+
 // github and x render as monochrome marks — let them inherit the foreground
 // color so they remain visible in both light and dark mode.
 const THEME_FOLLOWING_SOURCES = new Set<RequestSource>(["github", "x"])
@@ -131,6 +141,57 @@ export function RequestsPage() {
 
   const { canManageTasks, acceptRequest, denyRequest, acceptMany, denyMany } =
     useRequestActions()
+
+  // ── list pane width (resizable, persisted) ─────────
+  // Default during SSR. After mount, hydrate from localStorage once.
+  const [listPaneWidth, setListPaneWidth] = useState<number>(LIST_PANE_DEFAULT)
+  const [isResizingList, setIsResizingList] = useState(false)
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem(LIST_PANE_WIDTH_KEY)
+    if (!stored) return
+    const parsed = Number.parseInt(stored, 10)
+    if (Number.isFinite(parsed)) {
+      setListPaneWidth(clampListPaneWidth(parsed))
+    }
+  }, [])
+
+  const handleListResizeStart = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      event.preventDefault()
+      const startX = event.clientX
+      const startWidth = listPaneWidth
+      setIsResizingList(true)
+
+      const previousUserSelect = document.body.style.userSelect
+      const previousCursor = document.body.style.cursor
+      document.body.style.userSelect = "none"
+      document.body.style.cursor = "col-resize"
+
+      let latestWidth = startWidth
+
+      function onMove(ev: PointerEvent) {
+        const dx = ev.clientX - startX
+        latestWidth = clampListPaneWidth(startWidth + dx)
+        setListPaneWidth(latestWidth)
+      }
+
+      function onUp() {
+        setIsResizingList(false)
+        document.body.style.userSelect = previousUserSelect
+        document.body.style.cursor = previousCursor
+        // Persist final width after the user lets go — keeps the write off
+        // the SSR/hydration path so it can't clobber a stored value.
+        window.localStorage.setItem(LIST_PANE_WIDTH_KEY, String(latestWidth))
+        window.removeEventListener("pointermove", onMove)
+        window.removeEventListener("pointerup", onUp)
+      }
+
+      window.addEventListener("pointermove", onMove)
+      window.addEventListener("pointerup", onUp)
+    },
+    [listPaneWidth]
+  )
 
   // ── filter / search / sort state ───────────────────
   const [searchTerm, setSearchTerm] = useState("")
@@ -367,109 +428,99 @@ export function RequestsPage() {
       transition={{ duration: 0.2, ease: "easeOut" }}
       className="flex h-full min-h-0 flex-1 flex-col overflow-hidden"
     >
-      {/* Header */}
-      <header className="flex shrink-0 flex-col gap-2 border-b border-border bg-background px-4 pt-3 pb-2 md:px-6 md:pt-4">
-        <div className="flex items-center gap-3">
-          <Tray size={18} weight="fill" className="text-foreground/80" />
-          <h1 className="text-[15px] font-semibold tracking-tight">Requests</h1>
-          <span className="rounded-[4px] bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+      {/* Toolbar — matches the home tab's compact toolbar */}
+      <div className="scrollbar-hide flex shrink-0 items-center gap-1 overflow-x-auto border-b border-border bg-toolbar text-toolbar-foreground px-3 py-2">
+        <div className="flex items-center gap-2 pr-2">
+          <Tray size={14} weight="fill" className="text-foreground/80" />
+          <span className="text-[13px] font-semibold tracking-tight">Requests</span>
+          <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
             {requests.length}
           </span>
         </div>
 
-        {/* Toolbar: search + filter/sort dropdown */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex h-8 w-full max-w-[320px] items-center gap-2 rounded-[4px] bg-card px-2.5 ring-1 ring-border focus-within:ring-foreground/30">
-            <MagnifyingGlass size={13} className="text-muted-foreground" />
+        <div className="ml-auto flex items-center gap-1">
+          <div className="flex h-7 w-[200px] items-center gap-1.5 rounded-[4px] bg-card px-2 ring-1 ring-border focus-within:ring-foreground/30 sm:w-[240px]">
+            <MagnifyingGlass size={12} className="text-muted-foreground" />
             <input
               ref={searchInputRef}
               type="text"
-              placeholder="Search by title or author"
+              placeholder="Search"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-full flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground"
+              className="h-full min-w-0 flex-1 bg-transparent text-[12px] outline-none placeholder:text-muted-foreground"
             />
-            {searchTerm && (
+            {searchTerm ? (
               <button
                 onClick={() => setSearchTerm("")}
                 className="text-muted-foreground transition-colors hover:text-foreground"
               >
-                <X size={12} />
+                <X size={11} />
               </button>
+            ) : (
+              <kbd className="hidden rounded-[3px] border border-border px-1 py-px font-mono text-[10px] text-muted-foreground/60 sm:inline">
+                /
+              </kbd>
             )}
-            <kbd className="hidden rounded-[3px] border border-border px-1 py-px font-mono text-[10px] text-muted-foreground/60 sm:inline">
-              /
-            </kbd>
           </div>
 
-          <FilterSortMenu
+          <FilterMenu
             activeSources={activeSources}
             onToggleSource={toggleSourceFilter}
             onClearSources={() => setActiveSources(new Set())}
-            sortKey={sortKey}
-            onSortChange={setSortKey}
           />
-
-          {activeSources.size > 0 && (
-            <button
-              onClick={() => setActiveSources(new Set())}
-              className="flex h-8 items-center gap-1 rounded-[4px] px-2 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Clear filters
-              <X size={11} />
-            </button>
-          )}
+          <SortMenu sortKey={sortKey} onSortChange={setSortKey} />
         </div>
+      </div>
 
-        {/* Bulk action bar */}
-        <AnimatePresence initial={false}>
-          {bulkSelectedIds.size > 0 && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.15, ease: "easeOut" }}
-              className="overflow-hidden"
-            >
-              <div className="flex items-center gap-2 rounded-[4px] bg-accent px-2.5 py-1.5">
-                <span className="text-[12px] font-medium">
-                  {bulkSelectedIds.size} selected
-                </span>
-                <div className="ml-auto flex items-center gap-1.5">
-                  <button
-                    onClick={clearBulkSelection}
-                    className="rounded-[4px] px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
-                  >
-                    Clear
-                  </button>
-                  <button
-                    disabled={!canManageTasks}
-                    onClick={handleAcceptBulk}
-                    className="flex items-center gap-1.5 rounded-[4px] bg-emerald-500/10 px-2 py-1 text-[11px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
-                  >
-                    <CheckCircle size={12} weight="fill" />
-                    Accept all
-                  </button>
-                  <button
-                    disabled={!canManageTasks}
-                    onClick={handleDenyBulk}
-                    className="flex items-center gap-1.5 rounded-[4px] bg-red-500/10 px-2 py-1 text-[11px] font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
-                  >
-                    <XCircle size={12} />
-                    Deny all
-                  </button>
-                </div>
+      {/* Bulk action bar */}
+      <AnimatePresence initial={false}>
+        {bulkSelectedIds.size > 0 && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            className="shrink-0 overflow-hidden border-b border-border bg-background"
+          >
+            <div className="flex items-center gap-2 px-3 py-1.5">
+              <span className="text-[12px] font-medium">
+                {bulkSelectedIds.size} selected
+              </span>
+              <div className="ml-auto flex items-center gap-1.5">
+                <button
+                  onClick={clearBulkSelection}
+                  className="rounded-[4px] px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  Clear
+                </button>
+                <button
+                  disabled={!canManageTasks}
+                  onClick={handleAcceptBulk}
+                  className="flex items-center gap-1.5 rounded-[4px] bg-emerald-500/10 px-2 py-1 text-[11px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
+                >
+                  <CheckCircle size={12} weight="fill" />
+                  Accept all
+                </button>
+                <button
+                  disabled={!canManageTasks}
+                  onClick={handleDenyBulk}
+                  className="flex items-center gap-1.5 rounded-[4px] bg-red-500/10 px-2 py-1 text-[11px] font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
+                >
+                  <XCircle size={12} />
+                  Deny all
+                </button>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </header>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Body */}
       <div className="flex min-h-0 flex-1">
         {/* List pane */}
         <aside
-          className={`w-full shrink-0 flex-col border-r border-border bg-muted/20 md:w-[360px] ${
+          style={{ "--list-w": `${listPaneWidth}px` } as React.CSSProperties}
+          className={`relative w-full shrink-0 flex-col border-r border-border bg-background md:w-[var(--list-w)] ${
             userPickedId ? "hidden md:flex" : "flex"
           }`}
         >
@@ -490,17 +541,44 @@ export function RequestsPage() {
                   task={task}
                   isSelected={task._id === selectedId}
                   isBulkSelected={bulkSelectedIds.has(task._id)}
+                  canManageTasks={canManageTasks}
                   onSelect={() => setSelectedId(task._id)}
                   onToggleBulk={() => toggleBulkSelected(task._id)}
+                  onAccept={() => handleAccept(task)}
+                  onDeny={() => handleDeny(task)}
                 />
               ))}
             </ul>
           )}
+
+          {/* Desktop resize handle */}
+          <div
+            onPointerDown={handleListResizeStart}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize requests list"
+            className="group absolute inset-y-0 -right-1.5 z-20 hidden w-3 cursor-col-resize items-center justify-center md:flex"
+          >
+            <div
+              className={`absolute inset-y-0 right-1.5 w-px transition-colors ${
+                isResizingList
+                  ? "bg-primary"
+                  : "bg-transparent group-hover:bg-primary/40"
+              }`}
+            />
+            <div
+              className={`relative flex h-8 w-3 items-center justify-center rounded-full bg-background text-muted-foreground/60 opacity-0 ring-1 ring-border transition-opacity group-hover:opacity-100 ${
+                isResizingList ? "opacity-100 text-primary ring-primary/50" : ""
+              }`}
+            >
+              <DotsSixVertical size={10} weight="bold" />
+            </div>
+          </div>
         </aside>
 
         {/* Detail pane */}
         <section
-          className={`relative min-h-0 flex-1 overflow-y-auto bg-card/40 ${
+          className={`relative min-h-0 flex-1 overflow-y-auto bg-background ${
             userPickedId ? "flex" : "hidden md:flex"
           } flex-col`}
         >
@@ -547,14 +625,20 @@ function RequestListItem({
   task,
   isSelected,
   isBulkSelected,
+  canManageTasks,
   onSelect,
   onToggleBulk,
+  onAccept,
+  onDeny,
 }: {
   task: RequestTask
   isSelected: boolean
   isBulkSelected: boolean
+  canManageTasks: boolean
   onSelect: () => void
   onToggleBulk: () => void
+  onAccept: () => void
+  onDeny: () => void
 }) {
   const sources = getTaskSources(task)
   const dedupedPlatforms = Array.from(new Set(sources.map((s) => s.platform)))
@@ -562,9 +646,17 @@ function RequestListItem({
 
   return (
     <li>
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onSelect}
-        className={`group flex w-full items-start gap-2 rounded-[6px] border bg-background px-3 py-2.5 text-left shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all hover:shadow-[0_2px_6px_rgba(0,0,0,0.08)] ${
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault()
+            onSelect()
+          }
+        }}
+        className={`group relative flex w-full cursor-pointer items-start gap-2 rounded-[6px] border bg-card px-3 py-2.5 pr-2 text-left shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all hover:shadow-[0_2px_6px_rgba(0,0,0,0.08)] ${
           isSelected
             ? "border-foreground/30 bg-accent shadow-[0_2px_6px_rgba(0,0,0,0.08)]"
             : "border-border hover:border-foreground/20"
@@ -619,7 +711,39 @@ function RequestListItem({
             </span>
           </div>
         </div>
-      </button>
+
+        {/* Quick actions — hover-only, hugging the right edge so they're
+            isolated from the main click target. */}
+        {canManageTasks && (
+          <div
+            className="absolute top-1.5 right-1.5 flex flex-col gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              title="Accept (A)"
+              onClick={(e) => {
+                e.stopPropagation()
+                onAccept()
+              }}
+              className="flex size-5 items-center justify-center rounded-[3px] bg-background text-emerald-600 ring-1 ring-border transition-colors hover:bg-emerald-500/15 hover:text-emerald-600 hover:ring-emerald-500/40 dark:text-emerald-400"
+            >
+              <CheckCircle size={11} weight="fill" />
+            </button>
+            <button
+              type="button"
+              title="Deny (D)"
+              onClick={(e) => {
+                e.stopPropagation()
+                onDeny()
+              }}
+              className="flex size-5 items-center justify-center rounded-[3px] bg-background text-red-600 ring-1 ring-border transition-colors hover:bg-red-500/15 hover:text-red-600 hover:ring-red-500/40 dark:text-red-400"
+            >
+              <XCircle size={11} />
+            </button>
+          </div>
+        )}
+      </div>
     </li>
   )
 }
@@ -643,7 +767,7 @@ function RequestDetail({
   return (
     <div className="flex flex-1 flex-col">
       {/* Mobile back button */}
-      <div className="flex items-center gap-2 border-b border-border bg-background px-3 py-2 md:hidden">
+      <div className="flex items-center gap-2 border-b border-border bg-toolbar px-3 py-2 md:hidden">
         <button
           onClick={onBack}
           className="flex h-7 items-center gap-1.5 rounded-[4px] px-1.5 text-[12px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
@@ -710,7 +834,7 @@ function RequestDetail({
             <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               Description
             </h3>
-            <div className="rounded-[4px] bg-background p-3 text-[13px] leading-relaxed whitespace-pre-wrap text-foreground/90 ring-1 ring-border">
+            <div className="rounded-[4px] bg-card p-3 text-[13px] leading-relaxed whitespace-pre-wrap text-foreground/90 ring-1 ring-border">
               {task.description}
             </div>
           </section>
@@ -735,7 +859,7 @@ function RequestDetail({
               {task.attachments.map((att, idx) => (
                 <li
                   key={`${att.storageId}-${idx}`}
-                  className="flex items-center gap-1.5 rounded-[4px] bg-background px-2 py-1 text-[11px] text-muted-foreground ring-1 ring-border"
+                  className="flex items-center gap-1.5 rounded-[4px] bg-card px-2 py-1 text-[11px] text-muted-foreground ring-1 ring-border"
                 >
                   <span className="truncate max-w-[180px]">{att.name}</span>
                 </li>
@@ -746,7 +870,7 @@ function RequestDetail({
       </div>
 
       {/* Action footer */}
-      <div className="flex shrink-0 items-center gap-2 border-t border-border bg-background px-4 py-3 md:px-6">
+      <div className="flex shrink-0 items-center gap-2 border-t border-border bg-toolbar px-4 py-3 md:px-6">
         <button
           disabled={!canManageTasks}
           onClick={onDeny}
@@ -783,7 +907,7 @@ function SourceRow({ source }: { source: TaskSource }) {
         href={source.url || undefined}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center gap-2 rounded-[4px] bg-background p-2 ring-1 ring-border transition-colors hover:ring-foreground/30"
+        className="flex items-center gap-2 rounded-[4px] bg-card p-2 ring-1 ring-border transition-colors hover:ring-foreground/30"
       >
         <span
           className={`flex size-7 shrink-0 items-center justify-center rounded-[4px] ${themeFollowing ? "bg-foreground/10" : ""}`}
@@ -834,38 +958,37 @@ function EmptyState() {
   )
 }
 
-function FilterSortMenu({
+const TOOLBAR_BUTTON_BASE =
+  "flex h-7 items-center gap-1.5 rounded-[4px] px-2 text-[12px] font-medium ring-1 transition-colors outline-none"
+const TOOLBAR_BUTTON_INACTIVE =
+  "bg-card text-muted-foreground ring-border hover:text-foreground hover:ring-foreground/30"
+const TOOLBAR_BUTTON_ACTIVE =
+  "bg-accent text-foreground ring-foreground/30"
+
+function FilterMenu({
   activeSources,
   onToggleSource,
   onClearSources,
-  sortKey,
-  onSortChange,
 }: {
   activeSources: Set<RequestSource>
   onToggleSource: (source: RequestSource) => void
   onClearSources: () => void
-  sortKey: SortKey
-  onSortChange: (key: SortKey) => void
 }) {
   const filterCount = activeSources.size
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        className={`flex h-8 items-center gap-1.5 rounded-[4px] px-2.5 text-[12px] font-medium ring-1 transition-colors outline-none ${
-          filterCount > 0
-            ? "bg-accent text-foreground ring-foreground/30"
-            : "bg-card text-muted-foreground ring-border hover:text-foreground hover:ring-foreground/30"
-        }`}
+        className={`${TOOLBAR_BUTTON_BASE} ${filterCount > 0 ? TOOLBAR_BUTTON_ACTIVE : TOOLBAR_BUTTON_INACTIVE}`}
       >
-        <FunnelSimple size={13} />
-        <span>Filter & sort</span>
+        <FunnelSimple size={12} />
+        <span>Filter</span>
         {filterCount > 0 && (
           <span className="rounded-[3px] bg-foreground px-1 py-px text-[10px] font-semibold text-background">
             {filterCount}
           </span>
         )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-[220px]">
+      <DropdownMenuContent align="end" className="w-[200px]">
         <DropdownMenuGroup>
           <DropdownMenuLabel className="flex items-center justify-between">
             <span>Sources</span>
@@ -904,9 +1027,28 @@ function FilterSortMenu({
             )
           })}
         </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
 
-        <DropdownMenuSeparator />
-
+function SortMenu({
+  sortKey,
+  onSortChange,
+}: {
+  sortKey: SortKey
+  onSortChange: (key: SortKey) => void
+}) {
+  const isDefault = sortKey === "newest"
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        className={`${TOOLBAR_BUTTON_BASE} ${isDefault ? TOOLBAR_BUTTON_INACTIVE : TOOLBAR_BUTTON_ACTIVE}`}
+      >
+        <ArrowsDownUp size={12} />
+        <span>Sort</span>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-[180px]">
         <DropdownMenuGroup>
           <DropdownMenuLabel>Sort by</DropdownMenuLabel>
           <DropdownMenuRadioGroup
