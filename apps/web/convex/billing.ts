@@ -67,6 +67,7 @@ type WorkspaceBillingDashboard = {
   currentPlanId: string | null
   currentPlanName: string
   canManageBilling: boolean
+  isLegacyBilling: boolean
   disableOveragesWhenExhausted: boolean
   overagesToggleLocked: boolean
   monthLabel: string
@@ -647,11 +648,14 @@ export const getWorkspaceBillingDashboard = action({
     const totalCredits = creditsBalance.usage > 0 ? creditsBalance.usage : 0
 
     const resolvedPlanId = activeSubscription?.planId ?? null
+    const isLegacyBilling = activeSubscription === null && billingContext.currentPlanId !== null
     return {
       currentPlanId: resolvedPlanId,
       currentPlanName:
-        plans.find((plan) => plan.id === resolvedPlanId)?.name ?? "No plan",
+        plans.find((plan) => plan.id === resolvedPlanId)?.name ??
+        (isLegacyBilling ? "Legacy billing" : "No plan"),
       canManageBilling: billingContext.canManageBilling,
+      isLegacyBilling,
       disableOveragesWhenExhausted:
         !planAllowsOverages(resolvedPlanId) ||
         billingContext.disableOveragesWhenExhausted,

@@ -79,6 +79,7 @@ type BillingDashboard = {
   currentPlanId: string | null
   currentPlanName: string
   canManageBilling: boolean
+  isLegacyBilling: boolean
   disableOveragesWhenExhausted: boolean
   overagesToggleLocked: boolean
   monthLabel: string
@@ -597,6 +598,20 @@ export default function BillingPage() {
           >
             <p className="text-[12px] font-medium text-foreground">Billing data is unavailable</p>
             <p className="mt-0.5 text-[11px] text-muted-foreground">{error}</p>
+          </motion.div>
+        )}
+
+        {dashboard.isLegacyBilling && (
+          <motion.div
+            variants={fadeUp}
+            className="mb-6 rounded-[4px] bg-muted/40 p-3 ring-1 ring-border"
+          >
+            <p className="text-[12px] font-medium text-foreground">
+              You're on legacy billing until your next renewal
+            </p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              We'll migrate your workspace to credit-based billing automatically on your next billing cycle. Until then, your current legacy subscription remains active and charges continue on your existing schedule.
+            </p>
           </motion.div>
         )}
 
