@@ -73,6 +73,9 @@ const STATUS_OPTIONS: { id: Status; label: string }[] = [
   { id: "ready", label: "Ready" },
   { id: "shipped", label: "Shipped" },
   { id: "archive", label: "Archive" },
+  ...(process.env.NODE_ENV === "development"
+    ? [{ id: "requests" as Status, label: "Requests (dev)" }]
+    : []),
 ]
 
 const PRIORITY_OPTIONS: { id: Priority; label: string }[] = [
