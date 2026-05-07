@@ -20,7 +20,7 @@
     "@tiptap/react": "^3.22.3",
     "@tiptap/starter-kit": "^3.22.3",
     "@workspace/ui": "workspace:*",
-    "convex": "^1.34.0",
+    "convex": "^1.37.0",
     "isbot": "^5.1.23",
     "motion": "^12.38.0",
     "react": "19.2.4",
