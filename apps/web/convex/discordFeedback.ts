@@ -197,7 +197,7 @@ type ProcessFeedbackWindowResult =
 const feedbackClassificationSchema = z.object({
   isProductFeedback: z.boolean(),
   needsTaskAction: z.boolean(),
-  confidence: z.number().min(0).max(1),
+  confidence: z.number(),
   summary: z.string().min(1).nullable(),
   reason: z.string().min(1),
   relevantMessageIds: z.array(z.string()).max(RELEVANT_MESSAGE_LIMIT),
@@ -1415,7 +1415,9 @@ export const processFeedbackWindow = internalAction({
         })
         classifierDurationMs = Date.now() - classifierStart
         classifierUsage = classifierResult.usage
-        classification = classifierResult.object
+        classification = normalizeFeedbackClassificationPayload(
+          classifierResult.object
+        )
 
         await trackLLMGeneration({
           distinctId: feedbackWindow.integration.workspaceId,
