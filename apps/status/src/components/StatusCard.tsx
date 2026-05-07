@@ -1,8 +1,8 @@
 import { motion } from "motion/react";
 import {
-  CheckSquareIcon,
-  WarningIcon,
-  WarningOctagonIcon,
+  CheckCircleIcon,
+  WarningCircleIcon,
+  XCircleIcon,
   QuestionIcon,
 } from "@phosphor-icons/react";
 import { UptimeBar } from "./UptimeBar";
@@ -11,6 +11,7 @@ import {
   type ServiceConfig,
   type UpptimeService,
 } from "../lib/upptime";
+import { cn } from "../lib/cn";
 
 interface StatusCardProps {
   config: ServiceConfig;
@@ -25,21 +26,19 @@ export function StatusCard({ config, service, index }: StatusCardProps) {
 
   const Icon =
     status === "up"
-      ? CheckSquareIcon
+      ? CheckCircleIcon
       : status === "down"
-        ? WarningOctagonIcon
+        ? XCircleIcon
         : status === "degraded"
-          ? WarningIcon
+          ? WarningCircleIcon
           : QuestionIcon;
 
-  const iconClass =
-    status === "up"
-      ? "text-foreground"
-      : status === "down"
-        ? "text-destructive"
-        : status === "degraded"
-          ? "text-warning"
-          : "text-muted-foreground";
+  const iconClass = cn(
+    status === "up" && "text-foreground",
+    status === "down" && "text-destructive",
+    status === "degraded" && "text-warning",
+    status === "unknown" && "text-muted-foreground"
+  );
 
   return (
     <motion.article
@@ -50,17 +49,17 @@ export function StatusCard({ config, service, index }: StatusCardProps) {
         ease: "easeOut",
         delay: 0.1 + index * 0.06,
       }}
-      className="rounded-[var(--radius)] border border-border bg-background p-4 sm:p-5"
+      className="rounded-[var(--radius)] border border-border bg-card p-4 sm:p-5"
     >
       <header className="flex items-center justify-between gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border">
-          <Icon weight="regular" size={22} className={iconClass} />
-        </div>
+        <Icon weight="fill" size={32} className={iconClass} />
         <div className="flex flex-col items-end text-right">
           <h2 className="text-base font-semibold tracking-tight">
             {config.label}
           </h2>
-          <p className="text-xs text-muted-foreground">{config.url}</p>
+          {config.url && (
+            <p className="text-xs text-muted-foreground">{config.url}</p>
+          )}
         </div>
       </header>
 

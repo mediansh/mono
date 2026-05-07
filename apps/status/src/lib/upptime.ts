@@ -25,14 +25,14 @@ export const SUMMARY_URL =
 export interface ServiceConfig {
   slug: string;
   label: string;
-  url: string;
+  url?: string;
 }
 
 export const SERVICES: ServiceConfig[] = [
   { slug: "web", label: "Website", url: "median.sh" },
   { slug: "api", label: "API", url: "api.cloud.median.sh" },
-  { slug: "feedback", label: "Feedback Processing", url: "api.median.sh" },
-  { slug: "discord", label: "Discord Bot", url: "median-discord-bot.fly.dev" },
+  { slug: "feedback", label: "Feedback Processing" },
+  { slug: "discord", label: "Discord Bot" },
 ];
 
 export async function fetchSummary(): Promise<UpptimeService[]> {

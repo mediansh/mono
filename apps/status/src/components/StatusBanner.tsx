@@ -1,11 +1,12 @@
 import { motion } from "motion/react";
 import {
-  CheckSquareIcon,
-  WarningIcon,
-  WarningOctagonIcon,
+  CheckCircleIcon,
+  WarningCircleIcon,
+  XCircleIcon,
   CircleNotchIcon,
 } from "@phosphor-icons/react";
 import type { OverallState } from "../lib/upptime";
+import { cn } from "../lib/cn";
 
 interface StatusBannerProps {
   state: OverallState;
@@ -19,31 +20,42 @@ const STATE_COPY: Record<OverallState, string> = {
   unknown: "Status unavailable",
 };
 
+const STATE_BG: Record<OverallState, string> = {
+  operational: "bg-foreground text-background",
+  degraded: "bg-warning text-background",
+  outage: "bg-destructive text-foreground",
+  unknown: "bg-muted text-foreground",
+};
+
 export function StatusBanner({ state, loading }: StatusBannerProps) {
   const Icon = loading
     ? CircleNotchIcon
     : state === "operational"
-      ? CheckSquareIcon
+      ? CheckCircleIcon
       : state === "outage"
-        ? WarningOctagonIcon
-        : WarningIcon;
+        ? XCircleIcon
+        : state === "degraded"
+          ? WarningCircleIcon
+          : CircleNotchIcon;
 
   const label = loading ? "Checking status…" : STATE_COPY[state];
+  const tone = loading ? "bg-muted text-foreground" : STATE_BG[state];
 
   return (
     <motion.div
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="flex items-center justify-between rounded-[var(--radius)] bg-foreground px-5 py-4 text-background shadow-[0_1px_0_rgba(0,0,0,0.04)]"
+      className={cn(
+        "flex items-center justify-between rounded-[var(--radius)] px-5 py-4 transition-colors",
+        tone
+      )}
     >
-      <div className="flex h-10 w-10 items-center justify-center rounded-md border border-background/20">
-        <Icon
-          weight="regular"
-          size={22}
-          className={loading ? "animate-spin" : ""}
-        />
-      </div>
+      <Icon
+        weight="fill"
+        size={32}
+        className={loading ? "animate-spin" : ""}
+      />
       <span className="text-base font-medium tracking-tight sm:text-lg">
         {label}
       </span>
