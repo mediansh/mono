@@ -48,6 +48,16 @@ function worst(a: ComponentHealth, b: ComponentHealth): ComponentHealth {
   return rank(a) >= rank(b) ? a : b
 }
 
+function overallStatusFor(components: ComponentSnapshot[]): ComponentHealth {
+  if (components.every((component) => component.status === "operational")) {
+    return "operational"
+  }
+  if (components.every((component) => component.status === "outage")) {
+    return "outage"
+  }
+  return "degraded"
+}
+
 async function countStuckIntegrations(
   ctx: QueryCtx,
   table: (typeof FEEDBACK_MODULES)[number]["table"],
@@ -206,13 +216,8 @@ export const getStatusSnapshot = internalQuery({
       FEEDBACK_MODULES.map((spec) => buildComponentSnapshot(ctx, spec, now))
     )
 
-    const overall: ComponentHealth = components.reduce<ComponentHealth>(
-      (acc, c) => worst(acc, c.status),
-      "operational"
-    )
-
     return {
-      status: overall,
+      status: overallStatusFor(components),
       checkedAt: now,
       windowMs: RECENT_WINDOW_MS,
       components,
