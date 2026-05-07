@@ -11,11 +11,9 @@ import {
   AUTUMN_BILLING_PLANS,
   AUTUMN_CREDITS_FEATURE_ID,
   EVENT_CREDIT_COST,
-  formatTrackedModelName,
   getCurrentMonthLabel,
   getPlanCopy,
   isFreePlan,
-  isTrackedAiModel,
   planAllowsOverages,
 } from "../lib/billing/config"
 import {
@@ -35,16 +33,6 @@ type AggregateRow = {
   period: number
   values: Record<string, number>
 }
-
-type ListEvent = {
-  id: string
-  timestamp: number
-  featureId: string
-  value: number
-  properties: Record<string, unknown>
-}
-
-type DashboardUsageRecord = WorkspaceBillingDashboard["usageRecords"][number]
 
 type WorkspaceBillingContext = {
   workspaceId: string
@@ -171,80 +159,6 @@ function normalizePlanStatus(status: string | undefined): "active" | "scheduled"
     return status
   }
   return null
-}
-
-function buildUsageRecords(events: ListEvent[]) {
-  const records: DashboardUsageRecord[] = []
-
-  for (const event of events) {
-    if (event.featureId !== AUTUMN_CREDITS_FEATURE_ID) continue
-
-    const kind =
-      typeof event.properties.kind === "string"
-        ? event.properties.kind
-        : null
-
-    if (kind === "event") {
-      const source =
-        typeof event.properties.source === "string"
-          ? event.properties.source
-          : "integration"
-      const eventType =
-        typeof event.properties.event_type === "string"
-          ? event.properties.event_type
-          : null
-
-      records.push({
-        id: event.id,
-        type: "event_ingested",
-        description: eventType
-          ? `${source} event ingested: ${eventType}`
-          : `${source} event ingested`,
-        cost: typeof event.properties.cost === "number"
-          ? event.properties.cost
-          : event.value,
-        timestamp: event.timestamp,
-      })
-      continue
-    }
-
-    if (kind === "ai") {
-      const modelString = typeof event.properties.model === "string"
-        ? event.properties.model
-        : null
-      const feature =
-        typeof event.properties.feature === "string"
-          ? event.properties.feature
-          : "AI usage"
-      const inputTokens = typeof event.properties.input_tokens === "number"
-        ? event.properties.input_tokens
-        : 0
-      const outputTokens = typeof event.properties.output_tokens === "number"
-        ? event.properties.output_tokens
-        : 0
-      const totalTokens = inputTokens + outputTokens
-      const cost = typeof event.properties.cost === "number"
-        ? event.properties.cost
-        : event.value
-
-      const modelLabel = modelString
-        ? isTrackedAiModel(modelString)
-          ? formatTrackedModelName(modelString)
-          : modelString
-        : "AI"
-
-      records.push({
-        id: event.id,
-        type: feature === "task_generation" ? "ai_generation" : "ai_tool_call",
-        description: `${modelLabel} — ${feature.replaceAll("_", " ")}`,
-        tokens: totalTokens > 0 ? totalTokens : undefined,
-        cost,
-        timestamp: event.timestamp,
-      })
-    }
-  }
-
-  return records
 }
 
 export const assertWorkspaceAccess = internalMutation({
@@ -589,28 +503,13 @@ export const getWorkspaceBillingDashboard = action({
       }
     })
 
-    // Reconstruct AI vs event breakdown from the full billing cycle. The
-    // display list stays capped, but summary totals must not depend on it.
-    let aiSpend = 0
-    let aiCalls = 0
-    let eventCount = 0
-    for (const event of snapshot.cycleEvents as Array<ListEvent>) {
-      if (event.featureId !== AUTUMN_CREDITS_FEATURE_ID) continue
-      const kind =
-        typeof event.properties.kind === "string"
-          ? event.properties.kind
-          : null
-      if (kind === "ai") {
-        aiCalls += 1
-        aiSpend += typeof event.properties.cost === "number"
-          ? event.properties.cost
-          : event.value
-      } else if (kind === "event") {
-        eventCount += 1
-      }
-    }
-
-    const usageRecords = buildUsageRecords(snapshot.recentEvents as Array<ListEvent>)
+    const aiSpend = snapshot.usageSummary.ai.sum
+    const aiCalls = snapshot.usageSummary.ai.count
+    const eventCount = snapshot.usageSummary.events.count
+    const eventCost =
+      snapshot.usageSummary.events.sum > 0
+        ? snapshot.usageSummary.events.sum
+        : eventCount * EVENT_CREDIT_COST
 
     const planOrder = new Map<string, number>(
       AUTUMN_BILLING_PLANS.map((plan, index) => [plan.id, index] as [string, number])
@@ -671,7 +570,7 @@ export const getWorkspaceBillingDashboard = action({
         aiSpend,
         aiCalls,
         eventCount,
-        eventCost: eventCount * EVENT_CREDIT_COST,
+        eventCost,
       },
       credits: {
         total: totalCredits,
@@ -679,7 +578,7 @@ export const getWorkspaceBillingDashboard = action({
         days: creditSeries,
       },
       plans,
-      usageRecords,
+      usageRecords: [],
     }
   },
 })

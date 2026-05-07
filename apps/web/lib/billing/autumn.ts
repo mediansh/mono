@@ -3,7 +3,6 @@ import {
   AUTUMN_CREDITS_FEATURE_ID,
   BILLING_BIN_SIZE,
   BILLING_RANGE,
-  BILLING_RECORD_PAGE_SIZE,
   EVENT_CREDIT_COST,
   TrackedAiModel,
   getAiCostForTokens,
@@ -11,6 +10,27 @@ import {
 } from "./config"
 
 let cachedClient: Autumn | null = null
+
+type AggregateTotal = {
+  count: number
+  sum: number
+}
+
+type BillingUsageSummary = {
+  ai: AggregateTotal
+  events: AggregateTotal
+}
+
+const EMPTY_AGGREGATE_TOTAL: AggregateTotal = {
+  count: 0,
+  sum: 0,
+}
+
+function getCreditsTotal(response: {
+  total: Record<string, AggregateTotal>
+}): AggregateTotal {
+  return response.total[AUTUMN_CREDITS_FEATURE_ID] ?? EMPTY_AGGREGATE_TOTAL
+}
 
 function getAutumnSecretKey(): string | null {
   const secretKey = process.env.AUTUMN_SECRET_KEY
@@ -245,26 +265,13 @@ export async function loadWorkspaceBillingSnapshot(args: {
     end: Date.now(),
   }
 
-  async function loadCycleEvents() {
-    const events = []
-    let offset = 0
+  const aggregateBaseParams = {
+    customerId,
+    featureId: AUTUMN_CREDITS_FEATURE_ID,
+    customRange: cycleRange,
+  } as const
 
-    while (true) {
-      const page = await client.events.list({
-        customerId,
-        limit: BILLING_RECORD_PAGE_SIZE,
-        offset,
-        customRange: cycleRange,
-      })
-      events.push(...page.list)
-      if (page.list.length < BILLING_RECORD_PAGE_SIZE) {
-        return events
-      }
-      offset += BILLING_RECORD_PAGE_SIZE
-    }
-  }
-
-  const [plans, creditsUsage, recentEvents, cycleEvents] = await Promise.all([
+  const [plans, creditsUsage, aiUsage, eventUsage] = await Promise.all([
     client.plans.list({ customerId }),
     client.events.aggregate({
       customerId,
@@ -272,21 +279,30 @@ export async function loadWorkspaceBillingSnapshot(args: {
       range: BILLING_RANGE,
       binSize: BILLING_BIN_SIZE,
     }),
-    client.events.list({
-      customerId,
-      limit: BILLING_RECORD_PAGE_SIZE,
-      offset: 0,
-      customRange: cycleRange,
+    client.events.aggregate({
+      ...aggregateBaseParams,
+      filterBy: {
+        kind: "ai",
+      },
     }),
-    loadCycleEvents(),
+    client.events.aggregate({
+      ...aggregateBaseParams,
+      filterBy: {
+        kind: "event",
+      },
+    }),
   ])
+
+  const usageSummary: BillingUsageSummary = {
+    ai: getCreditsTotal(aiUsage),
+    events: getCreditsTotal(eventUsage),
+  }
 
   return {
     customer,
     plans: plans.list,
     creditsUsage,
-    recentEvents: recentEvents.list,
-    cycleEvents,
+    usageSummary,
   }
 }
 
