@@ -7,6 +7,7 @@ import {
   type UpptimeService,
   type UpptimeStatus,
 } from "../lib/upptime";
+import type { Incident } from "../lib/incidents";
 import { cn } from "../lib/cn";
 
 const STATUS_OPTIONS: UpptimeStatus[] = ["up", "degraded", "down"];
@@ -65,6 +66,41 @@ function buildDailyMinutesDown(
   return result;
 }
 
+function syntheticIncidents(
+  services: UpptimeService[]
+): Incident[] {
+  let counter = 1;
+  const incidents: Incident[] = [];
+  for (const service of services) {
+    const cfg = SERVICES.find((s) => s.slug === service.slug);
+    for (const [day, minutes] of Object.entries(service.dailyMinutesDown)) {
+      const severity: Incident["severity"] = minutes >= 60 ? "down" : "degraded";
+      const startedAt = `${day}T08:00:00Z`;
+      const resolvedAt = new Date(
+        new Date(startedAt).getTime() + minutes * 60000
+      ).toISOString();
+      incidents.push({
+        number: counter++,
+        title: `${cfg?.label ?? service.slug} ${
+          severity === "down" ? "is down" : "is degraded"
+        }`,
+        url: "#",
+        serviceSlug: service.slug,
+        serviceLabel: cfg?.label ?? service.slug,
+        status: "resolved",
+        severity,
+        startedAt,
+        resolvedAt,
+        durationMinutes: minutes,
+      });
+    }
+  }
+  return incidents.sort(
+    (a, b) =>
+      new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()
+  );
+}
+
 function syntheticServices(
   state: Record<string, DebugServiceState>,
   seed: number
@@ -104,6 +140,7 @@ export function DebugPage() {
     () => syntheticServices(state, historySeed),
     [state, historySeed]
   );
+  const incidents = useMemo(() => syntheticIncidents(services), [services]);
 
   const updateService = (slug: string, patch: Partial<DebugServiceState>) => {
     setState((prev) => ({ ...prev, [slug]: { ...prev[slug], ...patch } }));
@@ -266,6 +303,7 @@ export function DebugPage() {
 
       <StatusView
         services={loading ? null : services}
+        incidents={loading ? [] : incidents}
         loading={loading}
         error={showError ? "Synthetic error" : null}
         overrideState={overall === "auto" ? undefined : overall}

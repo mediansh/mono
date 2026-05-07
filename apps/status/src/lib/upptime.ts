@@ -48,8 +48,9 @@ export type DayState = "up" | "partial" | "down" | "unknown";
 export function buildDailyHistory(
   service: UpptimeService | undefined,
   days = 90
-): DayState[] {
-  const history: DayState[] = [];
+): { states: DayState[]; dayKeys: string[] } {
+  const states: DayState[] = [];
+  const dayKeys: string[] = [];
   const now = new Date();
   const today = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
@@ -58,17 +59,18 @@ export function buildDailyHistory(
   for (let i = days - 1; i >= 0; i--) {
     const date = new Date(today.getTime() - i * DAY_MS);
     const key = date.toISOString().slice(0, 10);
+    dayKeys.push(key);
     if (!service) {
-      history.push("unknown");
+      states.push("unknown");
       continue;
     }
     const minutesDown = service.dailyMinutesDown?.[key] ?? 0;
-    if (minutesDown === 0) history.push("up");
-    else if (minutesDown < 60) history.push("partial");
-    else history.push("down");
+    if (minutesDown === 0) states.push("up");
+    else if (minutesDown < 60) states.push("partial");
+    else states.push("down");
   }
 
-  return history;
+  return { states, dayKeys };
 }
 
 export type OverallState = "operational" | "degraded" | "outage" | "unknown";

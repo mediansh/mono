@@ -11,18 +11,38 @@ import {
   type ServiceConfig,
   type UpptimeService,
 } from "../lib/upptime";
+import type { Incident } from "../lib/incidents";
 import { cn } from "../lib/cn";
 
 interface StatusCardProps {
   config: ServiceConfig;
   service: UpptimeService | undefined;
+  incidents?: Incident[];
   index: number;
 }
 
-export function StatusCard({ config, service, index }: StatusCardProps) {
+export function StatusCard({
+  config,
+  service,
+  incidents = [],
+  index,
+}: StatusCardProps) {
   const status = service?.status ?? "unknown";
   const uptimeMonth = service?.uptimeMonth ?? "—";
-  const history = buildDailyHistory(service);
+  const { states, dayKeys } = buildDailyHistory(service);
+
+  const incidentsByDay: Record<string, Incident[]> = {};
+  for (const day of dayKeys) {
+    const dayIncidents = incidents.filter((i) => {
+      if (i.serviceSlug !== config.slug) return false;
+      const start = new Date(i.startedAt).toISOString().slice(0, 10);
+      const end = i.resolvedAt
+        ? new Date(i.resolvedAt).toISOString().slice(0, 10)
+        : new Date().toISOString().slice(0, 10);
+      return start <= day && day <= end;
+    });
+    if (dayIncidents.length) incidentsByDay[day] = dayIncidents;
+  }
 
   const Icon =
     status === "up"
@@ -64,7 +84,12 @@ export function StatusCard({ config, service, index }: StatusCardProps) {
       </header>
 
       <div className="mt-4">
-        <UptimeBar history={history} delay={0.15 + index * 0.06} />
+        <UptimeBar
+          history={states}
+          dayKeys={dayKeys}
+          incidentsByDay={incidentsByDay}
+          delay={0.15 + index * 0.06}
+        />
         <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
           <span>90 days</span>
           <span className="font-medium text-foreground">

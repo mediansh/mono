@@ -8,9 +8,11 @@ import {
   type OverallState,
   type UpptimeService,
 } from "../lib/upptime";
+import type { Incident } from "../lib/incidents";
 
 interface StatusViewProps {
   services: UpptimeService[] | null;
+  incidents?: Incident[];
   loading?: boolean;
   error?: string | null;
   overrideState?: OverallState;
@@ -19,6 +21,7 @@ interface StatusViewProps {
 
 export function StatusView({
   services,
+  incidents = [],
   loading = false,
   error = null,
   overrideState,
@@ -53,6 +56,7 @@ export function StatusView({
                 key={config.slug}
                 config={config}
                 service={service}
+                incidents={incidents}
                 index={i}
               />
             );
@@ -71,6 +75,20 @@ export function StatusView({
       )}
 
       {footerNote}
+
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4, delay: 0.35 }}
+        className="mt-8 flex justify-center"
+      >
+        <a
+          href="/incidents"
+          className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          View incident history →
+        </a>
+      </motion.div>
 
       <motion.footer
         initial={{ opacity: 0 }}
