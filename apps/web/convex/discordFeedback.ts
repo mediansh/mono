@@ -1,4 +1,4 @@
-import { generateObject } from "ai"
+import { generateText } from "ai"
 import { trackLLMGeneration, trackFeedbackProcessing } from "./posthog"
 import { AI_MODEL_IDS, AI_MODELS, getAiModelForPlan } from "../lib/ai"
 import { safeTrackAiUsage } from "../lib/billing/autumn"
@@ -100,9 +100,10 @@ const TASK_MATCH_STOP_WORDS = new Set([
 ])
 
 const HIGH_SIGNAL_TASK_ACTION_PATTERNS = [
-  /\b5\d{2}\b/,
+  /\b(?:4\d{2}|5\d{2})\b/,
   /\b(?:error|errors|exception|exceptions|crash|crashes|crashed|crashing|broken|fails?|failing|failure)\b/,
-  /\b(?:not working|doesn't work|nothing works|unable to|can't|cannot)\b/,
+  /\b(?:not working|doesn't work|nothing works|ain'?t working|unable to|can't|cannot)\b/,
+  /\b(?:down|offline|unavailable|not responding|isn'?t responding|doesn'?t respond)\b/,
   /\b(?:slow|sluggish|lag|laggy|latency|unresponsive|freeze|freezing|hang|hanging|takes forever|forever to load|loading forever)\b/,
 ]
 
@@ -529,18 +530,6 @@ function extractFirstJsonValue(text: string): unknown {
   }
 
   throw new Error("Model did not return a JSON object.")
-}
-
-function repairJsonText(
-  text: string,
-  normalize: (value: unknown) => unknown = (value) => value
-): string | null {
-  try {
-    const repaired = JSON.stringify(normalize(extractFirstJsonValue(text)))
-    return typeof repaired === "string" ? repaired : null
-  } catch {
-    return null
-  }
 }
 
 function getErrorMessage(error: unknown) {
@@ -1397,12 +1386,8 @@ export const processFeedbackWindow = internalAction({
       let classification: z.infer<typeof feedbackClassificationSchema>
 
       try {
-        const classifierResult = await generateObject({
+        const classifierResult = await generateText({
           model: AI_MODELS.feedbackClassifier,
-          schema: feedbackClassificationSchema,
-          schemaName: "discordFeedbackClassification",
-          schemaDescription:
-            "Classifies the newest Discord messages for actionable product feedback.",
           system: classifierSystemParts.join(" "),
           prompt: [
             `Workspace name: ${feedbackWindow.integration.workspaceName}`,
@@ -1410,14 +1395,19 @@ export const processFeedbackWindow = internalAction({
             "Conversation transcript:",
             transcript,
           ].join("\n\n"),
-          experimental_repairText: async ({ text }) =>
-            repairJsonText(text, normalizeFeedbackClassificationPayload),
         })
         classifierDurationMs = Date.now() - classifierStart
         classifierUsage = classifierResult.usage
-        classification = normalizeFeedbackClassificationPayload(
-          classifierResult.object
+        const parsedClassification = feedbackClassificationSchema.safeParse(
+          normalizeFeedbackClassificationPayload(
+            extractFirstJsonValue(classifierResult.text)
+          )
         )
+        if (parsedClassification.success) {
+          classification = parsedClassification.data
+        } else {
+          throw parsedClassification.error
+        }
 
         await trackLLMGeneration({
           distinctId: feedbackWindow.integration.workspaceId,
@@ -1585,6 +1575,7 @@ export const processFeedbackWindow = internalAction({
         "Priority may be urgent, high, medium, low, or none.",
         `Allowed labels: ${labelsText}`,
         "Only use labels from the allowed list. Use an empty array when none apply.",
+        "Return valid JSON only. No markdown. No code fences. No commentary.",
         'Return valid structured output only with action items shaped like {"action":"create",...} or {"action":"update","taskCode":"MDN-123",...}.',
       ]
 
@@ -1611,12 +1602,8 @@ export const processFeedbackWindow = internalAction({
       )
 
       try {
-        const extractorResult = await generateObject({
+        const extractorResult = await generateText({
           model: extractorSelection.model,
-          schema: extractedFeedbackTasksSchema,
-          schemaName: "discordFeedbackTaskActions",
-          schemaDescription:
-            "Task create or update actions extracted from Discord product feedback.",
           system: extractorSystemParts.join(" "),
           prompt: [
             `Classifier summary: ${classification.summary ?? classification.reason}`,
@@ -1651,12 +1638,27 @@ export const processFeedbackWindow = internalAction({
               )
               .join("\n"),
           ].join("\n\n"),
-          experimental_repairText: async ({ text }) =>
-            repairJsonText(text, normalizeExtractedFeedbackPayload),
         })
         extractorDurationMs = Date.now() - extractorStart
         extractorUsage = extractorResult.usage
-        extracted = extractorResult.object
+        const parsedExtraction = extractedFeedbackTasksSchema.safeParse(
+          normalizeExtractedFeedbackPayload(
+            extractFirstJsonValue(extractorResult.text)
+          )
+        )
+        if (parsedExtraction.success) {
+          extracted = parsedExtraction.data
+        } else {
+          logError(
+            "Discord feedback extractor schema mismatch",
+            parsedExtraction.error,
+            {
+              integrationId: args.integrationId,
+              workspaceId: feedbackWindow.integration.workspaceId,
+            }
+          )
+          throw parsedExtraction.error
+        }
 
         await trackLLMGeneration({
           distinctId: feedbackWindow.integration.workspaceId,
