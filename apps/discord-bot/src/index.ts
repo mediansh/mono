@@ -16,6 +16,7 @@ import {
   Routes,
   SlashCommandBuilder,
 } from "discord.js"
+import { startHealthServer } from "./health.js"
 import { logger } from "./logger.js"
 import { captureBot, flushPostHog } from "./posthog.js"
 
@@ -166,6 +167,24 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
   ],
+})
+
+let isBotReady = false
+let isShuttingDown = false
+
+const healthServer = await startHealthServer({
+  getStatus: () => ({
+    ok: !isShuttingDown,
+    status: isShuttingDown ? "shutting_down" : isBotReady ? "ready" : "starting",
+    discordReady: isBotReady,
+    guildCount: client.guilds.cache.size,
+  }),
+})
+
+logger.info("Health endpoint listening", {
+  scope: "health",
+  path: "/health",
+  port: healthServer.port,
 })
 
 const pairCommand = new SlashCommandBuilder()
@@ -439,6 +458,8 @@ function startNotificationSubscription() {
 }
 
 client.once(Events.ClientReady, async (readyClient) => {
+  isBotReady = true
+
   await registerCommands()
   startNotificationSubscription()
 
@@ -628,18 +649,29 @@ client.on(Events.MessageCreate, async (message: Message) => {
   }
 })
 
-process.on("SIGINT", async () => {
+async function shutdown() {
+  if (isShuttingDown) {
+    return
+  }
+
+  isShuttingDown = true
   logger.info("Shutting down", { scope: "lifecycle" })
-  await Promise.all([convex.close(), logger.flush(), flushPostHog()])
+  await Promise.all([
+    healthServer.close(),
+    convex.close(),
+    logger.flush(),
+    flushPostHog(),
+  ])
   client.destroy()
   process.exit(0)
+}
+
+process.on("SIGINT", () => {
+  void shutdown()
 })
 
-process.on("SIGTERM", async () => {
-  logger.info("Shutting down", { scope: "lifecycle" })
-  await Promise.all([convex.close(), logger.flush(), flushPostHog()])
-  client.destroy()
-  process.exit(0)
+process.on("SIGTERM", () => {
+  void shutdown()
 })
 
 void client.login(discordToken)
