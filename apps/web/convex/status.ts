@@ -108,6 +108,7 @@ async function buildComponentSnapshot(
     "failure"
   )
   const lastFailureAt = lastFailureRun?.finishedAt ?? null
+  const hasRecentFailure = lastFailureAt !== null && lastFailureAt >= since
   const lastError = lastFailureRun?.error ?? null
 
   const integrations = await countStuckIntegrations(ctx, spec.table, now)
@@ -120,7 +121,7 @@ async function buildComponentSnapshot(
     reason = `${integrations.stuck} integration(s) stuck in "running" for over ${Math.round(STUCK_RUNNING_MS / 60_000)}m.`
   }
 
-  if (lastRunStatus === "failure") {
+  if (lastRunStatus === "failure" && hasRecentFailure) {
     const sinceLastSuccess =
       lastSuccessAt === null ? Number.POSITIVE_INFINITY : now - lastSuccessAt
     if (sinceLastSuccess > OUTAGE_SINCE_LAST_SUCCESS_MS) {
