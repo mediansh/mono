@@ -373,13 +373,56 @@ function formatCreatedAtLabel(timestamp: number) {
 
 function extractJsonObject(text: string) {
   const start = text.indexOf("{")
-  const end = text.lastIndexOf("}")
 
-  if (start === -1 || end === -1 || end <= start) {
+  if (start === -1) {
     throw new Error("Model did not return a JSON object.")
   }
 
-  return text.slice(start, end + 1)
+  let depth = 0
+  let inString = false
+  let isEscaped = false
+
+  for (let index = start; index < text.length; index += 1) {
+    const char = text[index]
+
+    if (inString) {
+      if (isEscaped) {
+        isEscaped = false
+        continue
+      }
+
+      if (char === "\\") {
+        isEscaped = true
+        continue
+      }
+
+      if (char === '"') {
+        inString = false
+      }
+
+      continue
+    }
+
+    if (char === '"') {
+      inString = true
+      continue
+    }
+
+    if (char === "{") {
+      depth += 1
+      continue
+    }
+
+    if (char === "}") {
+      depth -= 1
+
+      if (depth === 0) {
+        return text.slice(start, index + 1)
+      }
+    }
+  }
+
+  throw new Error("Model did not return a complete JSON object.")
 }
 
 function normalizeDiscordId(id: string) {
