@@ -1,4 +1,4 @@
-import { generateText } from "ai"
+import { generateObject } from "ai"
 import { trackLLMGeneration, trackFeedbackProcessing } from "./posthog"
 import { AI_MODEL_IDS, AI_MODELS, getAiModelForPlan } from "../lib/ai"
 import { safeTrackAiUsage } from "../lib/billing/autumn"
@@ -203,37 +203,37 @@ const feedbackClassificationSchema = z.object({
   relevantMessageIds: z.array(z.string()).max(RELEVANT_MESSAGE_LIMIT),
 })
 
+const extractedFeedbackActionSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("create"),
+    title: z.string().min(1).max(140),
+    description: z.string().max(2000).nullable(),
+    priority: z.enum(["urgent", "high", "medium", "low", "none"]).nullable(),
+    labels: z.array(z.string()),
+  }),
+  z.object({
+    action: z.literal("update"),
+    taskCode: z.string().min(1),
+    title: z.string().min(1).max(140),
+    description: z.string().max(2000).nullable(),
+    priority: z.enum(["urgent", "high", "medium", "low", "none"]).nullable(),
+    labels: z.array(z.string()),
+  }),
+])
+
 const extractedFeedbackTasksSchema = z.object({
-  actions: z.array(
-    z.discriminatedUnion("action", [
-      z.object({
-        action: z.literal("create"),
-        title: z.string().min(1).max(140),
-        description: z.string().max(2000).nullable(),
-        priority: z
-          .enum(["urgent", "high", "medium", "low", "none"])
-          .nullable(),
-        labels: z.array(z.string()),
-      }),
-      z.object({
-        action: z.literal("update"),
-        taskCode: z.string().min(1),
-        title: z.string().min(1).max(140),
-        description: z.string().max(2000).nullable(),
-        priority: z
-          .enum(["urgent", "high", "medium", "low", "none"])
-          .nullable(),
-        labels: z.array(z.string()),
-      }),
-    ])
-  ),
+  actions: z.array(extractedFeedbackActionSchema),
 })
 
 function normalizeExtractedFeedbackPayload(
   rawPayload: unknown
 ): z.infer<typeof extractedFeedbackTasksSchema> {
   if (Array.isArray(rawPayload)) {
-    return { actions: rawPayload as z.infer<typeof extractedFeedbackTasksSchema>["actions"] }
+    return {
+      actions: rawPayload as z.infer<
+        typeof extractedFeedbackTasksSchema
+      >["actions"],
+    }
   }
 
   if (
@@ -242,10 +242,112 @@ function normalizeExtractedFeedbackPayload(
     "action" in rawPayload &&
     typeof (rawPayload as { action?: unknown }).action === "string"
   ) {
-    return { actions: [rawPayload as z.infer<typeof extractedFeedbackTasksSchema>["actions"][number]] }
+    return {
+      actions: [rawPayload as z.infer<typeof extractedFeedbackActionSchema>],
+    }
+  }
+
+  if (rawPayload && typeof rawPayload === "object") {
+    const payload = rawPayload as Record<string, unknown>
+    const fallbackActions =
+      payload.actions ??
+      payload.actionItems ??
+      payload.items ??
+      payload.tasks ??
+      payload.operations
+
+    if (Array.isArray(fallbackActions)) {
+      return {
+        actions: fallbackActions as z.infer<
+          typeof extractedFeedbackTasksSchema
+        >["actions"],
+      }
+    }
+
+    if (
+      fallbackActions &&
+      typeof fallbackActions === "object" &&
+      "action" in fallbackActions
+    ) {
+      return {
+        actions: [
+          fallbackActions as z.infer<typeof extractedFeedbackActionSchema>,
+        ],
+      }
+    }
   }
 
   return rawPayload as z.infer<typeof extractedFeedbackTasksSchema>
+}
+
+function normalizeFeedbackClassificationPayload(
+  rawPayload: unknown
+): z.infer<typeof feedbackClassificationSchema> {
+  if (!rawPayload || typeof rawPayload !== "object") {
+    return rawPayload as z.infer<typeof feedbackClassificationSchema>
+  }
+
+  const payload = rawPayload as Record<string, unknown>
+  const relevantMessageIds =
+    payload.relevantMessageIds ??
+    payload.messageIds ??
+    payload.relevantMessages ??
+    payload.relevantIds
+  const rawIsProductFeedback =
+    payload.isProductFeedback ?? payload.isFeedback ?? payload.productFeedback
+  const rawNeedsTaskAction =
+    payload.needsTaskAction ?? payload.needsAction ?? payload.actionable
+
+  if (rawIsProductFeedback === undefined && rawNeedsTaskAction === undefined) {
+    return rawPayload as z.infer<typeof feedbackClassificationSchema>
+  }
+
+  const isProductFeedback =
+    typeof rawIsProductFeedback === "boolean"
+      ? rawIsProductFeedback
+      : rawIsProductFeedback === "true"
+        ? true
+        : rawIsProductFeedback === "false"
+          ? false
+          : false
+  const needsTaskAction =
+    typeof rawNeedsTaskAction === "boolean"
+      ? rawNeedsTaskAction
+      : rawNeedsTaskAction === "true"
+        ? true
+        : rawNeedsTaskAction === "false"
+          ? false
+          : false
+  const rawConfidence =
+    typeof payload.confidence === "number"
+      ? payload.confidence
+      : typeof payload.confidence === "string"
+        ? Number(payload.confidence)
+        : 0
+  const confidence = Number.isFinite(rawConfidence)
+    ? Math.min(1, Math.max(0, rawConfidence))
+    : 0
+  const summary =
+    typeof payload.summary === "string" && payload.summary.trim()
+      ? payload.summary
+      : null
+  const reason =
+    typeof payload.reason === "string" && payload.reason.trim()
+      ? payload.reason
+      : summary || "Structured classification omitted a reason."
+
+  return {
+    isProductFeedback,
+    needsTaskAction,
+    confidence,
+    summary,
+    reason,
+    relevantMessageIds: Array.isArray(relevantMessageIds)
+      ? relevantMessageIds
+          .map((messageId) => String(messageId))
+          .slice(0, RELEVANT_MESSAGE_LIMIT)
+      : [],
+  }
 }
 
 function getFeedbackWorkpoolParallelism() {
@@ -371,15 +473,78 @@ function formatCreatedAtLabel(timestamp: number) {
   }).format(timestamp)
 }
 
-function extractJsonObject(text: string) {
-  const start = text.indexOf("{")
-  const end = text.lastIndexOf("}")
+function extractFirstJsonValue(text: string): unknown {
+  for (let start = 0; start < text.length; start += 1) {
+    const opening = text[start]
+    if (opening !== "{" && opening !== "[") {
+      continue
+    }
 
-  if (start === -1 || end === -1 || end <= start) {
-    throw new Error("Model did not return a JSON object.")
+    const closing = opening === "{" ? "}" : "]"
+    const stack = [closing]
+    let inString = false
+    let escaped = false
+
+    for (let index = start + 1; index < text.length; index += 1) {
+      const char = text[index]
+
+      if (inString) {
+        if (escaped) {
+          escaped = false
+        } else if (char === "\\") {
+          escaped = true
+        } else if (char === '"') {
+          inString = false
+        }
+        continue
+      }
+
+      if (char === '"') {
+        inString = true
+        continue
+      }
+
+      if (char === "{" || char === "[") {
+        stack.push(char === "{" ? "}" : "]")
+        continue
+      }
+
+      if (char === "}" || char === "]") {
+        if (stack[stack.length - 1] !== char) {
+          break
+        }
+
+        stack.pop()
+
+        if (stack.length === 0) {
+          const candidate = text.slice(start, index + 1)
+          try {
+            return JSON.parse(candidate)
+          } catch {
+            break
+          }
+        }
+      }
+    }
   }
 
-  return text.slice(start, end + 1)
+  throw new Error("Model did not return a JSON object.")
+}
+
+function repairJsonText(
+  text: string,
+  normalize: (value: unknown) => unknown = (value) => value
+): string | null {
+  try {
+    const repaired = JSON.stringify(normalize(extractFirstJsonValue(text)))
+    return typeof repaired === "string" ? repaired : null
+  } catch {
+    return null
+  }
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error)
 }
 
 function normalizeDiscordId(id: string) {
@@ -509,6 +674,27 @@ function buildFallbackTaskDescription(
     .join("\n")
   const normalized = truncateText(description, 2000)
   return normalized || undefined
+}
+
+function buildFallbackFeedbackClassification(
+  messages: FeedbackMessage[]
+): z.infer<typeof feedbackClassificationSchema> {
+  const hasHighSignalFeedback = hasHighSignalTaskActionFeedback(messages)
+
+  return {
+    isProductFeedback: hasHighSignalFeedback,
+    needsTaskAction: hasHighSignalFeedback,
+    confidence: hasHighSignalFeedback ? 0.55 : 0,
+    summary: hasHighSignalFeedback
+      ? "Heuristic fallback detected a high-signal product issue."
+      : null,
+    reason: hasHighSignalFeedback
+      ? "Classifier structured output failed; high-signal fallback matched the pending Discord messages."
+      : "Classifier structured output failed; no high-signal task pattern matched the pending Discord messages.",
+    relevantMessageIds: messages
+      .slice(-RELEVANT_MESSAGE_LIMIT)
+      .map((message) => message.messageId),
+  }
 }
 
 function parseDiscordPermalink(url: string | null) {
@@ -1201,47 +1387,91 @@ export const processFeedbackWindow = internalAction({
       }
 
       const classifierStart = Date.now()
-      const classifierResult = await generateText({
-        model: AI_MODELS.feedbackClassifier,
-        system: classifierSystemParts.join(" "),
-        prompt: [
-          `Workspace name: ${feedbackWindow.integration.workspaceName}`,
-          `Guild: ${feedbackWindow.integration.guildName}`,
-          "Conversation transcript:",
-          transcript,
-        ].join("\n\n"),
-      })
-      const classifierDurationMs = Date.now() - classifierStart
+      let classifierDurationMs = 0
+      let classifierUsage:
+        | {
+            inputTokens?: number
+            outputTokens?: number
+          }
+        | undefined
+      let classification: z.infer<typeof feedbackClassificationSchema>
 
-      await trackLLMGeneration({
-        distinctId: feedbackWindow.integration.workspaceId,
-        model: AI_MODEL_IDS.feedbackClassifier,
-        feature: "discord_feedback_classifier",
-        inputTokens: classifierResult.usage?.inputTokens,
-        outputTokens: classifierResult.usage?.outputTokens,
-        durationMs: classifierDurationMs,
-        success: true,
-        metadata: {
-          integration_id: args.integrationId,
-          pending_message_count: pendingNonAdminMessages.length,
-        },
-      })
+      try {
+        const classifierResult = await generateObject({
+          model: AI_MODELS.feedbackClassifier,
+          schema: feedbackClassificationSchema,
+          schemaName: "discordFeedbackClassification",
+          schemaDescription:
+            "Classifies the newest Discord messages for actionable product feedback.",
+          system: classifierSystemParts.join(" "),
+          prompt: [
+            `Workspace name: ${feedbackWindow.integration.workspaceName}`,
+            `Guild: ${feedbackWindow.integration.guildName}`,
+            "Conversation transcript:",
+            transcript,
+          ].join("\n\n"),
+          experimental_repairText: async ({ text }) =>
+            repairJsonText(text, normalizeFeedbackClassificationPayload),
+        })
+        classifierDurationMs = Date.now() - classifierStart
+        classifierUsage = classifierResult.usage
+        classification = classifierResult.object
 
-      await safeTrackAiUsage({
-        workspaceId: feedbackWindow.integration.workspaceId,
-        workspaceName: feedbackWindow.integration.workspaceName,
-        model: AI_MODEL_IDS.feedbackClassifier,
-        inputTokens: classifierResult.usage?.inputTokens,
-        outputTokens: classifierResult.usage?.outputTokens,
-        properties: {
+        await trackLLMGeneration({
+          distinctId: feedbackWindow.integration.workspaceId,
+          model: AI_MODEL_IDS.feedbackClassifier,
           feature: "discord_feedback_classifier",
-          integration_id: args.integrationId,
-        },
-      })
+          inputTokens: classifierUsage?.inputTokens,
+          outputTokens: classifierUsage?.outputTokens,
+          durationMs: classifierDurationMs,
+          success: true,
+          metadata: {
+            integration_id: args.integrationId,
+            pending_message_count: pendingNonAdminMessages.length,
+          },
+        })
 
-      const classification = feedbackClassificationSchema.parse(
-        JSON.parse(extractJsonObject(classifierResult.text))
-      )
+        await safeTrackAiUsage({
+          workspaceId: feedbackWindow.integration.workspaceId,
+          workspaceName: feedbackWindow.integration.workspaceName,
+          model: AI_MODEL_IDS.feedbackClassifier,
+          inputTokens: classifierUsage?.inputTokens,
+          outputTokens: classifierUsage?.outputTokens,
+          properties: {
+            feature: "discord_feedback_classifier",
+            integration_id: args.integrationId,
+          },
+        })
+      } catch (error) {
+        classifierDurationMs = Date.now() - classifierStart
+        classification = buildFallbackFeedbackClassification(
+          pendingNonAdminMessages
+        )
+
+        logError(
+          "Discord feedback classifier structured output failure; using fallback",
+          error,
+          {
+            integrationId: args.integrationId,
+            workspaceId: feedbackWindow.integration.workspaceId,
+            fallbackIsProductFeedback: classification.isProductFeedback,
+          }
+        )
+
+        await trackLLMGeneration({
+          distinctId: feedbackWindow.integration.workspaceId,
+          model: AI_MODEL_IDS.feedbackClassifier,
+          feature: "discord_feedback_classifier",
+          durationMs: classifierDurationMs,
+          success: false,
+          error: getErrorMessage(error),
+          metadata: {
+            integration_id: args.integrationId,
+            pending_message_count: pendingNonAdminMessages.length,
+            fallback_is_product_feedback: classification.isProductFeedback,
+          },
+        })
+      }
 
       logInfo("Discord feedback classified", {
         integrationId: args.integrationId,
@@ -1266,8 +1496,8 @@ export const processFeedbackWindow = internalAction({
         // Log AI cost even when no actionable feedback is found
         const classifierCost = getAiCostForTokens({
           model: AI_MODEL_IDS.feedbackClassifier,
-          inputTokens: classifierResult.usage?.inputTokens,
-          outputTokens: classifierResult.usage?.outputTokens,
+          inputTokens: classifierUsage?.inputTokens,
+          outputTokens: classifierUsage?.outputTokens,
         })
 
         if (classifierCost > 0) {
@@ -1371,6 +1601,7 @@ export const processFeedbackWindow = internalAction({
           }
         | undefined
       let extracted: z.infer<typeof extractedFeedbackTasksSchema> | null = null
+      let extractorHadStructuredOutputFailure = false
 
       const extractorSelection = getAiModelForPlan(
         "feedbackExtractor",
@@ -1378,8 +1609,12 @@ export const processFeedbackWindow = internalAction({
       )
 
       try {
-        const extractorResult = await generateText({
+        const extractorResult = await generateObject({
           model: extractorSelection.model,
+          schema: extractedFeedbackTasksSchema,
+          schemaName: "discordFeedbackTaskActions",
+          schemaDescription:
+            "Task create or update actions extracted from Discord product feedback.",
           system: extractorSystemParts.join(" "),
           prompt: [
             `Classifier summary: ${classification.summary ?? classification.reason}`,
@@ -1414,34 +1649,19 @@ export const processFeedbackWindow = internalAction({
               )
               .join("\n"),
           ].join("\n\n"),
+          experimental_repairText: async ({ text }) =>
+            repairJsonText(text, normalizeExtractedFeedbackPayload),
         })
         extractorDurationMs = Date.now() - extractorStart
         extractorUsage = extractorResult.usage
-        const parsedExtraction = extractedFeedbackTasksSchema.safeParse(
-          normalizeExtractedFeedbackPayload(
-            JSON.parse(extractJsonObject(extractorResult.text))
-          )
-        )
-        if (parsedExtraction.success) {
-          extracted = parsedExtraction.data
-        } else {
-          logError(
-            "Discord feedback extractor schema mismatch",
-            parsedExtraction.error,
-            {
-              integrationId: args.integrationId,
-              workspaceId: feedbackWindow.integration.workspaceId,
-            }
-          )
-          throw parsedExtraction.error
-        }
+        extracted = extractorResult.object
 
         await trackLLMGeneration({
           distinctId: feedbackWindow.integration.workspaceId,
           model: extractorSelection.modelId,
           feature: "discord_feedback_extractor",
-          inputTokens: extractorResult.usage?.inputTokens,
-          outputTokens: extractorResult.usage?.outputTokens,
+          inputTokens: extractorUsage?.inputTokens,
+          outputTokens: extractorUsage?.outputTokens,
           durationMs: extractorDurationMs,
           success: true,
           metadata: {
@@ -1455,8 +1675,8 @@ export const processFeedbackWindow = internalAction({
           workspaceId: feedbackWindow.integration.workspaceId,
           workspaceName: feedbackWindow.integration.workspaceName,
           model: extractorSelection.modelId,
-          inputTokens: extractorResult.usage?.inputTokens,
-          outputTokens: extractorResult.usage?.outputTokens,
+          inputTokens: extractorUsage?.inputTokens,
+          outputTokens: extractorUsage?.outputTokens,
           properties: {
             feature: "discord_feedback_extractor",
             integration_id: args.integrationId,
@@ -1464,18 +1684,37 @@ export const processFeedbackWindow = internalAction({
         })
       } catch (error) {
         extractorDurationMs = Date.now() - extractorStart
-        logError("Discord feedback extractor parse failure", error, {
-          integrationId: args.integrationId,
-          workspaceId: feedbackWindow.integration.workspaceId,
+        extractorHadStructuredOutputFailure = true
+        extracted = { actions: [] }
+        logError(
+          "Discord feedback extractor structured output failure",
+          error,
+          {
+            integrationId: args.integrationId,
+            workspaceId: feedbackWindow.integration.workspaceId,
+          }
+        )
+
+        await trackLLMGeneration({
+          distinctId: feedbackWindow.integration.workspaceId,
+          model: extractorSelection.modelId,
+          feature: "discord_feedback_extractor",
+          durationMs: extractorDurationMs,
+          success: false,
+          error: getErrorMessage(error),
+          metadata: {
+            integration_id: args.integrationId,
+            relevant_message_count: relevantMessagesForExtraction.length,
+            existing_task_count: relevantTasks.length,
+          },
         })
-        throw error
       }
 
       const totalAiCost =
         getAiCostForTokens({
           model: AI_MODEL_IDS.feedbackClassifier,
-          inputTokens: classifierResult.usage?.inputTokens,
-          outputTokens: classifierResult.usage?.outputTokens,
+          inputTokens: classifierUsage?.inputTokens,
+          outputTokens: classifierUsage?.outputTokens,
         }) +
         getAiCostForTokens({
           model: extractorSelection.modelId,
@@ -1579,12 +1818,13 @@ export const processFeedbackWindow = internalAction({
         updatedTaskCount = result.updatedTaskIds.length
       }
 
-      const fallbackHighSignal = hasHighSignalTaskActionFeedback(fallbackMessages)
+      const fallbackHighSignal =
+        hasHighSignalTaskActionFeedback(fallbackMessages)
       if (
         actionableClassification &&
         createdTaskCount === 0 &&
         updatedTaskCount === 0 &&
-        fallbackHighSignal
+        (fallbackHighSignal || extractorHadStructuredOutputFailure)
       ) {
         const authors = Array.from(
           new Set(fallbackMessages.map((message) => message.authorUsername))
@@ -1595,10 +1835,14 @@ export const processFeedbackWindow = internalAction({
           latestPendingMessage.messageCreatedAt
         )
         const fallbackSummary = classification.summary ?? classification.reason
-        const fallbackPriority = "high" as const
+        const fallbackPriority = fallbackHighSignal
+          ? ("high" as const)
+          : ("medium" as const)
 
-        logInfo("Applying fallback Discord task create for high-signal incident", {
+        logInfo("Applying fallback Discord task create", {
           integrationId: args.integrationId,
+          extractorHadStructuredOutputFailure,
+          fallbackHighSignal,
         })
 
         const fallbackResult = await ctx.runMutation(
