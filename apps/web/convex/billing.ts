@@ -10,7 +10,6 @@ import { internal } from "./_generated/api"
 import {
   AUTUMN_BILLING_PLANS,
   AUTUMN_CREDITS_FEATURE_ID,
-  EVENT_CREDIT_COST,
   getCurrentMonthLabel,
   getPlanCopy,
   isFreePlan,
@@ -159,6 +158,32 @@ function normalizePlanStatus(status: string | undefined): "active" | "scheduled"
     return status
   }
   return null
+}
+
+function getDisplayCents(amount: number) {
+  return Math.round(amount * 100)
+}
+
+function getEventCostForSummary(args: {
+  eventCount: number
+  eventCost: number
+  totalCredits: number
+  aiSpend: number
+}) {
+  const eventCost = Math.max(0, args.eventCost)
+  if (args.eventCount <= 0) {
+    return eventCost
+  }
+
+  const totalCents = getDisplayCents(args.totalCredits)
+  const aiCents = getDisplayCents(args.aiSpend)
+  const eventCents = getDisplayCents(eventCost)
+
+  if (eventCost > 0 && aiCents + eventCents === totalCents) {
+    return eventCost
+  }
+
+  return Math.max(0, totalCents - aiCents) / 100
 }
 
 export const assertWorkspaceAccess = internalMutation({
@@ -503,14 +528,6 @@ export const getWorkspaceBillingDashboard = action({
       }
     })
 
-    const aiSpend = snapshot.usageSummary.ai.sum
-    const aiCalls = snapshot.usageSummary.ai.count
-    const eventCount = snapshot.usageSummary.events.count
-    const eventCost =
-      snapshot.usageSummary.events.sum > 0
-        ? snapshot.usageSummary.events.sum
-        : eventCount * EVENT_CREDIT_COST
-
     const planOrder = new Map<string, number>(
       AUTUMN_BILLING_PLANS.map((plan, index) => [plan.id, index] as [string, number])
     )
@@ -545,6 +562,15 @@ export const getWorkspaceBillingDashboard = action({
       })
 
     const totalCredits = creditsBalance.usage > 0 ? creditsBalance.usage : 0
+    const aiSpend = snapshot.usageSummary.ai.sum
+    const aiCalls = snapshot.usageSummary.ai.count
+    const eventCount = snapshot.usageSummary.events.count
+    const eventCost = getEventCostForSummary({
+      eventCount,
+      eventCost: snapshot.usageSummary.events.sum,
+      totalCredits,
+      aiSpend,
+    })
 
     const resolvedPlanId = activeSubscription?.planId ?? null
     const isLegacyBilling = activeSubscription === null && billingContext.currentPlanId !== null
