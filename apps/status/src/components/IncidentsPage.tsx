@@ -16,8 +16,6 @@ import { cn } from "../lib/cn";
 
 type Filter = "all" | string;
 
-const HISTORY_DAYS = 14;
-
 const SEVERITY_LABEL: Record<Incident["severity"], string> = {
   down: "Major outage",
   degraded: "Degraded performance",
@@ -58,20 +56,13 @@ export function IncidentsPage() {
 
   const filtered = useMemo(() => {
     if (!incidents) return [];
-    if (filter === "all") return incidents;
-    return incidents.filter((i) => i.serviceSlug === filter);
+    const sorted = [...incidents].sort(
+      (a, b) =>
+        new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()
+    );
+    if (filter === "all") return sorted;
+    return sorted.filter((i) => i.serviceSlug === filter);
   }, [incidents, filter]);
-
-  const days = useMemo(() => buildDays(filtered), [filtered]);
-  const olderIncidents = useMemo(() => {
-    const cutoff = startOfDay(new Date());
-    cutoff.setDate(cutoff.getDate() - (HISTORY_DAYS - 1));
-    return filtered.filter((i) => new Date(i.startedAt) < cutoff);
-  }, [filtered]);
-  const olderByMonth = useMemo(
-    () => groupByMonth(olderIncidents),
-    [olderIncidents]
-  );
 
   return (
     <main className="mx-auto flex min-h-svh w-full max-w-2xl flex-col px-4 py-10 sm:py-16">
@@ -102,7 +93,7 @@ export function IncidentsPage() {
           Incident history
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Past {HISTORY_DAYS} days of incidents across Median services.
+          Past incidents and outages across Median services.
         </p>
       </motion.div>
 
@@ -110,7 +101,7 @@ export function IncidentsPage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.1 }}
-        className="mb-8 flex flex-wrap gap-1"
+        className="mb-6 flex flex-wrap gap-1"
       >
         <FilterPill
           active={filter === "all"}
@@ -134,53 +125,47 @@ export function IncidentsPage() {
       )}
 
       {!error && incidents === null && (
-        <div className="flex flex-col gap-4">
+        <ul className="flex flex-col gap-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="flex flex-col gap-2">
-              <div className="h-3 w-32 animate-pulse rounded bg-card" />
-              <div className="h-14 animate-pulse rounded-[var(--radius)] bg-card" />
-            </div>
+            <li
+              key={i}
+              className="h-[68px] animate-pulse rounded-[var(--radius)] bg-card"
+              style={{ animationDelay: `${i * 80}ms` }}
+            />
           ))}
-        </div>
+        </ul>
       )}
 
-      {!error && incidents !== null && (
-        <div className="flex flex-col gap-7">
-          {days.map((day, i) => (
-            <DaySection key={day.key} day={day} index={i} />
-          ))}
-        </div>
-      )}
-
-      {!error && olderByMonth.length > 0 && (
-        <div className="mt-12 border-t border-border pt-8">
-          <h2 className="mb-5 text-sm font-semibold tracking-tight">
-            Earlier incidents
-          </h2>
-          <div className="flex flex-col gap-7">
-            {olderByMonth.map((group, gi) => (
-              <motion.section
-                key={group.label}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: gi * 0.04 }}
-              >
-                <h3 className="mb-3 text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                  {group.label}
-                </h3>
-                <ul className="flex flex-col gap-2">
-                  {group.incidents.map((incident, i) => (
-                    <IncidentDropdown
-                      key={incident.number}
-                      incident={incident}
-                      index={i}
-                    />
-                  ))}
-                </ul>
-              </motion.section>
-            ))}
+      {!error && incidents !== null && filtered.length === 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col items-center gap-3 rounded-[var(--radius)] border border-border bg-card px-6 py-14 text-center"
+        >
+          <CheckCircleIcon
+            weight="fill"
+            size={36}
+            className="text-foreground"
+          />
+          <div>
+            <p className="text-sm font-medium">No incidents reported</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              All clear — every service has been operational.
+            </p>
           </div>
-        </div>
+        </motion.div>
+      )}
+
+      {!error && incidents !== null && filtered.length > 0 && (
+        <ul className="flex flex-col gap-2">
+          {filtered.map((incident, i) => (
+            <IncidentCard
+              key={incident.number}
+              incident={incident}
+              index={i}
+            />
+          ))}
+        </ul>
       )}
 
       <motion.footer
@@ -195,57 +180,7 @@ export function IncidentsPage() {
   );
 }
 
-interface Day {
-  key: string;
-  date: Date;
-  incidents: Incident[];
-}
-
-function DaySection({ day, index }: { day: Day; index: number }) {
-  return (
-    <motion.section
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: index * 0.03 }}
-    >
-      <div className="mb-3 flex items-baseline justify-between gap-3">
-        <h2 className="text-sm font-semibold tracking-tight text-foreground">
-          {formatDayLabel(day.date)}
-        </h2>
-        <span className="text-[11px] tabular-nums text-muted-foreground">
-          {day.date.toLocaleDateString(undefined, {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-          })}
-        </span>
-      </div>
-
-      {day.incidents.length === 0 ? (
-        <div className="flex items-center gap-2 rounded-[var(--radius)] border border-border bg-card px-4 py-3 text-xs text-muted-foreground">
-          <CheckCircleIcon
-            weight="fill"
-            size={14}
-            className="text-foreground/70"
-          />
-          No incidents reported.
-        </div>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {day.incidents.map((incident, i) => (
-            <IncidentDropdown
-              key={incident.number}
-              incident={incident}
-              index={i}
-            />
-          ))}
-        </ul>
-      )}
-    </motion.section>
-  );
-}
-
-function IncidentDropdown({
+function IncidentCard({
   incident,
   index,
 }: {
@@ -259,7 +194,7 @@ function IncidentDropdown({
     <motion.li
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, delay: index * 0.03 }}
+      transition={{ duration: 0.25, delay: Math.min(index * 0.03, 0.25) }}
       className="overflow-hidden rounded-[var(--radius)] border border-border bg-card"
     >
       <button
@@ -282,6 +217,8 @@ function IncidentDropdown({
           </p>
           <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
             <span>{incident.serviceLabel}</span>
+            <span className="text-muted-foreground/50">·</span>
+            <span>{formatDate(incident.startedAt)}</span>
             <span className="text-muted-foreground/50">·</span>
             <span>
               {isOngoing ? "Ongoing" : formatDuration(incident.durationMinutes)}
@@ -424,64 +361,16 @@ function FilterPill({
   );
 }
 
-function buildDays(incidents: Incident[]): Day[] {
-  const days: Day[] = [];
-  const today = startOfDay(new Date());
-  for (let i = 0; i < HISTORY_DAYS; i++) {
-    const date = new Date(today);
-    date.setDate(today.getDate() - i);
-    const key = date.toISOString().slice(0, 10);
-    days.push({
-      key,
-      date,
-      incidents: incidents.filter((incident) => {
-        const start = startOfDay(new Date(incident.startedAt));
-        return start.getTime() === date.getTime();
-      }),
-    });
-  }
-  return days;
-}
-
-function groupByMonth(
-  incidents: Incident[]
-): Array<{ label: string; incidents: Incident[] }> {
-  const groups = new Map<string, Incident[]>();
-  for (const incident of incidents) {
-    const date = new Date(incident.startedAt);
-    const label = date.toLocaleDateString(undefined, {
-      month: "long",
-      year: "numeric",
-    });
-    if (!groups.has(label)) groups.set(label, []);
-    groups.get(label)!.push(incident);
-  }
-  return Array.from(groups.entries()).map(([label, list]) => ({
-    label,
-    incidents: list,
-  }));
-}
-
-function startOfDay(date: Date): Date {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function formatDayLabel(date: Date): string {
-  const today = startOfDay(new Date());
-  const target = startOfDay(date);
-  const diffDays = Math.round(
-    (today.getTime() - target.getTime()) / (1000 * 60 * 60 * 24)
-  );
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-  return date.toLocaleDateString(undefined, { weekday: "long" });
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 function formatTimestamp(iso: string): string {
-  const date = new Date(iso);
-  return date
+  return new Date(iso)
     .toLocaleString(undefined, {
       month: "short",
       day: "numeric",
