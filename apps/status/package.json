@@ -8,12 +8,15 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "preview": "astro preview",
+    "preview": "npm run build && wrangler dev",
     "astro": "astro",
-    "typecheck": "astro check"
+    "typecheck": "astro check",
+    "generate-types": "wrangler types",
+    "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.4",
+    "@astrojs/cloudflare": "^13.5.0",
     "@astrojs/react": "^5.0.0",
     "@phosphor-icons/react": "^2.1.10",
     "@tailwindcss/postcss": "^4.1.18",
@@ -26,6 +29,10 @@
   },
   "devDependencies": {
     "@types/react": "19.2.14",
-    "@types/react-dom": "19.2.3"
+    "@types/react-dom": "19.2.3",
+    "wrangler": "^4.90.0"
+  },
+  "overrides": {
+    "vite": "^7"
   }
 }
