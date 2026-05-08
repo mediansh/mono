@@ -66,6 +66,9 @@ export function StatusView({
 
       {error && (
         <motion.p
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           className="mt-6 text-center text-xs text-muted-foreground"
