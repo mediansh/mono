@@ -1784,10 +1784,11 @@ function TaskDetailSidePanel({
               left inset (width - 6) leaves a visible gap between this card
               and SidebarInset on the left. */}
           <motion.div
+            key={task.id}
             initial={{ opacity: 0, x: 16 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 16 }}
-            transition={{ duration: 0.45, ease: "anticipate" }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
             className="absolute top-px right-0 bottom-px flex flex-col overflow-hidden rounded-[4px] bg-background ring-1 ring-sidebar-border"
             style={{ width: `${Math.max(width - 6, 1)}px` }}
           >
