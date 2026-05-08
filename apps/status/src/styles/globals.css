@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #f7f7f4;
+  --color-foreground: #141414;
+  --color-card: #ffffff;
+  --color-muted: #efefef;
+  --color-muted-foreground: #5f6368;
+  --color-border: #d9d9d9;
+  --color-success: #4ade80;
+  --color-warning: #fbbf24;
+  --color-destructive: #ff4444;
+
+  --font-sans:
+    "Geist", ui-sans-serif, system-ui, -apple-system, "BlinkMacSystemFont",
+    "Segoe UI", "Roboto", sans-serif;
+  --font-mono:
+    "Geist Mono", ui-monospace, "SFMono-Regular", "Menlo", "Monaco", "Consolas",
+    monospace;
+
+  --radius: 12px;
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --color-background: #141414;
+      --color-foreground: #f7f7f4;
+      --color-card: #1e1e1e;
+      --color-muted: #252525;
+      --color-muted-foreground: #9b9d9e;
+      --color-border: #2e2e2e;
+    }
+  }
+
+  .dark {
+    color-scheme: dark;
+    --color-background: #141414;
+    --color-foreground: #f7f7f4;
+    --color-card: #1e1e1e;
+    --color-muted: #252525;
+    --color-muted-foreground: #9b9d9e;
+    --color-border: #2e2e2e;
+  }
+
+  html,
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overscroll-behavior: none;
+  }
+
+  ::selection {
+    background-color: var(--color-foreground);
+    color: var(--color-background);
+  }
+}
