@@ -1,8 +1,9 @@
 export const AUTUMN_CREDITS_FEATURE_ID = "credits"
 
 export const AUTUMN_TRACKED_AI_MODELS = [
-  "anthropic/claude-haiku-4.5",
-  "anthropic/claude-sonnet-4.6",
+  "google/gemini-3.1-flash-lite",
+  "google/gemini-3-flash-preview",
+  "openai/gpt-oss-120b",
 ] as const
 
 export type TrackedAiModel = (typeof AUTUMN_TRACKED_AI_MODELS)[number]
@@ -11,13 +12,17 @@ export const AI_TOKEN_PRICING_PER_MILLION: Record<
   TrackedAiModel,
   { input: number; output: number }
 > = {
-  "anthropic/claude-haiku-4.5": {
-    input: 2,
-    output: 8,
+  "google/gemini-3.1-flash-lite": {
+    input: 0.25,
+    output: 1.5,
   },
-  "anthropic/claude-sonnet-4.6": {
-    input: 5,
-    output: 20,
+  "google/gemini-3-flash-preview": {
+    input: 0.5,
+    output: 3,
+  },
+  "openai/gpt-oss-120b": {
+    input: 0.039,
+    output: 0.18,
   },
 }
 
@@ -110,10 +115,12 @@ export function getAiCostForTokens(args: {
 
 export function formatTrackedModelName(model: TrackedAiModel) {
   switch (model) {
-    case "anthropic/claude-haiku-4.5":
-      return "Anthropic Claude Haiku 4.5"
-    case "anthropic/claude-sonnet-4.6":
-      return "Anthropic Claude Sonnet 4.6"
+    case "google/gemini-3.1-flash-lite":
+      return "Google Gemini 3.1 Flash Lite"
+    case "google/gemini-3-flash-preview":
+      return "Google Gemini 3 Flash Preview"
+    case "openai/gpt-oss-120b":
+      return "OpenAI GPT-OSS 120B"
   }
 }
 

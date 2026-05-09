@@ -11,20 +11,29 @@ const openrouter = createOpenRouter({
 })
 
 export const AI_MODEL_IDS = {
-  feedbackClassifier: "anthropic/claude-haiku-4.5",
-  feedbackExtractor: "anthropic/claude-sonnet-4.6",
-  taskGeneration: "anthropic/claude-haiku-4.5",
+  feedbackClassifier: "google/gemini-3.1-flash-lite",
+  feedbackExtractor: "google/gemini-3-flash-preview",
+  taskGeneration: "openai/gpt-oss-120b",
+} as const
+
+const AI_MODEL_PROVIDER_OPTIONS = {
+  taskGeneration: {
+    extraBody: { provider: { only: ["cerebras/fp16"] } },
+  },
 } as const
 
 export const AI_MODELS: Record<keyof typeof AI_MODEL_IDS, LanguageModel> = {
   feedbackClassifier: openrouter(AI_MODEL_IDS.feedbackClassifier),
   feedbackExtractor: openrouter(AI_MODEL_IDS.feedbackExtractor),
-  taskGeneration: openrouter(AI_MODEL_IDS.taskGeneration),
+  taskGeneration: openrouter(
+    AI_MODEL_IDS.taskGeneration,
+    AI_MODEL_PROVIDER_OPTIONS.taskGeneration
+  ),
 }
 
 // The fallback model used when a workspace's plan disallows the advanced tier.
 // Free-tier workspaces are routed to this model for every AI feature.
-const STANDARD_MODEL_ID: TrackedAiModel = "anthropic/claude-haiku-4.5"
+const STANDARD_MODEL_ID: TrackedAiModel = "google/gemini-3.1-flash-lite"
 const STANDARD_MODEL: LanguageModel = openrouter(STANDARD_MODEL_ID)
 
 type ModelSelection = {
