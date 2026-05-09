@@ -52,7 +52,10 @@ function binaryStringToBytes(str: string) {
 }
 
 function decodeBase64(value: string) {
-  return binaryStringToBytes(atob(value))
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/")
+  const paddingLength = (4 - (normalized.length % 4)) % 4
+  const padded = normalized.padEnd(normalized.length + paddingLength, "=")
+  return binaryStringToBytes(atob(padded))
 }
 
 async function importSlackAesKey() {
@@ -75,10 +78,8 @@ async function decryptSlackSecret(value: string) {
   }
 
   const key = await importSlackAesKey()
-  const iv = decodeBase64(ivEncoded.replace(/-/g, "+").replace(/_/g, "/"))
-  const payload = decodeBase64(
-    payloadEncoded.replace(/-/g, "+").replace(/_/g, "/")
-  )
+  const iv = decodeBase64(ivEncoded)
+  const payload = decodeBase64(payloadEncoded)
   const decrypted = await crypto.subtle.decrypt(
     {
       name: "AES-GCM",

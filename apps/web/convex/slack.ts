@@ -880,10 +880,10 @@ export const slackEventsWebhook = httpAction(async (ctx, request) => {
       }))
     )
 
-    // Only process messages (not bot messages, not subtypes like message_changed)
+    // Only process user messages and file shares, not bot or edit/delete events.
     if (
       event.type === "message" &&
-      !event.subtype &&
+      (!event.subtype || event.subtype === "file_share") &&
       !event.bot_id &&
       event.channel &&
       event.user &&

@@ -232,12 +232,8 @@ export function createFeedbackImageDownload({
 } = {}): Experimental_DownloadFunction {
   return async (requestedDownloads) => {
     return await Promise.all(
-      requestedDownloads.map(async ({ url, isUrlSupportedByModel }) => {
+      requestedDownloads.map(async ({ url }) => {
         const needsSlackAuth = isSlackFileUrl(url)
-        if (isUrlSupportedByModel && !needsSlackAuth) {
-          return null
-        }
-
         if (needsSlackAuth && !slackBotToken) {
           return null
         }

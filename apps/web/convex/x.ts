@@ -1005,7 +1005,12 @@ function extractRelevantInboundPosts(
       })
       const repliesToConnectedUser = inReplyToUserId === integration.xUserId
 
-      if (!postId || !authorId || !authorUsername || !content) {
+      if (
+        !postId ||
+        !authorId ||
+        !authorUsername ||
+        (!content && imageAttachments.length === 0)
+      ) {
         return null
       }
       if (authorId === integration.xUserId) {
