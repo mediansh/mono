@@ -133,7 +133,7 @@ type ModelAggregate = {
 function meanOrUndefined(values: number[]): number | undefined {
   if (values.length === 0) return undefined
   let sum = 0
-  for (const v of values) sum += v
+  for (const value of values) sum += value
   return sum / values.length
 }
 
@@ -416,15 +416,15 @@ export const insertRun = internalMutation({
     // skip the duplicate row + count bump so the suite-run can still settle.
     const duplicate = await ctx.db
       .query("benchmarkRuns")
-      .withIndex("by_suiteRun_model", (q) =>
-        q.eq("suiteRunId", args.suiteRunId).eq("modelSlug", args.modelSlug)
+      .withIndex("by_suiteRun_model_suite_fixture", (q) =>
+        q
+          .eq("suiteRunId", args.suiteRunId)
+          .eq("modelSlug", args.modelSlug)
+          .eq("suite", args.suite)
+          .eq("fixtureId", args.fixtureId)
       )
-      .collect()
-    if (
-      duplicate.some(
-        (row) => row.suite === args.suite && row.fixtureId === args.fixtureId
-      )
-    ) {
+      .first()
+    if (duplicate) {
       return
     }
 

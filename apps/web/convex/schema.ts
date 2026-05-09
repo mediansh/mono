@@ -1,6 +1,12 @@
 import { defineSchema, defineTable } from "convex/server"
 import { v } from "convex/values"
 
+const BENCHMARK_SUITE_IDS = v.union(
+  v.literal("discordScan"),
+  v.literal("feedbackExtract"),
+  v.literal("taskGen")
+)
+
 export default defineSchema({
   workspaces: defineTable({
     name: v.string(),
@@ -801,7 +807,7 @@ export default defineSchema({
         provider: v.optional(v.string()),
       })
     ),
-    suites: v.array(v.string()),
+    suites: v.array(BENCHMARK_SUITE_IDS),
   }).index("by_started", ["startedAt"]),
 
   benchmarkRuns: defineTable({
@@ -835,6 +841,12 @@ export default defineSchema({
   })
     .index("by_suiteRun", ["suiteRunId"])
     .index("by_suiteRun_model", ["suiteRunId", "modelSlug"])
+    .index("by_suiteRun_model_suite_fixture", [
+      "suiteRunId",
+      "modelSlug",
+      "suite",
+      "fixtureId",
+    ])
     .index("by_suiteRun_suite", ["suiteRunId", "suite"]),
 
   deletedTaskSources: defineTable({

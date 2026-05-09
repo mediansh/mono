@@ -36,7 +36,7 @@ export const extractedFeedbackActionSchema = z.discriminatedUnion("action", [
 ])
 
 export const extractedFeedbackTasksSchema = z.object({
-  actions: z.array(extractedFeedbackActionSchema),
+  actions: z.array(extractedFeedbackActionSchema).max(5),
 })
 
 export const generatedTasksSchema = z.object({
@@ -53,7 +53,7 @@ export const generatedTasksSchema = z.object({
         })
         .refine(
           (task) => task.tags !== undefined || task.labels !== undefined,
-          { message: "Every generated task must include tags." }
+          { message: "Every generated task must include tags or labels." }
         )
     )
     .min(1)

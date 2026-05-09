@@ -235,7 +235,7 @@ export async function runFeedbackExtract(args: {
   const wellFormed =
     actions.length === 0 ||
     actions.every(
-      (a) => a.priority !== null && a.labels.length >= 0 // labels may be empty
+      (a) => a.priority !== null
     )
 
   const score =

@@ -33,7 +33,7 @@ function Spinner() {
 }
 
 function formatTime(ms?: number) {
-  if (!ms) return "—"
+  if (ms === undefined || ms === null) return "—"
   return new Date(ms).toLocaleString(undefined, {
     month: "short",
     day: "numeric",
@@ -87,6 +87,8 @@ export default function AdminBenchmarksPage() {
     setPendingId(id)
     try {
       await removeModel({ id })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to remove model.")
     } finally {
       setPendingId(null)
     }

@@ -113,15 +113,14 @@ export function getAiCostForTokens(args: {
   )
 }
 
+const TRACKED_MODEL_DISPLAY_NAMES: Record<TrackedAiModel, string> = {
+  "google/gemini-3.1-flash-lite": "Google Gemini 3.1 Flash Lite",
+  "google/gemini-3-flash-preview": "Google Gemini 3 Flash Preview",
+  "openai/gpt-oss-120b": "OpenAI GPT-OSS 120B",
+}
+
 export function formatTrackedModelName(model: TrackedAiModel) {
-  switch (model) {
-    case "google/gemini-3.1-flash-lite":
-      return "Google Gemini 3.1 Flash Lite"
-    case "google/gemini-3-flash-preview":
-      return "Google Gemini 3 Flash Preview"
-    case "openai/gpt-oss-120b":
-      return "OpenAI GPT-OSS 120B"
-  }
+  return TRACKED_MODEL_DISPLAY_NAMES[model]
 }
 
 export function getPlanCopy(planId: string, price?: number | null) {
@@ -166,7 +165,7 @@ export function getPlanCopy(planId: string, price?: number | null) {
       `$${fallbackPlan.credits} in credits / month`,
       `Advanced AI model included`,
       `Events at $${EVENT_CREDIT_COST.toFixed(3)}/event`,
-      `AI charged at cost`,
+      `AI usage billed at listed token rates`,
       `Overages auto-charged`,
       ...(fallbackPlan.id === "scale" ? ["Priority support"] : []),
     ],

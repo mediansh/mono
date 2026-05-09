@@ -14,7 +14,10 @@ export const AI_MODEL_IDS = {
   feedbackClassifier: "google/gemini-3.1-flash-lite",
   feedbackExtractor: "google/gemini-3-flash-preview",
   taskGeneration: "openai/gpt-oss-120b",
-} as const
+} as const satisfies Record<
+  "feedbackClassifier" | "feedbackExtractor" | "taskGeneration",
+  TrackedAiModel
+>
 
 const AI_MODEL_PROVIDER_OPTIONS = {
   taskGeneration: {
