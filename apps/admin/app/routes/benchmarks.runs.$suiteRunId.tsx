@@ -353,6 +353,7 @@ export default function BenchmarkSuiteRunPage() {
               latency: number
               throughput?: number
               errors: number
+              schemaValid: number
               count: number
             }
           >()
@@ -382,11 +383,15 @@ export default function BenchmarkSuiteRunPage() {
                   ? undefined
                   : tpsRows.reduce((s, v) => s + v, 0) / tpsRows.length,
               errors: modelRows.length - okRows.length,
+              schemaValid: modelRows.filter((r) => r.schemaValid).length,
               count: modelRows.length,
             })
           }
           const perModelList = Array.from(perModel.values()).sort(
             (a, b) => b.quality - a.quality,
+          )
+          const anySchemaFailures = perModelList.some(
+            (row) => row.count > 0 && row.schemaValid < row.count,
           )
 
           return (
@@ -418,10 +423,11 @@ export default function BenchmarkSuiteRunPage() {
               </div>
 
               <div className="overflow-x-auto border border-sidebar-border">
-                <div className="min-w-[600px]">
+                <div className="min-w-[680px]">
                   <div className="flex items-center gap-2 border-b border-sidebar-border bg-sidebar/50 px-3 py-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
                     <div className="flex-1">Model</div>
                     <div className="w-24">Quality</div>
+                    <div className="w-24">Schema valid</div>
                     <div className="w-24">Latency</div>
                     <div className="w-24">Throughput</div>
                     <div className="w-16">Errors</div>
@@ -431,32 +437,49 @@ export default function BenchmarkSuiteRunPage() {
                       No runs for this suite yet.
                     </div>
                   )}
-                  {perModelList.map((row) => (
-                    <div
-                      key={row.modelSlug}
-                      className="flex items-center gap-2 border-b border-sidebar-border px-3 py-2 text-[12px] last:border-b-0"
-                    >
-                      <div className="flex-1 truncate font-mono text-[12px]">
-                        {row.modelSlug}
-                      </div>
-                      <div className="w-24 font-medium">
-                        {formatPct(row.quality)}
-                      </div>
-                      <div className="w-24 text-muted-foreground">
-                        {formatMs(row.latency)}
-                      </div>
-                      <div className="w-24 text-muted-foreground">
-                        {formatTps(row.throughput)}
-                      </div>
+                  {perModelList.map((row) => {
+                    const schemaFail =
+                      row.count > 0 && row.schemaValid < row.count
+                    return (
                       <div
-                        className={`w-16 ${row.errors > 0 ? "text-destructive" : "text-muted-foreground"}`}
+                        key={row.modelSlug}
+                        className="flex items-center gap-2 border-b border-sidebar-border px-3 py-2 text-[12px] last:border-b-0"
                       >
-                        {row.errors}
+                        <div className="flex-1 truncate font-mono text-[12px]">
+                          {row.modelSlug}
+                        </div>
+                        <div className="w-24 font-medium">
+                          {formatPct(row.quality)}
+                        </div>
+                        <div
+                          className={`w-24 ${schemaFail ? "text-amber-600" : "text-muted-foreground"}`}
+                        >
+                          {row.schemaValid}/{row.count}
+                        </div>
+                        <div className="w-24 text-muted-foreground">
+                          {formatMs(row.latency)}
+                        </div>
+                        <div className="w-24 text-muted-foreground">
+                          {formatTps(row.throughput)}
+                        </div>
+                        <div
+                          className={`w-16 ${row.errors > 0 ? "text-destructive" : "text-muted-foreground"}`}
+                        >
+                          {row.errors}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
+              {anySchemaFailures && (
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  Schema-valid &lt; total means the model returned a response
+                  but its JSON shape didn't match the strict schema this
+                  suite enforces in production. Quality scores those rows as
+                  0 since the output isn't usable as-is.
+                </p>
+              )}
 
               {expanded && (
                 <div className="mt-2 overflow-x-auto border border-sidebar-border">
