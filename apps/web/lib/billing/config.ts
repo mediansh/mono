@@ -21,8 +21,8 @@ export const AI_TOKEN_PRICING_PER_MILLION: Record<
     output: 4.8,
   },
   "openai/gpt-oss-120b": {
-    input: 0.0624,
-    output: 0.288,
+    input: 0.56,
+    output: 1.2,
   },
 }
 
