@@ -21,7 +21,7 @@ const STATE_COPY: Record<OverallState, string> = {
 };
 
 const STATE_BG: Record<OverallState, string> = {
-  operational: "bg-foreground text-background",
+  operational: "bg-success text-background",
   degraded: "bg-warning text-background",
   outage: "bg-destructive text-foreground",
   unknown: "bg-muted text-foreground",

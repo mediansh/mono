@@ -54,7 +54,7 @@ export function StatusCard({
           : QuestionIcon;
 
   const iconClass = cn(
-    status === "up" && "text-foreground",
+    status === "up" && "text-success",
     status === "down" && "text-destructive",
     status === "degraded" && "text-warning",
     status === "unknown" && "text-muted-foreground"

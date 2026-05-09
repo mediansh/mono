@@ -13,7 +13,7 @@ interface UptimeBarProps {
 }
 
 const STATE_CLASS: Record<DayState, string> = {
-  up: "bg-foreground",
+  up: "bg-success",
   partial: "bg-warning",
   down: "bg-destructive",
   unknown: "bg-border",
