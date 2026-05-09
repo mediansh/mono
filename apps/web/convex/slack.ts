@@ -15,6 +15,10 @@ import {
   requireWorkspaceAdminAccess,
 } from "./permissions"
 import type { Id } from "./_generated/dataModel"
+import {
+  feedbackImageAttachmentValidator,
+  normalizeImageAttachments,
+} from "./feedbackAttachments"
 
 // ── Env helpers ──────────────────────────────────────────
 
@@ -683,6 +687,7 @@ export const recordInboundMessage = internalMutation({
     authorId: v.string(),
     authorUsername: v.string(),
     content: v.string(),
+    imageAttachments: v.optional(v.array(feedbackImageAttachmentValidator)),
     messageCreatedAt: v.number(),
   },
   handler: async (ctx, args) => {
@@ -752,6 +757,10 @@ export const recordInboundMessage = internalMutation({
       authorId: args.authorId,
       authorUsername: args.authorUsername,
       content: args.content,
+      imageAttachments:
+        args.imageAttachments && args.imageAttachments.length > 0
+          ? args.imageAttachments
+          : undefined,
       messageCreatedAt: args.messageCreatedAt,
       receivedAt: Date.now(),
     })
@@ -823,6 +832,21 @@ export const slackEventsWebhook = httpAction(async (ctx, request) => {
       thread_ts?: string
       bot_id?: string
       team?: string
+      files?: Array<{
+        name?: string
+        title?: string
+        mimetype?: string
+        url_private?: string
+        url_private_download?: string
+        thumb_1024?: string
+        thumb_960?: string
+        thumb_720?: string
+        thumb_480?: string
+        thumb_360?: string
+        thumb_160?: string
+        original_w?: number
+        original_h?: number
+      }>
     }
     team_id?: string
   }
@@ -838,6 +862,23 @@ export const slackEventsWebhook = httpAction(async (ctx, request) => {
   if (payload.type === "event_callback" && payload.event) {
     const event = payload.event
     const teamId = payload.team_id ?? event.team
+    const imageAttachments = normalizeImageAttachments(
+      (event.files ?? []).map((file) => ({
+        url:
+          file.url_private_download ??
+          file.url_private ??
+          file.thumb_1024 ??
+          file.thumb_960 ??
+          file.thumb_720 ??
+          file.thumb_480 ??
+          file.thumb_360 ??
+          file.thumb_160,
+        name: file.title ?? file.name,
+        mediaType: file.mimetype,
+        width: file.original_w,
+        height: file.original_h,
+      }))
+    )
 
     // Only process messages (not bot messages, not subtypes like message_changed)
     if (
@@ -846,7 +887,7 @@ export const slackEventsWebhook = httpAction(async (ctx, request) => {
       !event.bot_id &&
       event.channel &&
       event.user &&
-      event.text &&
+      (event.text || imageAttachments.length > 0) &&
       event.ts &&
       teamId
     ) {
@@ -897,7 +938,8 @@ export const slackEventsWebhook = httpAction(async (ctx, request) => {
         messageTs: event.ts,
         authorId: event.user,
         authorUsername,
-        content: event.text,
+        content: event.text ?? "",
+        imageAttachments,
         messageCreatedAt: Math.floor(Number(event.ts.split(".")[0]) * 1000),
       })
     }

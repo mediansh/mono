@@ -14,6 +14,10 @@ import {
   requireWorkspaceAccess,
   requireWorkspaceAdminAccess,
 } from "./permissions"
+import {
+  feedbackImageAttachmentValidator,
+  normalizeImageAttachments,
+} from "./feedbackAttachments"
 
 const X_OAUTH_REQUEST_TOKEN_URL = "https://api.x.com/oauth/request_token"
 const X_OAUTH_ACCESS_TOKEN_URL = "https://api.x.com/oauth/access_token"
@@ -116,6 +120,19 @@ type XWebhookUser = {
   name?: string
 }
 
+type XWebhookMedia = {
+  type?: string
+  media_url?: string
+  media_url_https?: string
+  url?: string
+  sizes?: {
+    large?: {
+      w?: number
+      h?: number
+    }
+  }
+}
+
 type XWebhookTweet = {
   id?: string | number
   id_str?: string
@@ -125,12 +142,20 @@ type XWebhookTweet = {
   user?: XWebhookUser
   entities?: {
     user_mentions?: XWebhookMention[]
+    media?: XWebhookMedia[]
   }
   extended_tweet?: {
     full_text?: string
     entities?: {
       user_mentions?: XWebhookMention[]
+      media?: XWebhookMedia[]
     }
+    extended_entities?: {
+      media?: XWebhookMedia[]
+    }
+  }
+  extended_entities?: {
+    media?: XWebhookMedia[]
   }
   in_reply_to_user_id?: string | number | null
   in_reply_to_user_id_str?: string | null
@@ -917,6 +942,26 @@ function getTweetMentions(tweet: XWebhookTweet) {
   )
 }
 
+function getTweetImageAttachments(tweet: XWebhookTweet) {
+  const media =
+    tweet.extended_tweet?.extended_entities?.media ??
+    tweet.extended_entities?.media ??
+    tweet.extended_tweet?.entities?.media ??
+    tweet.entities?.media ??
+    []
+
+  return normalizeImageAttachments(
+    media
+      .filter((item) => item.type === "photo" || item.type === undefined)
+      .map((item) => ({
+        url: item.media_url_https ?? item.media_url ?? item.url,
+        mediaType: "image/jpeg",
+        width: item.sizes?.large?.w,
+        height: item.sizes?.large?.h,
+      }))
+  )
+}
+
 function getTweetCreatedAt(tweet: XWebhookTweet) {
   const createdAt = tweet.created_at ? Date.parse(tweet.created_at) : NaN
   return Number.isFinite(createdAt) ? createdAt : Date.now()
@@ -943,6 +988,7 @@ function extractRelevantInboundPosts(
       const authorId = normalizeId(tweet.user?.id_str ?? tweet.user?.id)
       const authorUsername = tweet.user?.screen_name?.trim() ?? ""
       const content = getTweetText(tweet)
+      const imageAttachments = getTweetImageAttachments(tweet)
       const inReplyToUserId = normalizeId(
         tweet.in_reply_to_user_id_str ?? tweet.in_reply_to_user_id
       )
@@ -976,6 +1022,7 @@ function extractRelevantInboundPosts(
         authorUsername,
         authorName: tweet.user?.name?.trim() || undefined,
         content,
+        imageAttachments,
         inReplyToUserId: inReplyToUserId ?? undefined,
         postCreatedAt: getTweetCreatedAt(tweet),
         forUserId,
@@ -988,6 +1035,7 @@ function extractRelevantInboundPosts(
     authorUsername: string
     authorName?: string
     content: string
+    imageAttachments: ReturnType<typeof getTweetImageAttachments>
     inReplyToUserId?: string
     postCreatedAt: number
     forUserId: string
@@ -1545,6 +1593,7 @@ export const recordInboundPostInternal = internalMutation({
     authorUsername: v.string(),
     authorName: v.optional(v.string()),
     content: v.string(),
+    imageAttachments: v.optional(v.array(feedbackImageAttachmentValidator)),
     inReplyToUserId: v.optional(v.string()),
     postCreatedAt: v.number(),
   },
@@ -1589,6 +1638,10 @@ export const recordInboundPostInternal = internalMutation({
       authorUsername: args.authorUsername,
       authorName: args.authorName,
       content: args.content,
+      imageAttachments:
+        args.imageAttachments && args.imageAttachments.length > 0
+          ? args.imageAttachments
+          : undefined,
       inReplyToUserId: args.inReplyToUserId,
       postCreatedAt: args.postCreatedAt,
       receivedAt: Date.now(),
@@ -1856,18 +1909,22 @@ export const xWebhook = httpAction(async (ctx, request) => {
     })
 
     for (const post of inboundPosts) {
-      const result = await ctx.runMutation(internal.x.recordInboundPostInternal, {
-        integrationId: integration._id,
-        forUserId: post.forUserId,
-        postId: post.postId,
-        permalink: post.permalink,
-        authorId: post.authorId,
-        authorUsername: post.authorUsername,
-        authorName: post.authorName,
-        content: post.content,
-        inReplyToUserId: post.inReplyToUserId,
-        postCreatedAt: post.postCreatedAt,
-      })
+      const result = await ctx.runMutation(
+        internal.x.recordInboundPostInternal,
+        {
+          integrationId: integration._id,
+          forUserId: post.forUserId,
+          postId: post.postId,
+          permalink: post.permalink,
+          authorId: post.authorId,
+          authorUsername: post.authorUsername,
+          authorName: post.authorName,
+          content: post.content,
+          imageAttachments: post.imageAttachments,
+          inReplyToUserId: post.inReplyToUserId,
+          postCreatedAt: post.postCreatedAt,
+        }
+      )
       if (result.accepted) {
         acceptedPostCount += 1
       }

@@ -18,6 +18,12 @@ import {
   type QueryCtx,
 } from "./_generated/server"
 import { classifyRunResult, recordRunDirect } from "./moduleRuns"
+import {
+  buildFeedbackPromptContent,
+  createFeedbackImageDownload,
+  formatImageAttachmentSummary,
+  type FeedbackImageAttachment,
+} from "./feedbackAttachments"
 
 const FEEDBACK_WINDOW_LIMIT = 100
 const FEEDBACK_CONTEXT_LIMIT = 25
@@ -29,6 +35,70 @@ const DEFAULT_WORKPOOL_PARALLELISM = 2
 const MAX_EXTRACTED_TASK_ACTIONS = 5
 const MAX_EXTRACTED_TASK_LABELS = 5
 
+function getRequiredEnv(name: string) {
+  const value = process.env[name]
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${name}`)
+  }
+  return value
+}
+
+function binaryStringToBytes(str: string) {
+  const bytes = new Uint8Array(str.length)
+  for (let index = 0; index < str.length; index += 1) {
+    bytes[index] = str.charCodeAt(index)
+  }
+  return bytes
+}
+
+function decodeBase64(value: string) {
+  return binaryStringToBytes(atob(value))
+}
+
+async function importSlackAesKey() {
+  const secret = getRequiredEnv("SLACK_TOKEN_ENCRYPTION_KEY")
+  const material = new TextEncoder().encode(secret)
+  const digest = await crypto.subtle.digest("SHA-256", material)
+  return await crypto.subtle.importKey(
+    "raw",
+    digest,
+    { name: "AES-GCM" },
+    false,
+    ["decrypt"]
+  )
+}
+
+async function decryptSlackSecret(value: string) {
+  const [ivEncoded, payloadEncoded] = value.split(".")
+  if (!ivEncoded || !payloadEncoded) {
+    throw new Error("Invalid encrypted Slack token payload")
+  }
+
+  const key = await importSlackAesKey()
+  const iv = decodeBase64(ivEncoded.replace(/-/g, "+").replace(/_/g, "/"))
+  const payload = decodeBase64(
+    payloadEncoded.replace(/-/g, "+").replace(/_/g, "/")
+  )
+  const decrypted = await crypto.subtle.decrypt(
+    {
+      name: "AES-GCM",
+      iv,
+    },
+    key,
+    payload
+  )
+  return new TextDecoder().decode(decrypted)
+}
+
+async function getSlackBotToken(accessTokenEncrypted: string) {
+  try {
+    return await decryptSlackSecret(accessTokenEncrypted)
+  } catch (error) {
+    logError("Failed to decrypt Slack token for image attachments", error)
+    return null
+  }
+}
+
 type FeedbackMessage = {
   _id: Id<"slackMessages">
   channelId: string
@@ -37,6 +107,7 @@ type FeedbackMessage = {
   messageTs: string
   authorUsername: string
   content: string
+  imageAttachments?: FeedbackImageAttachment[]
   permalink: string | null
   messageCreatedAt: number
 }
@@ -49,6 +120,7 @@ type FeedbackWindow = {
     availableLabels: string[]
     teamId: string
     teamName: string
+    accessTokenEncrypted: string
     lastProcessedMessageId: string | null
     lastProcessedMessageCreatedAt: number | null
     additionalContext: string | null
@@ -320,7 +392,15 @@ function formatTranscript(
       const locationPrefix =
         locationParts.length > 0 ? ` [${locationParts.join(" | ")}]` : ""
       const content = message.content || "(no body text)"
-      return `[${marker}] [id:${message.messageTs}] ${timestamp}${locationPrefix} ${message.authorUsername}: ${content}`
+      const imageSummary = formatImageAttachmentSummary(
+        message.imageAttachments
+      )
+      return [
+        `[${marker}] [id:${message.messageTs}] ${timestamp}${locationPrefix} ${message.authorUsername}: ${content}`,
+        imageSummary,
+      ]
+        .filter(Boolean)
+        .join(" | ")
     })
     .join("\n")
 }
@@ -381,6 +461,7 @@ async function loadPendingFeedbackWindow(
       availableLabels: (workspace.labels ?? []).map((label) => label.name),
       teamId: integration.teamId,
       teamName: integration.teamName,
+      accessTokenEncrypted: integration.accessTokenEncrypted,
       lastProcessedMessageId: integration.lastProcessedMessageId ?? null,
       lastProcessedMessageCreatedAt:
         integration.lastProcessedMessageCreatedAt ?? null,
@@ -395,6 +476,7 @@ async function loadPendingFeedbackWindow(
       messageTs: message.messageTs,
       authorUsername: message.authorUsername,
       content: message.content,
+      imageAttachments: message.imageAttachments,
       permalink: message.permalink ?? null,
       messageCreatedAt: message.messageCreatedAt,
     })),
@@ -769,6 +851,16 @@ export const processFeedbackWindow = internalAction({
           limit: EXISTING_TASK_CONTEXT_LIMIT,
         }
       )
+      const slackBotToken = [...contextMessages, ...pendingMessages].some(
+        (message) => (message.imageAttachments?.length ?? 0) > 0
+      )
+        ? await getSlackBotToken(
+            feedbackWindow.integration.accessTokenEncrypted
+          )
+        : null
+      const feedbackImageDownload = createFeedbackImageDownload({
+        slackBotToken,
+      })
 
       const classifierSystemParts: string[] = [
         "You classify Slack conversations for a product team.",
@@ -791,17 +883,31 @@ export const processFeedbackWindow = internalAction({
       }
 
       const classifierStart = Date.now()
+      const classifierPrompt = [
+        `Workspace name: ${feedbackWindow.integration.workspaceName}`,
+        `Slack team: ${feedbackWindow.integration.teamName}`,
+        "Existing task context:",
+        formatExistingTasks(existingTasks),
+        "Conversation transcript:",
+        transcript,
+      ].join("\n\n")
       const classifierResult = await generateText({
         model: AI_MODELS.feedbackClassifier,
         system: classifierSystemParts.join(" "),
-        prompt: [
-          `Workspace name: ${feedbackWindow.integration.workspaceName}`,
-          `Slack team: ${feedbackWindow.integration.teamName}`,
-          "Existing task context:",
-          formatExistingTasks(existingTasks),
-          "Conversation transcript:",
-          transcript,
-        ].join("\n\n"),
+        messages: [
+          {
+            role: "user",
+            content: buildFeedbackPromptContent(
+              classifierPrompt,
+              contextMessages,
+              (message) => `Slack message id ${message.messageTs}`
+            ),
+          },
+        ],
+        experimental_download: feedbackImageDownload,
+        experimental_include: {
+          requestBody: false,
+        },
       })
       const classifierDurationMs = Date.now() - classifierStart
 
@@ -930,27 +1036,42 @@ export const processFeedbackWindow = internalAction({
       )
 
       try {
+        const extractorPrompt = [
+          `Classifier summary: ${classification.summary ?? classification.reason}`,
+          "Existing task context:",
+          formatExistingTasks(existingTasks),
+          "Relevant feedback messages:",
+          relevantMessages
+            .map((message) =>
+              [
+                `- ${new Date(message.messageCreatedAt).toISOString()}`,
+                message.threadTs ? `thread=${message.threadTs}` : null,
+                message.channelName ? `channel=${message.channelName}` : null,
+                `${message.authorUsername}: ${message.content || "(no body text)"}`,
+                formatImageAttachmentSummary(message.imageAttachments),
+              ]
+                .filter(Boolean)
+                .join(" | ")
+            )
+            .join("\n"),
+        ].join("\n\n")
         const extractorResult = await generateText({
           model: extractorSelection.model,
           system: extractorSystemParts.join(" "),
-          prompt: [
-            `Classifier summary: ${classification.summary ?? classification.reason}`,
-            "Existing task context:",
-            formatExistingTasks(existingTasks),
-            "Relevant feedback messages:",
-            relevantMessages
-              .map((message) =>
-                [
-                  `- ${new Date(message.messageCreatedAt).toISOString()}`,
-                  message.threadTs ? `thread=${message.threadTs}` : null,
-                  message.channelName ? `channel=${message.channelName}` : null,
-                  `${message.authorUsername}: ${message.content || "(no body text)"}`,
-                ]
-                  .filter(Boolean)
-                  .join(" | ")
-              )
-              .join("\n"),
-          ].join("\n\n"),
+          messages: [
+            {
+              role: "user",
+              content: buildFeedbackPromptContent(
+                extractorPrompt,
+                relevantMessages,
+                (message) => `Slack message id ${message.messageTs}`
+              ),
+            },
+          ],
+          experimental_download: feedbackImageDownload,
+          experimental_include: {
+            requestBody: false,
+          },
         })
         extractorDurationMs = Date.now() - extractorStart
         extractorUsage = extractorResult.usage

@@ -17,6 +17,7 @@ import type * as cli from "../cli.js";
 import type * as discord from "../discord.js";
 import type * as discordFeedback from "../discordFeedback.js";
 import type * as earlyAccess from "../earlyAccess.js";
+import type * as feedbackAttachments from "../feedbackAttachments.js";
 import type * as github from "../github.js";
 import type * as http from "../http.js";
 import type * as linear from "../linear.js";
@@ -51,6 +52,7 @@ declare const fullApi: ApiFromModules<{
   discord: typeof discord;
   discordFeedback: typeof discordFeedback;
   earlyAccess: typeof earlyAccess;
+  feedbackAttachments: typeof feedbackAttachments;
   github: typeof github;
   http: typeof http;
   linear: typeof linear;
