@@ -13,6 +13,7 @@ import {
   extractedFeedbackTasksSchema,
   generatedTasksSchema,
 } from "../../lib/ai-schemas"
+import { normalizeExtractedFeedbackPayload } from "../../lib/ai-normalizers"
 import {
   parseStrictJson,
   runWithStreamMetrics,
@@ -189,7 +190,11 @@ export async function runFeedbackExtract(args: {
     }
   }
 
-  const parsed = parseStrictJson(metrics.rawOutput, extractedFeedbackTasksSchema)
+  const parsed = parseStrictJson(
+    metrics.rawOutput,
+    extractedFeedbackTasksSchema,
+    { normalize: normalizeExtractedFeedbackPayload }
+  )
   if (!parsed.ok) {
     return {
       payload: {

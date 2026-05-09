@@ -72,33 +72,47 @@ export async function runWithStreamMetrics(args: {
   return { rawOutput, totalMs, ttftMs, tps, inputTokens, outputTokens }
 }
 
-// Pull the first JSON value out of a model response, ignoring any
-// markdown fences or chatter the model added despite our instructions.
-export function extractFirstJsonObject(text: string): string | null {
-  const start = text.indexOf("{")
-  if (start === -1) return null
-  let depth = 0
-  let inString = false
-  let escape = false
-  for (let i = start; i < text.length; i++) {
-    const ch = text[i]
-    if (escape) {
-      escape = false
-      continue
-    }
-    if (ch === "\\") {
-      escape = true
-      continue
-    }
-    if (ch === '"') {
-      inString = !inString
-      continue
-    }
-    if (inString) continue
-    if (ch === "{") depth++
-    else if (ch === "}") {
-      depth--
-      if (depth === 0) return text.slice(start, i + 1)
+// Pull the first JSON value (object or array) out of a model response,
+// ignoring any markdown fences or chatter the model added despite our
+// instructions. Mirrors `extractFirstJsonValue` in production discordFeedback.
+export function extractFirstJsonValue(text: string): unknown | null {
+  for (let start = 0; start < text.length; start += 1) {
+    const opening = text[start]
+    if (opening !== "{" && opening !== "[") continue
+
+    const closing = opening === "{" ? "}" : "]"
+    const stack: string[] = [closing]
+    let inString = false
+    let escaped = false
+
+    for (let i = start + 1; i < text.length; i += 1) {
+      const ch = text[i]
+      if (inString) {
+        if (escaped) escaped = false
+        else if (ch === "\\") escaped = true
+        else if (ch === '"') inString = false
+        continue
+      }
+      if (ch === '"') {
+        inString = true
+        continue
+      }
+      if (ch === "{" || ch === "[") {
+        stack.push(ch === "{" ? "}" : "]")
+        continue
+      }
+      if (ch === "}" || ch === "]") {
+        if (stack[stack.length - 1] !== ch) break
+        stack.pop()
+        if (stack.length === 0) {
+          const candidate = text.slice(start, i + 1)
+          try {
+            return JSON.parse(candidate)
+          } catch {
+            break
+          }
+        }
+      }
     }
   }
   return null
@@ -110,29 +124,22 @@ export type ParseResult<T> =
 
 export function parseStrictJson<T>(
   raw: string,
-  schema: ZodType<T>
+  schema: ZodType<T>,
+  options?: { normalize?: (value: unknown) => unknown }
 ): ParseResult<T> {
-  const objectText = extractFirstJsonObject(raw)
-  if (!objectText) {
-    return { ok: false, error: "No JSON object found in model output" }
+  const value = extractFirstJsonValue(raw)
+  if (value === null || value === undefined) {
+    return { ok: false, error: "No JSON value found in model output" }
   }
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(objectText)
-  } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : "JSON parse failed",
-    }
-  }
-  const result = schema.safeParse(parsed)
+  const normalized = options?.normalize ? options.normalize(value) : value
+  const result = schema.safeParse(normalized)
   if (!result.success) {
     return {
       ok: false,
       error: result.error.issues
         .map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`)
         .join("; "),
-      raw: parsed,
+      raw: normalized,
     }
   }
   return { ok: true, value: result.data }

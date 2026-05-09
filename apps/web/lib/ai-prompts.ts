@@ -62,7 +62,10 @@ export function buildDiscordExtractorSystemPrompt(args: {
     `Allowed labels: ${args.labelsText}`,
     "Only use labels from the allowed list. Use an empty array when none apply.",
     "Return valid JSON only. No markdown. No code fences. No commentary.",
-    'Return valid structured output only with action items shaped like {"action":"create",...} or {"action":"update","taskCode":"MDN-123",...}.',
+    'Always return a single JSON object with exactly one top-level key "actions" whose value is an array. Each entry is either {"action":"create","title":"...","description":"..." or null,"priority":"medium" or null,"labels":[]} or {"action":"update","taskCode":"MDN-123","title":"...","description":"..." or null,"priority":"medium" or null,"labels":[]}.',
+    'Every action must include all of: action, title, description (string or null), priority (string or null), and labels (array). Do not invent extra fields.',
+    'Example with one create action: {"actions":[{"action":"create","title":"Fix Save crash","description":"Save returns 500 on every project.","priority":"high","labels":["bug"]}]}',
+    'Empty result must be {"actions":[]} — never a bare array or a bare object.',
   ]
   if (args.additionalContext) {
     parts.push(
