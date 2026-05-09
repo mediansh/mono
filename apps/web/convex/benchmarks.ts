@@ -374,6 +374,17 @@ export const listModelsInternal = internalQuery({
   },
 })
 
+// Hard-cap fields that could blow past Convex's 1MB document limit when a
+// model returns an unusually large stream. Anything bigger is truncated so
+// the row still inserts and the run completes cleanly.
+const MAX_TEXT_FIELD_BYTES = 64_000
+
+function truncateText(value: string | undefined): string | undefined {
+  if (value === undefined) return undefined
+  if (value.length <= MAX_TEXT_FIELD_BYTES) return value
+  return value.slice(0, MAX_TEXT_FIELD_BYTES) + "\n…[truncated]"
+}
+
 export const insertRun = internalMutation({
   args: {
     suiteRunId: v.id("benchmarkSuiteRuns"),
@@ -401,7 +412,28 @@ export const insertRun = internalMutation({
     errorMessage: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await ctx.db.insert("benchmarkRuns", args)
+    // Idempotency guard — if a fixture is replayed (e.g. a retried action),
+    // skip the duplicate row + count bump so the suite-run can still settle.
+    const duplicate = await ctx.db
+      .query("benchmarkRuns")
+      .withIndex("by_suiteRun_model", (q) =>
+        q.eq("suiteRunId", args.suiteRunId).eq("modelSlug", args.modelSlug)
+      )
+      .collect()
+    if (
+      duplicate.some(
+        (row) => row.suite === args.suite && row.fixtureId === args.fixtureId
+      )
+    ) {
+      return
+    }
+
+    await ctx.db.insert("benchmarkRuns", {
+      ...args,
+      systemPrompt: truncateText(args.systemPrompt) ?? "",
+      userPrompt: truncateText(args.userPrompt) ?? "",
+      rawOutput: truncateText(args.rawOutput),
+    })
 
     const suiteRun = await ctx.db.get(args.suiteRunId)
     if (!suiteRun) return
@@ -413,6 +445,23 @@ export const insertRun = internalMutation({
       completedRunCount,
       status: isComplete ? "complete" : suiteRun.status,
       completedAt: isComplete ? Date.now() : suiteRun.completedAt,
+    })
+  },
+})
+
+// Admin override for stuck suite-runs — flips status to complete and pins
+// completedAt. Use when a worker crashed before its row landed and the
+// counter is permanently short of expectedRunCount.
+export const forceCompleteSuiteRun = mutation({
+  args: { id: v.id("benchmarkSuiteRuns") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx)
+    const suiteRun = await ctx.db.get(args.id)
+    if (!suiteRun) return
+    if (suiteRun.status === "complete") return
+    await ctx.db.patch(args.id, {
+      status: "complete",
+      completedAt: Date.now(),
     })
   },
 })
@@ -475,31 +524,60 @@ export const runSingle = internalAction({
         }
       }
 
-      await ctx.runMutation(internal.benchmarks.insertRun, {
-        suiteRunId: args.suiteRunId,
-        modelSlug: args.modelSlug,
-        provider: args.provider,
-        suite: args.suite,
-        fixtureId: fixture.id,
-        fixtureLabel: fixture.label,
-        systemPrompt: result.systemPrompt,
-        userPrompt: result.userPrompt,
-        rawOutput: result.payload.rawOutput,
-        parsed: result.payload.parsed,
-        schemaValid: result.payload.schemaValid,
-        parseError: result.payload.parseError,
-        ttftMs: result.payload.ttftMs,
-        totalMs: result.payload.totalMs,
-        inputTokens: result.payload.inputTokens,
-        outputTokens: result.payload.outputTokens,
-        tps: result.payload.tps,
-        expected: result.payload.expected,
-        correct: result.payload.correct,
-        qualityScore: result.payload.qualityScore,
-        scoreBreakdown: result.payload.scoreBreakdown,
-        status: result.payload.status,
-        errorMessage: result.payload.errorMessage,
-      })
+      // Always attempt to land a row per fixture so the suite-run counter
+      // reaches expectedRunCount. If the rich payload fails to insert (e.g.
+      // an oversized parsed JSON) fall back to a minimal error row.
+      try {
+        await ctx.runMutation(internal.benchmarks.insertRun, {
+          suiteRunId: args.suiteRunId,
+          modelSlug: args.modelSlug,
+          provider: args.provider,
+          suite: args.suite,
+          fixtureId: fixture.id,
+          fixtureLabel: fixture.label,
+          systemPrompt: result.systemPrompt,
+          userPrompt: result.userPrompt,
+          rawOutput: result.payload.rawOutput,
+          parsed: result.payload.parsed,
+          schemaValid: result.payload.schemaValid,
+          parseError: result.payload.parseError,
+          ttftMs: result.payload.ttftMs,
+          totalMs: result.payload.totalMs,
+          inputTokens: result.payload.inputTokens,
+          outputTokens: result.payload.outputTokens,
+          tps: result.payload.tps,
+          expected: result.payload.expected,
+          correct: result.payload.correct,
+          qualityScore: result.payload.qualityScore,
+          scoreBreakdown: result.payload.scoreBreakdown,
+          status: result.payload.status,
+          errorMessage: result.payload.errorMessage,
+        })
+      } catch (insertError) {
+        try {
+          await ctx.runMutation(internal.benchmarks.insertRun, {
+            suiteRunId: args.suiteRunId,
+            modelSlug: args.modelSlug,
+            provider: args.provider,
+            suite: args.suite,
+            fixtureId: fixture.id,
+            fixtureLabel: fixture.label,
+            systemPrompt: "",
+            userPrompt: "",
+            schemaValid: false,
+            totalMs: result.payload.totalMs,
+            qualityScore: 0,
+            status: "error",
+            errorMessage:
+              insertError instanceof Error
+                ? `insert failed: ${insertError.message}`
+                : "insert failed",
+          })
+        } catch {
+          // Final fallback: nothing else to do — the suite-run can be
+          // force-completed from the admin UI if this leaves it short.
+        }
+      }
     }
 
     return null

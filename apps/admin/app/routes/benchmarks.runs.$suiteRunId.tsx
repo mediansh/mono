@@ -1,7 +1,14 @@
+import { useState } from "react"
 import { Link, useParams } from "react-router"
-import { useQuery } from "convex/react"
+import { useMutation, useQuery } from "convex/react"
 import { motion } from "motion/react"
-import { ArrowLeft, Trophy } from "@phosphor-icons/react"
+import {
+  ArrowLeft,
+  CaretDown,
+  CaretRight,
+  Trophy,
+  WarningCircle,
+} from "@phosphor-icons/react"
 
 import { api, type Id } from "~/lib/convex"
 import { fadeUp, stagger } from "~/lib/utils"
@@ -12,17 +19,23 @@ const SUITE_LABELS = {
   taskGen: "Task gen",
 } as const
 
+const SUITE_DESCRIPTIONS = {
+  discordScan: "Classify Discord messages as actionable feedback",
+  feedbackExtract: "Pull task actions out of feedback threads",
+  taskGen: "Generate tasks from a free-form prompt",
+} as const
+
 type SuiteKey = keyof typeof SUITE_LABELS
 
-function formatMs(ms?: number) {
+function formatMs(ms?: number | null) {
   if (ms === undefined || ms === null || Number.isNaN(ms)) return "—"
   if (ms < 1000) return `${Math.round(ms)} ms`
   return `${(ms / 1000).toFixed(2)} s`
 }
 
-function formatTps(tps?: number) {
+function formatTps(tps?: number | null) {
   if (tps === undefined || tps === null || Number.isNaN(tps)) return "—"
-  return tps.toFixed(1)
+  return `${tps.toFixed(0)} tok/s`
 }
 
 function formatPct(value: number) {
@@ -45,6 +58,10 @@ function statusPillClass(status: string) {
   return "bg-destructive/15 text-destructive"
 }
 
+function shortenSlug(slug: string) {
+  return slug.length > 32 ? `${slug.slice(0, 30)}…` : slug
+}
+
 export default function BenchmarkSuiteRunPage() {
   const { suiteRunId } = useParams<{ suiteRunId: string }>()
   const data = useQuery(
@@ -59,6 +76,21 @@ export default function BenchmarkSuiteRunPage() {
       ? { suiteRunId: suiteRunId as Id<"benchmarkSuiteRuns"> }
       : "skip",
   )
+  const forceComplete = useMutation(api.benchmarks.forceCompleteSuiteRun)
+
+  const [expandedSuites, setExpandedSuites] = useState<Set<SuiteKey>>(
+    new Set(),
+  )
+  const [forcing, setForcing] = useState(false)
+
+  function toggleSuite(suite: SuiteKey) {
+    setExpandedSuites((prev) => {
+      const next = new Set(prev)
+      if (next.has(suite)) next.delete(suite)
+      else next.add(suite)
+      return next
+    })
+  }
 
   if (!suiteRunId) {
     return (
@@ -85,6 +117,28 @@ export default function BenchmarkSuiteRunPage() {
   }
 
   const { suiteRun, aggregates } = data
+  const winner = aggregates[0]
+  const isStuck =
+    suiteRun.status === "running" &&
+    suiteRun.completedRunCount > 0 &&
+    suiteRun.completedRunCount < suiteRun.expectedRunCount &&
+    Date.now() - suiteRun.startedAt > 5 * 60_000
+
+  async function handleForceComplete() {
+    if (!suiteRunId) return
+    if (
+      !confirm(
+        "Mark this suite run as complete? Use only if a worker crashed mid-run.",
+      )
+    )
+      return
+    setForcing(true)
+    try {
+      await forceComplete({ id: suiteRunId as Id<"benchmarkSuiteRuns"> })
+    } finally {
+      setForcing(false)
+    }
+  }
 
   return (
     <motion.div
@@ -114,7 +168,7 @@ export default function BenchmarkSuiteRunPage() {
             {suiteRun.status}
           </span>
           <span>
-            Progress: {suiteRun.completedRunCount}/{suiteRun.expectedRunCount}
+            {suiteRun.completedRunCount}/{suiteRun.expectedRunCount} fixtures
           </span>
           <span>·</span>
           <span>{suiteRun.models.length} models</span>
@@ -127,29 +181,111 @@ export default function BenchmarkSuiteRunPage() {
         </div>
       </motion.div>
 
+      {isStuck && (
+        <motion.div
+          variants={fadeUp}
+          className="mb-6 flex items-start gap-3 border border-amber-500/40 bg-amber-500/5 p-3 text-[12px]"
+        >
+          <WarningCircle
+            size={14}
+            weight="fill"
+            className="mt-0.5 shrink-0 text-amber-600"
+          />
+          <div className="flex-1">
+            <div className="font-medium text-amber-700">
+              This run looks stuck.
+            </div>
+            <div className="mt-0.5 text-muted-foreground">
+              {suiteRun.completedRunCount}/{suiteRun.expectedRunCount}{" "}
+              fixtures landed and nothing has updated for a while. A worker
+              may have crashed before its row was saved.
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleForceComplete}
+            disabled={forcing}
+            className="shrink-0 bg-amber-500/20 px-2 py-1 text-[12px] font-medium text-amber-700 transition-colors hover:bg-amber-500/30 disabled:opacity-50"
+          >
+            {forcing ? "Marking…" : "Force complete"}
+          </button>
+        </motion.div>
+      )}
+
+      {winner && winner.runCount > 0 && (
+        <motion.div
+          variants={fadeUp}
+          className="mb-6 border border-sidebar-border bg-sidebar/30 p-4"
+        >
+          <div className="flex items-center gap-2 text-[11px] tracking-wide text-muted-foreground uppercase">
+            <Trophy size={12} weight="fill" />
+            Best overall
+          </div>
+          <div className="mt-2 flex flex-wrap items-baseline gap-3">
+            <div className="font-mono text-[15px] font-semibold">
+              {winner.modelSlug}
+            </div>
+            <div className="text-[11px] text-muted-foreground">
+              {winner.provider ?? "any provider"}
+            </div>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div>
+              <div className="text-[11px] text-muted-foreground">
+                Composite score
+              </div>
+              <div className="text-[15px] font-semibold">
+                {formatPct(winner.compositeScore)}
+              </div>
+            </div>
+            <div>
+              <div className="text-[11px] text-muted-foreground">
+                Avg latency
+              </div>
+              <div className="text-[15px] font-semibold">
+                {formatMs(winner.avgTotalMs)}
+              </div>
+            </div>
+            <div>
+              <div className="text-[11px] text-muted-foreground">
+                Throughput
+              </div>
+              <div className="text-[15px] font-semibold">
+                {formatTps(winner.avgTps)}
+              </div>
+            </div>
+            <div>
+              <div className="text-[11px] text-muted-foreground">
+                Quality
+              </div>
+              <div className="text-[15px] font-semibold">
+                {formatPct(winner.qualityOverall)}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
       <motion.div variants={fadeUp} className="mb-8">
-        <div className="mb-2 flex items-center gap-2 text-[12px] font-medium text-muted-foreground">
-          <Trophy size={13} weight="fill" />
-          Leaderboard
-          <span className="text-[11px]">
-            (speed {formatPct(data.weights.speed)} · TPS{" "}
-            {formatPct(data.weights.tps)} · quality{" "}
-            {formatPct(data.weights.quality)})
-          </span>
+        <div className="mb-2 flex items-end justify-between">
+          <h2 className="text-[12px] font-medium text-muted-foreground">
+            Leaderboard
+          </h2>
+          <p className="text-[11px] text-muted-foreground">
+            Composite = {formatPct(data.weights.speed)} speed +{" "}
+            {formatPct(data.weights.tps)} throughput +{" "}
+            {formatPct(data.weights.quality)} quality
+          </p>
         </div>
         <div className="overflow-x-auto border border-sidebar-border">
-          <div className="min-w-[760px]">
+          <div className="min-w-[680px]">
             <div className="flex items-center gap-2 border-b border-sidebar-border bg-sidebar/50 px-3 py-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
               <div className="w-6">#</div>
               <div className="flex-1">Model</div>
-              <div className="w-20">Composite</div>
-              <div className="w-20">Speed</div>
-              <div className="w-20">Avg total</div>
-              <div className="w-20">Avg TTFT</div>
-              <div className="w-20">TPS</div>
-              <div className="w-20">Discord</div>
-              <div className="w-20">Extract</div>
-              <div className="w-20">TaskGen</div>
+              <div className="w-24">Composite</div>
+              <div className="w-24">Latency</div>
+              <div className="w-24">Throughput</div>
+              <div className="w-24">Quality</div>
               <div className="w-16">Errors</div>
             </div>
             {aggregates.length === 0 && (
@@ -173,35 +309,17 @@ export default function BenchmarkSuiteRunPage() {
                     </div>
                   )}
                 </div>
-                <div className="w-20 font-medium">
+                <div className="w-24 font-medium">
                   {formatPct(agg.compositeScore)}
                 </div>
-                <div className="w-20 text-muted-foreground">
-                  {formatPct(agg.speedScore)}
-                </div>
-                <div className="w-20 text-muted-foreground">
+                <div className="w-24 text-muted-foreground">
                   {formatMs(agg.avgTotalMs)}
                 </div>
-                <div className="w-20 text-muted-foreground">
-                  {formatMs(agg.avgTtftMs)}
-                </div>
-                <div className="w-20 text-muted-foreground">
+                <div className="w-24 text-muted-foreground">
                   {formatTps(agg.avgTps)}
                 </div>
-                <div className="w-20 text-muted-foreground">
-                  {agg.qualityBySuite.discordScan !== undefined
-                    ? formatPct(agg.qualityBySuite.discordScan)
-                    : "—"}
-                </div>
-                <div className="w-20 text-muted-foreground">
-                  {agg.qualityBySuite.feedbackExtract !== undefined
-                    ? formatPct(agg.qualityBySuite.feedbackExtract)
-                    : "—"}
-                </div>
-                <div className="w-20 text-muted-foreground">
-                  {agg.qualityBySuite.taskGen !== undefined
-                    ? formatPct(agg.qualityBySuite.taskGen)
-                    : "—"}
+                <div className="w-24 text-muted-foreground">
+                  {formatPct(agg.qualityOverall)}
                 </div>
                 <div
                   className={`w-16 ${agg.errorCount > 0 ? "text-destructive" : "text-muted-foreground"}`}
@@ -216,77 +334,188 @@ export default function BenchmarkSuiteRunPage() {
 
       {(["discordScan", "feedbackExtract", "taskGen"] as SuiteKey[]).map(
         (suite) => {
+          const expanded = expandedSuites.has(suite)
           const suiteRows =
-            runs?.filter((r) => r.suite === suite).sort((a, b) => {
-              if (a.fixtureId !== b.fixtureId)
-                return a.fixtureId.localeCompare(b.fixtureId)
-              return a.modelSlug.localeCompare(b.modelSlug)
-            }) ?? []
+            runs?.filter((r) => r.suite === suite) ?? []
+          const sortedRows = [...suiteRows].sort((a, b) => {
+            if (a.fixtureId !== b.fixtureId)
+              return a.fixtureId.localeCompare(b.fixtureId)
+            return a.modelSlug.localeCompare(b.modelSlug)
+          })
+
+          // Per-model aggregates for this specific suite.
+          const perModel = new Map<
+            string,
+            {
+              modelSlug: string
+              provider?: string
+              quality: number
+              latency: number
+              throughput?: number
+              errors: number
+              count: number
+            }
+          >()
+          for (const model of suiteRun.models) {
+            const modelRows = suiteRows.filter(
+              (r) => r.modelSlug === model.slug,
+            )
+            const okRows = modelRows.filter((r) => r.status === "ok")
+            const tpsRows = okRows
+              .map((r) => r.tps)
+              .filter((v): v is number => v !== undefined)
+            perModel.set(model.slug, {
+              modelSlug: model.slug,
+              provider: model.provider,
+              quality:
+                okRows.length === 0
+                  ? 0
+                  : okRows.reduce((sum, r) => sum + r.qualityScore, 0) /
+                    okRows.length,
+              latency:
+                okRows.length === 0
+                  ? 0
+                  : okRows.reduce((sum, r) => sum + r.totalMs, 0) /
+                    okRows.length,
+              throughput:
+                tpsRows.length === 0
+                  ? undefined
+                  : tpsRows.reduce((s, v) => s + v, 0) / tpsRows.length,
+              errors: modelRows.length - okRows.length,
+              count: modelRows.length,
+            })
+          }
+          const perModelList = Array.from(perModel.values()).sort(
+            (a, b) => b.quality - a.quality,
+          )
+
           return (
             <motion.div key={suite} variants={fadeUp} className="mb-8">
-              <h2 className="mb-2 text-[12px] font-medium text-muted-foreground">
-                {SUITE_LABELS[suite]} runs
-              </h2>
-              <div className="overflow-x-auto border border-sidebar-border">
-                <div className="min-w-[760px]">
-                  <div className="flex items-center gap-2 border-b border-sidebar-border bg-sidebar/50 px-3 py-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-                    <div className="w-40">Model</div>
-                    <div className="flex-1">Fixture</div>
-                    <div className="w-20">Quality</div>
-                    <div className="w-20">Total</div>
-                    <div className="w-20">TTFT</div>
-                    <div className="w-20">TPS</div>
-                    <div className="w-16">Status</div>
-                  </div>
-                  {runs === undefined && (
-                    <div className="px-3 py-4 text-[12px] text-muted-foreground">
-                      Loading…
-                    </div>
+              <div className="mb-2 flex items-end justify-between gap-2">
+                <div>
+                  <h2 className="text-[12px] font-medium text-foreground">
+                    {SUITE_LABELS[suite]}
+                  </h2>
+                  <p className="text-[11px] text-muted-foreground">
+                    {SUITE_DESCRIPTIONS[suite]}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => toggleSuite(suite)}
+                  className="inline-flex items-center gap-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  {expanded ? (
+                    <CaretDown size={11} weight="bold" />
+                  ) : (
+                    <CaretRight size={11} weight="bold" />
                   )}
-                  {runs !== undefined && suiteRows.length === 0 && (
+                  <span>
+                    {expanded ? "Hide" : "Show"} {sortedRows.length} fixture
+                    runs
+                  </span>
+                </button>
+              </div>
+
+              <div className="overflow-x-auto border border-sidebar-border">
+                <div className="min-w-[600px]">
+                  <div className="flex items-center gap-2 border-b border-sidebar-border bg-sidebar/50 px-3 py-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+                    <div className="flex-1">Model</div>
+                    <div className="w-24">Quality</div>
+                    <div className="w-24">Latency</div>
+                    <div className="w-24">Throughput</div>
+                    <div className="w-16">Errors</div>
+                  </div>
+                  {perModelList.length === 0 && (
                     <div className="px-3 py-4 text-[12px] text-muted-foreground">
                       No runs for this suite yet.
                     </div>
                   )}
-                  {suiteRows.map((run) => (
-                    <Link
-                      key={run._id}
-                      to={`/benchmarks/runs/${suiteRunId}/runs/${run._id}`}
-                      className="flex items-center gap-2 border-b border-sidebar-border px-3 py-2 text-[12px] transition-colors last:border-b-0 hover:bg-sidebar-accent"
+                  {perModelList.map((row) => (
+                    <div
+                      key={row.modelSlug}
+                      className="flex items-center gap-2 border-b border-sidebar-border px-3 py-2 text-[12px] last:border-b-0"
                     >
-                      <div className="w-40 truncate font-mono text-[12px]">
-                        {run.modelSlug}
+                      <div className="flex-1 truncate font-mono text-[12px]">
+                        {row.modelSlug}
                       </div>
-                      <div className="flex-1 truncate text-muted-foreground">
-                        {run.fixtureLabel}
+                      <div className="w-24 font-medium">
+                        {formatPct(row.quality)}
                       </div>
-                      <div className="w-20">
-                        {formatPct(run.qualityScore)}
+                      <div className="w-24 text-muted-foreground">
+                        {formatMs(row.latency)}
                       </div>
-                      <div className="w-20 text-muted-foreground">
-                        {formatMs(run.totalMs)}
+                      <div className="w-24 text-muted-foreground">
+                        {formatTps(row.throughput)}
                       </div>
-                      <div className="w-20 text-muted-foreground">
-                        {formatMs(run.ttftMs)}
+                      <div
+                        className={`w-16 ${row.errors > 0 ? "text-destructive" : "text-muted-foreground"}`}
+                      >
+                        {row.errors}
                       </div>
-                      <div className="w-20 text-muted-foreground">
-                        {formatTps(run.tps)}
-                      </div>
-                      <div className="w-16">
-                        <span
-                          className={`inline-block px-1.5 py-0.5 text-[11px] font-medium ${
-                            run.status === "ok"
-                              ? "bg-emerald-500/15 text-emerald-600"
-                              : "bg-destructive/15 text-destructive"
-                          }`}
-                        >
-                          {run.status}
-                        </span>
-                      </div>
-                    </Link>
+                    </div>
                   ))}
                 </div>
               </div>
+
+              {expanded && (
+                <div className="mt-2 overflow-x-auto border border-sidebar-border">
+                  <div className="min-w-[680px]">
+                    <div className="flex items-center gap-2 border-b border-sidebar-border bg-sidebar/30 px-3 py-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+                      <div className="w-44">Model</div>
+                      <div className="flex-1">Fixture</div>
+                      <div className="w-20">Quality</div>
+                      <div className="w-20">Total</div>
+                      <div className="w-20">TTFT</div>
+                      <div className="w-16">Status</div>
+                    </div>
+                    {runs === undefined && (
+                      <div className="px-3 py-4 text-[12px] text-muted-foreground">
+                        Loading…
+                      </div>
+                    )}
+                    {runs !== undefined && sortedRows.length === 0 && (
+                      <div className="px-3 py-4 text-[12px] text-muted-foreground">
+                        No runs yet.
+                      </div>
+                    )}
+                    {sortedRows.map((run) => (
+                      <Link
+                        key={run._id}
+                        to={`/benchmarks/runs/${suiteRunId}/runs/${run._id}`}
+                        className="flex items-center gap-2 border-b border-sidebar-border px-3 py-2 text-[12px] transition-colors last:border-b-0 hover:bg-sidebar-accent"
+                      >
+                        <div className="w-44 truncate font-mono text-[11.5px]">
+                          {shortenSlug(run.modelSlug)}
+                        </div>
+                        <div className="flex-1 truncate text-muted-foreground">
+                          {run.fixtureLabel}
+                        </div>
+                        <div className="w-20">
+                          {formatPct(run.qualityScore)}
+                        </div>
+                        <div className="w-20 text-muted-foreground">
+                          {formatMs(run.totalMs)}
+                        </div>
+                        <div className="w-20 text-muted-foreground">
+                          {formatMs(run.ttftMs)}
+                        </div>
+                        <div className="w-16">
+                          <span
+                            className={`inline-block px-1.5 py-0.5 text-[11px] font-medium ${
+                              run.status === "ok"
+                                ? "bg-emerald-500/15 text-emerald-600"
+                                : "bg-destructive/15 text-destructive"
+                            }`}
+                          >
+                            {run.status}
+                          </span>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
             </motion.div>
           )
         },
