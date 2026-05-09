@@ -122,6 +122,8 @@ type XWebhookUser = {
 
 type XWebhookMedia = {
   type?: string
+  media_type?: string
+  content_type?: string
   media_url?: string
   media_url_https?: string
   url?: string
@@ -942,6 +944,62 @@ function getTweetMentions(tweet: XWebhookTweet) {
   )
 }
 
+const X_IMAGE_MEDIA_TYPES_BY_EXTENSION: Record<string, string> = {
+  avif: "image/avif",
+  gif: "image/gif",
+  jpeg: "image/jpeg",
+  jpg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+}
+
+function normalizeTweetImageMediaType(mediaType: string | null | undefined) {
+  const normalized = mediaType?.split(";")[0]?.trim().toLowerCase()
+  return normalized?.startsWith("image/") ? normalized : undefined
+}
+
+function getTweetMediaUrl(media: XWebhookMedia) {
+  return media.media_url_https ?? media.media_url ?? media.url
+}
+
+function inferTweetImageMediaTypeFromUrl(url: string | undefined) {
+  if (!url) {
+    return undefined
+  }
+
+  try {
+    const parsed = new URL(url)
+    const format = parsed.searchParams.get("format")?.toLowerCase()
+    if (format && X_IMAGE_MEDIA_TYPES_BY_EXTENSION[format]) {
+      return X_IMAGE_MEDIA_TYPES_BY_EXTENSION[format]
+    }
+
+    const extension = parsed.pathname.split(".").pop()?.toLowerCase()
+    return extension ? X_IMAGE_MEDIA_TYPES_BY_EXTENSION[extension] : undefined
+  } catch {
+    const extension = url.split(/[?#]/)[0]?.split(".").pop()?.toLowerCase()
+    return extension ? X_IMAGE_MEDIA_TYPES_BY_EXTENSION[extension] : undefined
+  }
+}
+
+function getTweetImageMediaType(media: XWebhookMedia) {
+  return (
+    normalizeTweetImageMediaType(media.media_type) ??
+    normalizeTweetImageMediaType(media.content_type) ??
+    normalizeTweetImageMediaType(media.type) ??
+    inferTweetImageMediaTypeFromUrl(getTweetMediaUrl(media)) ??
+    "image/*"
+  )
+}
+
+function isTweetImageMedia(media: XWebhookMedia) {
+  return (
+    media.type === "photo" ||
+    media.type === undefined ||
+    Boolean(normalizeTweetImageMediaType(media.type))
+  )
+}
+
 function getTweetImageAttachments(tweet: XWebhookTweet) {
   const media =
     tweet.extended_tweet?.extended_entities?.media ??
@@ -951,14 +1009,15 @@ function getTweetImageAttachments(tweet: XWebhookTweet) {
     []
 
   return normalizeImageAttachments(
-    media
-      .filter((item) => item.type === "photo" || item.type === undefined)
-      .map((item) => ({
-        url: item.media_url_https ?? item.media_url ?? item.url,
-        mediaType: "image/jpeg",
+    media.filter(isTweetImageMedia).map((item) => {
+      const url = getTweetMediaUrl(item)
+      return {
+        url,
+        mediaType: getTweetImageMediaType(item),
         width: item.sizes?.large?.w,
         height: item.sizes?.large?.h,
-      }))
+      }
+    })
   )
 }
 
