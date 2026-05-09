@@ -13,16 +13,16 @@ export const AI_TOKEN_PRICING_PER_MILLION: Record<
   { input: number; output: number }
 > = {
   "google/gemini-3.1-flash-lite": {
-    input: 0.25,
-    output: 1.5,
+    input: 0.4,
+    output: 2.4,
   },
   "google/gemini-3-flash-preview": {
-    input: 0.5,
-    output: 3,
+    input: 0.8,
+    output: 4.8,
   },
   "openai/gpt-oss-120b": {
-    input: 0.039,
-    output: 0.18,
+    input: 0.0624,
+    output: 0.288,
   },
 }
 
