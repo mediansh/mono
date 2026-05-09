@@ -55,6 +55,13 @@ const recordInboundMessageMutation = makeFunctionReference<
     authorUsername: string
     authorHasAdminPrivileges: boolean
     content: string
+    imageAttachments?: {
+      url: string
+      name?: string
+      mediaType?: string
+      width?: number
+      height?: number
+    }[]
     messageCreatedAt: number
   },
   {
@@ -171,6 +178,7 @@ const client = new Client({
 
 let isBotReady = false
 let isShuttingDown = false
+const MAX_IMAGE_ATTACHMENTS_PER_MESSAGE = 10
 
 const healthServer = await startHealthServer({
   getStatus: () => ({
@@ -212,6 +220,23 @@ async function registerCommands() {
 
 function normalizeMessageContent(content: string) {
   return content.replace(/\s+/g, " ").trim()
+}
+
+function getMessageImageAttachments(message: Message) {
+  return message.attachments
+    .filter(
+      (attachment) =>
+        attachment.contentType?.toLowerCase().startsWith("image/") ||
+        /\.(?:apng|avif|gif|jpe?g|png|webp)$/i.test(attachment.name)
+    )
+    .map((attachment) => ({
+      url: attachment.url,
+      name: attachment.name,
+      mediaType: attachment.contentType ?? undefined,
+      width: attachment.width ?? undefined,
+      height: attachment.height ?? undefined,
+    }))
+    .slice(0, MAX_IMAGE_ATTACHMENTS_PER_MESSAGE)
 }
 
 function summarizeText(text: string, limit = 120) {
@@ -553,11 +578,12 @@ client.on(Events.MessageCreate, async (message: Message) => {
   const content = normalizeMessageContent(message.content)
   const channelContext = getMessageChannelContext(message)
   const authorHasAdminPrivileges = hasAdminPrivileges(message)
+  const imageAttachments = getMessageImageAttachments(message)
   const hasChannelContext = Boolean(
     channelContext.threadTitle || channelContext.forumTitle
   )
 
-  if (!content && !hasChannelContext) {
+  if (!content && !hasChannelContext && imageAttachments.length === 0) {
     logger.info("Ignoring empty message", {
       scope: "message",
       guildId: message.guildId,
@@ -579,6 +605,7 @@ client.on(Events.MessageCreate, async (message: Message) => {
     forumTitle: channelContext.forumTitle ?? null,
     author: message.author.username,
     authorHasAdminPrivileges,
+    imageAttachmentCount: imageAttachments.length,
     preview: summarizeText(
       content || channelContext.threadTitle || channelContext.forumTitle || ""
     ),
@@ -601,6 +628,7 @@ client.on(Events.MessageCreate, async (message: Message) => {
       authorUsername: message.author.username,
       authorHasAdminPrivileges,
       content,
+      imageAttachments,
       messageCreatedAt: message.createdTimestamp,
     })
 
@@ -622,6 +650,7 @@ client.on(Events.MessageCreate, async (message: Message) => {
         channel_id: message.channelId,
         workspace_id: integration.workspaceId,
         content_length: content.length,
+        image_attachment_count: imageAttachments.length,
       })
     }
     logger.info("Stored message and resolved integrations", {

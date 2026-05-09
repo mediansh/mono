@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server"
 import { v } from "convex/values"
+import { feedbackImageAttachmentValidator } from "./feedbackAttachments"
 
 const BENCHMARK_SUITE_IDS = v.union(
   v.literal("discordScan"),
@@ -131,6 +132,7 @@ export default defineSchema({
     authorId: v.string(),
     authorUsername: v.string(),
     content: v.string(),
+    imageAttachments: v.optional(v.array(feedbackImageAttachmentValidator)),
     messageCreatedAt: v.number(),
     receivedAt: v.number(),
   })
@@ -429,6 +431,7 @@ export default defineSchema({
     authorUsername: v.string(),
     authorName: v.optional(v.string()),
     content: v.string(),
+    imageAttachments: v.optional(v.array(feedbackImageAttachmentValidator)),
     inReplyToUserId: v.optional(v.string()),
     postCreatedAt: v.number(),
     receivedAt: v.number(),
@@ -481,6 +484,7 @@ export default defineSchema({
     authorUsername: v.string(),
     authorHasAdminPrivileges: v.optional(v.boolean()),
     content: v.string(),
+    imageAttachments: v.optional(v.array(feedbackImageAttachmentValidator)),
     messageCreatedAt: v.number(),
     receivedAt: v.number(),
   })

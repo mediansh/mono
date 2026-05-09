@@ -1791,6 +1791,13 @@ function TaskDetailSidePanel({
             className="absolute top-px right-0 bottom-px flex flex-col overflow-hidden rounded-[4px] bg-background ring-1 ring-sidebar-border"
             style={{ width: `${Math.max(width - 6, 1)}px` }}
           >
+            <motion.div
+              key={task.id}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="flex min-h-0 flex-1 flex-col"
+            >
             {/* ── Header: Title + Date + Close ── */}
             <div className="relative px-5 pt-5 pb-0">
                 {/* Close button */}
@@ -2195,6 +2202,7 @@ function TaskDetailSidePanel({
                   )}
                 </div>
               )}
+            </motion.div>
           </motion.div>
         </motion.aside>
       )}

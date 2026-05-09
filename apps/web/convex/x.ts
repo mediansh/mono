@@ -14,6 +14,10 @@ import {
   requireWorkspaceAccess,
   requireWorkspaceAdminAccess,
 } from "./permissions"
+import {
+  feedbackImageAttachmentValidator,
+  normalizeImageAttachments,
+} from "./feedbackAttachments"
 
 const X_OAUTH_REQUEST_TOKEN_URL = "https://api.x.com/oauth/request_token"
 const X_OAUTH_ACCESS_TOKEN_URL = "https://api.x.com/oauth/access_token"
@@ -116,6 +120,21 @@ type XWebhookUser = {
   name?: string
 }
 
+type XWebhookMedia = {
+  type?: string
+  media_type?: string
+  content_type?: string
+  media_url?: string
+  media_url_https?: string
+  url?: string
+  sizes?: {
+    large?: {
+      w?: number
+      h?: number
+    }
+  }
+}
+
 type XWebhookTweet = {
   id?: string | number
   id_str?: string
@@ -125,12 +144,20 @@ type XWebhookTweet = {
   user?: XWebhookUser
   entities?: {
     user_mentions?: XWebhookMention[]
+    media?: XWebhookMedia[]
   }
   extended_tweet?: {
     full_text?: string
     entities?: {
       user_mentions?: XWebhookMention[]
+      media?: XWebhookMedia[]
     }
+    extended_entities?: {
+      media?: XWebhookMedia[]
+    }
+  }
+  extended_entities?: {
+    media?: XWebhookMedia[]
   }
   in_reply_to_user_id?: string | number | null
   in_reply_to_user_id_str?: string | null
@@ -917,6 +944,83 @@ function getTweetMentions(tweet: XWebhookTweet) {
   )
 }
 
+const X_IMAGE_MEDIA_TYPES_BY_EXTENSION: Record<string, string> = {
+  avif: "image/avif",
+  gif: "image/gif",
+  jpeg: "image/jpeg",
+  jpg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+}
+
+function normalizeTweetImageMediaType(mediaType: string | null | undefined) {
+  const normalized = mediaType?.split(";")[0]?.trim().toLowerCase()
+  return normalized?.startsWith("image/") ? normalized : undefined
+}
+
+function getTweetMediaUrl(media: XWebhookMedia) {
+  return media.media_url_https ?? media.media_url ?? media.url
+}
+
+function inferTweetImageMediaTypeFromUrl(url: string | undefined) {
+  if (!url) {
+    return undefined
+  }
+
+  try {
+    const parsed = new URL(url)
+    const format = parsed.searchParams.get("format")?.toLowerCase()
+    if (format && X_IMAGE_MEDIA_TYPES_BY_EXTENSION[format]) {
+      return X_IMAGE_MEDIA_TYPES_BY_EXTENSION[format]
+    }
+
+    const extension = parsed.pathname.split(".").pop()?.toLowerCase()
+    return extension ? X_IMAGE_MEDIA_TYPES_BY_EXTENSION[extension] : undefined
+  } catch {
+    const extension = url.split(/[?#]/)[0]?.split(".").pop()?.toLowerCase()
+    return extension ? X_IMAGE_MEDIA_TYPES_BY_EXTENSION[extension] : undefined
+  }
+}
+
+function getTweetImageMediaType(media: XWebhookMedia) {
+  return (
+    normalizeTweetImageMediaType(media.media_type) ??
+    normalizeTweetImageMediaType(media.content_type) ??
+    normalizeTweetImageMediaType(media.type) ??
+    inferTweetImageMediaTypeFromUrl(getTweetMediaUrl(media)) ??
+    "image/*"
+  )
+}
+
+function isTweetImageMedia(media: XWebhookMedia) {
+  return (
+    media.type === "photo" ||
+    media.type === undefined ||
+    Boolean(normalizeTweetImageMediaType(media.type))
+  )
+}
+
+function getTweetImageAttachments(tweet: XWebhookTweet) {
+  const media =
+    tweet.extended_tweet?.extended_entities?.media ??
+    tweet.extended_entities?.media ??
+    tweet.extended_tweet?.entities?.media ??
+    tweet.entities?.media ??
+    []
+
+  return normalizeImageAttachments(
+    media.filter(isTweetImageMedia).map((item) => {
+      const url = getTweetMediaUrl(item)
+      return {
+        url,
+        mediaType: getTweetImageMediaType(item),
+        width: item.sizes?.large?.w,
+        height: item.sizes?.large?.h,
+      }
+    })
+  )
+}
+
 function getTweetCreatedAt(tweet: XWebhookTweet) {
   const createdAt = tweet.created_at ? Date.parse(tweet.created_at) : NaN
   return Number.isFinite(createdAt) ? createdAt : Date.now()
@@ -943,6 +1047,7 @@ function extractRelevantInboundPosts(
       const authorId = normalizeId(tweet.user?.id_str ?? tweet.user?.id)
       const authorUsername = tweet.user?.screen_name?.trim() ?? ""
       const content = getTweetText(tweet)
+      const imageAttachments = getTweetImageAttachments(tweet)
       const inReplyToUserId = normalizeId(
         tweet.in_reply_to_user_id_str ?? tweet.in_reply_to_user_id
       )
@@ -959,7 +1064,12 @@ function extractRelevantInboundPosts(
       })
       const repliesToConnectedUser = inReplyToUserId === integration.xUserId
 
-      if (!postId || !authorId || !authorUsername || !content) {
+      if (
+        !postId ||
+        !authorId ||
+        !authorUsername ||
+        (!content && imageAttachments.length === 0)
+      ) {
         return null
       }
       if (authorId === integration.xUserId) {
@@ -976,6 +1086,7 @@ function extractRelevantInboundPosts(
         authorUsername,
         authorName: tweet.user?.name?.trim() || undefined,
         content,
+        imageAttachments,
         inReplyToUserId: inReplyToUserId ?? undefined,
         postCreatedAt: getTweetCreatedAt(tweet),
         forUserId,
@@ -988,6 +1099,7 @@ function extractRelevantInboundPosts(
     authorUsername: string
     authorName?: string
     content: string
+    imageAttachments: ReturnType<typeof getTweetImageAttachments>
     inReplyToUserId?: string
     postCreatedAt: number
     forUserId: string
@@ -1545,6 +1657,7 @@ export const recordInboundPostInternal = internalMutation({
     authorUsername: v.string(),
     authorName: v.optional(v.string()),
     content: v.string(),
+    imageAttachments: v.optional(v.array(feedbackImageAttachmentValidator)),
     inReplyToUserId: v.optional(v.string()),
     postCreatedAt: v.number(),
   },
@@ -1589,6 +1702,10 @@ export const recordInboundPostInternal = internalMutation({
       authorUsername: args.authorUsername,
       authorName: args.authorName,
       content: args.content,
+      imageAttachments:
+        args.imageAttachments && args.imageAttachments.length > 0
+          ? args.imageAttachments
+          : undefined,
       inReplyToUserId: args.inReplyToUserId,
       postCreatedAt: args.postCreatedAt,
       receivedAt: Date.now(),
@@ -1856,18 +1973,22 @@ export const xWebhook = httpAction(async (ctx, request) => {
     })
 
     for (const post of inboundPosts) {
-      const result = await ctx.runMutation(internal.x.recordInboundPostInternal, {
-        integrationId: integration._id,
-        forUserId: post.forUserId,
-        postId: post.postId,
-        permalink: post.permalink,
-        authorId: post.authorId,
-        authorUsername: post.authorUsername,
-        authorName: post.authorName,
-        content: post.content,
-        inReplyToUserId: post.inReplyToUserId,
-        postCreatedAt: post.postCreatedAt,
-      })
+      const result = await ctx.runMutation(
+        internal.x.recordInboundPostInternal,
+        {
+          integrationId: integration._id,
+          forUserId: post.forUserId,
+          postId: post.postId,
+          permalink: post.permalink,
+          authorId: post.authorId,
+          authorUsername: post.authorUsername,
+          authorName: post.authorName,
+          content: post.content,
+          imageAttachments: post.imageAttachments,
+          inReplyToUserId: post.inReplyToUserId,
+          postCreatedAt: post.postCreatedAt,
+        }
+      )
       if (result.accepted) {
         acceptedPostCount += 1
       }

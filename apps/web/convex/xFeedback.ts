@@ -18,6 +18,12 @@ import {
   type QueryCtx,
 } from "./_generated/server"
 import { classifyRunResult, recordRunDirect } from "./moduleRuns"
+import {
+  buildFeedbackPromptContent,
+  createFeedbackImageDownload,
+  formatImageAttachmentSummary,
+  type FeedbackImageAttachment,
+} from "./feedbackAttachments"
 
 const FEEDBACK_WINDOW_LIMIT = 100
 const FEEDBACK_CONTEXT_LIMIT = 10
@@ -34,6 +40,7 @@ type FeedbackPost = {
   postId: string
   authorUsername: string
   content: string
+  imageAttachments?: FeedbackImageAttachment[]
   permalink: string
   postCreatedAt: number
 }
@@ -319,7 +326,13 @@ function formatTranscript(posts: FeedbackPost[], pendingPostIds: Set<string>) {
     .map((post) => {
       const timestamp = new Date(post.postCreatedAt).toISOString()
       const marker = pendingPostIds.has(post.postId) ? "NEW" : "CONTEXT"
-      return `[${marker}] [id:${post.postId}] ${timestamp} @${post.authorUsername}: ${post.content}`
+      const imageSummary = formatImageAttachmentSummary(post.imageAttachments)
+      return [
+        `[${marker}] [id:${post.postId}] ${timestamp} @${post.authorUsername}: ${post.content}`,
+        imageSummary,
+      ]
+        .filter(Boolean)
+        .join(" | ")
     })
     .join("\n")
 }
@@ -383,6 +396,7 @@ async function loadPendingFeedbackWindow(
       postId: post.postId,
       authorUsername: post.authorUsername,
       content: post.content,
+      imageAttachments: post.imageAttachments,
       permalink: post.permalink,
       postCreatedAt: post.postCreatedAt,
     })),
@@ -594,8 +608,7 @@ export const handleFeedbackProcessingComplete = internalMutation({
       !shouldPauseProcessing &&
       (args.result.kind === "failed"
         ? canRetryFailure
-        : integration.feedbackProcessingNeedsRerun === true ||
-          hasPendingPosts)
+        : integration.feedbackProcessingNeedsRerun === true || hasPendingPosts)
 
     if (shouldRerun) {
       const nextRetryAttempt =
@@ -737,6 +750,7 @@ export const processFeedbackWindow = internalAction({
           limit: EXISTING_TASK_CONTEXT_LIMIT,
         }
       )
+      const feedbackImageDownload = createFeedbackImageDownload()
 
       const classifierSystemParts: string[] = [
         "You classify inbound X mentions and replies for a product team.",
@@ -759,17 +773,31 @@ export const processFeedbackWindow = internalAction({
       }
 
       const classifierStart = Date.now()
+      const classifierPrompt = [
+        `Workspace name: ${feedbackWindow.integration.workspaceName}`,
+        `Connected X account: @${feedbackWindow.integration.username}`,
+        "Existing task context:",
+        formatExistingTasks(existingTasks),
+        "Inbound post transcript:",
+        transcript,
+      ].join("\n\n")
       const classifierResult = await generateText({
         model: AI_MODELS.feedbackClassifier,
         system: classifierSystemParts.join(" "),
-        prompt: [
-          `Workspace name: ${feedbackWindow.integration.workspaceName}`,
-          `Connected X account: @${feedbackWindow.integration.username}`,
-          "Existing task context:",
-          formatExistingTasks(existingTasks),
-          "Inbound post transcript:",
-          transcript,
-        ].join("\n\n"),
+        messages: [
+          {
+            role: "user",
+            content: buildFeedbackPromptContent(
+              classifierPrompt,
+              contextPosts,
+              (post) => `X post id ${post.postId}`
+            ),
+          },
+        ],
+        experimental_download: feedbackImageDownload,
+        experimental_include: {
+          requestBody: false,
+        },
       })
       const classifierDurationMs = Date.now() - classifierStart
 
@@ -893,21 +921,39 @@ export const processFeedbackWindow = internalAction({
       )
 
       try {
+        const extractorPrompt = [
+          `Classifier summary: ${classification.summary ?? classification.reason}`,
+          "Existing task context:",
+          formatExistingTasks(existingTasks),
+          "Relevant inbound posts:",
+          relevantPosts
+            .map((post) =>
+              [
+                `- ${new Date(post.postCreatedAt).toISOString()} @${post.authorUsername}: ${post.content}`,
+                formatImageAttachmentSummary(post.imageAttachments),
+              ]
+                .filter(Boolean)
+                .join(" | ")
+            )
+            .join("\n"),
+        ].join("\n\n")
         const extractorResult = await generateText({
           model: extractorSelection.model,
           system: extractorSystemParts.join(" "),
-          prompt: [
-            `Classifier summary: ${classification.summary ?? classification.reason}`,
-            "Existing task context:",
-            formatExistingTasks(existingTasks),
-            "Relevant inbound posts:",
-            relevantPosts
-              .map(
-                (post) =>
-                  `- ${new Date(post.postCreatedAt).toISOString()} @${post.authorUsername}: ${post.content}`
-              )
-              .join("\n"),
-          ].join("\n\n"),
+          messages: [
+            {
+              role: "user",
+              content: buildFeedbackPromptContent(
+                extractorPrompt,
+                relevantPosts,
+                (post) => `X post id ${post.postId}`
+              ),
+            },
+          ],
+          experimental_download: feedbackImageDownload,
+          experimental_include: {
+            requestBody: false,
+          },
         })
         extractorDurationMs = Date.now() - extractorStart
         extractorUsage = extractorResult.usage

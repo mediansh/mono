@@ -27,6 +27,12 @@ import {
   type QueryCtx,
 } from "./_generated/server"
 import { classifyRunResult, recordRunDirect } from "./moduleRuns"
+import {
+  buildFeedbackPromptContent,
+  createFeedbackImageDownload,
+  formatImageAttachmentSummary,
+  type FeedbackImageAttachment,
+} from "./feedbackAttachments"
 
 const FEEDBACK_WINDOW_LIMIT = 100
 const FEEDBACK_CONTEXT_LIMIT = 25
@@ -130,6 +136,7 @@ type FeedbackMessage = {
   authorUsername: string
   authorHasAdminPrivileges: boolean
   content: string
+  imageAttachments?: FeedbackImageAttachment[]
   permalink: string
   messageCreatedAt: number
 }
@@ -776,7 +783,15 @@ function formatTranscript(
         (message.threadTitle
           ? "(no body text; use the thread title as the post title)"
           : "(no body text)")
-      return `[${marker}] [id:${message.messageId}] ${timestamp}${locationPrefix} ${message.authorUsername}: ${content}`
+      const imageSummary = formatImageAttachmentSummary(
+        message.imageAttachments
+      )
+      return [
+        `[${marker}] [id:${message.messageId}] ${timestamp}${locationPrefix} ${message.authorUsername}: ${content}`,
+        imageSummary,
+      ]
+        .filter(Boolean)
+        .join(" | ")
     })
     .join("\n")
 }
@@ -862,6 +877,7 @@ async function loadPendingFeedbackWindow(
       authorUsername: message.authorUsername,
       authorHasAdminPrivileges: message.authorHasAdminPrivileges ?? false,
       content: message.content,
+      imageAttachments: message.imageAttachments,
       permalink: message.permalink,
       messageCreatedAt: message.messageCreatedAt,
     })),
@@ -1272,6 +1288,7 @@ export const processFeedbackWindow = internalAction({
         pendingNonAdminMessages.map((message) => message.messageId)
       )
       const transcript = formatTranscript(contextMessages, pendingMessageIds)
+      const feedbackImageDownload = createFeedbackImageDownload()
       const additionalContext = getAdditionalContext(
         feedbackWindow.integration.additionalContext
       )
@@ -1291,15 +1308,29 @@ export const processFeedbackWindow = internalAction({
       let classification: z.infer<typeof feedbackClassificationSchema>
 
       try {
+        const classifierPrompt = [
+          `Workspace name: ${feedbackWindow.integration.workspaceName}`,
+          `Guild: ${feedbackWindow.integration.guildName}`,
+          "Conversation transcript:",
+          transcript,
+        ].join("\n\n")
         const classifierResult = await generateText({
           model: AI_MODELS.feedbackClassifier,
           system: classifierSystem,
-          prompt: [
-            `Workspace name: ${feedbackWindow.integration.workspaceName}`,
-            `Guild: ${feedbackWindow.integration.guildName}`,
-            "Conversation transcript:",
-            transcript,
-          ].join("\n\n"),
+          messages: [
+            {
+              role: "user",
+              content: buildFeedbackPromptContent(
+                classifierPrompt,
+                contextMessages,
+                (message) => `Discord message id ${message.messageId}`
+              ),
+            },
+          ],
+          experimental_download: feedbackImageDownload,
+          experimental_include: {
+            requestBody: false,
+          },
         })
         classifierDurationMs = Date.now() - classifierStart
         classifierUsage = classifierResult.usage
@@ -1482,42 +1513,57 @@ export const processFeedbackWindow = internalAction({
       )
 
       try {
+        const extractorPrompt = [
+          `Classifier summary: ${classification.summary ?? classification.reason}`,
+          "Likely matching existing tasks:",
+          formatExistingTasks(relevantTasks),
+          "Relevant feedback messages:",
+          relevantMessagesForExtraction
+            .map((message) =>
+              [
+                `- ${new Date(message.messageCreatedAt).toISOString()}`,
+                message.forumTitle
+                  ? `forum=${truncateText(message.forumTitle, MAX_LOCATION_TEXT_CHARS)}`
+                  : null,
+                message.threadTitle
+                  ? `thread=${truncateText(message.threadTitle, MAX_LOCATION_TEXT_CHARS)}`
+                  : null,
+                message.parentChannelName
+                  ? `parent_channel=${truncateText(message.parentChannelName, MAX_LOCATION_TEXT_CHARS)}`
+                  : null,
+                message.channelName
+                  ? `channel=${truncateText(message.channelName, MAX_LOCATION_TEXT_CHARS)}`
+                  : null,
+                `${message.authorUsername}: ${
+                  truncateText(message.content, MAX_MESSAGE_CONTENT_CHARS) ||
+                  (message.threadTitle
+                    ? "(no body text; rely on the thread title)"
+                    : "(no body text)")
+                }`,
+                formatImageAttachmentSummary(message.imageAttachments),
+              ]
+                .filter(Boolean)
+                .join(" | ")
+            )
+            .join("\n"),
+        ].join("\n\n")
         const extractorResult = await generateText({
           model: extractorSelection.model,
           system: extractorSystem,
-          prompt: [
-            `Classifier summary: ${classification.summary ?? classification.reason}`,
-            "Likely matching existing tasks:",
-            formatExistingTasks(relevantTasks),
-            "Relevant feedback messages:",
-            relevantMessagesForExtraction
-              .map((message) =>
-                [
-                  `- ${new Date(message.messageCreatedAt).toISOString()}`,
-                  message.forumTitle
-                    ? `forum=${truncateText(message.forumTitle, MAX_LOCATION_TEXT_CHARS)}`
-                    : null,
-                  message.threadTitle
-                    ? `thread=${truncateText(message.threadTitle, MAX_LOCATION_TEXT_CHARS)}`
-                    : null,
-                  message.parentChannelName
-                    ? `parent_channel=${truncateText(message.parentChannelName, MAX_LOCATION_TEXT_CHARS)}`
-                    : null,
-                  message.channelName
-                    ? `channel=${truncateText(message.channelName, MAX_LOCATION_TEXT_CHARS)}`
-                    : null,
-                  `${message.authorUsername}: ${
-                    truncateText(message.content, MAX_MESSAGE_CONTENT_CHARS) ||
-                    (message.threadTitle
-                      ? "(no body text; rely on the thread title)"
-                      : "(no body text)")
-                  }`,
-                ]
-                  .filter(Boolean)
-                  .join(" | ")
-              )
-              .join("\n"),
-          ].join("\n\n"),
+          messages: [
+            {
+              role: "user",
+              content: buildFeedbackPromptContent(
+                extractorPrompt,
+                relevantMessagesForExtraction,
+                (message) => `Discord message id ${message.messageId}`
+              ),
+            },
+          ],
+          experimental_download: feedbackImageDownload,
+          experimental_include: {
+            requestBody: false,
+          },
         })
         extractorDurationMs = Date.now() - extractorStart
         extractorUsage = extractorResult.usage
