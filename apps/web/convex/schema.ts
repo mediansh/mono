@@ -777,6 +777,66 @@ export default defineSchema({
     .index("by_status_finished", ["status", "finishedAt"])
     .index("by_finished", ["finishedAt"]),
 
+  benchmarkModels: defineTable({
+    slug: v.string(),
+    provider: v.optional(v.string()),
+    createdAt: v.number(),
+    createdBy: v.string(),
+  }).index("by_slug", ["slug"]),
+
+  benchmarkSuiteRuns: defineTable({
+    status: v.union(
+      v.literal("running"),
+      v.literal("complete"),
+      v.literal("failed")
+    ),
+    triggeredBy: v.string(),
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+    expectedRunCount: v.number(),
+    completedRunCount: v.number(),
+    models: v.array(
+      v.object({
+        slug: v.string(),
+        provider: v.optional(v.string()),
+      })
+    ),
+    suites: v.array(v.string()),
+  }).index("by_started", ["startedAt"]),
+
+  benchmarkRuns: defineTable({
+    suiteRunId: v.id("benchmarkSuiteRuns"),
+    modelSlug: v.string(),
+    provider: v.optional(v.string()),
+    suite: v.union(
+      v.literal("discordScan"),
+      v.literal("feedbackExtract"),
+      v.literal("taskGen")
+    ),
+    fixtureId: v.string(),
+    fixtureLabel: v.string(),
+    systemPrompt: v.string(),
+    userPrompt: v.string(),
+    rawOutput: v.optional(v.string()),
+    parsed: v.optional(v.any()),
+    schemaValid: v.boolean(),
+    parseError: v.optional(v.string()),
+    ttftMs: v.optional(v.number()),
+    totalMs: v.number(),
+    inputTokens: v.optional(v.number()),
+    outputTokens: v.optional(v.number()),
+    tps: v.optional(v.number()),
+    expected: v.optional(v.any()),
+    correct: v.optional(v.boolean()),
+    qualityScore: v.number(),
+    scoreBreakdown: v.optional(v.any()),
+    status: v.union(v.literal("ok"), v.literal("error")),
+    errorMessage: v.optional(v.string()),
+  })
+    .index("by_suiteRun", ["suiteRunId"])
+    .index("by_suiteRun_model", ["suiteRunId", "modelSlug"])
+    .index("by_suiteRun_suite", ["suiteRunId", "suite"]),
+
   deletedTaskSources: defineTable({
     workspaceId: v.id("workspaces"),
     platform: v.union(
