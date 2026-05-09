@@ -6,6 +6,8 @@ import { z } from "zod"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
 import { AI_MODEL_IDS, AI_MODELS, hasOpenRouterApiKey } from "@/lib/ai"
+import { buildTaskGenerationSystemPrompt } from "@/lib/ai-prompts"
+import { generatedTasksSchema } from "@/lib/ai-schemas"
 import { withAxiom, logger } from "@/lib/logger"
 import { getPostHogServerClient } from "@/lib/posthog-server"
 import { checkRateLimit, getRequestIp } from "@/lib/rate-limit"
@@ -19,28 +21,8 @@ const requestSchema = z.object({
   workspaceId: z.string().min(1),
 })
 
-const generatedTasksSchema = z.object({
-  tasks: z
-    .array(
-      z
-        .object({
-          title: z.string().min(1).max(140),
-          description: z.string().max(2000).nullable(),
-          status: z.enum(TASK_STATUSES).nullable(),
-          priority: z.enum(TASK_PRIORITIES).nullable(),
-          tags: z.array(z.string()).max(5).optional(),
-          labels: z.array(z.string()).max(5).optional(),
-        })
-        .refine(
-          (task) => task.tags !== undefined || task.labels !== undefined,
-          {
-            message: "Every generated task must include tags.",
-          }
-        )
-    )
-    .min(1)
-    .max(12),
-})
+// generatedTasksSchema lives in lib/ai-schemas.ts so the admin benchmark
+// validates against the same shape.
 
 function extractJsonObject(text: string) {
   const start = text.indexOf("{")
@@ -292,23 +274,11 @@ export const POST = withAxiom(async (request: Request) => {
     const model = AI_MODEL_IDS.taskGeneration
     const generationMode = getTaskGenerationMode(prompt)
     const allowMultipleTasks = generationMode !== "single"
-    const taskGenerationSystem = [
-      "You generate actionable task objects for a project management app.",
-      `Workspace: ${workspaceName}.`,
-      `Allowed statuses: ${TASK_STATUSES.join(", ")}.`,
-      `Allowed priorities: ${TASK_PRIORITIES.join(", ")}.`,
-      `Allowed tags: ${labelsText}`,
-      getTaskGenerationInstruction(generationMode),
-      "Every task must have a concise title.",
-      "Every task object must include title, description, status, priority, and tags.",
-      "Use null for description, status, or priority when not specified.",
-      "Use an empty array for tags when none apply.",
-      "Descriptions should be plain text.",
-      "Only use tags from the allowed tags list.",
-      "Use sensible defaults when the user does not specify status or priority.",
-      "Return valid JSON only. No markdown. No code fences. No commentary.",
-      'The JSON format must be: {"tasks":[{"title":"...","description":null,"status":"todo","priority":"none","tags":[]}]}',
-    ].join(" ")
+    const taskGenerationSystem = buildTaskGenerationSystemPrompt({
+      workspaceName,
+      labelsText,
+      generationInstruction: getTaskGenerationInstruction(generationMode),
+    })
 
     const { result, validatedObject } = await generateAndValidateTasks({
       prompt,

@@ -1,8 +1,9 @@
 export const AUTUMN_CREDITS_FEATURE_ID = "credits"
 
 export const AUTUMN_TRACKED_AI_MODELS = [
-  "anthropic/claude-haiku-4.5",
-  "anthropic/claude-sonnet-4.6",
+  "google/gemini-3.1-flash-lite",
+  "google/gemini-3-flash-preview",
+  "openai/gpt-oss-120b",
 ] as const
 
 export type TrackedAiModel = (typeof AUTUMN_TRACKED_AI_MODELS)[number]
@@ -11,13 +12,17 @@ export const AI_TOKEN_PRICING_PER_MILLION: Record<
   TrackedAiModel,
   { input: number; output: number }
 > = {
-  "anthropic/claude-haiku-4.5": {
-    input: 2,
-    output: 8,
+  "google/gemini-3.1-flash-lite": {
+    input: 0.4,
+    output: 2.4,
   },
-  "anthropic/claude-sonnet-4.6": {
-    input: 5,
-    output: 20,
+  "google/gemini-3-flash-preview": {
+    input: 0.8,
+    output: 4.8,
+  },
+  "openai/gpt-oss-120b": {
+    input: 0.56,
+    output: 1.2,
   },
 }
 
@@ -108,13 +113,14 @@ export function getAiCostForTokens(args: {
   )
 }
 
+const TRACKED_MODEL_DISPLAY_NAMES: Record<TrackedAiModel, string> = {
+  "google/gemini-3.1-flash-lite": "Google Gemini 3.1 Flash Lite",
+  "google/gemini-3-flash-preview": "Google Gemini 3 Flash Preview",
+  "openai/gpt-oss-120b": "OpenAI GPT-OSS 120B",
+}
+
 export function formatTrackedModelName(model: TrackedAiModel) {
-  switch (model) {
-    case "anthropic/claude-haiku-4.5":
-      return "Anthropic Claude Haiku 4.5"
-    case "anthropic/claude-sonnet-4.6":
-      return "Anthropic Claude Sonnet 4.6"
-  }
+  return TRACKED_MODEL_DISPLAY_NAMES[model]
 }
 
 export function getPlanCopy(planId: string, price?: number | null) {
@@ -159,7 +165,7 @@ export function getPlanCopy(planId: string, price?: number | null) {
       `$${fallbackPlan.credits} in credits / month`,
       `Advanced AI model included`,
       `Events at $${EVENT_CREDIT_COST.toFixed(3)}/event`,
-      `AI charged at cost`,
+      `AI usage billed at listed token rates`,
       `Overages auto-charged`,
       ...(fallbackPlan.id === "scale" ? ["Priority support"] : []),
     ],

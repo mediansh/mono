@@ -14,5 +14,14 @@ export default [
     route("early-access", "routes/early-access.tsx"),
     route("users", "routes/users._index.tsx"),
     route("users/:userId", "routes/users.$userId.tsx"),
+    route("benchmarks", "routes/benchmarks._index.tsx"),
+    route(
+      "benchmarks/runs/:suiteRunId",
+      "routes/benchmarks.runs.$suiteRunId.tsx",
+    ),
+    route(
+      "benchmarks/runs/:suiteRunId/runs/:runId",
+      "routes/benchmarks.runs.$suiteRunId.runs.$runId.tsx",
+    ),
   ]),
 ] satisfies RouteConfig

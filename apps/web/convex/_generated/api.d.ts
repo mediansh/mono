@@ -9,6 +9,10 @@
  */
 
 import type * as admins from "../admins.js";
+import type * as benchmarks from "../benchmarks.js";
+import type * as benchmarks_fixtures from "../benchmarks/fixtures.js";
+import type * as benchmarks_lib from "../benchmarks/lib.js";
+import type * as benchmarks_suites from "../benchmarks/suites.js";
 import type * as billing from "../billing.js";
 import type * as billingTracking from "../billingTracking.js";
 import type * as blogPosts from "../blogPosts.js";
@@ -44,6 +48,10 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   admins: typeof admins;
+  benchmarks: typeof benchmarks;
+  "benchmarks/fixtures": typeof benchmarks_fixtures;
+  "benchmarks/lib": typeof benchmarks_lib;
+  "benchmarks/suites": typeof benchmarks_suites;
   billing: typeof billing;
   billingTracking: typeof billingTracking;
   blogPosts: typeof blogPosts;

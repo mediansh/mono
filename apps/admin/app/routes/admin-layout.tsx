@@ -10,6 +10,7 @@ import {
 import { useQuery } from "convex/react"
 import {
   Article,
+  ChartBar,
   Key,
   Megaphone,
   Pulse,
@@ -33,6 +34,12 @@ const adminNav = [
     label: "Early access",
     to: "/early-access",
     icon: Key,
+    match: "prefix" as const,
+  },
+  {
+    label: "Benchmarks",
+    to: "/benchmarks",
+    icon: ChartBar,
     match: "prefix" as const,
   },
 ]
