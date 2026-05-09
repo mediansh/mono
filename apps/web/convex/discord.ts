@@ -6,6 +6,7 @@ import {
   requireWorkspaceAccess,
   requireWorkspaceAdminAccess,
 } from "./permissions"
+import { feedbackImageAttachmentValidator } from "./feedbackAttachments"
 
 const PAIRING_CODE_TTL_MS = 1000 * 60 * 10
 
@@ -171,6 +172,7 @@ export const recordInboundMessage = mutation({
     authorUsername: v.string(),
     authorHasAdminPrivileges: v.boolean(),
     content: v.string(),
+    imageAttachments: v.optional(v.array(feedbackImageAttachmentValidator)),
     messageCreatedAt: v.number(),
   },
   handler: async (ctx, args) => {
@@ -251,6 +253,10 @@ export const recordInboundMessage = mutation({
           authorUsername: args.authorUsername,
           authorHasAdminPrivileges: args.authorHasAdminPrivileges,
           content: args.content,
+          imageAttachments:
+            args.imageAttachments && args.imageAttachments.length > 0
+              ? args.imageAttachments
+              : undefined,
           messageCreatedAt: args.messageCreatedAt,
           receivedAt: Date.now(),
         })
