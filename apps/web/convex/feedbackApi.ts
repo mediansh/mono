@@ -606,3 +606,22 @@ export const processApiFeedback = internalAction({
     }
   },
 })
+
+export const drainPendingApiFeedback = internalMutation({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 100
+    const pending = await ctx.db
+      .query("apiFeedbackRequests")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .take(limit)
+
+    for (const row of pending) {
+      await ctx.scheduler.runAfter(0, internal.feedbackApi.processApiFeedback, {
+        requestId: row._id,
+      })
+    }
+
+    return { scheduled: pending.length }
+  },
+})
