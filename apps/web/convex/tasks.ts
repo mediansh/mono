@@ -47,7 +47,8 @@ const taskSourceValidator = v.object({
     v.literal("x"),
     v.literal("linear"),
     v.literal("github"),
-    v.literal("cli")
+    v.literal("cli"),
+    v.literal("api")
   ),
   url: v.string(),
   author: v.string(),
@@ -84,7 +85,14 @@ type CreateTaskInput = {
   priority: "urgent" | "high" | "medium" | "low" | "none"
   labels: string[]
   source?: {
-    platform: "discord" | "slack" | "x" | "linear" | "github" | "cli"
+    platform:
+      | "discord"
+      | "slack"
+      | "x"
+      | "linear"
+      | "github"
+      | "cli"
+      | "api"
     url: string
     author: string
   }
@@ -123,7 +131,15 @@ type WorkspaceTaskLog = {
   category: "tasks"
   type: "task_moved" | "task_updated" | "task_deleted"
   message: string
-  source?: "discord" | "slack" | "github" | "linear" | "x" | "cli" | "manual"
+  source?:
+    | "discord"
+    | "slack"
+    | "github"
+    | "linear"
+    | "x"
+    | "cli"
+    | "api"
+    | "manual"
 }
 
 const TASK_STATUS_LABELS = {
@@ -146,7 +162,14 @@ const TASK_PRIORITY_ORDER = {
 const LINEAR_MEDIAN_TITLE_PREFIX_REGEX = /^\[MDN\]\s*/
 
 function getWorkspaceLogSource(
-  platform?: "discord" | "slack" | "x" | "linear" | "github" | "cli"
+  platform?:
+    | "discord"
+    | "slack"
+    | "x"
+    | "linear"
+    | "github"
+    | "cli"
+    | "api"
 ) {
   if (
     platform === "discord" ||
@@ -154,7 +177,8 @@ function getWorkspaceLogSource(
     platform === "github" ||
     platform === "linear" ||
     platform === "x" ||
-    platform === "cli"
+    platform === "cli" ||
+    platform === "api"
   ) {
     return platform
   }
@@ -167,7 +191,14 @@ function getWorkspaceLogSource(
 function dedupeTaskSources(
   sources:
     | Array<{
-        platform: "discord" | "slack" | "x" | "linear" | "github" | "cli"
+        platform:
+          | "discord"
+          | "slack"
+          | "x"
+          | "linear"
+          | "github"
+          | "cli"
+          | "api"
         url: string
         author: string
       }>
@@ -338,7 +369,14 @@ async function logFeedbackProcessed(
   workspaceId: Id<"workspaces">,
   createdTasks: Doc<"tasks">[],
   updatedTaskCount = 0,
-  sourcePlatform?: "discord" | "slack" | "x" | "linear" | "github" | "cli",
+  sourcePlatform?:
+    | "discord"
+    | "slack"
+    | "x"
+    | "linear"
+    | "github"
+    | "cli"
+    | "api",
   cost?: number
 ) {
   if (createdTasks.length === 0 && updatedTaskCount === 0) {
@@ -634,8 +672,16 @@ async function applyFeedbackTaskOperations(
   ctx: MutationCtx,
   workspaceId: Id<"workspaces">,
   operations: FeedbackTaskOperationInput[],
-  sourcePlatform?: "discord" | "slack" | "x" | "linear" | "github" | "cli",
-  cost?: number
+  sourcePlatform?:
+    | "discord"
+    | "slack"
+    | "x"
+    | "linear"
+    | "github"
+    | "cli"
+    | "api",
+  cost?: number,
+  logProcessed = true
 ) {
   const createInputs = operations
     .filter(
@@ -709,14 +755,16 @@ async function applyFeedbackTaskOperations(
     updatedTaskIds.push(task._id)
   }
 
-  await logFeedbackProcessed(
-    ctx,
-    workspaceId,
-    createdTasks,
-    updatedTaskIds.length,
-    sourcePlatform,
-    cost
-  )
+  if (logProcessed) {
+    await logFeedbackProcessed(
+      ctx,
+      workspaceId,
+      createdTasks,
+      updatedTaskIds.length,
+      sourcePlatform,
+      cost
+    )
+  }
 
   for (const task of createdTasks) {
     await queueLinearSync(ctx, task._id)
@@ -1046,6 +1094,49 @@ export const createTasksFromFeedbackInternal = internalMutation({
       "x",
       args.cost
     )
+  },
+})
+
+export const createTasksFromApiFeedbackInternal = internalMutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    operations: v.array(
+      v.union(
+        v.object({
+          action: v.literal("create"),
+          task: taskInputValidator,
+        }),
+        v.object({
+          action: v.literal("update"),
+          taskCode: v.string(),
+          title: v.string(),
+          description: v.optional(v.string()),
+          priority: v.optional(taskPriorityValidator),
+          labels: v.array(v.string()),
+        })
+      )
+    ),
+    cost: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    return await applyFeedbackTaskOperations(
+      ctx,
+      args.workspaceId,
+      args.operations,
+      "api",
+      args.cost,
+      false
+    )
+  },
+})
+
+export const getTaskSnapshotForApiFeedbackInternal = internalQuery({
+  args: {
+    workspaceId: v.id("workspaces"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    return await getWorkspaceTaskSnapshot(ctx, args.workspaceId, args.limit)
   },
 })
 

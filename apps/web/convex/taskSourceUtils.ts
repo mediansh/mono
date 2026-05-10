@@ -10,6 +10,7 @@ export type TaskSourcePlatform =
   | "linear"
   | "github"
   | "cli"
+  | "api"
 
 export type TaskSource = {
   platform: TaskSourcePlatform

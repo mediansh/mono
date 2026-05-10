@@ -23,7 +23,7 @@ export function trackTaskCreated(props: {
   labelCount: number
   hasDescription: boolean
   hasAttachments: boolean
-  source: "manual" | "ai" | "discord" | "slack" | "x" | "linear" | "github" | "cli"
+  source: "manual" | "ai" | "discord" | "slack" | "x" | "linear" | "github" | "cli" | "api"
 }) {
   capture("task_created", props)
 }

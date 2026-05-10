@@ -1,0 +1,37 @@
+---
+title: "Authentication"
+description: "Authenticate API requests with a workspace API key."
+---
+
+The Median API uses the same workspace API keys as the CLI. Generate one in the dashboard under **Settings → API Keys**.
+
+## Bearer token (recommended)
+
+Send the key in the `Authorization` header:
+
+```bash
+curl -X POST https://api.median.sh/api/feedback \
+  -H "Authorization: Bearer <YOUR_WORKSPACE_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{"content":"The export button does nothing on Safari."}'
+```
+
+## Body field (fallback)
+
+If you cannot set custom headers (for example, from a static embed), include the key in the request body as `apiKey`:
+
+```json
+{
+  "apiKey": "<YOUR_WORKSPACE_API_KEY>",
+  "content": "The export button does nothing on Safari."
+}
+```
+
+The header is preferred when both are present.
+
+## Security
+
+- Treat API keys like passwords. Anyone with a key can submit feedback against your workspace and consume billable events.
+- Rotate keys by creating a new one and revoking the old one in the dashboard. Revocation is immediate.
+- Avoid embedding keys in unauthenticated client-side code where they can be scraped. Prefer a thin server-side proxy that holds the key.
+- Each key is scoped to a single workspace and inherits the workspace's plan limits.

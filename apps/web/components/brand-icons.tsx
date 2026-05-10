@@ -1,3 +1,5 @@
+import { BracketsAngle } from "@phosphor-icons/react"
+
 type IconProps = { size?: number }
 
 export function DiscordIcon({ size = 15 }: IconProps) {
@@ -47,4 +49,8 @@ export function CliIcon({ size = 15 }: IconProps) {
       <line x1="12" y1="19" x2="20" y2="19" />
     </svg>
   )
+}
+
+export function ApiIcon({ size = 15 }: IconProps) {
+  return <BracketsAngle size={size} />
 }

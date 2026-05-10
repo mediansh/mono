@@ -43,6 +43,7 @@ import {
   XIcon,
   GitHubIcon,
   CliIcon,
+  ApiIcon,
 } from "@/components/brand-icons"
 import { useRequestActions } from "@/hooks/use-request-actions"
 import { getTaskSources, SOURCE_CONFIG } from "@/lib/task-sources"
@@ -63,6 +64,7 @@ const SOURCE_ICON: Record<RequestSource, ComponentType<{ size?: number }>> = {
   x: XIcon,
   github: GitHubIcon,
   cli: CliIcon,
+  api: ApiIcon,
 }
 
 const PRIORITY_LABEL: Record<TaskPriority, string> = {
@@ -961,7 +963,7 @@ function EmptyState() {
       <div className="flex flex-col gap-1">
         <p className="text-[13px] font-medium">All caught up</p>
         <p className="max-w-[260px] text-[12px] text-muted-foreground">
-          New requests from Discord, Slack, X, Linear, GitHub, and the CLI will appear here.
+          New requests from Discord, Slack, X, Linear, GitHub, the CLI, and API will appear here.
         </p>
       </div>
       <div className="mt-1 flex items-center gap-1.5 text-muted-foreground">

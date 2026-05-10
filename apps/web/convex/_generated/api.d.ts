@@ -9,6 +9,7 @@
  */
 
 import type * as admins from "../admins.js";
+import type * as apiKeys from "../apiKeys.js";
 import type * as benchmarks from "../benchmarks.js";
 import type * as benchmarks_fixtures from "../benchmarks/fixtures.js";
 import type * as benchmarks_lib from "../benchmarks/lib.js";
@@ -21,6 +22,7 @@ import type * as cli from "../cli.js";
 import type * as discord from "../discord.js";
 import type * as discordFeedback from "../discordFeedback.js";
 import type * as earlyAccess from "../earlyAccess.js";
+import type * as feedbackApi from "../feedbackApi.js";
 import type * as feedbackAttachments from "../feedbackAttachments.js";
 import type * as github from "../github.js";
 import type * as http from "../http.js";
@@ -48,6 +50,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   admins: typeof admins;
+  apiKeys: typeof apiKeys;
   benchmarks: typeof benchmarks;
   "benchmarks/fixtures": typeof benchmarks_fixtures;
   "benchmarks/lib": typeof benchmarks_lib;
@@ -60,6 +63,7 @@ declare const fullApi: ApiFromModules<{
   discord: typeof discord;
   discordFeedback: typeof discordFeedback;
   earlyAccess: typeof earlyAccess;
+  feedbackApi: typeof feedbackApi;
   feedbackAttachments: typeof feedbackAttachments;
   github: typeof github;
   http: typeof http;

@@ -36,6 +36,7 @@ export const workspaceLogSourceValidator = v.union(
   v.literal("linear"),
   v.literal("x"),
   v.literal("cli"),
+  v.literal("api"),
   v.literal("manual"),
   v.literal("ai")
 )
@@ -75,7 +76,16 @@ type WorkspaceLogInput = {
     | "labels_saved"
     | "feedback_processed"
   message: string
-  source?: "discord" | "slack" | "github" | "linear" | "x" | "cli" | "manual" | "ai"
+  source?:
+    | "discord"
+    | "slack"
+    | "github"
+    | "linear"
+    | "x"
+    | "cli"
+    | "api"
+    | "manual"
+    | "ai"
   cost?: number
   timestamp?: number
 }

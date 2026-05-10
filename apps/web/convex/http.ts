@@ -1,4 +1,5 @@
 import { httpRouter } from "convex/server"
+import { submitFeedbackHttp, submitFeedbackHttpOptions } from "./feedbackApi"
 import { githubInstallCallback, githubWebhook } from "./github"
 import { linearWebhook } from "./linear"
 import { slackOAuthCallback, slackEventsWebhook, slackInteractivity } from "./slack"
@@ -71,6 +72,18 @@ http.route({
   path: "/slack/interactivity",
   method: "POST",
   handler: slackInteractivity,
+})
+
+http.route({
+  path: "/api/feedback",
+  method: "POST",
+  handler: submitFeedbackHttp,
+})
+
+http.route({
+  path: "/api/feedback",
+  method: "OPTIONS",
+  handler: submitFeedbackHttpOptions,
 })
 
 export default http
