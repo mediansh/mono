@@ -262,11 +262,10 @@ export const updateApiFeedbackRequestStatus = internalMutation({
     if (args.status === "completed") {
       const created = args.createdTaskIds?.length ?? 0
       const updated = args.updatedTaskIds?.length ?? 0
-      if (created > 0 || updated > 0) {
-        return
-      }
       const message =
-        "Processed API feedback (no actionable tasks)"
+        created === 0 && updated === 0
+          ? "Processed API feedback (no actionable tasks)"
+          : `Processed API feedback — created ${created}, updated ${updated}`
       await insertWorkspaceLog(ctx, {
         workspaceId: request.workspaceId,
         category: "tasks",

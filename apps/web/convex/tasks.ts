@@ -680,7 +680,8 @@ async function applyFeedbackTaskOperations(
     | "github"
     | "cli"
     | "api",
-  cost?: number
+  cost?: number,
+  logProcessed = true
 ) {
   const createInputs = operations
     .filter(
@@ -754,14 +755,16 @@ async function applyFeedbackTaskOperations(
     updatedTaskIds.push(task._id)
   }
 
-  await logFeedbackProcessed(
-    ctx,
-    workspaceId,
-    createdTasks,
-    updatedTaskIds.length,
-    sourcePlatform,
-    cost
-  )
+  if (logProcessed) {
+    await logFeedbackProcessed(
+      ctx,
+      workspaceId,
+      createdTasks,
+      updatedTaskIds.length,
+      sourcePlatform,
+      cost
+    )
+  }
 
   for (const task of createdTasks) {
     await queueLinearSync(ctx, task._id)
@@ -1121,7 +1124,8 @@ export const createTasksFromApiFeedbackInternal = internalMutation({
       args.workspaceId,
       args.operations,
       "api",
-      args.cost
+      args.cost,
+      false
     )
   },
 })
