@@ -1,4 +1,4 @@
-import { generateText } from "ai"
+import { generateText, Output } from "ai"
 import { v } from "convex/values"
 import { z } from "zod"
 import { internal } from "./_generated/api"
@@ -474,40 +474,25 @@ export const processApiFeedback = internalAction({
         planStatus.currentPlanId
       )
 
-      const extractorResult = await generateText({
-        model: extractorSelection.model,
-        system: extractorSystem,
-        prompt: extractorPrompt,
-      })
-
-      const extractorCost = getAiCostForTokens({
-        model: extractorSelection.modelId,
-        inputTokens: extractorResult.usage?.inputTokens,
-        outputTokens: extractorResult.usage?.outputTokens,
-      })
-      totalAiCost += extractorCost
-
-      await ctx.runAction(internal.billingTracking.trackAiUsage, {
-        workspaceId: workspace._id,
-        workspaceName: workspace.name,
-        model: extractorSelection.modelId,
-        inputTokens: extractorResult.usage?.inputTokens,
-        outputTokens: extractorResult.usage?.outputTokens,
-        properties: {
-          feature: "api_feedback_extractor",
-          request_id: args.requestId,
-        },
-      })
-
       let extracted: z.infer<typeof extractedFeedbackTasksSchema>
+      let extractorUsage:
+        | { inputTokens?: number; outputTokens?: number }
+        | undefined
       try {
-        extracted = extractedFeedbackTasksSchema.parse(
-          JSON.parse(extractJsonObject(extractorResult.text))
-        )
-      } catch (parseError) {
+        const extractorResult = await generateText({
+          model: extractorSelection.model,
+          system: extractorSystem,
+          prompt: extractorPrompt,
+          experimental_output: Output.object({
+            schema: extractedFeedbackTasksSchema,
+          }),
+        })
+        extracted = extractorResult.experimental_output
+        extractorUsage = extractorResult.usage
+      } catch (extractorError) {
         console.error(
           "[api-feedback] Extractor returned invalid output",
-          parseError
+          extractorError
         )
         await ctx.runMutation(
           internal.feedbackApi.updateApiFeedbackRequestStatus,
@@ -515,12 +500,33 @@ export const processApiFeedback = internalAction({
             requestId: args.requestId,
             status: "failed",
             errorMessage:
-              parseError instanceof Error ? parseError.message : String(parseError),
+              extractorError instanceof Error
+                ? extractorError.message
+                : String(extractorError),
             cost: totalAiCost > 0 ? totalAiCost : undefined,
           }
         )
         return
       }
+
+      const extractorCost = getAiCostForTokens({
+        model: extractorSelection.modelId,
+        inputTokens: extractorUsage?.inputTokens,
+        outputTokens: extractorUsage?.outputTokens,
+      })
+      totalAiCost += extractorCost
+
+      await ctx.runAction(internal.billingTracking.trackAiUsage, {
+        workspaceId: workspace._id,
+        workspaceName: workspace.name,
+        model: extractorSelection.modelId,
+        inputTokens: extractorUsage?.inputTokens,
+        outputTokens: extractorUsage?.outputTokens,
+        properties: {
+          feature: "api_feedback_extractor",
+          request_id: args.requestId,
+        },
+      })
 
       const extractedActions = extracted.actions.slice(
         0,
