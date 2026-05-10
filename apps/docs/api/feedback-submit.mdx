@@ -58,16 +58,15 @@ The actual task creation happens in the background. Created and updated tasks ap
 
 ## Embed snippet
 
-A minimal feedback widget can post directly to the API. Keep the key on a server you control and proxy the request through it whenever possible.
+A minimal feedback widget should post to your own server endpoint. The server attaches the Median API key and forwards the request, so the long-lived workspace key never ships to the browser.
 
 ```html
 <script>
   async function sendFeedback(content) {
-    await fetch("https://api.median.sh/api/feedback", {
+    await fetch("/api/feedback", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: "Bearer " + window.MEDIAN_KEY,
       },
       body: JSON.stringify({
         content,
@@ -78,6 +77,8 @@ A minimal feedback widget can post directly to the API. Keep the key on a server
   }
 </script>
 ```
+
+Your server handler should read `MEDIAN_KEY` from the environment, set `Authorization: Bearer ${MEDIAN_KEY}`, and forward the body fields such as `content`, `sourceUrl`, and `classify` to `https://api.median.sh/api/feedback`.
 
 ## Classification
 

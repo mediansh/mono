@@ -3747,6 +3747,7 @@ const ALL_SOURCES: RequestSource[] = [
   "linear",
   "x",
   "cli",
+  "api",
 ]
 
 function BoardFilter({

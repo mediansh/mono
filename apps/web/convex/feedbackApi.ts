@@ -155,15 +155,19 @@ export const submitFeedbackHttp = httpAction(async (ctx, request) => {
     }
   )
 
-  await ctx.runAction(internal.billingTracking.trackIntegrationEvent, {
+  void ctx.runAction(internal.billingTracking.trackIntegrationEvent, {
     workspaceId: lookup.workspaceId,
     workspaceName: lookup.workspaceName,
     source: "api",
     properties: { request_id: requestId },
+  }).catch((error) => {
+    console.error("[api-feedback] Failed to track integration event", error)
   })
 
-  await ctx.scheduler.runAfter(0, internal.feedbackApi.processApiFeedback, {
+  void ctx.scheduler.runAfter(0, internal.feedbackApi.processApiFeedback, {
     requestId,
+  }).catch((error) => {
+    console.error("[api-feedback] Failed to schedule processing", error)
   })
 
   return jsonResponse({ requestId, status: "pending" }, 202)
@@ -258,10 +262,11 @@ export const updateApiFeedbackRequestStatus = internalMutation({
     if (args.status === "completed") {
       const created = args.createdTaskIds?.length ?? 0
       const updated = args.updatedTaskIds?.length ?? 0
+      if (created > 0 || updated > 0) {
+        return
+      }
       const message =
-        created === 0 && updated === 0
-          ? "Processed API feedback (no actionable tasks)"
-          : `Processed API feedback — created ${created}, updated ${updated}`
+        "Processed API feedback (no actionable tasks)"
       await insertWorkspaceLog(ctx, {
         workspaceId: request.workspaceId,
         category: "tasks",
@@ -507,9 +512,9 @@ export const processApiFeedback = internalAction({
           internal.feedbackApi.updateApiFeedbackRequestStatus,
           {
             requestId: args.requestId,
-            status: "completed",
-            createdTaskIds: [],
-            updatedTaskIds: [],
+            status: "failed",
+            errorMessage:
+              parseError instanceof Error ? parseError.message : String(parseError),
             cost: totalAiCost > 0 ? totalAiCost : undefined,
           }
         )
