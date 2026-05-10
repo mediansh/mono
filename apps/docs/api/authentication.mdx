@@ -11,7 +11,7 @@ Send the key in the `Authorization` header:
 
 ```bash
 curl -X POST https://api.median.sh/api/feedback \
-  -H "Authorization: Bearer mdn_live_xxx..." \
+  -H "Authorization: Bearer <YOUR_WORKSPACE_API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{"content":"The export button does nothing on Safari."}'
 ```
@@ -22,7 +22,7 @@ If you cannot set custom headers (for example, from a static embed), include the
 
 ```json
 {
-  "apiKey": "mdn_live_xxx...",
+  "apiKey": "<YOUR_WORKSPACE_API_KEY>",
   "content": "The export button does nothing on Safari."
 }
 ```
