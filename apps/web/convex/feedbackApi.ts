@@ -146,6 +146,7 @@ export const submitFeedbackHttp = httpAction(async (ctx, request) => {
     internal.feedbackApi.recordApiFeedbackRequest,
     {
       workspaceId: lookup.workspaceId,
+      workspaceName: lookup.workspaceName,
       apiKeyId: lookup.apiKeyId,
       content,
       author,
@@ -154,21 +155,6 @@ export const submitFeedbackHttp = httpAction(async (ctx, request) => {
       classify,
     }
   )
-
-  void ctx.runAction(internal.billingTracking.trackIntegrationEvent, {
-    workspaceId: lookup.workspaceId,
-    workspaceName: lookup.workspaceName,
-    source: "api",
-    properties: { request_id: requestId },
-  }).catch((error) => {
-    console.error("[api-feedback] Failed to track integration event", error)
-  })
-
-  void ctx.scheduler.runAfter(0, internal.feedbackApi.processApiFeedback, {
-    requestId,
-  }).catch((error) => {
-    console.error("[api-feedback] Failed to schedule processing", error)
-  })
 
   return jsonResponse({ requestId, status: "pending" }, 202)
 })
@@ -193,6 +179,7 @@ export const lookupApiKey = internalQuery({
 export const recordApiFeedbackRequest = internalMutation({
   args: {
     workspaceId: v.id("workspaces"),
+    workspaceName: v.string(),
     apiKeyId: v.id("cliApiKeys"),
     content: v.string(),
     author: v.optional(v.string()),
@@ -222,6 +209,21 @@ export const recordApiFeedbackRequest = internalMutation({
       type: "webhook_received",
       message: `Received feedback via API${args.author ? ` from ${args.author}` : ""}`,
       source: "api",
+    })
+
+    await ctx.scheduler.runAfter(
+      0,
+      internal.billingTracking.trackIntegrationEvent,
+      {
+        workspaceId: args.workspaceId,
+        workspaceName: args.workspaceName,
+        source: "api",
+        properties: { request_id: requestId },
+      }
+    )
+
+    await ctx.scheduler.runAfter(0, internal.feedbackApi.processApiFeedback, {
+      requestId,
     })
 
     return requestId
@@ -602,5 +604,24 @@ export const processApiFeedback = internalAction({
         cost: totalAiCost > 0 ? totalAiCost : undefined,
       })
     }
+  },
+})
+
+export const drainPendingApiFeedback = internalMutation({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 100
+    const pending = await ctx.db
+      .query("apiFeedbackRequests")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .take(limit)
+
+    for (const row of pending) {
+      await ctx.scheduler.runAfter(0, internal.feedbackApi.processApiFeedback, {
+        requestId: row._id,
+      })
+    }
+
+    return { scheduled: pending.length }
   },
 })
