@@ -128,7 +128,7 @@ export default function ApiKeysSettingsPage() {
       <motion.div variants={fadeUp} className="mb-4">
         <h2 className="text-[14px] font-semibold">API Keys</h2>
         <p className="mt-0.5 text-[12px] text-muted-foreground">
-          Create API keys for the Median CLI and AI agent integrations.
+          API keys authenticate the Median CLI and the public HTTP API.
         </p>
       </motion.div>
 

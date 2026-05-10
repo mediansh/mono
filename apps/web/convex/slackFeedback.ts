@@ -187,7 +187,7 @@ type ProcessFeedbackWindowResult =
       reason?: string
     }
 
-const feedbackClassificationSchema = z.object({
+export const feedbackClassificationSchema = z.object({
   isProductFeedback: z.boolean(),
   confidence: z.number().min(0).max(1),
   summary: z.string().min(1).nullable(),
@@ -195,7 +195,7 @@ const feedbackClassificationSchema = z.object({
   relevantMessageIds: z.array(z.string()).max(25),
 })
 
-const extractedFeedbackTasksSchema = z.object({
+export const extractedFeedbackTasksSchema = z.object({
   actions: z.array(
     z.discriminatedUnion("action", [
       z.object({

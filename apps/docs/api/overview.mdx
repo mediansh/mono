@@ -1,0 +1,40 @@
+---
+title: "Overview"
+description: "Submit feedback to Median from anywhere over HTTP."
+---
+
+The Median HTTP API lets you forward customer feedback into a workspace from your own apps, embeds, or scripts. Median ingests the submission, optionally classifies it as product feedback, and turns it into tasks on your board.
+
+## Base URL
+
+```
+https://api.median.sh
+```
+
+## Conventions
+
+- Requests and responses use JSON (`Content-Type: application/json`).
+- Authenticate with a workspace API key — see [Authentication](/api/authentication).
+- Times are Unix milliseconds.
+- Successful submissions return `202 Accepted` while processing happens asynchronously.
+
+## Error shape
+
+Errors are returned as JSON with a single `error` field and an appropriate HTTP status code.
+
+```json
+{
+  "error": "Missing API key. Provide via Authorization: Bearer <key> or apiKey in body."
+}
+```
+
+| Status | Meaning |
+| --- | --- |
+| `400` | The request body was invalid (missing `content`, wrong field type, etc.) |
+| `401` | The API key is missing, malformed, or revoked. |
+| `402` | The workspace does not have an active plan. |
+| `405` | Wrong HTTP method for the endpoint. |
+
+## Billing
+
+Each accepted submission counts as one integration event against your workspace plan. When the LLM classifier or extractor runs, AI usage is metered per token in addition to the event credit.

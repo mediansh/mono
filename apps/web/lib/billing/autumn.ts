@@ -145,7 +145,7 @@ export async function trackAiUsage(args: {
 export async function trackIntegrationEvent(args: {
   workspaceId: string
   workspaceName?: string | null
-  source: "discord" | "slack" | "github" | "linear" | "x"
+  source: "discord" | "slack" | "github" | "linear" | "x" | "api"
   properties?: Record<string, unknown>
 }) {
   await ensureAutumnCustomer({

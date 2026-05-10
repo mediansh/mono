@@ -531,6 +531,31 @@ export default defineSchema({
     .index("by_key_hash", ["keyHash"])
     .index("by_created_by", ["createdByUserId"]),
 
+  apiFeedbackRequests: defineTable({
+    workspaceId: v.id("workspaces"),
+    apiKeyId: v.id("cliApiKeys"),
+    content: v.string(),
+    author: v.optional(v.string()),
+    sourceUrl: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+    classify: v.boolean(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("completed"),
+      v.literal("failed"),
+      v.literal("rejected_not_feedback")
+    ),
+    createdTaskIds: v.optional(v.array(v.id("tasks"))),
+    updatedTaskIds: v.optional(v.array(v.id("tasks"))),
+    errorMessage: v.optional(v.string()),
+    receivedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_workspace", ["workspaceId"])
+    .index("by_workspace_received", ["workspaceId", "receivedAt"])
+    .index("by_status", ["status"]),
+
   workspaceLogs: defineTable({
     workspaceId: v.id("workspaces"),
     category: v.union(
@@ -565,6 +590,7 @@ export default defineSchema({
         v.literal("linear"),
         v.literal("x"),
         v.literal("cli"),
+        v.literal("api"),
         v.literal("manual"),
         v.literal("ai")
       )
@@ -636,7 +662,8 @@ export default defineSchema({
           v.literal("x"),
           v.literal("linear"),
           v.literal("github"),
-          v.literal("cli")
+          v.literal("cli"),
+          v.literal("api")
         ),
         url: v.string(),
         author: v.string(),
@@ -651,7 +678,8 @@ export default defineSchema({
             v.literal("x"),
             v.literal("linear"),
             v.literal("github"),
-            v.literal("cli")
+            v.literal("cli"),
+            v.literal("api")
           ),
           url: v.string(),
           author: v.string(),
@@ -789,7 +817,8 @@ export default defineSchema({
       v.literal("x"),
       v.literal("linear"),
       v.literal("github"),
-      v.literal("cli")
+      v.literal("cli"),
+      v.literal("api")
     ),
     sourceUrl: v.string(),
     titleFingerprint: v.string(),

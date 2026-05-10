@@ -10,6 +10,7 @@ export const SOURCE_CONFIG: Record<
   slack: { label: "Slack", color: "#E01E5A", bg: "#E01E5A18" },
   x: { label: "X", color: "#8b8b8b", bg: "#8b8b8b18" },
   cli: { label: "CLI", color: "#22c55e", bg: "#22c55e18" },
+  api: { label: "API", color: "#0ea5e9", bg: "#0ea5e918" },
 }
 
 export function getTaskSources(task: {

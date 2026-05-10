@@ -12,6 +12,8 @@ This repository is a **pnpm + Turborepo** monorepo containing:
 
 Median combines a collaborative web workspace with integrations (GitHub, Linear, Slack, Discord, X) and AI tooling so teams can move from idea to shipped task quickly.
 
+A public HTTP API at `https://api.median.sh` lets external apps and embeds submit feedback directly into a workspace. See the [API docs](https://docs.median.sh/api/overview) for details.
+
 ## Tech stack
 
 - **Runtime:** Node.js 20+

@@ -9,6 +9,7 @@
  */
 
 import type * as admins from "../admins.js";
+import type * as apiKeys from "../apiKeys.js";
 import type * as billing from "../billing.js";
 import type * as billingTracking from "../billingTracking.js";
 import type * as blogPosts from "../blogPosts.js";
@@ -17,6 +18,7 @@ import type * as cli from "../cli.js";
 import type * as discord from "../discord.js";
 import type * as discordFeedback from "../discordFeedback.js";
 import type * as earlyAccess from "../earlyAccess.js";
+import type * as feedbackApi from "../feedbackApi.js";
 import type * as feedbackAttachments from "../feedbackAttachments.js";
 import type * as github from "../github.js";
 import type * as http from "../http.js";
@@ -44,6 +46,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   admins: typeof admins;
+  apiKeys: typeof apiKeys;
   billing: typeof billing;
   billingTracking: typeof billingTracking;
   blogPosts: typeof blogPosts;
@@ -52,6 +55,7 @@ declare const fullApi: ApiFromModules<{
   discord: typeof discord;
   discordFeedback: typeof discordFeedback;
   earlyAccess: typeof earlyAccess;
+  feedbackApi: typeof feedbackApi;
   feedbackAttachments: typeof feedbackAttachments;
   github: typeof github;
   http: typeof http;

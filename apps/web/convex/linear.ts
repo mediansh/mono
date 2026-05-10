@@ -156,14 +156,14 @@ function getMedianTaskTitleFromLinearIssue(issueTitle: string) {
 function mergeTaskSources(
   existingSources:
     | Array<{
-        platform: "discord" | "slack" | "x" | "linear" | "github" | "cli"
+        platform: "discord" | "slack" | "x" | "linear" | "github" | "cli" | "api"
         url: string
         author: string
       }>
     | undefined,
   nextSource:
     | {
-        platform: "discord" | "slack" | "x" | "linear" | "github" | "cli"
+        platform: "discord" | "slack" | "x" | "linear" | "github" | "cli" | "api"
         url: string
         author: string
       }
@@ -176,7 +176,7 @@ function mergeTaskSources(
 
   const seen = new Set<string>()
   const merged: Array<{
-    platform: "discord" | "slack" | "x" | "linear" | "github" | "cli"
+    platform: "discord" | "slack" | "x" | "linear" | "github" | "cli" | "api"
     url: string
     author: string
   }> = []

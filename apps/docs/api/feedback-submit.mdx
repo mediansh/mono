@@ -1,0 +1,97 @@
+---
+title: "Submit feedback"
+description: "POST /api/feedback — ingest a piece of feedback into a workspace."
+---
+
+Submit a single piece of free-form feedback. Median acknowledges immediately with `202 Accepted` and processes the submission asynchronously, optionally turning it into one or more tasks on your board.
+
+## Endpoint
+
+```
+POST https://api.median.sh/api/feedback
+```
+
+## Headers
+
+| Header | Required | Description |
+| --- | --- | --- |
+| `Authorization` | Yes (or `apiKey` in body) | `Bearer <your-api-key>` |
+| `Content-Type` | Yes | `application/json` |
+
+## Request body
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `content` | string | Yes | The feedback text. 1–10,000 characters. |
+| `author` | string | No | A label for who submitted the feedback (email, handle, etc.). Stored on the resulting task. |
+| `sourceUrl` | string | No | URL where the feedback originated (e.g. the page the user was on). |
+| `metadata` | object | No | Arbitrary JSON stored alongside the request for your own debugging. |
+| `classify` | boolean | No | When `true`, an LLM classifier first decides whether the submission is real product feedback. Off-topic submissions are rejected without creating tasks. Defaults to `false`. |
+| `apiKey` | string | No | API key, if not sent via the `Authorization` header. |
+
+## Example
+
+```bash
+curl -X POST https://api.median.sh/api/feedback \
+  -H "Authorization: Bearer mdn_live_xxx..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "I tried to export the report as CSV but the button does nothing in Safari 17.",
+    "author": "alex@example.com",
+    "sourceUrl": "https://app.example.com/reports/42",
+    "classify": true
+  }'
+```
+
+## Response
+
+`202 Accepted` is returned synchronously once the submission has been queued.
+
+```json
+{
+  "requestId": "j97c8...",
+  "status": "pending"
+}
+```
+
+The actual task creation happens in the background. Created and updated tasks appear on your board moments later — typically within a few seconds.
+
+## Embed snippet
+
+A minimal feedback widget can post directly to the API. Keep the key on a server you control and proxy the request through it whenever possible.
+
+```html
+<script>
+  async function sendFeedback(content) {
+    await fetch("https://api.median.sh/api/feedback", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + window.MEDIAN_KEY,
+      },
+      body: JSON.stringify({
+        content,
+        sourceUrl: window.location.href,
+        classify: true,
+      }),
+    })
+  }
+</script>
+```
+
+## Classification
+
+Setting `classify: true` runs a lightweight LLM pass before extraction. It rejects submissions that are not actionable product feedback (compliments, off-topic chat, generic praise). Use it whenever submissions arrive from an open form where users may write anything.
+
+When `classify` is omitted or `false`, every submission is treated as feedback and goes straight to the task extractor. This is the right default for trusted internal sources where you know every submission is real feedback.
+
+## Errors
+
+See [Overview → Error shape](/api/overview#error-shape).
+
+| Status | Reason |
+| --- | --- |
+| `400` | `content` missing, empty, longer than 10,000 chars, or another field has the wrong type. |
+| `401` | API key missing or invalid. |
+| `402` | Workspace has no active plan. |
+| `405` | Wrong HTTP method (only `POST` and `OPTIONS` are accepted). |

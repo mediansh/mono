@@ -768,6 +768,7 @@ const SOURCE_CONFIG: Record<
   slack: { label: "Slack", color: "#E01E5A", bg: "#E01E5A18" },
   x: { label: "X", color: "#8b8b8b", bg: "#8b8b8b18" },
   cli: { label: "CLI", color: "#22c55e", bg: "#22c55e18" },
+  api: { label: "API", color: "#0ea5e9", bg: "#0ea5e918" },
 }
 
 function getTaskSources(task: Pick<Task, "source" | "sources">) {
@@ -863,6 +864,23 @@ function SourceIcon({
       >
         <polyline points="4 17 10 11 4 5" />
         <line x1="12" y1="19" x2="20" y2="19" />
+      </svg>
+    )
+  }
+  if (platform === "api") {
+    return (
+      <svg
+        width={s}
+        height={s}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#0ea5e9"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <polyline points="8 6 2 12 8 18" />
+        <polyline points="16 6 22 12 16 18" />
       </svg>
     )
   }

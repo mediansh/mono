@@ -43,6 +43,7 @@ import {
   XIcon,
   GitHubIcon,
   CliIcon,
+  ApiIcon,
 } from "@/components/brand-icons"
 import { useRequestActions } from "@/hooks/use-request-actions"
 import { getTaskSources, SOURCE_CONFIG } from "@/lib/task-sources"
@@ -63,6 +64,7 @@ const SOURCE_ICON: Record<RequestSource, ComponentType<{ size?: number }>> = {
   x: XIcon,
   github: GitHubIcon,
   cli: CliIcon,
+  api: ApiIcon,
 }
 
 const PRIORITY_LABEL: Record<TaskPriority, string> = {

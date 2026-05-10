@@ -42,6 +42,24 @@
             ]
           }
         ]
+      },
+      {
+        "tab": "API",
+        "groups": [
+          {
+            "group": "Getting started",
+            "pages": [
+              "api/overview",
+              "api/authentication"
+            ]
+          },
+          {
+            "group": "Endpoints",
+            "pages": [
+              "api/feedback-submit"
+            ]
+          }
+        ]
       }
     ],
     "global": {

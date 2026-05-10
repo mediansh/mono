@@ -48,3 +48,12 @@ export function CliIcon({ size = 15 }: IconProps) {
     </svg>
   )
 }
+
+export function ApiIcon({ size = 15 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="8 6 2 12 8 18" />
+      <polyline points="16 6 22 12 16 18" />
+    </svg>
+  )
+}

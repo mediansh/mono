@@ -18,7 +18,8 @@ export const trackIntegrationEvent = internalAction({
       v.literal("slack"),
       v.literal("github"),
       v.literal("linear"),
-      v.literal("x")
+      v.literal("x"),
+      v.literal("api")
     ),
     properties: v.optional(v.any()),
   },
