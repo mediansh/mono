@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { useMutation, useQuery } from "convex/react"
 import { useUser } from "@clerk/nextjs"
 import { AnimatePresence, motion } from "motion/react"
@@ -58,6 +58,35 @@ export function TaskCommentsPanel({ workspaceId, taskId, canComment }: Props) {
 
   const ordered = useMemo(() => comments ?? [], [comments])
 
+  const scrollRef = useRef<HTMLDivElement | null>(null)
+  const lastCountRef = useRef<number>(0)
+  const pinnedToBottomRef = useRef<boolean>(true)
+
+  const handleScroll = () => {
+    const el = scrollRef.current
+    if (!el) return
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+    pinnedToBottomRef.current = distanceFromBottom < 32
+  }
+
+  useLayoutEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const prev = lastCountRef.current
+    const next = ordered.length
+    lastCountRef.current = next
+    if (prev === 0 || pinnedToBottomRef.current || next > prev) {
+      el.scrollTop = el.scrollHeight
+    }
+  }, [ordered.length])
+
+  useEffect(() => {
+    if (comments === undefined) return
+    const el = scrollRef.current
+    if (!el) return
+    el.scrollTop = el.scrollHeight
+  }, [comments === undefined])
+
   const handleCreate = async (payload: {
     markdown: string
     mentionedUserIds: string[]
@@ -88,7 +117,11 @@ export function TaskCommentsPanel({ workspaceId, taskId, canComment }: Props) {
         </span>
       </header>
 
-      <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3">
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="flex-1 min-h-0 overflow-y-auto px-4 py-3"
+      >
         {comments === undefined ? (
           <p className="text-[12px] text-muted-foreground">Loading…</p>
         ) : ordered.length === 0 ? (
@@ -269,7 +302,7 @@ function CommentItem({
                 disabled={!canComment || !currentUserId}
                 aria-pressed={userReacted}
                 className={cn(
-                  "inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10.5px] transition-colors",
+                  "inline-flex h-[20px] min-w-[34px] items-center justify-center gap-1 rounded-full border px-1.5 text-[10.5px] transition-colors",
                   userReacted
                     ? "border-primary/30 bg-primary/10 text-primary"
                     : "border-sidebar-border bg-background text-muted-foreground hover:bg-sidebar-accent hover:text-foreground",
@@ -280,7 +313,9 @@ function CommentItem({
                   size={11}
                   weight={userReacted ? "fill" : "regular"}
                 />
-                {thumbs.length > 0 ? <span>{thumbs.length}</span> : null}
+                <span className="inline-block min-w-[8px] text-center tabular-nums leading-none">
+                  {thumbs.length > 0 ? thumbs.length : ""}
+                </span>
               </button>
             </div>
           </>

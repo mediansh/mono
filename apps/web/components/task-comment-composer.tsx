@@ -16,6 +16,27 @@ import Link from "@tiptap/extension-link"
 import Placeholder from "@tiptap/extension-placeholder"
 import Mention from "@tiptap/extension-mention"
 import { Markdown } from "tiptap-markdown"
+
+// Register a markdown serializer for the Mention node so tiptap-markdown emits
+// `@[name](id)` instead of the default `[mention]` placeholder.
+const MentionWithMarkdown = Mention.extend({
+  addStorage() {
+    return {
+      ...this.parent?.(),
+      markdown: {
+        serialize(
+          state: { write: (text: string) => void },
+          node: { attrs: { id?: string; label?: string } }
+        ) {
+          const id = node.attrs.id ?? ""
+          const label = node.attrs.label ?? id
+          state.write(`@[${label}](${id})`)
+        },
+        parse: {},
+      },
+    }
+  },
+})
 import { useQuery } from "convex/react"
 import { PaperPlaneRight } from "@phosphor-icons/react"
 import { cn } from "@workspace/ui/lib/utils"
@@ -151,7 +172,7 @@ export const TaskCommentComposer = forwardRef<CommentComposerHandle, Props>(
             breaks: true,
             transformPastedText: true,
           }),
-          Mention.configure({
+          MentionWithMarkdown.configure({
             HTMLAttributes: {
               class:
                 "mention-chip inline-flex items-center rounded-[4px] bg-primary/10 px-1 py-px text-[12px] font-medium text-primary",
