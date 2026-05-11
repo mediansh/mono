@@ -8,6 +8,7 @@ import { useClerk } from "@clerk/nextjs"
 import { api } from "@/convex/_generated/api"
 import { Logo } from "@/components/logo"
 import { useInstantNavigation } from "@/hooks/use-instant-navigation"
+import { clearLocalFirstStore } from "@/lib/local-first-store"
 
 const CODE_LENGTH = 8
 
@@ -176,7 +177,7 @@ export default function EarlyAccessPage() {
           Don&apos;t have a code?{" "}
           <button
             type="button"
-            onClick={() => signOut({ redirectUrl: "/" })}
+            onClick={() => { clearLocalFirstStore(); signOut({ redirectUrl: "/" }) }}
             className="font-medium text-foreground underline-offset-4 hover:underline"
           >
             Sign out

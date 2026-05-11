@@ -38,6 +38,7 @@ import {
   CliIcon,
 } from "@/components/brand-icons"
 import { NewTaskModal } from "@/components/new-task-modal"
+import { clearLocalFirstStore } from "@/lib/local-first-store"
 import { SearchPalette } from "@/components/search-palette"
 import { api } from "@/convex/_generated/api"
 import { Logo } from "@/components/logo"
@@ -723,7 +724,7 @@ export function AppSidebar() {
                     </DropdownMenuSub>
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => signOut()} className="text-muted-foreground">
+                  <DropdownMenuItem onClick={() => { clearLocalFirstStore(); signOut() }} className="text-muted-foreground">
                     <SignOut size={15} weight="regular" />
                     Sign out
                   </DropdownMenuItem>

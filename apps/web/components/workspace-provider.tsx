@@ -11,7 +11,6 @@ import { useConvexAuth, useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
 import {
-  clearLocalFirstStore,
   setCachedWorkspaces,
   setCurrentWorkspaceId,
   useLocalFirstStore,
@@ -47,19 +46,17 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const hasLiveAnswer = Array.isArray(liveWorkspaces)
 
   // Persist the server answer so we have a first-paint hint on next load.
-  // We deliberately do NOT cache optimistic entries.
+  // We deliberately do NOT cache optimistic entries, and we do NOT wipe the
+  // cache on transient isAuthenticated=false — that fires during routine JWT
+  // refreshes, and clearing the cache mid-session was bouncing users back to
+  // /app/setup.
   useEffect(() => {
     if (isAuthLoading) return
+    if (!isAuthenticated) return
+    if (!hasLiveAnswer) return
 
-    if (!isAuthenticated) {
-      clearLocalFirstStore()
-      return
-    }
-
-    if (hasLiveAnswer) {
-      const persistable = (liveWorkspaces as Workspace[]).filter(isRealWorkspace)
-      setCachedWorkspaces(persistable)
-    }
+    const persistable = (liveWorkspaces as Workspace[]).filter(isRealWorkspace)
+    setCachedWorkspaces(persistable)
   }, [isAuthLoading, isAuthenticated, hasLiveAnswer, liveWorkspaces])
 
   // While we don't yet have a definitive server answer, fall back to cache

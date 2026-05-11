@@ -98,7 +98,14 @@ export default function WorkspaceSetupPage() {
       attachScalePlan({ workspaceId }).catch((planError) => {
         console.error("[early-access] Failed to attach Scale plan", planError)
       })
-      navigate("/app")
+      // Hard reload to /app. Client-side navigation here was racing with the
+      // WorkspaceProvider's reactive query update and occasionally bouncing
+      // the user back to /app/setup. A full reload guarantees a fresh state.
+      if (typeof window !== "undefined") {
+        window.location.replace("/app")
+      } else {
+        navigate("/app")
+      }
     } catch {
       setError("Failed to create workspace. Please try again.")
       setLoading(false)
