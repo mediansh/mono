@@ -93,11 +93,11 @@ export default function WorkspaceSetupPage() {
         iconUrl: iconPreview,
       })
       trackWorkspaceCreated({ hasLogo: !!iconId })
-      try {
-        await attachScalePlan({ workspaceId })
-      } catch (planError) {
+      // Fire-and-forget: don't block navigation on the Scale plan attach.
+      // Errors here must not strand the user on /app/setup.
+      attachScalePlan({ workspaceId }).catch((planError) => {
         console.error("[early-access] Failed to attach Scale plan", planError)
-      }
+      })
       navigate("/app")
     } catch {
       setError("Failed to create workspace. Please try again.")

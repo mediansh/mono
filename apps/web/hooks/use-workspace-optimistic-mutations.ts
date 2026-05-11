@@ -1,6 +1,5 @@
 "use client"
 
-import { useAuth } from "@clerk/nextjs"
 import { useConvexAuth, useMutation } from "convex/react"
 
 import { api } from "@/convex/_generated/api"
@@ -40,45 +39,14 @@ function generatePrefix(name: string) {
 }
 
 export function useWorkspaceOptimisticMutations() {
-  const { userId } = useAuth()
   const { isLoading: isAuthLoading, isAuthenticated } = useConvexAuth()
 
-  // Optimistically insert the new workspace into the live getUserWorkspaces
-  // query so the WorkspaceProvider sees it immediately, before the server
-  // confirms. Convex replaces this with the real value once the mutation
-  // resolves and the subscription updates.
-  const createWorkspace = useMutation(
-    api.workspaces.createWorkspace
-  ).withOptimisticUpdate((localStore, args) => {
-    const current = localStore.getQuery(api.workspaces.getUserWorkspaces, {})
-    if (!Array.isArray(current)) {
-      return
-    }
-
-    const optimisticId = `optimistic-workspace-${
-      typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID()
-        : Math.random().toString(36).slice(2)
-    }` as unknown as Id<"workspaces">
-
-    const optimistic = {
-      _id: optimisticId,
-      _creationTime: Date.now(),
-      name: args.name,
-      prefix: generatePrefix(args.name),
-      iconId: args.iconId,
-      iconUrl: null,
-      ownerId: userId ?? "",
-      role: "owner" as const,
-      taskCounter: 0,
-      labels: [],
-    }
-
-    localStore.setQuery(api.workspaces.getUserWorkspaces, {}, [
-      ...current,
-      optimistic as unknown as (typeof current)[number],
-    ])
-  })
+  // No optimistic update for createWorkspace: Convex guarantees that by the
+  // time `await createWorkspace(...)` resolves, the live getUserWorkspaces
+  // subscription has been updated with the new workspace. Adding an
+  // optimistic update on top introduced races that bounced users back to
+  // /app/setup after creating their workspace.
+  const createWorkspace = useMutation(api.workspaces.createWorkspace)
 
   const updateWorkspace = useMutation(api.workspaces.updateWorkspace)
   const deleteWorkspace = useMutation(api.workspaces.deleteWorkspace)

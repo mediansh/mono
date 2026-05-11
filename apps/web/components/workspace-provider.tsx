@@ -27,20 +27,27 @@ type WorkspaceContextValue = {
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null)
 
+function isRealWorkspace(workspace: Workspace) {
+  return !workspace._id.toString().startsWith("optimistic-workspace-")
+}
+
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const { isLoading: isAuthLoading, isAuthenticated } = useConvexAuth()
   const { workspaces: cachedWorkspaces, currentWorkspaceId } =
     useLocalFirstStore()
 
-  // Live, reactive workspace list. Source of truth while signed in.
-  // Optimistic creates show up here immediately via withOptimisticUpdate.
+  // Single source of truth: the live Convex query.
+  // Returns null only when there's no identity on the server, [] when the
+  // user has no workspaces, or an array of workspaces.
   const liveWorkspaces = useQuery(
     api.workspaces.getUserWorkspaces,
     isAuthenticated ? {} : "skip"
   ) as Workspace[] | null | undefined
 
-  const liveAnswered = Array.isArray(liveWorkspaces)
+  const hasLiveAnswer = Array.isArray(liveWorkspaces)
 
+  // Persist the server answer so we have a first-paint hint on next load.
+  // We deliberately do NOT cache optimistic entries.
   useEffect(() => {
     if (isAuthLoading) return
 
@@ -49,20 +56,24 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    if (liveAnswered) {
-      setCachedWorkspaces(liveWorkspaces as Workspace[])
+    if (hasLiveAnswer) {
+      const persistable = (liveWorkspaces as Workspace[]).filter(isRealWorkspace)
+      setCachedWorkspaces(persistable)
     }
-  }, [isAuthLoading, isAuthenticated, liveAnswered, liveWorkspaces])
+  }, [isAuthLoading, isAuthenticated, hasLiveAnswer, liveWorkspaces])
 
-  // Use live data when we have it; otherwise fall back to cache for first paint.
-  const workspaces: Workspace[] = liveAnswered
+  // While we don't yet have a definitive server answer, fall back to cache
+  // only for the first paint. Once Convex answers, the server's word is final.
+  const workspaces: Workspace[] = hasLiveAnswer
     ? (liveWorkspaces as Workspace[])
     : cachedWorkspaces
 
-  // We're loading only when we have no answer yet AND nothing cached to render.
+  // We're loading whenever we don't have a definitive signal that lets us
+  // safely make a routing decision. If the cache already has workspaces we
+  // can render the app immediately; otherwise we wait for the live query.
   const isLoading =
     isAuthLoading ||
-    (isAuthenticated && !liveAnswered && cachedWorkspaces.length === 0)
+    (isAuthenticated && !hasLiveAnswer && cachedWorkspaces.length === 0)
 
   const switchWorkspace = useCallback((id: Id<"workspaces">) => {
     setCurrentWorkspaceId(id)
