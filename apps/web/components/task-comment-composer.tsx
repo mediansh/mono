@@ -72,18 +72,23 @@ type SuggestionState = {
 }
 
 const editorContentClass = cn(
-  "min-h-[64px] max-w-none px-3 py-2 text-[13px] text-foreground focus:outline-none",
+  "min-h-[64px] max-w-none px-3 py-2 text-[13px] leading-relaxed text-foreground focus:outline-none",
   "[&_p]:my-1 [&_p]:leading-relaxed",
+  "[&_h1]:my-2 [&_h1]:text-[16px] [&_h1]:font-semibold",
+  "[&_h2]:my-2 [&_h2]:text-[14px] [&_h2]:font-semibold",
+  "[&_h3]:my-1 [&_h3]:text-[13px] [&_h3]:font-semibold",
   "[&_strong]:font-semibold",
   "[&_em]:italic",
+  "[&_s]:line-through",
   "[&_code]:rounded-[3px] [&_code]:bg-sidebar-accent [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[12px]",
   "[&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-[6px] [&_pre]:bg-sidebar-accent [&_pre]:p-2 [&_pre]:font-mono [&_pre]:text-[12px]",
+  "[&_pre_code]:bg-transparent [&_pre_code]:p-0",
   "[&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2",
   "[&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5",
   "[&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-5",
   "[&_li]:my-0.5",
   "[&_blockquote]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-sidebar-border [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground",
-  ".mention-chip:inline-flex"
+  "[&_hr]:my-3 [&_hr]:border-sidebar-border"
 )
 
 export const TaskCommentComposer = forwardRef<CommentComposerHandle, Props>(
