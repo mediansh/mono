@@ -5,9 +5,10 @@ import {
   useContext,
   useEffect,
   useCallback,
+  useState,
   type ReactNode,
 } from "react"
-import { useConvexAuth, useQuery } from "convex/react"
+import { useConvex, useConvexAuth } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
 import {
@@ -28,12 +29,11 @@ type WorkspaceContextValue = {
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null)
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
+  const convex = useConvex()
   const { isLoading: isAuthLoading, isAuthenticated } = useConvexAuth()
   const { workspaces, currentWorkspaceId } = useLocalFirstStore()
-  const liveWorkspaces = useQuery(
-    api.workspaces.getUserWorkspaces,
-    isAuthenticated ? {} : "skip"
-  ) as Workspace[] | null | undefined
+  const [hasFetchedWorkspaces, setHasFetchedWorkspaces] = useState(false)
+  const [refreshAttempt, setRefreshAttempt] = useState(0)
 
   useEffect(() => {
     if (isAuthLoading) {
@@ -42,15 +42,65 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
     if (!isAuthenticated) {
       clearLocalFirstStore()
+      setHasFetchedWorkspaces(true)
       return
     }
 
-    if (liveWorkspaces === undefined || liveWorkspaces === null) {
-      return
+    let cancelled = false
+    let retryTimeout: ReturnType<typeof globalThis.setTimeout> | null = null
+    setHasFetchedWorkspaces(workspaces.length > 0)
+
+    function retryRefresh() {
+      retryTimeout = globalThis.setTimeout(
+        () => setRefreshAttempt((attempt) => attempt + 1),
+        1000
+      )
     }
 
-    setCachedWorkspaces(liveWorkspaces)
-  }, [isAuthLoading, isAuthenticated, liveWorkspaces])
+    async function refreshWorkspaces() {
+      try {
+        const nextWorkspaces = (await convex.query(
+          api.workspaces.getUserWorkspaces,
+          {}
+        )) as Workspace[] | null
+
+        if (cancelled) {
+          return
+        }
+
+        if (nextWorkspaces === null) {
+          if (workspaces.length > 0) {
+            setHasFetchedWorkspaces(true)
+          } else {
+            retryRefresh()
+          }
+          return
+        }
+
+        setCachedWorkspaces(nextWorkspaces)
+        setHasFetchedWorkspaces(true)
+      } catch {
+        if (cancelled) {
+          return
+        }
+
+        if (workspaces.length > 0) {
+          setHasFetchedWorkspaces(true)
+        } else {
+          retryRefresh()
+        }
+      }
+    }
+
+    void refreshWorkspaces()
+
+    return () => {
+      cancelled = true
+      if (retryTimeout !== null) {
+        globalThis.clearTimeout(retryTimeout)
+      }
+    }
+  }, [convex, isAuthLoading, isAuthenticated, refreshAttempt, workspaces.length])
 
   const switchWorkspace = useCallback(
     (id: Id<"workspaces">) => {
@@ -61,9 +111,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const isLoading =
     isAuthLoading ||
-    (isAuthenticated &&
-      (liveWorkspaces === undefined || liveWorkspaces === null) &&
-      workspaces.length === 0)
+    (isAuthenticated && !hasFetchedWorkspaces && workspaces.length === 0)
 
   const currentWorkspace =
     workspaces.find((workspace) => workspace._id === currentWorkspaceId) ?? null

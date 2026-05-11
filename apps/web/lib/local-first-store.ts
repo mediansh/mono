@@ -50,17 +50,34 @@ function canUseDOM() {
   return typeof window !== "undefined"
 }
 
+function isPersistableWorkspace(workspace: unknown): workspace is WorkspaceRecord {
+  return (
+    !!workspace &&
+    typeof workspace === "object" &&
+    typeof (workspace as Partial<WorkspaceRecord>)._id === "string" &&
+    !(workspace as Partial<WorkspaceRecord>)._id?.startsWith("optimistic-workspace-")
+  )
+}
+
 function sanitizeStore(value: unknown): LocalFirstStore {
   if (!value || typeof value !== "object") {
     return EMPTY_STORE
   }
 
   const candidate = value as Partial<LocalFirstStore>
+  const workspaces = Array.isArray(candidate.workspaces)
+    ? candidate.workspaces.filter(isPersistableWorkspace)
+    : []
+  const currentWorkspaceId =
+    typeof candidate.currentWorkspaceId === "string" &&
+    workspaces.some((workspace) => workspace._id === candidate.currentWorkspaceId)
+      ? candidate.currentWorkspaceId
+      : null
+
   return {
     version: 1,
-    currentWorkspaceId:
-      typeof candidate.currentWorkspaceId === "string" ? candidate.currentWorkspaceId : null,
-    workspaces: Array.isArray(candidate.workspaces) ? candidate.workspaces : [],
+    currentWorkspaceId,
+    workspaces,
     tasksByWorkspace:
       candidate.tasksByWorkspace && typeof candidate.tasksByWorkspace === "object"
         ? candidate.tasksByWorkspace

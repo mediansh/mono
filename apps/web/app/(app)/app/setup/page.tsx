@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { useAction, useMutation } from "convex/react"
+import { useAction, useConvexAuth, useMutation } from "convex/react"
 import { Image as ImageIcon } from "@phosphor-icons/react"
 import { motion } from "motion/react"
 import { Facehash } from "facehash"
@@ -38,6 +38,7 @@ export default function WorkspaceSetupPage() {
   const attachScalePlan = useAction(api.earlyAccess.attachScaleForCurrentUser)
   const { createWorkspaceOptimistic } = useWorkspaceOptimisticMutations()
   const { workspaces, isLoading } = useWorkspace()
+  const { isLoading: isAuthLoading, isAuthenticated } = useConvexAuth()
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [name, setName] = useState("")
@@ -66,6 +67,10 @@ export default function WorkspaceSetupPage() {
     e.preventDefault()
     if (!name.trim()) {
       setError("Workspace name is required")
+      return
+    }
+    if (isAuthLoading || !isAuthenticated) {
+      setError("Still signing you in. Please try again in a moment.")
       return
     }
     setLoading(true)
@@ -205,7 +210,7 @@ export default function WorkspaceSetupPage() {
 
             <button
               type="submit"
-              disabled={loading || !name.trim()}
+              disabled={loading || isAuthLoading || !isAuthenticated || !name.trim()}
               className="mt-1 flex h-9 items-center justify-center rounded-[4px] bg-primary text-[13px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
             >
               {loading ? <Spinner /> : "Create workspace"}
