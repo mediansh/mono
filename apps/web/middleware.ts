@@ -1,7 +1,6 @@
 import { clerkMiddleware } from "@clerk/nextjs/server"
 import { NextResponse } from "next/server"
 
-const HAS_WORKSPACE_COOKIE = "median_has_workspace"
 const ADMIN_HOST = "https://admin.median.sh"
 
 export default clerkMiddleware(async (auth, req) => {
@@ -17,10 +16,6 @@ export default clerkMiddleware(async (auth, req) => {
 
   if (req.nextUrl.pathname.startsWith("/app")) {
     await auth.protect()
-  }
-
-  if (req.nextUrl.pathname === "/app/setup" && req.cookies.get(HAS_WORKSPACE_COOKIE)?.value === "1") {
-    return NextResponse.redirect(new URL("/app", req.url))
   }
 })
 
