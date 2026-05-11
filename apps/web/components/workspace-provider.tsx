@@ -28,8 +28,6 @@ type WorkspaceContextValue = {
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null)
 
-const HAS_WORKSPACE_COOKIE = "median_has_workspace"
-
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const convex = useConvex()
   const { isLoading: isAuthLoading, isAuthenticated } = useConvexAuth()
@@ -70,12 +68,6 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       cancelled = true
     }
   }, [convex, isAuthLoading, isAuthenticated])
-
-  useEffect(() => {
-    if (isAuthLoading || !isAuthenticated) return
-
-    document.cookie = `${HAS_WORKSPACE_COOKIE}=${workspaces.length > 0 ? "1" : "0"}; Path=/; Max-Age=31536000; SameSite=Lax`
-  }, [isAuthLoading, isAuthenticated, workspaces.length])
 
   const switchWorkspace = useCallback(
     (id: Id<"workspaces">) => {
