@@ -33,7 +33,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const liveWorkspaces = useQuery(
     api.workspaces.getUserWorkspaces,
     isAuthenticated ? {} : "skip"
-  ) as Workspace[] | undefined
+  ) as Workspace[] | null | undefined
 
   useEffect(() => {
     if (isAuthLoading) {
@@ -45,7 +45,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    if (liveWorkspaces === undefined) {
+    if (liveWorkspaces === undefined || liveWorkspaces === null) {
       return
     }
 
@@ -61,7 +61,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const isLoading =
     isAuthLoading ||
-    (isAuthenticated && liveWorkspaces === undefined && workspaces.length === 0)
+    (isAuthenticated &&
+      (liveWorkspaces === undefined || liveWorkspaces === null) &&
+      workspaces.length === 0)
 
   const currentWorkspace =
     workspaces.find((workspace) => workspace._id === currentWorkspaceId) ?? null
