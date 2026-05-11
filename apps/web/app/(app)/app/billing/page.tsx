@@ -36,6 +36,7 @@ import { toast } from "sonner"
 import Link from "next/link"
 import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
+import { LoadingState } from "@/components/loading-state"
 import { EVENT_CREDIT_COST } from "@/lib/billing/config"
 
 function Stagger({ children, className }: { children: ReactNode; className?: string }) {
@@ -166,50 +167,7 @@ function ChartTooltip({
 }
 
 function BillingSkeleton() {
-  return (
-    <div className="mx-auto w-full max-w-4xl px-6 py-6">
-      <div className="mb-6">
-        <div className="h-4 w-20 rounded-[4px] bg-muted/40" />
-        <div className="mt-2 h-3 w-56 rounded-[4px] bg-muted/30" />
-      </div>
-      <div className="mb-6 rounded-[6px] p-5 ring-1 ring-border">
-        <div className="h-3.5 w-24 rounded-[3px] bg-muted/40" />
-        <div className="mt-3 h-7 w-40 rounded-[3px] bg-muted/40" />
-        <div className="mt-4 h-2 w-full rounded-full bg-muted/30" />
-        <div className="mt-3 flex gap-3">
-          <div className="h-3 w-24 rounded-[3px] bg-muted/30" />
-          <div className="h-3 w-24 rounded-[3px] bg-muted/30" />
-        </div>
-      </div>
-      <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="rounded-[4px] p-3 ring-1 ring-border">
-            <div className="h-3 w-16 rounded-[3px] bg-muted/30" />
-            <div className="mt-2 h-4 w-20 rounded-[3px] bg-muted/40" />
-          </div>
-        ))}
-      </div>
-      <div className="mb-6 rounded-[4px] p-4 ring-1 ring-border">
-        <div className="mb-3 h-3.5 w-24 rounded-[4px] bg-muted/40" />
-        <div className="h-[220px] rounded-[4px] bg-muted/20" />
-      </div>
-      <div className="mb-3 h-3.5 w-16 rounded-[4px] bg-muted/40" />
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="rounded-[4px] p-4 ring-1 ring-border">
-            <div className="h-3.5 w-20 rounded-[3px] bg-muted/40" />
-            <div className="mt-2 h-6 w-24 rounded-[3px] bg-muted/40" />
-            <div className="mt-4 space-y-2">
-              {Array.from({ length: 4 }).map((_, j) => (
-                <div key={j} className="h-3 w-full rounded-[3px] bg-muted/20" />
-              ))}
-            </div>
-            <div className="mt-4 h-7 w-full rounded-[3px] bg-muted/30" />
-          </div>
-        ))}
-      </div>
-    </div>
-  )
+  return <LoadingState className="h-[60vh]" />
 }
 
 function CreditsProgressCard({

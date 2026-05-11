@@ -61,6 +61,7 @@ import {
   type TaskAttachment,
 } from "@/components/task-attachments"
 import { TaskCommentsPanel } from "@/components/task-comments-panel"
+import { LoadingState } from "@/components/loading-state"
 import {
   Dialog,
   DialogContent,
@@ -600,62 +601,8 @@ function mapTaskDoc(task: TaskDoc): Task {
   }
 }
 
-const SKELETON_GROUPS: { label: string; rows: number[] }[] = [
-  { label: "Todo", rows: [180, 240, 150] },
-  { label: "In Progress", rows: [200, 260] },
-  { label: "Ready", rows: [170] },
-  { label: "Shipped", rows: [220, 190] },
-  { label: "Archive", rows: [] },
-]
-
 function BoardLoadingState() {
-  return (
-    <div className="h-full overflow-hidden px-3 py-2">
-      {SKELETON_GROUPS.map((group, gi) => (
-        <div
-          key={gi}
-          className="mb-1.5 overflow-hidden rounded-[4px] ring-1 ring-border"
-        >
-          {/* Group header skeleton — matches ListGroup header */}
-          <div className="flex items-center gap-2.5 bg-card px-3 py-1.5">
-            <span className="text-[10px] text-muted-foreground/60">▼</span>
-            <div className="size-3.5 animate-pulse rounded-[4px] bg-muted/70" />
-            <div
-              className="h-3 animate-pulse rounded-[4px] bg-muted/70"
-              style={{ width: group.label.length * 8 }}
-            />
-            <div className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-muted px-1.5">
-              <div className="h-2 w-2 rounded-[4px] bg-muted-foreground/20" />
-            </div>
-          </div>
-
-          {/* Row skeletons — matches SortableListRow layout */}
-          {group.rows.map((titleWidth, ri) => (
-            <div
-              key={ri}
-              className="flex items-center gap-3 border-b border-l-2 border-border border-l-transparent px-3 py-2"
-            >
-              {/* Priority icon placeholder */}
-              <div className="size-3.5 shrink-0 animate-pulse rounded-[4px] bg-muted/60" />
-              {/* Status icon placeholder */}
-              <div className="size-3.5 shrink-0 animate-pulse rounded-[4px] bg-muted/60" />
-              {/* Title placeholder */}
-              <div
-                className="h-3 flex-1 animate-pulse rounded-[4px] bg-muted/60"
-                style={{ maxWidth: titleWidth }}
-              />
-              {/* Label pill placeholder */}
-              {ri % 2 === 0 && (
-                <div className="h-4 w-14 shrink-0 animate-pulse rounded-[4px] bg-muted/40" />
-              )}
-              {/* Date placeholder */}
-              <div className="h-2.5 w-12 shrink-0 animate-pulse rounded-[4px] bg-muted/30" />
-            </div>
-          ))}
-        </div>
-      ))}
-    </div>
-  )
+  return <LoadingState className="h-full" />
 }
 
 function EmptyBoardState({ onCreateTask }: { onCreateTask: () => void }) {

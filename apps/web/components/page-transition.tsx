@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { usePathname } from "next/navigation"
 import { motion } from "motion/react"
+import { Spinner } from "@workspace/ui/components/spinner"
 
 /**
  * Wraps every dashboard page in a fade-in motion container. Keyed by
@@ -43,12 +44,9 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
 export function PageSkeleton() {
   return (
     <div className="flex h-full flex-col">
-      <div className="flex h-[44px] shrink-0 items-center gap-2 border-b border-border bg-toolbar px-3">
-        <div className="h-3.5 w-24 animate-pulse rounded-[3px] bg-muted" />
-        <div className="ml-auto h-6 w-[200px] animate-pulse rounded-[4px] bg-muted" />
-      </div>
-      <div className="flex flex-1 items-center justify-center">
-        <div className="size-5 animate-spin rounded-full border-2 border-muted border-t-foreground" />
+      <div className="flex h-[44px] shrink-0 items-center gap-2 border-b border-border bg-toolbar px-3" />
+      <div className="flex flex-1 items-center justify-center text-muted-foreground">
+        <Spinner className="size-6" />
       </div>
     </div>
   )

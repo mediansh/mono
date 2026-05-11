@@ -28,6 +28,7 @@ import {
 } from "@workspace/ui/components/dialog"
 import { api } from "@/convex/_generated/api"
 import { SettingsAccessState } from "@/components/settings-access-state"
+import { LoadingState } from "@/components/loading-state"
 import { useWorkspace } from "@/components/workspace-provider"
 import { useInstantNavigation } from "@/hooks/use-instant-navigation"
 import { updateOptimisticQuery } from "@/lib/convex-optimistic"
@@ -71,15 +72,7 @@ const fadeUp = {
 }
 
 function XIntegrationSkeleton() {
-  return (
-    <div className="mx-auto w-full max-w-lg px-6 py-6">
-      <div className="mb-4 h-8 w-32 rounded-[4px] bg-muted/40" />
-      <div className="flex flex-col gap-2">
-        <div className="h-10 rounded-[4px] bg-muted/30" />
-        <div className="h-20 rounded-[4px] bg-muted/20" />
-      </div>
-    </div>
-  )
+  return <LoadingState className="h-[60vh]" />
 }
 
 export function XIntegrationPanel() {
