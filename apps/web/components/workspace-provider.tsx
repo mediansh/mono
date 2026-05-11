@@ -5,10 +5,9 @@ import {
   useContext,
   useEffect,
   useCallback,
-  useState,
   type ReactNode,
 } from "react"
-import { useConvex, useConvexAuth } from "convex/react"
+import { useConvexAuth, useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
 import {
@@ -29,10 +28,12 @@ type WorkspaceContextValue = {
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null)
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
-  const convex = useConvex()
   const { isLoading: isAuthLoading, isAuthenticated } = useConvexAuth()
   const { workspaces, currentWorkspaceId } = useLocalFirstStore()
-  const [hasFetchedWorkspaces, setHasFetchedWorkspaces] = useState(false)
+  const liveWorkspaces = useQuery(
+    api.workspaces.getUserWorkspaces,
+    isAuthenticated ? {} : "skip"
+  ) as Workspace[] | undefined
 
   useEffect(() => {
     if (isAuthLoading) {
@@ -41,33 +42,15 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
     if (!isAuthenticated) {
       clearLocalFirstStore()
-      setHasFetchedWorkspaces(true)
       return
     }
 
-    let cancelled = false
-
-    async function refreshWorkspaces() {
-      try {
-        const nextWorkspaces = (await convex.query(api.workspaces.getUserWorkspaces, {})) as Workspace[]
-        if (cancelled) {
-          return
-        }
-
-        setCachedWorkspaces(nextWorkspaces)
-      } finally {
-        if (!cancelled) {
-          setHasFetchedWorkspaces(true)
-        }
-      }
+    if (liveWorkspaces === undefined) {
+      return
     }
 
-    void refreshWorkspaces()
-
-    return () => {
-      cancelled = true
-    }
-  }, [convex, isAuthLoading, isAuthenticated])
+    setCachedWorkspaces(liveWorkspaces)
+  }, [isAuthLoading, isAuthenticated, liveWorkspaces])
 
   const switchWorkspace = useCallback(
     (id: Id<"workspaces">) => {
@@ -77,7 +60,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   )
 
   const isLoading =
-    isAuthLoading || (isAuthenticated && !hasFetchedWorkspaces && workspaces.length === 0)
+    isAuthLoading ||
+    (isAuthenticated && liveWorkspaces === undefined && workspaces.length === 0)
 
   const currentWorkspace =
     workspaces.find((workspace) => workspace._id === currentWorkspaceId) ?? null
