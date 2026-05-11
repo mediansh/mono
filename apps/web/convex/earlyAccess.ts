@@ -7,7 +7,12 @@ import {
   query,
 } from "./_generated/server"
 import { internal } from "./_generated/api"
-import { requireIdentity, getIdentityProfile } from "./permissions"
+import {
+  getAuthUserId,
+  getAuthUserIds,
+  requireIdentity,
+  getIdentityProfile,
+} from "./permissions"
 import { requireAdmin } from "./admins"
 import {
   attachComplimentaryWorkspacePlan,
@@ -49,11 +54,16 @@ export const currentUserRedemption = query({
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) return null
-    const redemption = await ctx.db
-      .query("earlyAccessRedemptions")
-      .withIndex("by_user", (q) => q.eq("userId", identity.subject))
-      .unique()
-    return redemption
+
+    for (const userId of getAuthUserIds(identity)) {
+      const redemption = await ctx.db
+        .query("earlyAccessRedemptions")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .first()
+      if (redemption) return redemption
+    }
+
+    return null
   },
 })
 
@@ -61,15 +71,18 @@ export const redeemCode = mutation({
   args: { code: v.string() },
   handler: async (ctx, args) => {
     const identity = await requireIdentity(ctx)
+    const userId = getAuthUserId(identity)
     const profile = getIdentityProfile(identity)
     const normalized = normalizeCode(args.code)
 
-    const existing = await ctx.db
-      .query("earlyAccessRedemptions")
-      .withIndex("by_user", (q) => q.eq("userId", identity.subject))
-      .unique()
-    if (existing) {
-      return { redemptionId: existing._id, alreadyRedeemed: true }
+    for (const authUserId of getAuthUserIds(identity)) {
+      const existing = await ctx.db
+        .query("earlyAccessRedemptions")
+        .withIndex("by_user", (q) => q.eq("userId", authUserId))
+        .first()
+      if (existing) {
+        return { redemptionId: existing._id, alreadyRedeemed: true }
+      }
     }
 
     const codeRow = await ctx.db
@@ -85,11 +98,11 @@ export const redeemCode = mutation({
 
     const now = Date.now()
     await ctx.db.patch(codeRow._id, {
-      redeemedByUserId: identity.subject,
+      redeemedByUserId: userId,
       redeemedAt: now,
     })
     const redemptionId = await ctx.db.insert("earlyAccessRedemptions", {
-      userId: identity.subject,
+      userId,
       codeId: codeRow._id,
       code: normalized,
       email: profile.email,
@@ -103,6 +116,9 @@ export const redeemCode = mutation({
 export const attachScaleForCurrentUser = action({
   args: { workspaceId: v.id("workspaces") },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity) return { attached: false }
+
     const redemption = await ctx.runQuery(
       internal.earlyAccess.getRedemptionForCurrentUser,
       {}
@@ -121,7 +137,7 @@ export const attachScaleForCurrentUser = action({
 
     const workspace = await ctx.runQuery(
       internal.earlyAccess.getWorkspaceForAttach,
-      { workspaceId: args.workspaceId, userId: redemption.userId }
+      { workspaceId: args.workspaceId, userIds: getAuthUserIds(identity) }
     )
     if (!workspace) {
       throw new Error("Workspace not found or not owned by user")
@@ -148,10 +164,16 @@ export const getRedemptionForCurrentUser = internalQuery({
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) return null
-    return await ctx.db
-      .query("earlyAccessRedemptions")
-      .withIndex("by_user", (q) => q.eq("userId", identity.subject))
-      .unique()
+
+    for (const userId of getAuthUserIds(identity)) {
+      const redemption = await ctx.db
+        .query("earlyAccessRedemptions")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .first()
+      if (redemption) return redemption
+    }
+
+    return null
   },
 })
 
@@ -165,11 +187,11 @@ export const getCodeForRedemption = internalQuery({
 export const getWorkspaceForAttach = internalQuery({
   args: {
     workspaceId: v.id("workspaces"),
-    userId: v.string(),
+    userIds: v.array(v.string()),
   },
   handler: async (ctx, args) => {
     const ws = await ctx.db.get(args.workspaceId)
-    if (!ws || ws.ownerId !== args.userId) return null
+    if (!ws || !args.userIds.includes(ws.ownerId)) return null
     return ws
   },
 })
@@ -219,6 +241,7 @@ export const adminCreateCode = mutation({
   args: { note: v.optional(v.string()), count: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const identity = await requireAdmin(ctx)
+    const userId = getAuthUserId(identity)
     const count = Math.max(1, Math.min(args.count ?? 1, 50))
     const ids: string[] = []
     for (let i = 0; i < count; i++) {
@@ -233,7 +256,7 @@ export const adminCreateCode = mutation({
       }
       await ctx.db.insert("earlyAccessCodes", {
         code,
-        createdByUserId: identity.subject,
+        createdByUserId: userId,
         createdAt: Date.now(),
         note: args.note,
       })

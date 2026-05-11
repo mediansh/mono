@@ -1,5 +1,6 @@
 import type { MutationCtx, QueryCtx } from "./_generated/server"
 import type { Doc, Id } from "./_generated/dataModel"
+import type { UserIdentity } from "convex/server"
 import {
   hasTaskWritePermission,
   hasWorkspaceAdminPermission,
@@ -17,17 +18,49 @@ export async function requireIdentity(ctx: ConvexCtx) {
   return identity
 }
 
+export function getAuthUserId(identity: UserIdentity) {
+  return identity.tokenIdentifier
+}
+
+export function getAuthUserIds(identity: UserIdentity) {
+  const ids = [
+    identity.tokenIdentifier,
+    (identity as UserIdentity & { userId?: string }).userId,
+    identity.subject,
+  ]
+
+  return Array.from(
+    new Set(ids.filter((id): id is string => typeof id === "string" && id.length > 0))
+  )
+}
+
+export async function findWorkspaceMembership(
+  ctx: ConvexCtx,
+  workspaceId: Id<"workspaces">,
+  identity: UserIdentity
+) {
+  for (const userId of getAuthUserIds(identity)) {
+    const membership = await ctx.db
+      .query("workspaceMembers")
+      .withIndex("by_user_workspace", (q) =>
+        q.eq("userId", userId).eq("workspaceId", workspaceId)
+      )
+      .first()
+
+    if (membership) {
+      return membership
+    }
+  }
+
+  return null
+}
+
 export async function getWorkspaceMembership(
   ctx: ConvexCtx,
   workspaceId: Id<"workspaces">
 ) {
   const identity = await requireIdentity(ctx)
-  const membership = await ctx.db
-    .query("workspaceMembers")
-    .withIndex("by_user_workspace", (q) =>
-      q.eq("userId", identity.subject).eq("workspaceId", workspaceId)
-    )
-    .unique()
+  const membership = await findWorkspaceMembership(ctx, workspaceId, identity)
 
   if (!membership) {
     throw new Error("Not authorized")

@@ -8,6 +8,9 @@ import {
 import { internal } from "./_generated/api"
 import type { Doc, Id } from "./_generated/dataModel"
 import {
+  findWorkspaceMembership,
+  getAuthUserId,
+  getAuthUserIds,
   getIdentityProfile,
   requireIdentity,
   requireWorkspaceAccess,
@@ -103,15 +106,24 @@ export const getUserWorkspaces = query({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity()
-    if (!identity) return []
+    if (!identity) return null
 
-    const memberships = await ctx.db
-      .query("workspaceMembers")
-      .withIndex("by_user", (q) => q.eq("userId", identity.subject))
-      .collect()
+    const membershipsByWorkspace = new Map<string, Doc<"workspaceMembers">>()
+    for (const userId of getAuthUserIds(identity)) {
+      const memberships = await ctx.db
+        .query("workspaceMembers")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .take(250)
+
+      for (const membership of memberships) {
+        if (!membershipsByWorkspace.has(membership.workspaceId)) {
+          membershipsByWorkspace.set(membership.workspaceId, membership)
+        }
+      }
+    }
 
     const workspaces = await Promise.all(
-      memberships.map(async (membership) => {
+      Array.from(membershipsByWorkspace.values()).map(async (membership) => {
         const workspace = await ctx.db.get(membership.workspaceId)
         if (!workspace) return null
         const iconUrl = workspace.iconId ? await ctx.storage.getUrl(workspace.iconId) : null
@@ -263,23 +275,23 @@ export const syncMyProfile = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await requireIdentity(ctx)
-    const membership = await ctx.db
-      .query("workspaceMembers")
-      .withIndex("by_user_workspace", (q) =>
-        q.eq("userId", identity.subject).eq("workspaceId", args.workspaceId)
-      )
-      .unique()
+    const membership = await findWorkspaceMembership(ctx, args.workspaceId, identity)
 
     if (!membership) return
 
     const profile = getIdentityProfile(identity)
+    const userId = getAuthUserId(identity)
     const needsUpdate =
+      membership.userId !== userId ||
       membership.name !== profile.name ||
       membership.email !== profile.email ||
       membership.imageUrl !== profile.imageUrl
 
     if (needsUpdate) {
-      await ctx.db.patch(membership._id, profile)
+      await ctx.db.patch(membership._id, {
+        userId,
+        ...profile,
+      })
     }
   },
 })
@@ -795,6 +807,7 @@ export const createWorkspace = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await requireIdentity(ctx)
+    const userId = getAuthUserId(identity)
     const prefix = generatePrefix(args.name)
     const profile = getIdentityProfile(identity)
 
@@ -802,13 +815,13 @@ export const createWorkspace = mutation({
       name: args.name,
       prefix,
       iconId: args.iconId,
-      ownerId: identity.subject,
+      ownerId: userId,
       taskCounter: 0,
     })
 
     await ctx.db.insert("workspaceMembers", {
       workspaceId,
-      userId: identity.subject,
+      userId,
       role: "owner",
       ...profile,
     })
@@ -824,6 +837,7 @@ export const createInviteLink = mutation({
   },
   handler: async (ctx, args) => {
     const { identity } = await requireWorkspaceAdminAccess(ctx, args.workspaceId)
+    const userId = getAuthUserId(identity)
 
     const workspace = await ctx.db.get(args.workspaceId)
     if (!workspace) {
@@ -832,7 +846,7 @@ export const createInviteLink = mutation({
 
     const inviteId = await ctx.db.insert("workspaceInvites", {
       workspaceId: args.workspaceId,
-      createdByUserId: identity.subject,
+      createdByUserId: userId,
       token: generateInviteToken(),
       inviteType: "link",
       role: args.role,
@@ -863,6 +877,7 @@ export const createEmailInvite = mutation({
   },
   handler: async (ctx, args) => {
     const { identity } = await requireWorkspaceAdminAccess(ctx, args.workspaceId)
+    const userId = getAuthUserId(identity)
     const workspace = await ctx.db.get(args.workspaceId)
     if (!workspace) {
       throw new Error("Workspace not found")
@@ -903,7 +918,7 @@ export const createEmailInvite = mutation({
 
     const inviteId = await ctx.db.insert("workspaceInvites", {
       workspaceId: args.workspaceId,
-      createdByUserId: identity.subject,
+      createdByUserId: userId,
       token: generateInviteToken(),
       inviteType: "email",
       role: args.role,
@@ -955,11 +970,14 @@ export const updateMemberRole = mutation({
       throw new Error("Member not found")
     }
 
-    const { membership } = await requireWorkspaceAdminAccess(ctx, member.workspaceId)
+    const { identity, membership } = await requireWorkspaceAdminAccess(ctx, member.workspaceId)
     if (member.role === "owner") {
       throw new Error("The workspace owner role cannot be changed")
     }
-    if (member.userId === membership.userId) {
+    if (
+      member.userId === membership.userId ||
+      getAuthUserIds(identity).includes(member.userId)
+    ) {
       throw new Error("You cannot change your own role")
     }
 
@@ -977,11 +995,14 @@ export const removeMember = mutation({
       throw new Error("Member not found")
     }
 
-    const { membership } = await requireWorkspaceAdminAccess(ctx, member.workspaceId)
+    const { identity, membership } = await requireWorkspaceAdminAccess(ctx, member.workspaceId)
     if (member.role === "owner") {
       throw new Error("The workspace owner cannot be removed")
     }
-    if (member.userId === membership.userId) {
+    if (
+      member.userId === membership.userId ||
+      getAuthUserIds(identity).includes(member.userId)
+    ) {
       throw new Error("You cannot remove yourself")
     }
 
@@ -1002,6 +1023,7 @@ export const acceptInvite = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await requireIdentity(ctx)
+    const userId = getAuthUserId(identity)
     const invite = await ctx.db
       .query("workspaceInvites")
       .withIndex("by_token", (q) => q.eq("token", args.token))
@@ -1023,12 +1045,11 @@ export const acceptInvite = mutation({
       throw new Error("Workspace not found")
     }
 
-    const existingMembership = await ctx.db
-      .query("workspaceMembers")
-      .withIndex("by_user_workspace", (q) =>
-        q.eq("userId", identity.subject).eq("workspaceId", invite.workspaceId)
-      )
-      .unique()
+    const existingMembership = await findWorkspaceMembership(
+      ctx,
+      invite.workspaceId,
+      identity
+    )
 
     const profile = getIdentityProfile(identity)
 
@@ -1038,6 +1059,7 @@ export const acceptInvite = mutation({
         WORKSPACE_ROLE_RANK[invite.role] > WORKSPACE_ROLE_RANK[existingMembership.role as WorkspaceRole]
       ) {
         await ctx.db.patch(existingMembership._id, {
+          userId,
           role: invite.role,
           ...profile,
         })
@@ -1045,7 +1067,7 @@ export const acceptInvite = mutation({
     } else {
       await ctx.db.insert("workspaceMembers", {
         workspaceId: invite.workspaceId,
-        userId: identity.subject,
+        userId,
         role: invite.role as WorkspaceInviteRole,
         ...profile,
       })
@@ -1054,14 +1076,14 @@ export const acceptInvite = mutation({
     await ctx.db.patch(invite._id, {
       status: "accepted",
       acceptedAt: Date.now(),
-      acceptedByUserId: identity.subject,
+      acceptedByUserId: userId,
     })
 
     await insertWorkspaceLog(ctx, {
       workspaceId: invite.workspaceId,
       category: "members",
       type: "member_joined",
-      message: `${profile.name ?? profile.email ?? identity.subject} joined as ${invite.role}`,
+      message: `${profile.name ?? profile.email ?? userId} joined as ${invite.role}`,
       source: "manual",
     })
 
