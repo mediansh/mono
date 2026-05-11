@@ -2,13 +2,12 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
-  useCallback,
-  useState,
   type ReactNode,
 } from "react"
-import { useConvex, useConvexAuth } from "convex/react"
+import { useConvexAuth, useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
 import {
@@ -29,92 +28,50 @@ type WorkspaceContextValue = {
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null)
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
-  const convex = useConvex()
   const { isLoading: isAuthLoading, isAuthenticated } = useConvexAuth()
-  const { workspaces, currentWorkspaceId } = useLocalFirstStore()
-  const [hasFetchedWorkspaces, setHasFetchedWorkspaces] = useState(false)
-  const [refreshAttempt, setRefreshAttempt] = useState(0)
+  const { workspaces: cachedWorkspaces, currentWorkspaceId } =
+    useLocalFirstStore()
+
+  // Live, reactive workspace list. Source of truth while signed in.
+  // Optimistic creates show up here immediately via withOptimisticUpdate.
+  const liveWorkspaces = useQuery(
+    api.workspaces.getUserWorkspaces,
+    isAuthenticated ? {} : "skip"
+  ) as Workspace[] | null | undefined
+
+  const liveAnswered = Array.isArray(liveWorkspaces)
 
   useEffect(() => {
-    if (isAuthLoading) {
-      return
-    }
+    if (isAuthLoading) return
 
     if (!isAuthenticated) {
       clearLocalFirstStore()
-      setHasFetchedWorkspaces(true)
       return
     }
 
-    let cancelled = false
-    let retryTimeout: ReturnType<typeof globalThis.setTimeout> | null = null
-    setHasFetchedWorkspaces(workspaces.length > 0)
-
-    function retryRefresh() {
-      retryTimeout = globalThis.setTimeout(
-        () => setRefreshAttempt((attempt) => attempt + 1),
-        1000
-      )
+    if (liveAnswered) {
+      setCachedWorkspaces(liveWorkspaces as Workspace[])
     }
+  }, [isAuthLoading, isAuthenticated, liveAnswered, liveWorkspaces])
 
-    async function refreshWorkspaces() {
-      try {
-        const nextWorkspaces = (await convex.query(
-          api.workspaces.getUserWorkspaces,
-          {}
-        )) as Workspace[] | null
+  // Use live data when we have it; otherwise fall back to cache for first paint.
+  const workspaces: Workspace[] = liveAnswered
+    ? (liveWorkspaces as Workspace[])
+    : cachedWorkspaces
 
-        if (cancelled) {
-          return
-        }
-
-        if (nextWorkspaces === null) {
-          if (workspaces.length > 0) {
-            setHasFetchedWorkspaces(true)
-          } else {
-            retryRefresh()
-          }
-          return
-        }
-
-        setCachedWorkspaces(nextWorkspaces)
-        setHasFetchedWorkspaces(true)
-      } catch {
-        if (cancelled) {
-          return
-        }
-
-        if (workspaces.length > 0) {
-          setHasFetchedWorkspaces(true)
-        } else {
-          retryRefresh()
-        }
-      }
-    }
-
-    void refreshWorkspaces()
-
-    return () => {
-      cancelled = true
-      if (retryTimeout !== null) {
-        globalThis.clearTimeout(retryTimeout)
-      }
-    }
-  }, [convex, isAuthLoading, isAuthenticated, refreshAttempt, workspaces.length])
-
-  const switchWorkspace = useCallback(
-    (id: Id<"workspaces">) => {
-      setCurrentWorkspaceId(id)
-    },
-    []
-  )
-
+  // We're loading only when we have no answer yet AND nothing cached to render.
   const isLoading =
     isAuthLoading ||
-    (isAuthenticated && !hasFetchedWorkspaces && workspaces.length === 0)
+    (isAuthenticated && !liveAnswered && cachedWorkspaces.length === 0)
+
+  const switchWorkspace = useCallback((id: Id<"workspaces">) => {
+    setCurrentWorkspaceId(id)
+  }, [])
 
   const currentWorkspace =
-    workspaces.find((workspace) => workspace._id === currentWorkspaceId) ?? null
+    workspaces.find((workspace) => workspace._id === currentWorkspaceId) ??
+    workspaces[0] ??
+    null
 
   return (
     <WorkspaceContext.Provider

@@ -5,9 +5,8 @@ import { useConvexAuth, useMutation } from "convex/react"
 
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
-import { type WorkspaceRecord } from "@/lib/local-first-store"
+import { setCurrentWorkspaceId, type WorkspaceRecord } from "@/lib/local-first-store"
 import {
-  insertWorkspaceRecord,
   removeWorkspaceRecord,
   replaceWorkspaceRecord,
   updateWorkspaceRecord,
@@ -43,7 +42,44 @@ function generatePrefix(name: string) {
 export function useWorkspaceOptimisticMutations() {
   const { userId } = useAuth()
   const { isLoading: isAuthLoading, isAuthenticated } = useConvexAuth()
-  const createWorkspace = useMutation(api.workspaces.createWorkspace)
+
+  // Optimistically insert the new workspace into the live getUserWorkspaces
+  // query so the WorkspaceProvider sees it immediately, before the server
+  // confirms. Convex replaces this with the real value once the mutation
+  // resolves and the subscription updates.
+  const createWorkspace = useMutation(
+    api.workspaces.createWorkspace
+  ).withOptimisticUpdate((localStore, args) => {
+    const current = localStore.getQuery(api.workspaces.getUserWorkspaces, {})
+    if (!Array.isArray(current)) {
+      return
+    }
+
+    const optimisticId = `optimistic-workspace-${
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2)
+    }` as unknown as Id<"workspaces">
+
+    const optimistic = {
+      _id: optimisticId,
+      _creationTime: Date.now(),
+      name: args.name,
+      prefix: generatePrefix(args.name),
+      iconId: args.iconId,
+      iconUrl: null,
+      ownerId: userId ?? "",
+      role: "owner" as const,
+      taskCounter: 0,
+      labels: [],
+    }
+
+    localStore.setQuery(api.workspaces.getUserWorkspaces, {}, [
+      ...current,
+      optimistic as unknown as (typeof current)[number],
+    ])
+  })
+
   const updateWorkspace = useMutation(api.workspaces.updateWorkspace)
   const deleteWorkspace = useMutation(api.workspaces.deleteWorkspace)
   const updateWorkspaceLabels = useMutation(api.workspaces.updateWorkspaceLabels)
@@ -51,7 +87,6 @@ export function useWorkspaceOptimisticMutations() {
   async function createWorkspaceOptimistic({
     name,
     iconId,
-    iconUrl,
   }: {
     name: string
     iconId?: Id<"_storage">
@@ -68,19 +103,7 @@ export function useWorkspaceOptimisticMutations() {
       iconId,
     })
 
-    const workspace: WorkspaceRecord = {
-      _id: workspaceId,
-      name: normalizedName,
-      prefix: generatePrefix(normalizedName),
-      iconId,
-      iconUrl: iconUrl ?? null,
-      ownerId: userId ?? "",
-      role: "owner",
-      taskCounter: 0,
-      labels: [],
-    }
-
-    insertWorkspaceRecord(workspace, { setCurrent: true })
+    setCurrentWorkspaceId(workspaceId)
 
     return workspaceId
   }
@@ -121,7 +144,6 @@ export function useWorkspaceOptimisticMutations() {
   async function deleteWorkspaceOptimistic({
     workspace,
     fallbackWorkspaceId,
-    index,
   }: {
     workspace: WorkspaceRecord
     fallbackWorkspaceId: Id<"workspaces"> | null
@@ -131,15 +153,7 @@ export function useWorkspaceOptimisticMutations() {
       nextCurrentWorkspaceId: fallbackWorkspaceId,
     })
 
-    try {
-      await deleteWorkspace({ workspaceId: workspace._id })
-    } catch (error) {
-      insertWorkspaceRecord(workspace, {
-        index,
-        setCurrent: true,
-      })
-      throw error
-    }
+    await deleteWorkspace({ workspaceId: workspace._id })
   }
 
   async function updateWorkspaceLabelsOptimistic({
