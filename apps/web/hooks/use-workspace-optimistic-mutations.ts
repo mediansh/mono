@@ -1,14 +1,11 @@
 "use client"
 
 import { useAuth } from "@clerk/nextjs"
-import { useMutation } from "convex/react"
+import { useConvexAuth, useMutation } from "convex/react"
 
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
-import {
-  getLocalFirstStoreSnapshot,
-  type WorkspaceRecord,
-} from "@/lib/local-first-store"
+import { type WorkspaceRecord } from "@/lib/local-first-store"
 import {
   insertWorkspaceRecord,
   removeWorkspaceRecord,
@@ -45,6 +42,7 @@ function generatePrefix(name: string) {
 
 export function useWorkspaceOptimisticMutations() {
   const { userId } = useAuth()
+  const { isLoading: isAuthLoading, isAuthenticated } = useConvexAuth()
   const createWorkspace = useMutation(api.workspaces.createWorkspace)
   const updateWorkspace = useMutation(api.workspaces.updateWorkspace)
   const deleteWorkspace = useMutation(api.workspaces.deleteWorkspace)
@@ -60,44 +58,31 @@ export function useWorkspaceOptimisticMutations() {
     iconUrl?: string | null
   }) {
     const normalizedName = name.trim()
-    const previousWorkspaceId = getLocalFirstStoreSnapshot().currentWorkspaceId as
-      | Id<"workspaces">
-      | null
-    const optimisticWorkspaceId =
-      `optimistic-workspace-${crypto.randomUUID()}` as Id<"workspaces">
 
-    const optimisticWorkspace: WorkspaceRecord = {
-      _id: optimisticWorkspaceId,
+    if (isAuthLoading || !isAuthenticated) {
+      throw new Error("Not authenticated")
+    }
+
+    const workspaceId = await createWorkspace({
+      name: normalizedName,
+      iconId,
+    })
+
+    const workspace: WorkspaceRecord = {
+      _id: workspaceId,
       name: normalizedName,
       prefix: generatePrefix(normalizedName),
       iconId,
       iconUrl: iconUrl ?? null,
-      ownerId: userId ?? "optimistic-user",
+      ownerId: userId ?? "",
       role: "owner",
       taskCounter: 0,
       labels: [],
     }
 
-    insertWorkspaceRecord(optimisticWorkspace, { setCurrent: true })
+    insertWorkspaceRecord(workspace, { setCurrent: true })
 
-    try {
-      const workspaceId = await createWorkspace({
-        name: normalizedName,
-        iconId,
-      })
-
-      replaceWorkspaceRecord(optimisticWorkspaceId, {
-        ...optimisticWorkspace,
-        _id: workspaceId,
-      })
-
-      return workspaceId
-    } catch (error) {
-      removeWorkspaceRecord(optimisticWorkspaceId, {
-        nextCurrentWorkspaceId: previousWorkspaceId,
-      })
-      throw error
-    }
+    return workspaceId
   }
 
   async function updateWorkspaceOptimistic({
