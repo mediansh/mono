@@ -2,6 +2,7 @@ import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import type { MutationCtx, QueryCtx } from "./_generated/server"
 import type { Id } from "./_generated/dataModel"
+import { internal } from "./_generated/api"
 import {
   getIdentityProfile,
   requireTaskWriteAccess,
@@ -9,6 +10,12 @@ import {
 } from "./permissions"
 
 const REACTION_EMOJI = "+1"
+
+async function queueLinearSync(ctx: MutationCtx, taskId: Id<"tasks">) {
+  await ctx.scheduler.runAfter(0, internal.linear.syncTaskToLinearIssue, {
+    taskId,
+  })
+}
 
 export type TaskCommentDTO = {
   _id: Id<"taskComments">
@@ -115,6 +122,8 @@ export const create = mutation({
       })
     }
 
+    await queueLinearSync(ctx, args.taskId)
+
     return commentId
   },
 })
@@ -164,6 +173,8 @@ export const edit = mutation({
         createdAt: now,
       })
     }
+
+    await queueLinearSync(ctx, comment.taskId)
   },
 })
 
@@ -205,8 +216,7 @@ export const toggleReaction = mutation({
 
     const nextReactions = alreadyReacted
       ? existing.filter(
-          (r) =>
-            !(r.userId === identity.subject && r.emoji === REACTION_EMOJI)
+          (r) => !(r.userId === identity.subject && r.emoji === REACTION_EMOJI)
         )
       : [...existing, { userId: identity.subject, emoji: REACTION_EMOJI }]
 
@@ -240,10 +250,7 @@ export const markTaskMentionsRead = mutation({
 
 export const unreadMentionCountsForWorkspace = query({
   args: { workspaceId: v.id("workspaces") },
-  handler: async (
-    ctx,
-    args
-  ): Promise<Record<string, number>> => {
+  handler: async (ctx, args): Promise<Record<string, number>> => {
     const { identity } = await requireWorkspaceAccess(ctx, args.workspaceId)
 
     const unread = await ctx.db

@@ -281,6 +281,20 @@ export default defineSchema({
     .index("by_task", ["taskId"])
     .index("by_linear_issue", ["linearIssueId"]),
 
+  linearCommentLinks: defineTable({
+    workspaceId: v.id("workspaces"),
+    taskId: v.id("tasks"),
+    taskCommentId: v.id("taskComments"),
+    linearIssueId: v.string(),
+    linearCommentId: v.string(),
+    lastLinearUpdatedAt: v.optional(v.string()),
+    lastSyncedAt: v.number(),
+  })
+    .index("by_task", ["taskId"])
+    .index("by_task_comment", ["taskCommentId"])
+    .index("by_linear_comment", ["linearCommentId"])
+    .index("by_linear_issue", ["linearIssueId"]),
+
   linearWebhookDeliveries: defineTable({
     deliveryId: v.string(),
     integrationId: v.id("linearWorkspaceIntegrations"),

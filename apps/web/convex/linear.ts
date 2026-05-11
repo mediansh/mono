@@ -74,6 +74,35 @@ type LinearIssue = {
     name: string
     type: string
   } | null
+  assignee: LinearUser | null
+}
+
+type LinearUser = {
+  id: string
+  name: string | null
+  displayName: string | null
+  email: string | null
+  avatarUrl: string | null
+}
+
+type LinearComment = {
+  id: string
+  body: string
+  createdAt: string
+  updatedAt: string
+  user: LinearUser | null
+}
+
+type LinearIssueCommentsResult = {
+  issue: {
+    comments: {
+      nodes: LinearComment[]
+      pageInfo: {
+        hasNextPage: boolean
+        endCursor: string | null
+      }
+    }
+  } | null
 }
 
 type LinearWebhookPayload = {
@@ -81,6 +110,7 @@ type LinearWebhookPayload = {
   type?: string
   data?: {
     id?: string
+    issueId?: string
   }
 }
 
@@ -109,6 +139,15 @@ const linearIssueValidator = v.object({
       id: v.string(),
       name: v.string(),
       type: v.string(),
+    })
+  ),
+  assignee: v.optional(
+    v.object({
+      id: v.string(),
+      name: v.optional(v.string()),
+      displayName: v.optional(v.string()),
+      email: v.optional(v.string()),
+      avatarUrl: v.optional(v.string()),
     })
   ),
 })
@@ -156,14 +195,28 @@ function getMedianTaskTitleFromLinearIssue(issueTitle: string) {
 function mergeTaskSources(
   existingSources:
     | Array<{
-        platform: "discord" | "slack" | "x" | "linear" | "github" | "cli" | "api"
+        platform:
+          | "discord"
+          | "slack"
+          | "x"
+          | "linear"
+          | "github"
+          | "cli"
+          | "api"
         url: string
         author: string
       }>
     | undefined,
   nextSource:
     | {
-        platform: "discord" | "slack" | "x" | "linear" | "github" | "cli" | "api"
+        platform:
+          | "discord"
+          | "slack"
+          | "x"
+          | "linear"
+          | "github"
+          | "cli"
+          | "api"
         url: string
         author: string
       }
@@ -211,6 +264,37 @@ function formatCreatedAtLabel(createdAt: string) {
 function normalizeOptionalText(value: string | null | undefined) {
   const trimmed = value?.trim()
   return trimmed ? trimmed : undefined
+}
+
+function normalizeLookupText(value: string | null | undefined) {
+  return value?.trim().toLowerCase() ?? ""
+}
+
+function parseLinearTimestamp(value: string | null | undefined) {
+  if (!value) return Date.now()
+  const parsed = Date.parse(value)
+  return Number.isFinite(parsed) ? parsed : Date.now()
+}
+
+function getLinearUserDisplayName(user: LinearUser | null | undefined) {
+  return (
+    normalizeOptionalText(user?.displayName) ??
+    normalizeOptionalText(user?.name) ??
+    normalizeOptionalText(user?.email) ??
+    "Linear user"
+  )
+}
+
+function formatMedianCommentForLinear(comment: {
+  authorName?: string | null
+  bodyMarkdown: string
+}) {
+  const authorName = normalizeOptionalText(comment.authorName) ?? "Median"
+  return `MDN - ${authorName}\n\n${comment.bodyMarkdown.trim()}`
+}
+
+function isMedianCommentBody(value: string) {
+  return /^MDN\s*-\s*.+/i.test(value.trimStart())
 }
 
 function normalizeTaskLabelName(value: string) {
@@ -596,6 +680,13 @@ async function fetchIssueById(apiKey: string, issueId: string) {
             name
             type
           }
+          assignee {
+            id
+            name
+            displayName
+            email
+            avatarUrl
+          }
         }
       }
     `,
@@ -682,6 +773,13 @@ async function fetchTeamIssues(apiKey: string, teamId: string) {
                   name
                   type
                 }
+                assignee {
+                  id
+                  name
+                  displayName
+                  email
+                  avatarUrl
+                }
               }
               pageInfo {
                 hasNextPage
@@ -747,6 +845,88 @@ async function fetchTeamLabels(apiKey: string, teamId: string) {
   return data.team.labels.nodes
 }
 
+async function fetchTeamMembers(apiKey: string, teamId: string) {
+  const data = await linearGraphql<{
+    team: {
+      members: {
+        nodes: LinearUser[]
+      }
+    } | null
+  }>(
+    apiKey,
+    `
+      query TeamMembers($teamId: String!) {
+        team(id: $teamId) {
+          members(first: 250) {
+            nodes {
+              id
+              name
+              displayName
+              email
+              avatarUrl
+            }
+          }
+        }
+      }
+    `,
+    { teamId }
+  )
+
+  if (!data.team) {
+    throw new Error("Linear team not found while loading members")
+  }
+
+  return data.team.members.nodes
+}
+
+async function fetchIssueComments(apiKey: string, issueId: string) {
+  const comments: LinearComment[] = []
+  let after: string | null = null
+
+  do {
+    const data: LinearIssueCommentsResult = await linearGraphql(
+      apiKey,
+      `
+        query IssueComments($issueId: String!, $after: String) {
+          issue(id: $issueId) {
+            comments(first: 100, after: $after) {
+              nodes {
+                id
+                body
+                createdAt
+                updatedAt
+                user {
+                  id
+                  name
+                  displayName
+                  email
+                  avatarUrl
+                }
+              }
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
+            }
+          }
+        }
+      `,
+      { issueId, after }
+    )
+
+    if (!data.issue) {
+      return comments
+    }
+
+    comments.push(...data.issue.comments.nodes)
+    after = data.issue.comments.pageInfo.hasNextPage
+      ? data.issue.comments.pageInfo.endCursor
+      : null
+  } while (after)
+
+  return comments
+}
+
 async function issueLabelCreate(
   apiKey: string,
   input: {
@@ -801,7 +981,7 @@ async function createWebhook(apiKey: string, teamId: string, url: string) {
           input: {
             teamId: $teamId
             url: $url
-            resourceTypes: ["Issue"]
+            resourceTypes: ["Issue", "Comment"]
           }
         ) {
           success
@@ -850,6 +1030,7 @@ async function issueCreate(
     priority: number
     labelIds: string[]
     stateId?: string
+    assigneeId?: string | null
   }
 ) {
   const data = await linearGraphql<{
@@ -898,6 +1079,7 @@ async function issueUpdate(
     priority: number
     labelIds: string[]
     stateId?: string
+    assigneeId?: string | null
   }
 ) {
   const data = await linearGraphql<{
@@ -962,6 +1144,85 @@ async function issueDelete(apiKey: string, issueId: string) {
   }
 }
 
+async function commentCreate(
+  apiKey: string,
+  input: {
+    issueId: string
+    body: string
+  }
+) {
+  const data = await linearGraphql<{
+    commentCreate: {
+      success: boolean
+      comment: {
+        id: string
+        updatedAt: string
+      } | null
+    }
+  }>(
+    apiKey,
+    `
+      mutation CreateComment($input: CommentCreateInput!) {
+        commentCreate(input: $input) {
+          success
+          comment {
+            id
+            updatedAt
+          }
+        }
+      }
+    `,
+    { input }
+  )
+
+  if (!data.commentCreate.success || !data.commentCreate.comment) {
+    throw new Error("Failed to create the Linear comment")
+  }
+
+  return data.commentCreate.comment
+}
+
+async function commentUpdate(
+  apiKey: string,
+  commentId: string,
+  input: {
+    body: string
+  }
+) {
+  const data = await linearGraphql<{
+    commentUpdate: {
+      success: boolean
+      comment: {
+        id: string
+        updatedAt: string
+      } | null
+    }
+  }>(
+    apiKey,
+    `
+      mutation UpdateComment($commentId: String!, $input: CommentUpdateInput!) {
+        commentUpdate(id: $commentId, input: $input) {
+          success
+          comment {
+            id
+            updatedAt
+          }
+        }
+      }
+    `,
+    {
+      commentId,
+      input,
+    }
+  )
+
+  if (!data.commentUpdate.success || !data.commentUpdate.comment) {
+    throw new Error("Failed to update the Linear comment")
+  }
+
+  return data.commentUpdate.comment
+}
+
 function buildLinearWebhookUrl(webhookToken: string) {
   const baseUrl =
     process.env.CONVEX_SITE_URL ?? process.env.NEXT_PUBLIC_CONVEX_SITE_URL
@@ -1008,12 +1269,25 @@ async function syncTaskToLinear(
     task.status,
     integration.statusMappings
   )
+  const workspaceMembers = await ctx.runQuery(
+    internal.linear.getWorkspaceMembersForLinearSync,
+    {
+      workspaceId: integration.workspaceId,
+    }
+  )
+  const assigneeId = await resolveLinearAssigneeId(
+    integration.apiKey,
+    integration.teamId,
+    workspaceMembers,
+    task
+  )
   const input = {
     title: formatMedianTaskTitleForLinear(task.title),
     description: normalizeOptionalText(task.description),
     priority: mapTaskPriorityToLinear(task.priority),
     labelIds,
     stateId,
+    ...(assigneeId !== undefined ? { assigneeId } : {}),
   }
 
   if (link) {
@@ -1038,6 +1312,13 @@ async function syncTaskToLinear(
       linearIssueUrl: updatedIssue.url ?? undefined,
       lastLinearUpdatedAt: updatedIssue.updatedAt,
     })
+    await syncTaskCommentsToLinear(
+      ctx,
+      integration.apiKey,
+      integration.workspaceId,
+      task._id,
+      updatedIssue.id
+    )
     return "updated" as const
   }
 
@@ -1053,7 +1334,74 @@ async function syncTaskToLinear(
     linearIssueUrl: createdIssue.url ?? undefined,
     lastLinearUpdatedAt: createdIssue.updatedAt,
   })
+  await syncTaskCommentsToLinear(
+    ctx,
+    integration.apiKey,
+    integration.workspaceId,
+    task._id,
+    createdIssue.id
+  )
   return "created" as const
+}
+
+async function syncTaskCommentsToLinear(
+  ctx: any,
+  apiKey: string,
+  workspaceId: Id<"workspaces">,
+  taskId: Id<"tasks">,
+  linearIssueId: string
+) {
+  const [comments, links] = await Promise.all([
+    ctx.runQuery(internal.linear.getTaskCommentsForLinearSync, { taskId }),
+    ctx.runQuery(internal.linear.getLinearCommentLinksForTask, { taskId }),
+  ])
+  const linksByTaskCommentId = new Map<
+    Id<"taskComments">,
+    Doc<"linearCommentLinks">
+  >(
+    (links as Doc<"linearCommentLinks">[]).map((link) => [
+      link.taskCommentId,
+      link,
+    ])
+  )
+
+  for (const comment of comments as Doc<"taskComments">[]) {
+    const existingLink = linksByTaskCommentId.get(comment._id)
+    if (existingLink) {
+      const lastEditedAt = comment.editedAt ?? comment.createdAt
+      if (lastEditedAt > existingLink.lastSyncedAt) {
+        const updatedComment = await commentUpdate(
+          apiKey,
+          existingLink.linearCommentId,
+          {
+            body: formatMedianCommentForLinear(comment),
+          }
+        )
+        await ctx.runMutation(internal.linear.saveLinearCommentLink, {
+          workspaceId,
+          taskId,
+          taskCommentId: comment._id,
+          linearIssueId,
+          linearCommentId: updatedComment.id,
+          lastLinearUpdatedAt: updatedComment.updatedAt,
+        })
+      }
+      continue
+    }
+
+    const createdComment = await commentCreate(apiKey, {
+      issueId: linearIssueId,
+      body: formatMedianCommentForLinear(comment),
+    })
+    await ctx.runMutation(internal.linear.saveLinearCommentLink, {
+      workspaceId,
+      taskId,
+      taskCommentId: comment._id,
+      linearIssueId,
+      linearCommentId: createdComment.id,
+      lastLinearUpdatedAt: createdComment.updatedAt,
+    })
+  }
 }
 
 async function resolveLinearLabelIds(
@@ -1105,6 +1453,116 @@ async function resolveLinearLabelIds(
   }
 
   return labelIds
+}
+
+async function resolveLinearAssigneeId(
+  apiKey: string,
+  teamId: string,
+  workspaceMembers:
+    | Array<{
+        userId: string
+        name?: string
+        email?: string
+      }>
+    | undefined,
+  task: Doc<"tasks">
+) {
+  const assignee = task.assignees?.[0]
+  if (!assignee) {
+    return null
+  }
+
+  const member = workspaceMembers?.find(
+    (candidate) => candidate.userId === assignee.userId
+  )
+  const assigneeEmail = normalizeLookupText(member?.email)
+  const assigneeName = normalizeLookupText(assignee.name || member?.name)
+
+  if (!assigneeEmail && !assigneeName) {
+    return undefined
+  }
+
+  const teamMembers = await fetchTeamMembers(apiKey, teamId)
+  const matchedUser = teamMembers.find((user) => {
+    if (assigneeEmail && normalizeLookupText(user.email) === assigneeEmail) {
+      return true
+    }
+
+    const linearNames = [
+      normalizeLookupText(user.displayName),
+      normalizeLookupText(user.name),
+    ]
+    return assigneeName ? linearNames.includes(assigneeName) : false
+  })
+
+  return matchedUser?.id
+}
+
+function mapLinearAssigneeToTaskAssignees(
+  assignee: LinearUser | null | undefined,
+  workspaceMembers:
+    | Array<{
+        userId: string
+        name?: string
+        email?: string
+        imageUrl?: string
+      }>
+    | undefined
+) {
+  if (!assignee) {
+    return undefined
+  }
+
+  const assigneeEmail = normalizeLookupText(assignee.email)
+  const assigneeName = normalizeLookupText(
+    assignee.displayName ?? assignee.name
+  )
+  const matchedMember = workspaceMembers?.find((member) => {
+    if (assigneeEmail && normalizeLookupText(member.email) === assigneeEmail) {
+      return true
+    }
+    return assigneeName
+      ? normalizeLookupText(member.name) === assigneeName
+      : false
+  })
+
+  return [
+    {
+      userId: matchedMember?.userId ?? `linear:${assignee.id}`,
+      name: matchedMember?.name ?? getLinearUserDisplayName(assignee),
+      imageUrl: matchedMember?.imageUrl ?? assignee.avatarUrl ?? undefined,
+    },
+  ]
+}
+
+async function syncLinearCommentsToTask(
+  ctx: any,
+  apiKey: string,
+  workspaceId: Id<"workspaces">,
+  taskId: Id<"tasks">,
+  linearIssueId: string
+) {
+  const comments = await fetchIssueComments(apiKey, linearIssueId)
+
+  for (const comment of comments) {
+    const body = comment.body.trim()
+    if (!body || isMedianCommentBody(body)) continue
+
+    const authorName = getLinearUserDisplayName(comment.user)
+    await ctx.runMutation(internal.linear.upsertTaskCommentFromLinear, {
+      workspaceId,
+      taskId,
+      linearIssueId,
+      linearCommentId: comment.id,
+      bodyMarkdown: body,
+      authorId: comment.user?.id ? `linear:${comment.user.id}` : "linear",
+      authorName,
+      authorImageUrl: comment.user?.avatarUrl ?? undefined,
+      createdAt: parseLinearTimestamp(comment.createdAt),
+      updatedAt: parseLinearTimestamp(comment.updatedAt),
+      lastLinearUpdatedAt: comment.updatedAt,
+    })
+  }
 }
 
 export const getWorkspaceLinearIntegration = query({
@@ -1166,6 +1624,43 @@ export const getWorkspaceLinearLabelDefinitions = internalQuery({
   handler: async (ctx, args) => {
     const workspace = await ctx.db.get(args.workspaceId)
     return workspace?.labels ?? DEFAULT_WORKSPACE_LABELS
+  },
+})
+
+export const getWorkspaceMembersForLinearSync = internalQuery({
+  args: {
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("workspaceMembers")
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .collect()
+  },
+})
+
+export const getTaskCommentsForLinearSync = internalQuery({
+  args: {
+    taskId: v.id("tasks"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("taskComments")
+      .withIndex("by_task_created", (q) => q.eq("taskId", args.taskId))
+      .order("asc")
+      .collect()
+  },
+})
+
+export const getLinearCommentLinksForTask = internalQuery({
+  args: {
+    taskId: v.id("tasks"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("linearCommentLinks")
+      .withIndex("by_task", (q) => q.eq("taskId", args.taskId))
+      .collect()
   },
 })
 
@@ -1391,6 +1886,130 @@ export const saveLinearTaskLink = internalMutation({
     }
 
     return linkId
+  },
+})
+
+export const saveLinearCommentLink = internalMutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    taskId: v.id("tasks"),
+    taskCommentId: v.id("taskComments"),
+    linearIssueId: v.string(),
+    linearCommentId: v.string(),
+    lastLinearUpdatedAt: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const existingByLinearComment = await ctx.db
+      .query("linearCommentLinks")
+      .withIndex("by_linear_comment", (q) =>
+        q.eq("linearCommentId", args.linearCommentId)
+      )
+      .unique()
+    const existingByTaskComment = await ctx.db
+      .query("linearCommentLinks")
+      .withIndex("by_task_comment", (q) =>
+        q.eq("taskCommentId", args.taskCommentId)
+      )
+      .unique()
+
+    const payload = {
+      workspaceId: args.workspaceId,
+      taskId: args.taskId,
+      taskCommentId: args.taskCommentId,
+      linearIssueId: args.linearIssueId,
+      linearCommentId: args.linearCommentId,
+      lastLinearUpdatedAt: args.lastLinearUpdatedAt,
+      lastSyncedAt: Date.now(),
+    }
+
+    if (
+      existingByLinearComment &&
+      existingByTaskComment &&
+      existingByLinearComment._id !== existingByTaskComment._id
+    ) {
+      await ctx.db.delete(existingByTaskComment._id)
+    }
+
+    if (existingByLinearComment) {
+      await ctx.db.patch(existingByLinearComment._id, payload)
+      return existingByLinearComment._id
+    }
+
+    if (existingByTaskComment) {
+      await ctx.db.patch(existingByTaskComment._id, payload)
+      return existingByTaskComment._id
+    }
+
+    return await ctx.db.insert("linearCommentLinks", payload)
+  },
+})
+
+export const upsertTaskCommentFromLinear = internalMutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    taskId: v.id("tasks"),
+    linearIssueId: v.string(),
+    linearCommentId: v.string(),
+    bodyMarkdown: v.string(),
+    authorId: v.string(),
+    authorName: v.string(),
+    authorImageUrl: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    lastLinearUpdatedAt: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const existingLink = await ctx.db
+      .query("linearCommentLinks")
+      .withIndex("by_linear_comment", (q) =>
+        q.eq("linearCommentId", args.linearCommentId)
+      )
+      .unique()
+
+    if (existingLink) {
+      const existingComment = await ctx.db.get(existingLink.taskCommentId)
+      if (existingComment) {
+        await ctx.db.patch(existingComment._id, {
+          bodyMarkdown: args.bodyMarkdown,
+          authorName: args.authorName,
+          authorImageUrl: args.authorImageUrl,
+          editedAt:
+            args.updatedAt !== args.createdAt ? args.updatedAt : undefined,
+        })
+        await ctx.db.patch(existingLink._id, {
+          lastLinearUpdatedAt: args.lastLinearUpdatedAt,
+          lastSyncedAt: Date.now(),
+        })
+        return existingComment._id
+      }
+
+      await ctx.db.delete(existingLink._id)
+    }
+
+    const commentId = await ctx.db.insert("taskComments", {
+      workspaceId: args.workspaceId,
+      taskId: args.taskId,
+      authorId: args.authorId,
+      authorName: args.authorName,
+      authorImageUrl: args.authorImageUrl,
+      bodyMarkdown: args.bodyMarkdown,
+      mentionedUserIds: [],
+      reactions: [],
+      createdAt: args.createdAt,
+      editedAt: args.updatedAt !== args.createdAt ? args.updatedAt : undefined,
+    })
+
+    await ctx.db.insert("linearCommentLinks", {
+      workspaceId: args.workspaceId,
+      taskId: args.taskId,
+      taskCommentId: commentId,
+      linearIssueId: args.linearIssueId,
+      linearCommentId: args.linearCommentId,
+      lastLinearUpdatedAt: args.lastLinearUpdatedAt,
+      lastSyncedAt: Date.now(),
+    })
+
+    return commentId
   },
 })
 
@@ -1656,6 +2275,15 @@ export const upsertTaskFromLinearIssue = internalMutation({
             type: args.issue.state.type,
           }
         : null,
+      assignee: args.issue.assignee
+        ? {
+            id: args.issue.assignee.id,
+            name: args.issue.assignee.name ?? null,
+            displayName: args.issue.assignee.displayName ?? null,
+            email: args.issue.assignee.email ?? null,
+            avatarUrl: args.issue.assignee.avatarUrl ?? null,
+          }
+        : null,
     }
 
     const workspace = await ctx.db.get(args.workspaceId)
@@ -1675,6 +2303,14 @@ export const upsertTaskFromLinearIssue = internalMutation({
     const taskPriority = mapLinearPriorityToTask(issue.priority)
     const taskLabels = mapLinearLabelsToTaskLabels(issue.labels)
     const nextDescription = normalizeOptionalText(issue.description)
+    const workspaceMembers = await ctx.db
+      .query("workspaceMembers")
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .collect()
+    const nextAssignees = mapLinearAssigneeToTaskAssignees(
+      issue.assignee,
+      workspaceMembers
+    )
     const linearUpdatedAt = new Date(issue.updatedAt).getTime()
     const nextSource = issue.url
       ? {
@@ -1695,6 +2331,8 @@ export const upsertTaskFromLinearIssue = internalMutation({
           description: nextDescription,
           priority: taskPriority,
           labels: taskLabels,
+          assignees: nextAssignees,
+          assignee: undefined,
           updatedAt: Number.isFinite(linearUpdatedAt)
             ? linearUpdatedAt
             : Date.now(),
@@ -1761,6 +2399,8 @@ export const upsertTaskFromLinearIssue = internalMutation({
         description: nextDescription,
         priority: taskPriority,
         labels: taskLabels,
+        assignees: nextAssignees,
+        assignee: undefined,
         updatedAt: Number.isFinite(linearUpdatedAt)
           ? linearUpdatedAt
           : Date.now(),
@@ -1821,15 +2461,13 @@ export const upsertTaskFromLinearIssue = internalMutation({
       status: taskStatus,
       priority: taskPriority,
       labels: taskLabels,
+      assignees: nextAssignees,
       order: workspaceTasks.filter((task) => task.status === taskStatus).length,
       project: workspace.name,
       updatedAt: Number.isFinite(linearUpdatedAt)
         ? linearUpdatedAt
         : Date.now(),
-      assignee: {
-        name: "Abdul",
-        avatar: "",
-      },
+      assignee: undefined,
       source: nextSource,
       createdAtLabel: formatCreatedAtLabel(issue.createdAt),
       attachments: undefined,
@@ -2143,32 +2781,53 @@ export const performWorkspaceLinearSync = internalAction({
     )
     const activeLinearIssueIds = teamIssues.map((issue) => issue.id)
     for (const issue of teamIssues) {
-      await ctx.runMutation(internal.linear.upsertTaskFromLinearIssue, {
-        workspaceId: args.workspaceId,
-        statusMappings: normalizeStatusMappings(integration.statusMappings),
-        issue: {
-          id: issue.id,
-          identifier: issue.identifier,
-          title: issue.title,
-          description: issue.description ?? undefined,
-          url: issue.url ?? undefined,
-          priority: issue.priority ?? undefined,
-          labels: issue.labels.map((label) => ({
-            id: label.id,
-            name: label.name,
-            color: label.color ?? undefined,
-          })),
-          createdAt: issue.createdAt,
-          updatedAt: issue.updatedAt,
-          state: issue.state
-            ? {
-                id: issue.state.id,
-                name: issue.state.name,
-                type: issue.state.type,
-              }
-            : undefined,
-        },
-      })
+      const taskId = await ctx.runMutation(
+        internal.linear.upsertTaskFromLinearIssue,
+        {
+          workspaceId: args.workspaceId,
+          statusMappings: normalizeStatusMappings(integration.statusMappings),
+          issue: {
+            id: issue.id,
+            identifier: issue.identifier,
+            title: issue.title,
+            description: issue.description ?? undefined,
+            url: issue.url ?? undefined,
+            priority: issue.priority ?? undefined,
+            labels: issue.labels.map((label) => ({
+              id: label.id,
+              name: label.name,
+              color: label.color ?? undefined,
+            })),
+            createdAt: issue.createdAt,
+            updatedAt: issue.updatedAt,
+            state: issue.state
+              ? {
+                  id: issue.state.id,
+                  name: issue.state.name,
+                  type: issue.state.type,
+                }
+              : undefined,
+            assignee: issue.assignee
+              ? {
+                  id: issue.assignee.id,
+                  name: issue.assignee.name ?? undefined,
+                  displayName: issue.assignee.displayName ?? undefined,
+                  email: issue.assignee.email ?? undefined,
+                  avatarUrl: issue.assignee.avatarUrl ?? undefined,
+                }
+              : undefined,
+          },
+        }
+      )
+      if (taskId) {
+        await syncLinearCommentsToTask(
+          ctx,
+          integration.apiKey,
+          args.workspaceId,
+          taskId,
+          issue.id
+        )
+      }
     }
 
     await ctx.runMutation(internal.linear.reconcileMissingLinearIssues, {
@@ -2348,32 +3007,53 @@ export const syncLinearIssueFromWebhook = internalAction({
       return { skipped: true }
     }
 
-    await ctx.runMutation(internal.linear.upsertTaskFromLinearIssue, {
-      workspaceId: integration.workspaceId,
-      statusMappings: normalizeStatusMappings(integration.statusMappings),
-      issue: {
-        id: issue.id,
-        identifier: issue.identifier,
-        title: issue.title,
-        description: issue.description ?? undefined,
-        url: issue.url ?? undefined,
-        priority: issue.priority ?? undefined,
-        labels: issue.labels.map((label) => ({
-          id: label.id,
-          name: label.name,
-          color: label.color ?? undefined,
-        })),
-        createdAt: issue.createdAt,
-        updatedAt: issue.updatedAt,
-        state: issue.state
-          ? {
-              id: issue.state.id,
-              name: issue.state.name,
-              type: issue.state.type,
-            }
-          : undefined,
-      },
-    })
+    const taskId = await ctx.runMutation(
+      internal.linear.upsertTaskFromLinearIssue,
+      {
+        workspaceId: integration.workspaceId,
+        statusMappings: normalizeStatusMappings(integration.statusMappings),
+        issue: {
+          id: issue.id,
+          identifier: issue.identifier,
+          title: issue.title,
+          description: issue.description ?? undefined,
+          url: issue.url ?? undefined,
+          priority: issue.priority ?? undefined,
+          labels: issue.labels.map((label) => ({
+            id: label.id,
+            name: label.name,
+            color: label.color ?? undefined,
+          })),
+          createdAt: issue.createdAt,
+          updatedAt: issue.updatedAt,
+          state: issue.state
+            ? {
+                id: issue.state.id,
+                name: issue.state.name,
+                type: issue.state.type,
+              }
+            : undefined,
+          assignee: issue.assignee
+            ? {
+                id: issue.assignee.id,
+                name: issue.assignee.name ?? undefined,
+                displayName: issue.assignee.displayName ?? undefined,
+                email: issue.assignee.email ?? undefined,
+                avatarUrl: issue.assignee.avatarUrl ?? undefined,
+              }
+            : undefined,
+        },
+      }
+    )
+    if (taskId) {
+      await syncLinearCommentsToTask(
+        ctx,
+        integration.apiKey,
+        integration.workspaceId,
+        taskId,
+        issue.id
+      )
+    }
     await ctx.runMutation(internal.linear.markLinearIntegrationSyncedAt, {
       integrationId: integration._id,
       syncedAt: Date.now(),
@@ -2419,13 +3099,15 @@ export const linearWebhook = httpAction(async (ctx, request) => {
   }
 
   const payload = (await request.json()) as LinearWebhookPayload
-  if (payload.type !== "Issue" || !payload.data?.id) {
+  const issueId =
+    payload.type === "Issue" ? payload.data?.id : payload.data?.issueId
+  if (!issueId) {
     return new Response("Ignored", { status: 200 })
   }
 
-  if (payload.action === "remove") {
+  if (payload.type === "Issue" && payload.action === "remove") {
     await ctx.runMutation(internal.linear.archiveTaskForRemovedLinearIssue, {
-      linearIssueId: payload.data.id,
+      linearIssueId: issueId,
     })
     return new Response("Archived", { status: 200 })
   }
@@ -2455,7 +3137,7 @@ export const linearWebhook = httpAction(async (ctx, request) => {
 
   await ctx.runAction(internal.linear.syncLinearIssueFromWebhook, {
     integrationId: integration._id,
-    issueId: payload.data.id,
+    issueId,
   })
 
   return new Response("OK", { status: 200 })
