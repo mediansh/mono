@@ -45,6 +45,7 @@ import {
   MagnifyingGlass,
   DotsSixVertical,
   Users,
+  At,
 } from "@phosphor-icons/react"
 import { NewTaskModal } from "@/components/new-task-modal"
 import {
@@ -59,6 +60,7 @@ import {
   getDefaultAttachmentDisplayWidth,
   type TaskAttachment,
 } from "@/components/task-attachments"
+import { TaskCommentsPanel } from "@/components/task-comments-panel"
 import {
   Dialog,
   DialogContent,
@@ -213,6 +215,11 @@ function useBoardMounted() {
   return useContext(BoardMountedContext)
 }
 
+const UnreadMentionsContext = createContext<Record<string, number>>({})
+function useUnreadMentionCount(taskId: string): number {
+  return useContext(UnreadMentionsContext)[taskId] ?? 0
+}
+
 // ── Task detail side panel: width persistence ──
 const TASK_PANEL_WIDTH_STORAGE_KEY = "median_task_panel_width_v1"
 const TASK_PANEL_DEFAULT_WIDTH = 480
@@ -250,6 +257,44 @@ function saveTaskPanelWidth(width: number) {
     window.localStorage.setItem(TASK_PANEL_WIDTH_STORAGE_KEY, String(width))
   } catch {
     // ignore storage errors (private mode, full storage, etc.)
+  }
+}
+
+// ── Task detail body: vertical split between description and comments ──
+const TASK_COMMENT_SPLIT_STORAGE_KEY = "median_task_comment_split_v1"
+const TASK_COMMENT_SPLIT_DEFAULT = 0.5
+const TASK_COMMENT_SPLIT_MIN = 0.25
+const TASK_COMMENT_SPLIT_MAX = 0.75
+
+function clampCommentSplit(ratio: number): number {
+  if (!Number.isFinite(ratio)) return TASK_COMMENT_SPLIT_DEFAULT
+  return Math.min(
+    Math.max(ratio, TASK_COMMENT_SPLIT_MIN),
+    TASK_COMMENT_SPLIT_MAX
+  )
+}
+
+function loadCommentSplitRatio(): number {
+  if (typeof window === "undefined") return TASK_COMMENT_SPLIT_DEFAULT
+  try {
+    const raw = window.localStorage.getItem(TASK_COMMENT_SPLIT_STORAGE_KEY)
+    if (!raw) return TASK_COMMENT_SPLIT_DEFAULT
+    const parsed = Number(raw)
+    return clampCommentSplit(parsed)
+  } catch {
+    return TASK_COMMENT_SPLIT_DEFAULT
+  }
+}
+
+function saveCommentSplitRatio(ratio: number) {
+  if (typeof window === "undefined") return
+  try {
+    window.localStorage.setItem(
+      TASK_COMMENT_SPLIT_STORAGE_KEY,
+      String(ratio)
+    )
+  } catch {
+    // ignore
   }
 }
 
@@ -1036,6 +1081,24 @@ function TaskContextMenuContent({
 
 // ── List View Components ──
 
+const UnreadMentionBadge = memo(function UnreadMentionBadge({
+  taskId,
+}: {
+  taskId: string
+}) {
+  const count = useUnreadMentionCount(taskId)
+  if (count === 0) return null
+  return (
+    <span
+      title={`${count} unread mention${count === 1 ? "" : "s"}`}
+      className="inline-flex h-[18px] min-w-[18px] items-center justify-center gap-0.5 rounded-full bg-primary/15 px-1 text-[10px] font-semibold text-primary ring-1 ring-primary/30"
+    >
+      <At size={10} weight="bold" />
+      {count > 1 ? <span>{count}</span> : null}
+    </span>
+  )
+})
+
 const AgentBadge = memo(function AgentBadge({
   agentName,
 }: {
@@ -1064,6 +1127,7 @@ const ListRowContent = memo(function ListRowContent({ task }: { task: Task }) {
         {task.title}
       </span>
       <div className="hidden shrink-0 items-center gap-1.5 sm:flex">
+        <UnreadMentionBadge taskId={task.id} />
         {activeAgent && <AgentBadge agentName={activeAgent} />}
         {(task.labels ?? []).map((label) => (
           <span
@@ -1233,6 +1297,7 @@ function DragOverlayCard({
               <div className="shrink-0">
                 {getPriorityIcon(task.priority, 12)}
               </div>
+              <UnreadMentionBadge taskId={task.id} />
               {activeAgent && <AgentBadge agentName={activeAgent} />}
               {(task.labels ?? []).map((label) => (
                 <span
@@ -1517,6 +1582,14 @@ function TaskDetailSidePanel({
   const [uploading, setUploading] = useState(false)
   const [isResizing, setIsResizing] = useState(false)
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
+  const [commentSplitRatio, setCommentSplitRatio] = useState<number>(() =>
+    loadCommentSplitRatio()
+  )
+  const [isSplitResizing, setIsSplitResizing] = useState(false)
+  const splitContainerRef = useRef<HTMLDivElement | null>(null)
+  const markTaskMentionsRead = useMutation(
+    api.taskComments.markTaskMentionsRead
+  )
   const fileInputRef = useRef<HTMLInputElement>(null)
   const titleRef = useRef<HTMLTextAreaElement>(null)
   const normalizedAssignees: TaskAssignee[] =
@@ -1757,6 +1830,58 @@ function TaskDetailSidePanel({
     },
     [width, onWidthChange]
   )
+
+  // Persist split ratio after the drag completes.
+  useEffect(() => {
+    if (isSplitResizing) return
+    saveCommentSplitRatio(commentSplitRatio)
+  }, [isSplitResizing, commentSplitRatio])
+
+  const handleSplitResizeStart = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      event.preventDefault()
+      const container = splitContainerRef.current
+      if (!container) return
+      const rect = container.getBoundingClientRect()
+      if (rect.height <= 0) return
+
+      setIsSplitResizing(true)
+      const previousUserSelect = document.body.style.userSelect
+      const previousCursor = document.body.style.cursor
+      document.body.style.userSelect = "none"
+      document.body.style.cursor = "row-resize"
+
+      function onMove(ev: PointerEvent) {
+        const offsetY = ev.clientY - rect.top
+        const nextRatio = clampCommentSplit(offsetY / rect.height)
+        setCommentSplitRatio(nextRatio)
+      }
+
+      function onUp() {
+        setIsSplitResizing(false)
+        document.body.style.userSelect = previousUserSelect
+        document.body.style.cursor = previousCursor
+        window.removeEventListener("pointermove", onMove)
+        window.removeEventListener("pointerup", onUp)
+      }
+
+      window.addEventListener("pointermove", onMove)
+      window.addEventListener("pointerup", onUp)
+    },
+    []
+  )
+
+  // Mark this task's mentions as read whenever the panel opens or
+  // switches to a different task.
+  useEffect(() => {
+    if (!task) return
+    void markTaskMentionsRead({
+      workspaceId: task.workspaceId as Id<"workspaces">,
+      taskId: task.id as Id<"tasks">,
+    }).catch(() => {
+      // ignore — read-marking is best-effort
+    })
+  }, [task?.id, task?.workspaceId, markTaskMentionsRead])
 
   const panelContent = (
     <AnimatePresence initial={false}>
@@ -2098,81 +2223,114 @@ function TaskDetailSidePanel({
                 </button>
               </div>
 
-              {/* ── Body: Description (scrollable) ── */}
-              <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-4 pb-4">
-                {task._syncStatus === "error" ? (
-                  <motion.div
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mb-4 flex items-start gap-2 rounded-[6px] border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-200"
-                  >
-                    <WarningCircle
-                      size={14}
-                      weight="fill"
-                      className="mt-0.5 shrink-0 text-amber-400"
-                    />
-                    <span className="leading-relaxed">
-                      Attachment changes are visible locally, but they have not
-                      synced to the server yet.
-                    </span>
-                  </motion.div>
-                ) : null}
-
-                {/* Description */}
-                <div className="flex-1">
-                  {editingDesc ? (
-                    <textarea
-                      autoFocus
-                      value={descValue}
-                      onChange={(e) => setDescValue(e.target.value)}
-                      onBlur={handleDescSave}
-                      onKeyDown={(e) => {
-                        if (e.key === "Escape") {
-                          e.preventDefault()
-                          e.stopPropagation()
-                          setDescValue(task.description ?? "")
-                          setEditingDesc(false)
-                        }
-                      }}
-                      placeholder="Add a description..."
-                      className="min-h-[180px] w-full resize-none rounded-[4px] bg-transparent text-[13px] leading-relaxed text-foreground/80 outline-none placeholder:text-muted-foreground/40"
-                    />
-                  ) : (
-                    <div
-                      onClick={() => {
-                        if (!canManageTasks) return
-                        setDescValue(task.description ?? "")
-                        setEditingDesc(true)
-                      }}
-                      className={`min-h-[180px] text-[13px] leading-relaxed transition-colors ${canManageTasks ? "cursor-text" : ""}`}
+              {/* ── Body: Description (top) + Comments (bottom), resizable ── */}
+              <div
+                ref={splitContainerRef}
+                className="flex min-h-0 flex-1 flex-col overflow-hidden"
+              >
+                <div
+                  className="flex min-h-0 flex-col overflow-y-auto px-5 pt-4 pb-4"
+                  style={{ flexBasis: `${commentSplitRatio * 100}%` }}
+                >
+                  {task._syncStatus === "error" ? (
+                    <motion.div
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mb-4 flex items-start gap-2 rounded-[6px] border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-200"
                     >
-                      {task.description ? (
-                        <span className="block break-words whitespace-pre-wrap text-foreground/80">
-                          {task.description}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground/40">
-                          Add a description...
-                        </span>
-                      )}
+                      <WarningCircle
+                        size={14}
+                        weight="fill"
+                        className="mt-0.5 shrink-0 text-amber-400"
+                      />
+                      <span className="leading-relaxed">
+                        Attachment changes are visible locally, but they have
+                        not synced to the server yet.
+                      </span>
+                    </motion.div>
+                  ) : null}
+
+                  {/* Description */}
+                  <div className="flex-1">
+                    {editingDesc ? (
+                      <textarea
+                        autoFocus
+                        value={descValue}
+                        onChange={(e) => setDescValue(e.target.value)}
+                        onBlur={handleDescSave}
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape") {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            setDescValue(task.description ?? "")
+                            setEditingDesc(false)
+                          }
+                        }}
+                        placeholder="Add a description..."
+                        className="min-h-[180px] w-full resize-none rounded-[4px] bg-transparent text-[13px] leading-relaxed text-foreground/80 outline-none placeholder:text-muted-foreground/40"
+                      />
+                    ) : (
+                      <div
+                        onClick={() => {
+                          if (!canManageTasks) return
+                          setDescValue(task.description ?? "")
+                          setEditingDesc(true)
+                        }}
+                        className={`min-h-[180px] text-[13px] leading-relaxed transition-colors ${canManageTasks ? "cursor-text" : ""}`}
+                      >
+                        {task.description ? (
+                          <span className="block break-words whitespace-pre-wrap text-foreground/80">
+                            {task.description}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground/40">
+                            Add a description...
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Attachments */}
+                  {task.attachments && task.attachments.length > 0 ? (
+                    <div className="mt-4 border-t border-border pt-4">
+                      <TaskAttachmentGallery
+                        attachments={task.attachments}
+                        workspaceId={task.workspaceId}
+                        canManageAttachments={canManageTasks}
+                        onAttachmentsChange={(attachments) =>
+                          onUpdate(task.id, { attachments })
+                        }
+                      />
                     </div>
-                  )}
+                  ) : null}
                 </div>
 
-                {/* Attachments */}
-                {task.attachments && task.attachments.length > 0 ? (
-                  <div className="mt-4 border-t border-border pt-4">
-                    <TaskAttachmentGallery
-                      attachments={task.attachments}
-                      workspaceId={task.workspaceId}
-                      canManageAttachments={canManageTasks}
-                      onAttachmentsChange={(attachments) =>
-                        onUpdate(task.id, { attachments })
-                      }
-                    />
-                  </div>
-                ) : null}
+                {/* Horizontal resize handle between description and comments */}
+                <div
+                  onPointerDown={handleSplitResizeStart}
+                  role="separator"
+                  aria-orientation="horizontal"
+                  aria-label="Resize comments section"
+                  className="group relative flex h-2 shrink-0 cursor-row-resize items-center justify-center border-y border-border/60 bg-sidebar/40 transition-colors hover:bg-primary/10"
+                >
+                  <div
+                    className={`h-px w-8 rounded-full transition-colors ${
+                      isSplitResizing
+                        ? "bg-primary"
+                        : "bg-muted-foreground/30 group-hover:bg-primary/60"
+                    }`}
+                  />
+                </div>
 
+                {/* Comments */}
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                  <TaskCommentsPanel
+                    workspaceId={task.workspaceId as Id<"workspaces">}
+                    taskId={task.id as Id<"tasks">}
+                    canComment={canManageTasks}
+                  />
+                </div>
               </div>
 
               {/* ── Bottom toolbar: Sources only ── */}
@@ -2554,6 +2712,7 @@ const KanbanCard = memo(function KanbanCard({
               <div className="shrink-0">
                 {getPriorityIcon(task.priority, 12)}
               </div>
+              <UnreadMentionBadge taskId={task.id} />
               {activeAgent && <AgentBadge agentName={activeAgent} />}
               {(task.labels ?? []).map((label) => (
                 <span
@@ -4190,6 +4349,17 @@ export function KanbanBoard() {
   const { user: clerkUser } = useUser()
   const currentUserId = clerkUser?.id ?? null
 
+  const unreadMentionCounts = useQuery(
+    api.taskComments.unreadMentionCountsForWorkspace,
+    currentWorkspace
+      ? { workspaceId: currentWorkspace._id as Id<"workspaces"> }
+      : "skip"
+  )
+  const unreadMentionsMap = useMemo(
+    () => unreadMentionCounts ?? {},
+    [unreadMentionCounts]
+  )
+
   // Side panel state — lifted here so the panel is a layout sibling of the
   // board content and shifts the main view when open.
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
@@ -4871,6 +5041,7 @@ export function KanbanBoard() {
   return (
     <BoardMountedContext.Provider value={boardMounted}>
       <LabelConfigContext.Provider value={labelConfig}>
+       <UnreadMentionsContext.Provider value={unreadMentionsMap}>
         <div className="flex h-full">
           {/* Main content — shrinks to make room for the side panel */}
           <div className="flex min-w-0 flex-1 flex-col">
@@ -4961,6 +5132,7 @@ export function KanbanBoard() {
             defaultStatus={modalDefaultStatus}
           />
         </div>
+       </UnreadMentionsContext.Provider>
       </LabelConfigContext.Provider>
     </BoardMountedContext.Provider>
   )

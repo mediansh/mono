@@ -881,6 +881,40 @@ export default defineSchema({
     ])
     .index("by_suiteRun_suite", ["suiteRunId", "suite"]),
 
+  taskComments: defineTable({
+    workspaceId: v.id("workspaces"),
+    taskId: v.id("tasks"),
+    authorId: v.string(),
+    authorName: v.optional(v.string()),
+    authorImageUrl: v.optional(v.string()),
+    bodyMarkdown: v.string(),
+    mentionedUserIds: v.optional(v.array(v.string())),
+    reactions: v.optional(
+      v.array(
+        v.object({
+          userId: v.string(),
+          emoji: v.string(),
+        })
+      )
+    ),
+    createdAt: v.number(),
+    editedAt: v.optional(v.number()),
+  })
+    .index("by_task_created", ["taskId", "createdAt"])
+    .index("by_workspace", ["workspaceId"]),
+
+  taskCommentMentions: defineTable({
+    workspaceId: v.id("workspaces"),
+    taskId: v.id("tasks"),
+    commentId: v.id("taskComments"),
+    userId: v.string(),
+    createdAt: v.number(),
+    readAt: v.optional(v.number()),
+  })
+    .index("by_user_task", ["userId", "taskId"])
+    .index("by_user_workspace_read", ["userId", "workspaceId", "readAt"])
+    .index("by_comment", ["commentId"]),
+
   deletedTaskSources: defineTable({
     workspaceId: v.id("workspaces"),
     platform: v.union(

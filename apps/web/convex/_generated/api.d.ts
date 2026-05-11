@@ -34,6 +34,7 @@ import type * as posthog from "../posthog.js";
 import type * as slack from "../slack.js";
 import type * as slackFeedback from "../slackFeedback.js";
 import type * as status from "../status.js";
+import type * as taskComments from "../taskComments.js";
 import type * as taskSourceUtils from "../taskSourceUtils.js";
 import type * as tasks from "../tasks.js";
 import type * as users from "../users.js";
@@ -75,6 +76,7 @@ declare const fullApi: ApiFromModules<{
   slack: typeof slack;
   slackFeedback: typeof slackFeedback;
   status: typeof status;
+  taskComments: typeof taskComments;
   taskSourceUtils: typeof taskSourceUtils;
   tasks: typeof tasks;
   users: typeof users;
