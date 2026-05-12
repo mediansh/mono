@@ -340,10 +340,18 @@ export const generateApiKey = mutation({
   handler: async (ctx, args) => {
     await requireWorkspaceAdminAccess(ctx, args.workspaceId)
 
-    // Convex server functions have CONVEX_SITE_URL (.convex.site) but
-    // ConvexHttpClient needs the .convex.cloud URL. Derive it.
-    const siteUrl = process.env.CONVEX_SITE_URL ?? ""
-    const convexUrl = siteUrl.replace(".convex.site", ".convex.cloud")
+    // ConvexHttpClient needs the .convex.cloud URL. Use CONVEX_CLOUD_URL
+    // directly — deriving it from CONVEX_SITE_URL breaks when a custom
+    // domain is configured for the .site endpoint.
+    const convexUrl =
+      process.env.CONVEX_CLOUD_URL ??
+      (process.env.CONVEX_SITE_URL ?? "").replace(
+        ".convex.site",
+        ".convex.cloud"
+      )
+    if (!convexUrl) {
+      throw new Error("CONVEX_CLOUD_URL is not configured")
+    }
     const plainKey = generateApiKeyWithUrl(convexUrl)
     const keyHash = await sha256(plainKey)
     const keyPrefix = plainKey.slice(0, 16) + "..."
