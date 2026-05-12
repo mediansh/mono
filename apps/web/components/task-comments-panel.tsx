@@ -61,6 +61,7 @@ export function TaskCommentsPanel({ workspaceId, taskId, canComment }: Props) {
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const lastCountRef = useRef<number>(0)
   const pinnedToBottomRef = useRef<boolean>(true)
+  const hasScrolledInitialLoadRef = useRef(false)
 
   const handleScroll = () => {
     const el = scrollRef.current
@@ -81,11 +82,12 @@ export function TaskCommentsPanel({ workspaceId, taskId, canComment }: Props) {
   }, [ordered.length])
 
   useEffect(() => {
-    if (comments === undefined) return
+    if (!comments || hasScrolledInitialLoadRef.current) return
+    hasScrolledInitialLoadRef.current = true
     const el = scrollRef.current
     if (!el) return
     el.scrollTop = el.scrollHeight
-  }, [comments === undefined])
+  }, [comments])
 
   const handleCreate = async (payload: {
     markdown: string
@@ -109,7 +111,7 @@ export function TaskCommentsPanel({ workspaceId, taskId, canComment }: Props) {
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex shrink-0 items-center gap-2 border-b border-sidebar-border bg-sidebar/30 px-4 py-2">
         <ChatCircle size={14} className="text-muted-foreground" />
-        <h3 className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <h3 className="text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">
           Comments
         </h3>
         <span className="text-[11px] text-muted-foreground">
@@ -120,7 +122,7 @@ export function TaskCommentsPanel({ workspaceId, taskId, canComment }: Props) {
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="flex-1 min-h-0 overflow-y-auto px-4 py-3"
+        className="min-h-0 flex-1 overflow-y-auto px-4 py-3"
       >
         {comments === undefined ? (
           <p className="text-[12px] text-muted-foreground">Loading…</p>
@@ -225,8 +227,7 @@ function CommentItem({
   const isAuthor = currentUserId !== null && comment.authorId === currentUserId
   const thumbs = comment.reactions.filter((r) => r.emoji === "+1")
   const userReacted =
-    currentUserId !== null &&
-    thumbs.some((r) => r.userId === currentUserId)
+    currentUserId !== null && thumbs.some((r) => r.userId === currentUserId)
 
   const authorAssignee = {
     userId: comment.authorId,
@@ -309,11 +310,8 @@ function CommentItem({
                   "disabled:pointer-events-none disabled:opacity-40"
                 )}
               >
-                <ThumbsUp
-                  size={11}
-                  weight={userReacted ? "fill" : "regular"}
-                />
-                <span className="inline-block min-w-[8px] text-center tabular-nums leading-none">
+                <ThumbsUp size={11} weight={userReacted ? "fill" : "regular"} />
+                <span className="inline-block min-w-[8px] text-center leading-none tabular-nums">
                   {thumbs.length > 0 ? thumbs.length : ""}
                 </span>
               </button>

@@ -171,9 +171,7 @@ function computeCommonAssignees(
   const common = new Map<string, TaskAssignee>()
   for (const a of first) common.set(a.userId, a)
   for (let i = 1; i < selected.length; i++) {
-    const ids = new Set(
-      (selected[i]!.assignees ?? []).map((a) => a.userId)
-    )
+    const ids = new Set((selected[i]!.assignees ?? []).map((a) => a.userId))
     for (const userId of Array.from(common.keys())) {
       if (!ids.has(userId)) common.delete(userId)
     }
@@ -290,10 +288,7 @@ function loadCommentSplitRatio(): number {
 function saveCommentSplitRatio(ratio: number) {
   if (typeof window === "undefined") return
   try {
-    window.localStorage.setItem(
-      TASK_COMMENT_SPLIT_STORAGE_KEY,
-      String(ratio)
-    )
+    window.localStorage.setItem(TASK_COMMENT_SPLIT_STORAGE_KEY, String(ratio))
   } catch {
     // ignore
   }
@@ -890,7 +885,6 @@ function SourceIcon({
   )
 }
 
-
 // ── Context Menu ──
 //
 // All positioning, focus, keyboard nav, safe-triangle submenu hovering,
@@ -1038,9 +1032,10 @@ const UnreadMentionBadge = memo(function UnreadMentionBadge({
   return (
     <span
       title={`${count} unread mention${count === 1 ? "" : "s"}`}
+      aria-label={`${count} unread mention${count === 1 ? "" : "s"}`}
       className="inline-flex h-[18px] min-w-[18px] items-center justify-center gap-0.5 rounded-full bg-primary/15 px-1 text-[10px] font-semibold text-primary ring-1 ring-primary/30"
     >
-      <At size={10} weight="bold" />
+      <At size={10} weight="bold" aria-hidden="true" />
       {count > 1 ? <span>{count}</span> : null}
     </span>
   )
@@ -1412,65 +1407,65 @@ function ListGroup({
             transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
             className="overflow-hidden"
           >
-          <SortableContext
-            items={taskIds}
-            strategy={verticalListSortingStrategy}
-          >
-            {tasks.length === 0
-              ? null
-              : tasks.map((task, rowIndex) => {
-                  const isLast = rowIndex === tasks.length - 1
-                  const isOverMe =
-                    overItemId === task.id &&
-                    activeTaskId !== null &&
-                    activeTaskId !== task.id
-                  const showIndicatorBefore =
-                    isOverMe && !(isLast && overItemAtEnd)
-                  const showIndicatorAfter =
-                    isOverMe && isLast && overItemAtEnd
-                  return (
-                    <Fragment key={task.id}>
-                      {showIndicatorBefore && (
-                        <motion.div
-                          initial={{ opacity: 0, scaleX: 0.5 }}
-                          animate={{ opacity: 1, scaleX: 1 }}
-                          transition={{ duration: 0.15, ease: "easeOut" }}
-                          style={{ originX: 0 }}
-                          className="relative flex items-center"
-                        >
-                          <div className="absolute -left-0.5 z-10 size-2 rounded-full bg-primary" />
-                          <div className="h-0.5 w-full bg-primary" />
-                        </motion.div>
-                      )}
-                      <SortableListRow
-                        task={task}
-                        rowIndex={rowIndex}
-                        groupDelay={groupIndex * 0.04}
-                        isSelected={selectedTaskIds.has(task.id)}
-                        hasSelection={hasSelection}
-                        isDraggedAway={draggedTaskIds.has(task.id)}
-                        canManageTasks={canManageTasks}
-                        onSelect={onSelectTask}
-                        onToggleSelect={onToggleSelectTask}
-                        onUpdate={onUpdateTask}
-                        onDelete={onDeleteTask}
-                      />
-                      {showIndicatorAfter && (
-                        <motion.div
-                          initial={{ opacity: 0, scaleX: 0.5 }}
-                          animate={{ opacity: 1, scaleX: 1 }}
-                          transition={{ duration: 0.15, ease: "easeOut" }}
-                          style={{ originX: 0 }}
-                          className="relative flex items-center"
-                        >
-                          <div className="absolute -left-0.5 z-10 size-2 rounded-full bg-primary" />
-                          <div className="h-0.5 w-full bg-primary" />
-                        </motion.div>
-                      )}
-                    </Fragment>
-                  )
-                })}
-          </SortableContext>
+            <SortableContext
+              items={taskIds}
+              strategy={verticalListSortingStrategy}
+            >
+              {tasks.length === 0
+                ? null
+                : tasks.map((task, rowIndex) => {
+                    const isLast = rowIndex === tasks.length - 1
+                    const isOverMe =
+                      overItemId === task.id &&
+                      activeTaskId !== null &&
+                      activeTaskId !== task.id
+                    const showIndicatorBefore =
+                      isOverMe && !(isLast && overItemAtEnd)
+                    const showIndicatorAfter =
+                      isOverMe && isLast && overItemAtEnd
+                    return (
+                      <Fragment key={task.id}>
+                        {showIndicatorBefore && (
+                          <motion.div
+                            initial={{ opacity: 0, scaleX: 0.5 }}
+                            animate={{ opacity: 1, scaleX: 1 }}
+                            transition={{ duration: 0.15, ease: "easeOut" }}
+                            style={{ originX: 0 }}
+                            className="relative flex items-center"
+                          >
+                            <div className="absolute -left-0.5 z-10 size-2 rounded-full bg-primary" />
+                            <div className="h-0.5 w-full bg-primary" />
+                          </motion.div>
+                        )}
+                        <SortableListRow
+                          task={task}
+                          rowIndex={rowIndex}
+                          groupDelay={groupIndex * 0.04}
+                          isSelected={selectedTaskIds.has(task.id)}
+                          hasSelection={hasSelection}
+                          isDraggedAway={draggedTaskIds.has(task.id)}
+                          canManageTasks={canManageTasks}
+                          onSelect={onSelectTask}
+                          onToggleSelect={onToggleSelectTask}
+                          onUpdate={onUpdateTask}
+                          onDelete={onDeleteTask}
+                        />
+                        {showIndicatorAfter && (
+                          <motion.div
+                            initial={{ opacity: 0, scaleX: 0.5 }}
+                            animate={{ opacity: 1, scaleX: 1 }}
+                            transition={{ duration: 0.15, ease: "easeOut" }}
+                            style={{ originX: 0 }}
+                            className="relative flex items-center"
+                          >
+                            <div className="absolute -left-0.5 z-10 size-2 rounded-full bg-primary" />
+                            <div className="h-0.5 w-full bg-primary" />
+                          </motion.div>
+                        )}
+                      </Fragment>
+                    )
+                  })}
+            </SortableContext>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1670,8 +1665,7 @@ function TaskDetailSidePanel({
 
       if (newAttachments.length > 0) {
         const ref = attachmentsRef.current
-        const existing =
-          ref.taskId === task.id ? (ref.attachments ?? []) : []
+        const existing = ref.taskId === task.id ? (ref.attachments ?? []) : []
         onUpdate(task.id, { attachments: [...existing, ...newAttachments] })
       }
 
@@ -1861,8 +1855,8 @@ function TaskDetailSidePanel({
               }`}
             />
             <div
-              className={`relative flex h-8 w-3 items-center justify-center rounded-full text-muted-foreground/60 opacity-0 ring-1 ring-border bg-background transition-opacity group-hover:opacity-100 ${
-                isResizing ? "opacity-100 text-primary ring-primary/50" : ""
+              className={`relative flex h-8 w-3 items-center justify-center rounded-full bg-background text-muted-foreground/60 opacity-0 ring-1 ring-border transition-opacity group-hover:opacity-100 ${
+                isResizing ? "text-primary opacity-100 ring-primary/50" : ""
               }`}
             >
               <DotsSixVertical size={10} weight="bold" />
@@ -1888,8 +1882,8 @@ function TaskDetailSidePanel({
               transition={{ duration: 0.2, ease: "easeOut" }}
               className="flex min-h-0 flex-1 flex-col"
             >
-            {/* ── Header: Title + Date + Close ── */}
-            <div className="relative px-5 pt-5 pb-0">
+              {/* ── Header: Title + Date + Close ── */}
+              <div className="relative px-5 pt-5 pb-0">
                 {/* Close button */}
                 <button
                   onClick={handleClose}
@@ -2803,10 +2797,8 @@ function KanbanColumn({
                 overItemId === task.id &&
                 activeTaskId !== null &&
                 activeTaskId !== task.id
-              const showIndicatorBefore =
-                isOverMe && !(isLast && overItemAtEnd)
-              const showIndicatorAfter =
-                isOverMe && isLast && overItemAtEnd
+              const showIndicatorBefore = isOverMe && !(isLast && overItemAtEnd)
+              const showIndicatorAfter = isOverMe && isLast && overItemAtEnd
               return (
                 <Fragment key={task.id}>
                   {showIndicatorBefore && (
@@ -3869,9 +3861,10 @@ function BoardFilter({
   const triggerRef = useRef<HTMLButtonElement | null>(null)
   const popoverRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
-  const [position, setPosition] = useState<{ top: number; right: number } | null>(
-    null
-  )
+  const [position, setPosition] = useState<{
+    top: number
+    right: number
+  } | null>(null)
 
   const filterCount =
     (filter.search.trim() ? 1 : 0) +
@@ -4000,7 +3993,7 @@ function BoardFilter({
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.6 }}
               transition={{ type: "spring", stiffness: 500, damping: 30 }}
-              className="flex min-w-[16px] items-center justify-center rounded-full bg-primary px-1 py-0 text-[10px] font-semibold leading-4 text-primary-foreground"
+              className="flex min-w-[16px] items-center justify-center rounded-full bg-primary px-1 py-0 text-[10px] leading-4 font-semibold text-primary-foreground"
             >
               {filterCount}
             </motion.span>
@@ -4045,9 +4038,7 @@ function BoardFilter({
                   {filter.search && (
                     <button
                       type="button"
-                      onClick={() =>
-                        onFilterChange({ ...filter, search: "" })
-                      }
+                      onClick={() => onFilterChange({ ...filter, search: "" })}
                       className="shrink-0 rounded-[3px] p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
                       title="Clear search"
                     >
@@ -4518,7 +4509,10 @@ export function KanbanBoard() {
         }
       }
 
-      if (filter.statuses.length > 0 && !filter.statuses.includes(task.status)) {
+      if (
+        filter.statuses.length > 0 &&
+        !filter.statuses.includes(task.status)
+      ) {
         return false
       }
       if (
@@ -4981,105 +4975,106 @@ export function KanbanBoard() {
 
   const selectedTask = selectedTaskId
     ? (filteredTasks.find((task) => task.id === selectedTaskId) ??
-       tasks.find((task) => task.id === selectedTaskId) ??
-       null)
+      tasks.find((task) => task.id === selectedTaskId) ??
+      null)
     : null
 
   return (
     <BoardMountedContext.Provider value={boardMounted}>
       <LabelConfigContext.Provider value={labelConfig}>
-       <UnreadMentionsContext.Provider value={unreadMentionsMap}>
-        <div className="flex h-full">
-          {/* Main content — shrinks to make room for the side panel */}
-          <div className="flex min-w-0 flex-1 flex-col">
-            {!canManageTasks ? (
-              <div className="mx-4 mt-4 rounded-[4px] bg-card px-3 py-3 text-[13px] text-muted-foreground ring-1 ring-border">
-                You’re in guest mode. Tasks are read-only in this workspace.
-              </div>
-            ) : null}
+        <UnreadMentionsContext.Provider value={unreadMentionsMap}>
+          <div className="flex h-full">
+            {/* Main content — shrinks to make room for the side panel */}
+            <div className="flex min-w-0 flex-1 flex-col">
+              {!canManageTasks ? (
+                <div className="mx-4 mt-4 rounded-[4px] bg-card px-3 py-3 text-[13px] text-muted-foreground ring-1 ring-border">
+                  You’re in guest mode. Tasks are read-only in this workspace.
+                </div>
+              ) : null}
 
-            {/* Toolbar */}
-            <div className="scrollbar-hide flex items-center gap-1 overflow-x-auto border-b border-border bg-toolbar text-toolbar-foreground px-3 py-2">
-              <ViewToggle view={boardView} onViewChange={handleViewChange} />
-              {hiddenColumns.length > 0 && (
-                <HiddenColumnsToolbar
-                  hiddenColumns={hiddenColumns}
-                  onShow={handleShowColumn}
-                  tasks={filteredTasks}
-                />
-              )}
-              <div className="ml-auto flex items-center gap-1">
-                <BoardFilter
-                  filter={filter}
-                  onFilterChange={setFilter}
-                  availableLabels={
-                    currentWorkspace?.labels && currentWorkspace.labels.length > 0
-                      ? currentWorkspace.labels
-                      : DEFAULT_WORKSPACE_LABELS
-                  }
-                />
+              {/* Toolbar */}
+              <div className="scrollbar-hide flex items-center gap-1 overflow-x-auto border-b border-border bg-toolbar px-3 py-2 text-toolbar-foreground">
+                <ViewToggle view={boardView} onViewChange={handleViewChange} />
+                {hiddenColumns.length > 0 && (
+                  <HiddenColumnsToolbar
+                    hiddenColumns={hiddenColumns}
+                    onShow={handleShowColumn}
+                    tasks={filteredTasks}
+                  />
+                )}
+                <div className="ml-auto flex items-center gap-1">
+                  <BoardFilter
+                    filter={filter}
+                    onFilterChange={setFilter}
+                    availableLabels={
+                      currentWorkspace?.labels &&
+                      currentWorkspace.labels.length > 0
+                        ? currentWorkspace.labels
+                        : DEFAULT_WORKSPACE_LABELS
+                    }
+                  />
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="min-h-0 flex-1">
+                {boardView === "board" ? (
+                  <ColumnBoardView
+                    tasks={filteredTasks}
+                    hiddenColumns={hiddenColumns}
+                    canManageTasks={canManageTasks}
+                    selectedTaskId={selectedTaskId}
+                    onSelectTaskId={setSelectedTaskId}
+                    onMoveTask={handleMoveTask}
+                    onMoveMultipleTasks={handleMoveMultipleTasks}
+                    onUpdateTask={handleUpdateTask}
+                    onDeleteTask={handleDeleteTask}
+                    onBulkUpdateTasks={handleBulkUpdateTasks}
+                    onBulkDeleteTasks={handleBulkDeleteTasks}
+                    onAddTask={handleAddTask}
+                  />
+                ) : (
+                  <ListView
+                    tasks={filteredTasks}
+                    hiddenColumns={hiddenColumns}
+                    collapsedColumns={collapsedColumns}
+                    canManageTasks={canManageTasks}
+                    selectedTaskId={selectedTaskId}
+                    onSelectTaskId={setSelectedTaskId}
+                    onToggleCollapsedColumn={handleToggleCollapsedColumn}
+                    onMoveTask={handleMoveTask}
+                    onMoveMultipleTasks={handleMoveMultipleTasks}
+                    onUpdateTask={handleUpdateTask}
+                    onDeleteTask={handleDeleteTask}
+                    onBulkUpdateTasks={handleBulkUpdateTasks}
+                    onBulkDeleteTasks={handleBulkDeleteTasks}
+                    onAddTask={handleAddTask}
+                  />
+                )}
               </div>
             </div>
 
-            {/* Content */}
-            <div className="min-h-0 flex-1">
-              {boardView === "board" ? (
-                <ColumnBoardView
-                  tasks={filteredTasks}
-                  hiddenColumns={hiddenColumns}
-                  canManageTasks={canManageTasks}
-                  selectedTaskId={selectedTaskId}
-                  onSelectTaskId={setSelectedTaskId}
-                  onMoveTask={handleMoveTask}
-                  onMoveMultipleTasks={handleMoveMultipleTasks}
-                  onUpdateTask={handleUpdateTask}
-                  onDeleteTask={handleDeleteTask}
-                  onBulkUpdateTasks={handleBulkUpdateTasks}
-                  onBulkDeleteTasks={handleBulkDeleteTasks}
-                  onAddTask={handleAddTask}
-                />
-              ) : (
-                <ListView
-                  tasks={filteredTasks}
-                  hiddenColumns={hiddenColumns}
-                  collapsedColumns={collapsedColumns}
-                  canManageTasks={canManageTasks}
-                  selectedTaskId={selectedTaskId}
-                  onSelectTaskId={setSelectedTaskId}
-                  onToggleCollapsedColumn={handleToggleCollapsedColumn}
-                  onMoveTask={handleMoveTask}
-                  onMoveMultipleTasks={handleMoveMultipleTasks}
-                  onUpdateTask={handleUpdateTask}
-                  onDeleteTask={handleDeleteTask}
-                  onBulkUpdateTasks={handleBulkUpdateTasks}
-                  onBulkDeleteTasks={handleBulkDeleteTasks}
-                  onAddTask={handleAddTask}
-                />
-              )}
-            </div>
+            {/* Side panel — slides in from the right and shifts the layout */}
+            <TaskDetailSidePanel
+              task={selectedTask}
+              width={taskPanelWidth}
+              onWidthChange={setTaskPanelWidth}
+              onClose={handleClosePanel}
+              onUpdate={handleUpdateTask}
+              onDelete={handlePanelDelete}
+              onAccept={handlePanelAccept}
+              onDeny={handlePanelDeny}
+              canManageTasks={canManageTasks}
+            />
+
+            {/* New task modal */}
+            <NewTaskModal
+              open={modalOpen}
+              onOpenChange={setModalOpen}
+              defaultStatus={modalDefaultStatus}
+            />
           </div>
-
-          {/* Side panel — slides in from the right and shifts the layout */}
-          <TaskDetailSidePanel
-            task={selectedTask}
-            width={taskPanelWidth}
-            onWidthChange={setTaskPanelWidth}
-            onClose={handleClosePanel}
-            onUpdate={handleUpdateTask}
-            onDelete={handlePanelDelete}
-            onAccept={handlePanelAccept}
-            onDeny={handlePanelDeny}
-            canManageTasks={canManageTasks}
-          />
-
-          {/* New task modal */}
-          <NewTaskModal
-            open={modalOpen}
-            onOpenChange={setModalOpen}
-            defaultStatus={modalDefaultStatus}
-          />
-        </div>
-       </UnreadMentionsContext.Provider>
+        </UnreadMentionsContext.Provider>
       </LabelConfigContext.Provider>
     </BoardMountedContext.Provider>
   )

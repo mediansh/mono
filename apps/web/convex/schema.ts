@@ -290,6 +290,7 @@ export default defineSchema({
     lastLinearUpdatedAt: v.optional(v.string()),
     lastSyncedAt: v.number(),
   })
+    .index("by_workspace", ["workspaceId"])
     .index("by_task", ["taskId"])
     .index("by_task_comment", ["taskCommentId"])
     .index("by_linear_comment", ["linearCommentId"])

@@ -85,6 +85,13 @@ type LinearUser = {
   avatarUrl: string | null
 }
 
+type WorkspaceMemberForLinearSync = {
+  userId: string
+  name?: string
+  email?: string
+  imageUrl?: string
+}
+
 type LinearComment = {
   id: string
   body: string
@@ -1223,6 +1230,28 @@ async function commentUpdate(
   return data.commentUpdate.comment
 }
 
+async function commentDelete(apiKey: string, commentId: string) {
+  const data = await linearGraphql<{
+    commentDelete: {
+      success: boolean
+    }
+  }>(
+    apiKey,
+    `
+      mutation DeleteComment($commentId: String!) {
+        commentDelete(id: $commentId) {
+          success
+        }
+      }
+    `,
+    { commentId }
+  )
+
+  if (!data.commentDelete.success) {
+    throw new Error("Failed to delete the Linear comment")
+  }
+}
+
 function buildLinearWebhookUrl(webhookToken: string) {
   const baseUrl =
     process.env.CONVEX_SITE_URL ?? process.env.NEXT_PUBLIC_CONVEX_SITE_URL
@@ -1244,7 +1273,8 @@ async function syncTaskToLinear(
   },
   task: Doc<"tasks">,
   link: Doc<"linearTaskLinks"> | null,
-  workflowStates: LinearWorkflowState[]
+  workflowStates: LinearWorkflowState[],
+  linearTeamMembers: LinearUser[]
 ) {
   const taskLabels = normalizeTaskLabels(task.labels)
   let labelIds: string[] = []
@@ -1276,8 +1306,7 @@ async function syncTaskToLinear(
     }
   )
   const assigneeId = await resolveLinearAssigneeId(
-    integration.apiKey,
-    integration.teamId,
+    linearTeamMembers,
     workspaceMembers,
     task
   )
@@ -1368,6 +1397,7 @@ async function syncTaskCommentsToLinear(
   for (const comment of comments as Doc<"taskComments">[]) {
     const existingLink = linksByTaskCommentId.get(comment._id)
     if (existingLink) {
+      linksByTaskCommentId.delete(comment._id)
       const lastEditedAt = comment.editedAt ?? comment.createdAt
       if (lastEditedAt > existingLink.lastSyncedAt) {
         const updatedComment = await commentUpdate(
@@ -1400,6 +1430,13 @@ async function syncTaskCommentsToLinear(
       linearIssueId,
       linearCommentId: createdComment.id,
       lastLinearUpdatedAt: createdComment.updatedAt,
+    })
+  }
+
+  for (const staleLink of linksByTaskCommentId.values()) {
+    await commentDelete(apiKey, staleLink.linearCommentId)
+    await ctx.runMutation(internal.linear.deleteLinearCommentLink, {
+      linkId: staleLink._id,
     })
   }
 }
@@ -1456,15 +1493,8 @@ async function resolveLinearLabelIds(
 }
 
 async function resolveLinearAssigneeId(
-  apiKey: string,
-  teamId: string,
-  workspaceMembers:
-    | Array<{
-        userId: string
-        name?: string
-        email?: string
-      }>
-    | undefined,
+  teamMembers: LinearUser[],
+  workspaceMembers: WorkspaceMemberForLinearSync[] | undefined,
   task: Doc<"tasks">
 ) {
   const assignee = task.assignees?.[0]
@@ -1482,7 +1512,6 @@ async function resolveLinearAssigneeId(
     return undefined
   }
 
-  const teamMembers = await fetchTeamMembers(apiKey, teamId)
   const matchedUser = teamMembers.find((user) => {
     if (assigneeEmail && normalizeLookupText(user.email) === assigneeEmail) {
       return true
@@ -1500,14 +1529,7 @@ async function resolveLinearAssigneeId(
 
 function mapLinearAssigneeToTaskAssignees(
   assignee: LinearUser | null | undefined,
-  workspaceMembers:
-    | Array<{
-        userId: string
-        name?: string
-        email?: string
-        imageUrl?: string
-      }>
-    | undefined
+  workspaceMembers: WorkspaceMemberForLinearSync[] | undefined
 ) {
   if (!assignee) {
     return undefined
@@ -1543,6 +1565,11 @@ async function syncLinearCommentsToTask(
   linearIssueId: string
 ) {
   const comments = await fetchIssueComments(apiKey, linearIssueId)
+  await ctx.runMutation(internal.linear.removeStaleLinearCommentLinksForTask, {
+    workspaceId,
+    taskId,
+    activeLinearCommentIds: comments.map((comment) => comment.id),
+  })
 
   for (const comment of comments) {
     const body = comment.body.trim()
@@ -1661,6 +1688,20 @@ export const getLinearCommentLinksForTask = internalQuery({
       .query("linearCommentLinks")
       .withIndex("by_task", (q) => q.eq("taskId", args.taskId))
       .collect()
+  },
+})
+
+export const getLinearCommentLinkByTaskComment = internalQuery({
+  args: {
+    taskCommentId: v.id("taskComments"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("linearCommentLinks")
+      .withIndex("by_task_comment", (q) =>
+        q.eq("taskCommentId", args.taskCommentId)
+      )
+      .unique()
   },
 })
 
@@ -1941,6 +1982,53 @@ export const saveLinearCommentLink = internalMutation({
     }
 
     return await ctx.db.insert("linearCommentLinks", payload)
+  },
+})
+
+export const deleteLinearCommentLink = internalMutation({
+  args: {
+    linkId: v.id("linearCommentLinks"),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.linkId)
+  },
+})
+
+export const removeStaleLinearCommentLinksForTask = internalMutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    taskId: v.id("tasks"),
+    activeLinearCommentIds: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const activeIds = new Set(args.activeLinearCommentIds)
+    const links = await ctx.db
+      .query("linearCommentLinks")
+      .withIndex("by_task", (q) => q.eq("taskId", args.taskId))
+      .collect()
+
+    for (const link of links) {
+      if (
+        link.workspaceId !== args.workspaceId ||
+        activeIds.has(link.linearCommentId)
+      ) {
+        continue
+      }
+
+      const mentions = await ctx.db
+        .query("taskCommentMentions")
+        .withIndex("by_comment", (q) => q.eq("commentId", link.taskCommentId))
+        .collect()
+      for (const mention of mentions) {
+        await ctx.db.delete(mention._id)
+      }
+
+      const linkedComment = await ctx.db.get(link.taskCommentId)
+      if (linkedComment) {
+        await ctx.db.delete(linkedComment._id)
+      }
+      await ctx.db.delete(link._id)
+    }
   },
 })
 
@@ -2846,6 +2934,10 @@ export const performWorkspaceLinearSync = internalAction({
       integration.apiKey,
       integration.teamId
     )
+    const linearTeamMembers = await fetchTeamMembers(
+      integration.apiKey,
+      integration.teamId
+    )
     const statusMappingsUpdatedAt = integration.statusMappingsUpdatedAt ?? 0
     let pushedCount = 0
     for (const item of taskSyncStates) {
@@ -2868,7 +2960,8 @@ export const performWorkspaceLinearSync = internalAction({
         integration,
         item.task,
         item.link,
-        workflowStates
+        workflowStates,
+        linearTeamMembers
       )
       pushedCount += 1
     }
@@ -2932,13 +3025,18 @@ export const syncTaskToLinearIssue = internalAction({
       snapshot.integration.apiKey,
       snapshot.integration.teamId
     )
+    const linearTeamMembers = await fetchTeamMembers(
+      snapshot.integration.apiKey,
+      snapshot.integration.teamId
+    )
 
     const operation = await syncTaskToLinear(
       ctx,
       snapshot.integration,
       snapshot.task,
       snapshot.link,
-      workflowStates
+      workflowStates,
+      linearTeamMembers
     )
 
     await ctx.runMutation(internal.linear.markLinearIntegrationSyncedAt, {
@@ -2950,6 +3048,34 @@ export const syncTaskToLinearIssue = internalAction({
       skipped: false,
       operation,
     }
+  },
+})
+
+export const deleteTaskCommentFromLinear = internalAction({
+  args: {
+    workspaceId: v.id("workspaces"),
+    taskCommentId: v.id("taskComments"),
+  },
+  handler: async (ctx, args) => {
+    const [integration, link] = await Promise.all([
+      ctx.runQuery(internal.linear.getLinearIntegrationForWorkspace, {
+        workspaceId: args.workspaceId,
+      }),
+      ctx.runQuery(internal.linear.getLinearCommentLinkByTaskComment, {
+        taskCommentId: args.taskCommentId,
+      }),
+    ])
+
+    if (!integration || !link) {
+      return { skipped: true }
+    }
+
+    await commentDelete(integration.apiKey, link.linearCommentId)
+    await ctx.runMutation(internal.linear.deleteLinearCommentLink, {
+      linkId: link._id,
+    })
+
+    return { deleted: true }
   },
 })
 

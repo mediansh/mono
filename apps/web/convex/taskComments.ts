@@ -42,6 +42,18 @@ async function loadWorkspaceMemberIds(
   return new Set(members.map((m) => m.userId))
 }
 
+async function requireTaskInWorkspace(
+  ctx: QueryCtx | MutationCtx,
+  workspaceId: Id<"workspaces">,
+  taskId: Id<"tasks">
+) {
+  const task = await ctx.db.get(taskId)
+  if (!task || task.workspaceId !== workspaceId) {
+    throw new Error("Task not found")
+  }
+  return task
+}
+
 export const listByTask = query({
   args: {
     workspaceId: v.id("workspaces"),
@@ -49,6 +61,7 @@ export const listByTask = query({
   },
   handler: async (ctx, args): Promise<TaskCommentDTO[]> => {
     await requireWorkspaceAccess(ctx, args.workspaceId)
+    await requireTaskInWorkspace(ctx, args.workspaceId, args.taskId)
     const comments = await ctx.db
       .query("taskComments")
       .withIndex("by_task_created", (q) => q.eq("taskId", args.taskId))
@@ -80,10 +93,7 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const { identity } = await requireTaskWriteAccess(ctx, args.workspaceId)
 
-    const task = await ctx.db.get(args.taskId)
-    if (!task || task.workspaceId !== args.workspaceId) {
-      throw new Error("Task not found")
-    }
+    await requireTaskInWorkspace(ctx, args.workspaceId, args.taskId)
 
     const trimmed = args.bodyMarkdown.trim()
     if (!trimmed) {
@@ -156,6 +166,10 @@ export const edit = mutation({
     const newMentions = validMentions.filter(
       (id) => id !== identity.subject && !previousMentions.has(id)
     )
+    const existingMentionRows = await ctx.db
+      .query("taskCommentMentions")
+      .withIndex("by_comment", (q) => q.eq("commentId", args.commentId))
+      .collect()
 
     await ctx.db.patch(args.commentId, {
       bodyMarkdown: trimmed,
@@ -164,6 +178,13 @@ export const edit = mutation({
     })
 
     const now = Date.now()
+    const validMentionSet = new Set(validMentions)
+    for (const mention of existingMentionRows) {
+      if (!validMentionSet.has(mention.userId)) {
+        await ctx.db.delete(mention._id)
+      }
+    }
+
     for (const userId of newMentions) {
       await ctx.db.insert("taskCommentMentions", {
         workspaceId: comment.workspaceId,
@@ -197,6 +218,14 @@ export const remove = mutation({
       await ctx.db.delete(mention._id)
     }
 
+    await ctx.scheduler.runAfter(
+      0,
+      internal.linear.deleteTaskCommentFromLinear,
+      {
+        workspaceId: comment.workspaceId,
+        taskCommentId: args.commentId,
+      }
+    )
     await ctx.db.delete(args.commentId)
   },
 })
@@ -231,6 +260,7 @@ export const markTaskMentionsRead = mutation({
   },
   handler: async (ctx, args) => {
     const { identity } = await requireWorkspaceAccess(ctx, args.workspaceId)
+    await requireTaskInWorkspace(ctx, args.workspaceId, args.taskId)
 
     const unread = await ctx.db
       .query("taskCommentMentions")

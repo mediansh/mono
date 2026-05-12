@@ -59,7 +59,10 @@ type Props = {
   placeholder?: string
   initialMarkdown?: string
   submitLabel?: string
-  onSubmit: (payload: { markdown: string; mentionedUserIds: string[] }) => void
+  onSubmit: (payload: {
+    markdown: string
+    mentionedUserIds: string[]
+  }) => Promise<void> | void
   onCancel?: () => void
   disabled?: boolean
 }
@@ -107,6 +110,8 @@ export const TaskCommentComposer = forwardRef<CommentComposerHandle, Props>(
     const hostRef = useRef<HTMLDivElement | null>(null)
     const [editor, setEditor] = useState<Editor | null>(null)
     const [isEmpty, setIsEmpty] = useState(true)
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [submitError, setSubmitError] = useState<string | null>(null)
 
     const members = useQuery(api.workspaces.getAssignableMembers, {
       workspaceId,
@@ -133,9 +138,7 @@ export const TaskCommentComposer = forwardRef<CommentComposerHandle, Props>(
       const q = suggestion.query.trim().toLowerCase()
       const all = memberListRef.current
       if (!q) return all.slice(0, 8)
-      return all
-        .filter((m) => m.name.toLowerCase().includes(q))
-        .slice(0, 8)
+      return all.filter((m) => m.name.toLowerCase().includes(q)).slice(0, 8)
     }, [suggestion.query, members])
 
     useEffect(() => {
@@ -251,9 +254,7 @@ export const TaskCommentComposer = forwardRef<CommentComposerHandle, Props>(
                       return true
                     }
                     if (evt.key === "ArrowUp") {
-                      setActiveIndex(
-                        (i) => (i - 1 + list.length) % list.length
-                      )
+                      setActiveIndex((i) => (i - 1 + list.length) % list.length)
                       return true
                     }
                     if (evt.key === "Enter" || evt.key === "Tab") {
@@ -327,8 +328,8 @@ export const TaskCommentComposer = forwardRef<CommentComposerHandle, Props>(
       [editor]
     )
 
-    const handleSubmit = useCallback(() => {
-      if (!editor || disabled) return
+    const handleSubmit = useCallback(async () => {
+      if (!editor || disabled || isSubmitting) return
       const storage = (
         editor.storage as unknown as {
           markdown?: { getMarkdown?: () => string }
@@ -345,18 +346,30 @@ export const TaskCommentComposer = forwardRef<CommentComposerHandle, Props>(
         }
       })
 
-      onSubmit({
-        markdown,
-        mentionedUserIds: Array.from(mentioned),
-      })
-      editor.commands.clearContent()
-      setIsEmpty(true)
-    }, [editor, disabled, onSubmit])
+      setIsSubmitting(true)
+      setSubmitError(null)
+      try {
+        await Promise.resolve(
+          onSubmit({
+            markdown,
+            mentionedUserIds: Array.from(mentioned),
+          })
+        )
+        editor.commands.clearContent()
+        setIsEmpty(true)
+      } catch (error) {
+        setSubmitError(
+          error instanceof Error ? error.message : "Failed to save comment"
+        )
+      } finally {
+        setIsSubmitting(false)
+      }
+    }, [editor, disabled, isSubmitting, onSubmit])
 
     const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
       if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault()
-        handleSubmit()
+        void handleSubmit()
       }
     }
 
@@ -372,7 +385,7 @@ export const TaskCommentComposer = forwardRef<CommentComposerHandle, Props>(
           <div ref={hostRef} />
           <div className="flex items-center justify-between gap-2 border-t border-sidebar-border bg-sidebar/40 px-2 py-1.5">
             <span className="text-[10.5px] text-muted-foreground">
-              Markdown supported · ⌘↵ to send · @ to mention
+              {submitError ?? "Markdown supported · ⌘↵ to send · @ to mention"}
             </span>
             <div className="flex items-center gap-1">
               {onCancel ? (
@@ -386,8 +399,10 @@ export const TaskCommentComposer = forwardRef<CommentComposerHandle, Props>(
               ) : null}
               <button
                 type="button"
-                onClick={handleSubmit}
-                disabled={disabled || isEmpty}
+                onClick={() => {
+                  void handleSubmit()
+                }}
+                disabled={disabled || isEmpty || isSubmitting}
                 className={cn(
                   "inline-flex items-center gap-1 rounded-[4px] bg-primary px-2 py-1 text-[11.5px] font-medium text-primary-foreground",
                   "hover:opacity-90 disabled:pointer-events-none disabled:opacity-40"

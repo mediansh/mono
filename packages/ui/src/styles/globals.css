@@ -8,151 +8,152 @@
 @source "../**/*.{ts,tsx}";
 
 :root {
-    --background: #FCFCFC;
-    --foreground: #252728;
-    --card: #F7F7F7;
-    --card-foreground: #252728;
-    --popover: #F7F7F7;
-    --popover-foreground: #252728;
-    --primary: #252728;
-    --primary-foreground: #FCFCFC;
-    --secondary: #F7F7F7;
-    --secondary-foreground: #252728;
-    --muted: #F7F7F7;
-    --muted-foreground: #9B9D9E;
-    --accent: #F7F7F7;
-    --accent-foreground: #252728;
-    --destructive: #cc3333;
-    --border: #EBEBEB;
-    --input: #EBEBEB;
-    --ring: #9B9D9E;
-    --chart-1: #0066cc;
-    --chart-2: #cc6600;
-    --chart-3: #009966;
-    --chart-4: #9933cc;
-    --chart-5: #cc0066;
-    --chart-6: #666666;
-    --radius: 4px;
-    --sidebar: #F7F7F7;
-    --sidebar-foreground: #252728;
-    --sidebar-primary: #252728;
-    --sidebar-primary-foreground: #FCFCFC;
-    --sidebar-accent: #F2F2F2;
-    --sidebar-accent-foreground: #252728;
-    --sidebar-border: #EBEBEB;
-    --sidebar-ring: #252728;
-    --navbar: #F7F7F7;
-    --navbar-border: #EBEBEB;
-    --navbar-foreground: #252728;
-    --navbar-accent: #252728;
-    --toolbar: #FAFAFA;
-    --toolbar-foreground: #252728;
+  --background: #fcfcfc;
+  --foreground: #252728;
+  --card: #f7f7f7;
+  --card-foreground: #252728;
+  --popover: #f7f7f7;
+  --popover-foreground: #252728;
+  --primary: #252728;
+  --primary-foreground: #fcfcfc;
+  --secondary: #f7f7f7;
+  --secondary-foreground: #252728;
+  --muted: #f7f7f7;
+  --muted-foreground: #9b9d9e;
+  --accent: #f7f7f7;
+  --accent-foreground: #252728;
+  --destructive: #cc3333;
+  --border: #ebebeb;
+  --input: #ebebeb;
+  --ring: #9b9d9e;
+  --chart-1: #0066cc;
+  --chart-2: #cc6600;
+  --chart-3: #009966;
+  --chart-4: #9933cc;
+  --chart-5: #cc0066;
+  --chart-6: #666666;
+  --radius: 4px;
+  --sidebar: #f7f7f7;
+  --sidebar-foreground: #252728;
+  --sidebar-primary: #252728;
+  --sidebar-primary-foreground: #fcfcfc;
+  --sidebar-accent: #f2f2f2;
+  --sidebar-accent-foreground: #252728;
+  --sidebar-border: #ebebeb;
+  --sidebar-ring: #252728;
+  --navbar: #f7f7f7;
+  --navbar-border: #ebebeb;
+  --navbar-foreground: #252728;
+  --navbar-accent: #252728;
+  --toolbar: #fafafa;
+  --toolbar-foreground: #252728;
 }
 
 .dark {
-    --background: #181818;
-    --foreground: #F7F7F4;
-    --card: #1E1E1E;
-    --card-foreground: #F7F7F4;
-    --popover: #1E1E1E;
-    --popover-foreground: #F7F7F4;
-    --primary: #F7F7F4;
-    --primary-foreground: #141414;
-    --secondary: #252525;
-    --secondary-foreground: #F7F7F4;
-    --muted: #252525;
-    --muted-foreground: #9B9D9E;
-    --accent: #252525;
-    --accent-foreground: #F7F7F4;
-    --destructive: #ff4444;
-    --border: #2E2E2E;
-    --input: #2E2E2E;
-    --ring: #6B6D6E;
-    --chart-1: #4499ff;
-    --chart-2: #ff9944;
-    --chart-3: #44cc88;
-    --chart-4: #bb66ff;
-    --chart-5: #ff4488;
-    --chart-6: #999999;
-    --sidebar: #141414;
-    --sidebar-foreground: #F7F7F4;
-    --sidebar-primary: #F7F7F4;
-    --sidebar-primary-foreground: #141414;
-    --sidebar-accent: #1E1E1E;
-    --sidebar-accent-foreground: #F7F7F4;
-    --sidebar-border: #2A2A2A;
-    --sidebar-ring: #F7F7F4;
-    --navbar: #141414;
-    --navbar-border: #2E2E2E;
-    --navbar-foreground: #F7F7F4;
-    --navbar-accent: #F7F7F4;
-    --toolbar: #1C1C1C;
-    --toolbar-foreground: #F7F7F4;
+  --background: #181818;
+  --foreground: #f7f7f4;
+  --card: #1e1e1e;
+  --card-foreground: #f7f7f4;
+  --popover: #1e1e1e;
+  --popover-foreground: #f7f7f4;
+  --primary: #f7f7f4;
+  --primary-foreground: #141414;
+  --secondary: #252525;
+  --secondary-foreground: #f7f7f4;
+  --muted: #252525;
+  --muted-foreground: #9b9d9e;
+  --accent: #252525;
+  --accent-foreground: #f7f7f4;
+  --destructive: #ff4444;
+  --border: #2e2e2e;
+  --input: #2e2e2e;
+  --ring: #6b6d6e;
+  --chart-1: #4499ff;
+  --chart-2: #ff9944;
+  --chart-3: #44cc88;
+  --chart-4: #bb66ff;
+  --chart-5: #ff4488;
+  --chart-6: #999999;
+  --sidebar: #141414;
+  --sidebar-foreground: #f7f7f4;
+  --sidebar-primary: #f7f7f4;
+  --sidebar-primary-foreground: #141414;
+  --sidebar-accent: #1e1e1e;
+  --sidebar-accent-foreground: #f7f7f4;
+  --sidebar-border: #2a2a2a;
+  --sidebar-ring: #f7f7f4;
+  --navbar: #141414;
+  --navbar-border: #2e2e2e;
+  --navbar-foreground: #f7f7f4;
+  --navbar-accent: #f7f7f4;
+  --toolbar: #1c1c1c;
+  --toolbar-foreground: #f7f7f4;
 }
 
 @theme inline {
-    --color-background: var(--background);
-    --color-foreground: var(--foreground);
-    --color-card: var(--card);
-    --color-card-foreground: var(--card-foreground);
-    --color-popover: var(--popover);
-    --color-popover-foreground: var(--popover-foreground);
-    --color-primary: var(--primary);
-    --color-primary-foreground: var(--primary-foreground);
-    --color-secondary: var(--secondary);
-    --color-secondary-foreground: var(--secondary-foreground);
-    --color-muted: var(--muted);
-    --color-muted-foreground: var(--muted-foreground);
-    --color-accent: var(--accent);
-    --color-accent-foreground: var(--accent-foreground);
-    --color-destructive: var(--destructive);
-    --color-border: var(--border);
-    --color-input: var(--input);
-    --color-ring: var(--ring);
-    --color-chart-1: var(--chart-1);
-    --color-chart-2: var(--chart-2);
-    --color-chart-3: var(--chart-3);
-    --color-chart-4: var(--chart-4);
-    --color-chart-5: var(--chart-5);
-    --color-chart-6: var(--chart-6);
-    --radius-sm: 4px;
-    --radius-md: 4px;
-    --radius-lg: 4px;
-    --radius-xl: 4px;
-    --radius-2xl: 4px;
-    --radius-3xl: 4px;
-    --radius-4xl: 4px;
-    --color-sidebar: var(--sidebar);
-    --color-sidebar-foreground: var(--sidebar-foreground);
-    --color-sidebar-primary: var(--sidebar-primary);
-    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-    --color-sidebar-accent: var(--sidebar-accent);
-    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-    --color-sidebar-border: var(--sidebar-border);
-    --color-sidebar-ring: var(--sidebar-ring);
-    --color-navbar: var(--navbar);
-    --color-navbar-border: var(--navbar-border);
-    --color-navbar-foreground: var(--navbar-foreground);
-    --color-navbar-accent: var(--navbar-accent);
-    --color-toolbar: var(--toolbar);
-    --color-toolbar-foreground: var(--toolbar-foreground);
-    --font-sans: var(--font-sans);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --radius-sm: 4px;
+  --radius-md: 4px;
+  --radius-lg: 4px;
+  --radius-xl: 4px;
+  --radius-2xl: 4px;
+  --radius-3xl: 4px;
+  --radius-4xl: 4px;
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-navbar: var(--navbar);
+  --color-navbar-border: var(--navbar-border);
+  --color-navbar-foreground: var(--navbar-foreground);
+  --color-navbar-accent: var(--navbar-accent);
+  --color-toolbar: var(--toolbar);
+  --color-toolbar-foreground: var(--toolbar-foreground);
+  --font-sans: var(--font-sans);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    }
-  html, body {
-    overscroll-behavior: none;
-    }
+  }
+  html,
   body {
-    @apply bg-background text-foreground font-sans;
-    }
+    overscroll-behavior: none;
+  }
+  body {
+    @apply bg-background font-sans text-foreground;
+  }
   ::selection {
     background-color: var(--foreground);
     color: var(--background);
-    }
+  }
   /* Custom caret for native <select> — Phosphor CaretDown (Fill) SVG.
      Color #9B9D9E matches --muted-foreground (same in both themes). If the
      themes ever diverge, update the fill here to match — CSS data URIs
@@ -165,7 +166,7 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 256 256'%3E%3Cpath fill='%239B9D9E' d='M213.66 101.66l-80 80a8 8 0 0 1-11.32 0l-80-80A8 8 0 0 1 48 88h160a8 8 0 0 1 5.66 13.66z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 8px center;
-    }
+  }
 }
 
 @utility scrollbar-hide {
@@ -184,6 +185,15 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes loading-ui-classic-fade {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.15;
   }
 }
 
