@@ -23,6 +23,7 @@ import {
 import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
 import { SettingsAccessState } from "@/components/settings-access-state"
+import { LoadingState } from "@/components/loading-state"
 import { updateOptimisticQuery } from "@/lib/convex-optimistic"
 import { hasWorkspaceAdminPermission } from "@/lib/workspace-permissions"
 import {
@@ -108,15 +109,7 @@ const fadeUp = {
 }
 
 function SlackIntegrationSkeleton() {
-  return (
-    <div className="mx-auto w-full max-w-lg px-6 py-6">
-      <div className="mb-4 h-8 w-32 rounded-[4px] bg-muted/40" />
-      <div className="flex flex-col gap-2">
-        <div className="h-10 rounded-[4px] bg-muted/30" />
-        <div className="h-20 rounded-[4px] bg-muted/20" />
-      </div>
-    </div>
-  )
+  return <LoadingState className="h-[60vh]" />
 }
 
 export function SlackIntegrationPanel() {

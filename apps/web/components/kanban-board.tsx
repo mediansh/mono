@@ -45,6 +45,7 @@ import {
   MagnifyingGlass,
   DotsSixVertical,
   Users,
+  At,
 } from "@phosphor-icons/react"
 import { NewTaskModal } from "@/components/new-task-modal"
 import {
@@ -59,6 +60,8 @@ import {
   getDefaultAttachmentDisplayWidth,
   type TaskAttachment,
 } from "@/components/task-attachments"
+import { TaskCommentsPanel } from "@/components/task-comments-panel"
+import { LoadingState } from "@/components/loading-state"
 import {
   Dialog,
   DialogContent,
@@ -168,9 +171,7 @@ function computeCommonAssignees(
   const common = new Map<string, TaskAssignee>()
   for (const a of first) common.set(a.userId, a)
   for (let i = 1; i < selected.length; i++) {
-    const ids = new Set(
-      (selected[i]!.assignees ?? []).map((a) => a.userId)
-    )
+    const ids = new Set((selected[i]!.assignees ?? []).map((a) => a.userId))
     for (const userId of Array.from(common.keys())) {
       if (!ids.has(userId)) common.delete(userId)
     }
@@ -213,6 +214,11 @@ function useBoardMounted() {
   return useContext(BoardMountedContext)
 }
 
+const UnreadMentionsContext = createContext<Record<string, number>>({})
+function useUnreadMentionCount(taskId: string): number {
+  return useContext(UnreadMentionsContext)[taskId] ?? 0
+}
+
 // ── Task detail side panel: width persistence ──
 const TASK_PANEL_WIDTH_STORAGE_KEY = "median_task_panel_width_v1"
 const TASK_PANEL_DEFAULT_WIDTH = 480
@@ -250,6 +256,41 @@ function saveTaskPanelWidth(width: number) {
     window.localStorage.setItem(TASK_PANEL_WIDTH_STORAGE_KEY, String(width))
   } catch {
     // ignore storage errors (private mode, full storage, etc.)
+  }
+}
+
+// ── Task detail body: vertical split between description and comments ──
+const TASK_COMMENT_SPLIT_STORAGE_KEY = "median_task_comment_split_v1"
+const TASK_COMMENT_SPLIT_DEFAULT = 0.5
+const TASK_COMMENT_SPLIT_MIN = 0.25
+const TASK_COMMENT_SPLIT_MAX = 0.75
+
+function clampCommentSplit(ratio: number): number {
+  if (!Number.isFinite(ratio)) return TASK_COMMENT_SPLIT_DEFAULT
+  return Math.min(
+    Math.max(ratio, TASK_COMMENT_SPLIT_MIN),
+    TASK_COMMENT_SPLIT_MAX
+  )
+}
+
+function loadCommentSplitRatio(): number {
+  if (typeof window === "undefined") return TASK_COMMENT_SPLIT_DEFAULT
+  try {
+    const raw = window.localStorage.getItem(TASK_COMMENT_SPLIT_STORAGE_KEY)
+    if (!raw) return TASK_COMMENT_SPLIT_DEFAULT
+    const parsed = Number(raw)
+    return clampCommentSplit(parsed)
+  } catch {
+    return TASK_COMMENT_SPLIT_DEFAULT
+  }
+}
+
+function saveCommentSplitRatio(ratio: number) {
+  if (typeof window === "undefined") return
+  try {
+    window.localStorage.setItem(TASK_COMMENT_SPLIT_STORAGE_KEY, String(ratio))
+  } catch {
+    // ignore
   }
 }
 
@@ -555,62 +596,8 @@ function mapTaskDoc(task: TaskDoc): Task {
   }
 }
 
-const SKELETON_GROUPS: { label: string; rows: number[] }[] = [
-  { label: "Todo", rows: [180, 240, 150] },
-  { label: "In Progress", rows: [200, 260] },
-  { label: "Ready", rows: [170] },
-  { label: "Shipped", rows: [220, 190] },
-  { label: "Archive", rows: [] },
-]
-
 function BoardLoadingState() {
-  return (
-    <div className="h-full overflow-hidden px-3 py-2">
-      {SKELETON_GROUPS.map((group, gi) => (
-        <div
-          key={gi}
-          className="mb-1.5 overflow-hidden rounded-[4px] ring-1 ring-border"
-        >
-          {/* Group header skeleton — matches ListGroup header */}
-          <div className="flex items-center gap-2.5 bg-card px-3 py-1.5">
-            <span className="text-[10px] text-muted-foreground/60">▼</span>
-            <div className="size-3.5 animate-pulse rounded-[4px] bg-muted/70" />
-            <div
-              className="h-3 animate-pulse rounded-[4px] bg-muted/70"
-              style={{ width: group.label.length * 8 }}
-            />
-            <div className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-muted px-1.5">
-              <div className="h-2 w-2 rounded-[4px] bg-muted-foreground/20" />
-            </div>
-          </div>
-
-          {/* Row skeletons — matches SortableListRow layout */}
-          {group.rows.map((titleWidth, ri) => (
-            <div
-              key={ri}
-              className="flex items-center gap-3 border-b border-l-2 border-border border-l-transparent px-3 py-2"
-            >
-              {/* Priority icon placeholder */}
-              <div className="size-3.5 shrink-0 animate-pulse rounded-[4px] bg-muted/60" />
-              {/* Status icon placeholder */}
-              <div className="size-3.5 shrink-0 animate-pulse rounded-[4px] bg-muted/60" />
-              {/* Title placeholder */}
-              <div
-                className="h-3 flex-1 animate-pulse rounded-[4px] bg-muted/60"
-                style={{ maxWidth: titleWidth }}
-              />
-              {/* Label pill placeholder */}
-              {ri % 2 === 0 && (
-                <div className="h-4 w-14 shrink-0 animate-pulse rounded-[4px] bg-muted/40" />
-              )}
-              {/* Date placeholder */}
-              <div className="h-2.5 w-12 shrink-0 animate-pulse rounded-[4px] bg-muted/30" />
-            </div>
-          ))}
-        </div>
-      ))}
-    </div>
-  )
+  return <LoadingState className="h-full" />
 }
 
 function EmptyBoardState({ onCreateTask }: { onCreateTask: () => void }) {
@@ -898,7 +885,6 @@ function SourceIcon({
   )
 }
 
-
 // ── Context Menu ──
 //
 // All positioning, focus, keyboard nav, safe-triangle submenu hovering,
@@ -1036,6 +1022,25 @@ function TaskContextMenuContent({
 
 // ── List View Components ──
 
+const UnreadMentionBadge = memo(function UnreadMentionBadge({
+  taskId,
+}: {
+  taskId: string
+}) {
+  const count = useUnreadMentionCount(taskId)
+  if (count === 0) return null
+  return (
+    <span
+      title={`${count} unread mention${count === 1 ? "" : "s"}`}
+      aria-label={`${count} unread mention${count === 1 ? "" : "s"}`}
+      className="inline-flex h-[18px] min-w-[18px] items-center justify-center gap-0.5 rounded-full bg-primary/15 px-1 text-[10px] font-semibold text-primary ring-1 ring-primary/30"
+    >
+      <At size={10} weight="bold" aria-hidden="true" />
+      {count > 1 ? <span>{count}</span> : null}
+    </span>
+  )
+})
+
 const AgentBadge = memo(function AgentBadge({
   agentName,
 }: {
@@ -1064,6 +1069,7 @@ const ListRowContent = memo(function ListRowContent({ task }: { task: Task }) {
         {task.title}
       </span>
       <div className="hidden shrink-0 items-center gap-1.5 sm:flex">
+        <UnreadMentionBadge taskId={task.id} />
         {activeAgent && <AgentBadge agentName={activeAgent} />}
         {(task.labels ?? []).map((label) => (
           <span
@@ -1233,6 +1239,7 @@ function DragOverlayCard({
               <div className="shrink-0">
                 {getPriorityIcon(task.priority, 12)}
               </div>
+              <UnreadMentionBadge taskId={task.id} />
               {activeAgent && <AgentBadge agentName={activeAgent} />}
               {(task.labels ?? []).map((label) => (
                 <span
@@ -1400,65 +1407,65 @@ function ListGroup({
             transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
             className="overflow-hidden"
           >
-          <SortableContext
-            items={taskIds}
-            strategy={verticalListSortingStrategy}
-          >
-            {tasks.length === 0
-              ? null
-              : tasks.map((task, rowIndex) => {
-                  const isLast = rowIndex === tasks.length - 1
-                  const isOverMe =
-                    overItemId === task.id &&
-                    activeTaskId !== null &&
-                    activeTaskId !== task.id
-                  const showIndicatorBefore =
-                    isOverMe && !(isLast && overItemAtEnd)
-                  const showIndicatorAfter =
-                    isOverMe && isLast && overItemAtEnd
-                  return (
-                    <Fragment key={task.id}>
-                      {showIndicatorBefore && (
-                        <motion.div
-                          initial={{ opacity: 0, scaleX: 0.5 }}
-                          animate={{ opacity: 1, scaleX: 1 }}
-                          transition={{ duration: 0.15, ease: "easeOut" }}
-                          style={{ originX: 0 }}
-                          className="relative flex items-center"
-                        >
-                          <div className="absolute -left-0.5 z-10 size-2 rounded-full bg-primary" />
-                          <div className="h-0.5 w-full bg-primary" />
-                        </motion.div>
-                      )}
-                      <SortableListRow
-                        task={task}
-                        rowIndex={rowIndex}
-                        groupDelay={groupIndex * 0.04}
-                        isSelected={selectedTaskIds.has(task.id)}
-                        hasSelection={hasSelection}
-                        isDraggedAway={draggedTaskIds.has(task.id)}
-                        canManageTasks={canManageTasks}
-                        onSelect={onSelectTask}
-                        onToggleSelect={onToggleSelectTask}
-                        onUpdate={onUpdateTask}
-                        onDelete={onDeleteTask}
-                      />
-                      {showIndicatorAfter && (
-                        <motion.div
-                          initial={{ opacity: 0, scaleX: 0.5 }}
-                          animate={{ opacity: 1, scaleX: 1 }}
-                          transition={{ duration: 0.15, ease: "easeOut" }}
-                          style={{ originX: 0 }}
-                          className="relative flex items-center"
-                        >
-                          <div className="absolute -left-0.5 z-10 size-2 rounded-full bg-primary" />
-                          <div className="h-0.5 w-full bg-primary" />
-                        </motion.div>
-                      )}
-                    </Fragment>
-                  )
-                })}
-          </SortableContext>
+            <SortableContext
+              items={taskIds}
+              strategy={verticalListSortingStrategy}
+            >
+              {tasks.length === 0
+                ? null
+                : tasks.map((task, rowIndex) => {
+                    const isLast = rowIndex === tasks.length - 1
+                    const isOverMe =
+                      overItemId === task.id &&
+                      activeTaskId !== null &&
+                      activeTaskId !== task.id
+                    const showIndicatorBefore =
+                      isOverMe && !(isLast && overItemAtEnd)
+                    const showIndicatorAfter =
+                      isOverMe && isLast && overItemAtEnd
+                    return (
+                      <Fragment key={task.id}>
+                        {showIndicatorBefore && (
+                          <motion.div
+                            initial={{ opacity: 0, scaleX: 0.5 }}
+                            animate={{ opacity: 1, scaleX: 1 }}
+                            transition={{ duration: 0.15, ease: "easeOut" }}
+                            style={{ originX: 0 }}
+                            className="relative flex items-center"
+                          >
+                            <div className="absolute -left-0.5 z-10 size-2 rounded-full bg-primary" />
+                            <div className="h-0.5 w-full bg-primary" />
+                          </motion.div>
+                        )}
+                        <SortableListRow
+                          task={task}
+                          rowIndex={rowIndex}
+                          groupDelay={groupIndex * 0.04}
+                          isSelected={selectedTaskIds.has(task.id)}
+                          hasSelection={hasSelection}
+                          isDraggedAway={draggedTaskIds.has(task.id)}
+                          canManageTasks={canManageTasks}
+                          onSelect={onSelectTask}
+                          onToggleSelect={onToggleSelectTask}
+                          onUpdate={onUpdateTask}
+                          onDelete={onDeleteTask}
+                        />
+                        {showIndicatorAfter && (
+                          <motion.div
+                            initial={{ opacity: 0, scaleX: 0.5 }}
+                            animate={{ opacity: 1, scaleX: 1 }}
+                            transition={{ duration: 0.15, ease: "easeOut" }}
+                            style={{ originX: 0 }}
+                            className="relative flex items-center"
+                          >
+                            <div className="absolute -left-0.5 z-10 size-2 rounded-full bg-primary" />
+                            <div className="h-0.5 w-full bg-primary" />
+                          </motion.div>
+                        )}
+                      </Fragment>
+                    )
+                  })}
+            </SortableContext>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1517,6 +1524,14 @@ function TaskDetailSidePanel({
   const [uploading, setUploading] = useState(false)
   const [isResizing, setIsResizing] = useState(false)
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
+  const [commentSplitRatio, setCommentSplitRatio] = useState<number>(() =>
+    loadCommentSplitRatio()
+  )
+  const [isSplitResizing, setIsSplitResizing] = useState(false)
+  const splitContainerRef = useRef<HTMLDivElement | null>(null)
+  const markTaskMentionsRead = useMutation(
+    api.taskComments.markTaskMentionsRead
+  )
   const fileInputRef = useRef<HTMLInputElement>(null)
   const titleRef = useRef<HTMLTextAreaElement>(null)
   const normalizedAssignees: TaskAssignee[] =
@@ -1650,8 +1665,7 @@ function TaskDetailSidePanel({
 
       if (newAttachments.length > 0) {
         const ref = attachmentsRef.current
-        const existing =
-          ref.taskId === task.id ? (ref.attachments ?? []) : []
+        const existing = ref.taskId === task.id ? (ref.attachments ?? []) : []
         onUpdate(task.id, { attachments: [...existing, ...newAttachments] })
       }
 
@@ -1758,6 +1772,58 @@ function TaskDetailSidePanel({
     [width, onWidthChange]
   )
 
+  // Persist split ratio after the drag completes.
+  useEffect(() => {
+    if (isSplitResizing) return
+    saveCommentSplitRatio(commentSplitRatio)
+  }, [isSplitResizing, commentSplitRatio])
+
+  const handleSplitResizeStart = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      event.preventDefault()
+      const container = splitContainerRef.current
+      if (!container) return
+      const rect = container.getBoundingClientRect()
+      if (rect.height <= 0) return
+
+      setIsSplitResizing(true)
+      const previousUserSelect = document.body.style.userSelect
+      const previousCursor = document.body.style.cursor
+      document.body.style.userSelect = "none"
+      document.body.style.cursor = "row-resize"
+
+      function onMove(ev: PointerEvent) {
+        const offsetY = ev.clientY - rect.top
+        const nextRatio = clampCommentSplit(offsetY / rect.height)
+        setCommentSplitRatio(nextRatio)
+      }
+
+      function onUp() {
+        setIsSplitResizing(false)
+        document.body.style.userSelect = previousUserSelect
+        document.body.style.cursor = previousCursor
+        window.removeEventListener("pointermove", onMove)
+        window.removeEventListener("pointerup", onUp)
+      }
+
+      window.addEventListener("pointermove", onMove)
+      window.addEventListener("pointerup", onUp)
+    },
+    []
+  )
+
+  // Mark this task's mentions as read whenever the panel opens or
+  // switches to a different task.
+  useEffect(() => {
+    if (!task) return
+    void markTaskMentionsRead({
+      workspaceId: task.workspaceId as Id<"workspaces">,
+      taskId: task.id as Id<"tasks">,
+    }).catch(() => {
+      // ignore — read-marking is best-effort
+    })
+  }, [task?.id, task?.workspaceId, markTaskMentionsRead])
+
   const panelContent = (
     <AnimatePresence initial={false}>
       {task && (
@@ -1789,8 +1855,8 @@ function TaskDetailSidePanel({
               }`}
             />
             <div
-              className={`relative flex h-8 w-3 items-center justify-center rounded-full text-muted-foreground/60 opacity-0 ring-1 ring-border bg-background transition-opacity group-hover:opacity-100 ${
-                isResizing ? "opacity-100 text-primary ring-primary/50" : ""
+              className={`relative flex h-8 w-3 items-center justify-center rounded-full bg-background text-muted-foreground/60 opacity-0 ring-1 ring-border transition-opacity group-hover:opacity-100 ${
+                isResizing ? "text-primary opacity-100 ring-primary/50" : ""
               }`}
             >
               <DotsSixVertical size={10} weight="bold" />
@@ -1816,8 +1882,8 @@ function TaskDetailSidePanel({
               transition={{ duration: 0.2, ease: "easeOut" }}
               className="flex min-h-0 flex-1 flex-col"
             >
-            {/* ── Header: Title + Date + Close ── */}
-            <div className="relative px-5 pt-5 pb-0">
+              {/* ── Header: Title + Date + Close ── */}
+              <div className="relative px-5 pt-5 pb-0">
                 {/* Close button */}
                 <button
                   onClick={handleClose}
@@ -2098,81 +2164,114 @@ function TaskDetailSidePanel({
                 </button>
               </div>
 
-              {/* ── Body: Description (scrollable) ── */}
-              <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-4 pb-4">
-                {task._syncStatus === "error" ? (
-                  <motion.div
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mb-4 flex items-start gap-2 rounded-[6px] border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-200"
-                  >
-                    <WarningCircle
-                      size={14}
-                      weight="fill"
-                      className="mt-0.5 shrink-0 text-amber-400"
-                    />
-                    <span className="leading-relaxed">
-                      Attachment changes are visible locally, but they have not
-                      synced to the server yet.
-                    </span>
-                  </motion.div>
-                ) : null}
-
-                {/* Description */}
-                <div className="flex-1">
-                  {editingDesc ? (
-                    <textarea
-                      autoFocus
-                      value={descValue}
-                      onChange={(e) => setDescValue(e.target.value)}
-                      onBlur={handleDescSave}
-                      onKeyDown={(e) => {
-                        if (e.key === "Escape") {
-                          e.preventDefault()
-                          e.stopPropagation()
-                          setDescValue(task.description ?? "")
-                          setEditingDesc(false)
-                        }
-                      }}
-                      placeholder="Add a description..."
-                      className="min-h-[180px] w-full resize-none rounded-[4px] bg-transparent text-[13px] leading-relaxed text-foreground/80 outline-none placeholder:text-muted-foreground/40"
-                    />
-                  ) : (
-                    <div
-                      onClick={() => {
-                        if (!canManageTasks) return
-                        setDescValue(task.description ?? "")
-                        setEditingDesc(true)
-                      }}
-                      className={`min-h-[180px] text-[13px] leading-relaxed transition-colors ${canManageTasks ? "cursor-text" : ""}`}
+              {/* ── Body: Description (top) + Comments (bottom), resizable ── */}
+              <div
+                ref={splitContainerRef}
+                className="flex min-h-0 flex-1 flex-col overflow-hidden"
+              >
+                <div
+                  className="flex min-h-0 flex-col overflow-y-auto px-5 pt-4 pb-4"
+                  style={{ flexBasis: `${commentSplitRatio * 100}%` }}
+                >
+                  {task._syncStatus === "error" ? (
+                    <motion.div
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mb-4 flex items-start gap-2 rounded-[6px] border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-200"
                     >
-                      {task.description ? (
-                        <span className="block break-words whitespace-pre-wrap text-foreground/80">
-                          {task.description}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground/40">
-                          Add a description...
-                        </span>
-                      )}
+                      <WarningCircle
+                        size={14}
+                        weight="fill"
+                        className="mt-0.5 shrink-0 text-amber-400"
+                      />
+                      <span className="leading-relaxed">
+                        Attachment changes are visible locally, but they have
+                        not synced to the server yet.
+                      </span>
+                    </motion.div>
+                  ) : null}
+
+                  {/* Description */}
+                  <div className="flex-1">
+                    {editingDesc ? (
+                      <textarea
+                        autoFocus
+                        value={descValue}
+                        onChange={(e) => setDescValue(e.target.value)}
+                        onBlur={handleDescSave}
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape") {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            setDescValue(task.description ?? "")
+                            setEditingDesc(false)
+                          }
+                        }}
+                        placeholder="Add a description..."
+                        className="min-h-[180px] w-full resize-none rounded-[4px] bg-transparent text-[13px] leading-relaxed text-foreground/80 outline-none placeholder:text-muted-foreground/40"
+                      />
+                    ) : (
+                      <div
+                        onClick={() => {
+                          if (!canManageTasks) return
+                          setDescValue(task.description ?? "")
+                          setEditingDesc(true)
+                        }}
+                        className={`min-h-[180px] text-[13px] leading-relaxed transition-colors ${canManageTasks ? "cursor-text" : ""}`}
+                      >
+                        {task.description ? (
+                          <span className="block break-words whitespace-pre-wrap text-foreground/80">
+                            {task.description}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground/40">
+                            Add a description...
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Attachments */}
+                  {task.attachments && task.attachments.length > 0 ? (
+                    <div className="mt-4 border-t border-border pt-4">
+                      <TaskAttachmentGallery
+                        attachments={task.attachments}
+                        workspaceId={task.workspaceId}
+                        canManageAttachments={canManageTasks}
+                        onAttachmentsChange={(attachments) =>
+                          onUpdate(task.id, { attachments })
+                        }
+                      />
                     </div>
-                  )}
+                  ) : null}
                 </div>
 
-                {/* Attachments */}
-                {task.attachments && task.attachments.length > 0 ? (
-                  <div className="mt-4 border-t border-border pt-4">
-                    <TaskAttachmentGallery
-                      attachments={task.attachments}
-                      workspaceId={task.workspaceId}
-                      canManageAttachments={canManageTasks}
-                      onAttachmentsChange={(attachments) =>
-                        onUpdate(task.id, { attachments })
-                      }
-                    />
-                  </div>
-                ) : null}
+                {/* Horizontal resize handle between description and comments */}
+                <div
+                  onPointerDown={handleSplitResizeStart}
+                  role="separator"
+                  aria-orientation="horizontal"
+                  aria-label="Resize comments section"
+                  className="group relative flex h-2 shrink-0 cursor-row-resize items-center justify-center border-y border-border/60 bg-sidebar/40 transition-colors hover:bg-primary/10"
+                >
+                  <div
+                    className={`h-px w-8 rounded-full transition-colors ${
+                      isSplitResizing
+                        ? "bg-primary"
+                        : "bg-muted-foreground/30 group-hover:bg-primary/60"
+                    }`}
+                  />
+                </div>
 
+                {/* Comments */}
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                  <TaskCommentsPanel
+                    workspaceId={task.workspaceId as Id<"workspaces">}
+                    taskId={task.id as Id<"tasks">}
+                    canComment={canManageTasks}
+                  />
+                </div>
               </div>
 
               {/* ── Bottom toolbar: Sources only ── */}
@@ -2554,6 +2653,7 @@ const KanbanCard = memo(function KanbanCard({
               <div className="shrink-0">
                 {getPriorityIcon(task.priority, 12)}
               </div>
+              <UnreadMentionBadge taskId={task.id} />
               {activeAgent && <AgentBadge agentName={activeAgent} />}
               {(task.labels ?? []).map((label) => (
                 <span
@@ -2697,10 +2797,8 @@ function KanbanColumn({
                 overItemId === task.id &&
                 activeTaskId !== null &&
                 activeTaskId !== task.id
-              const showIndicatorBefore =
-                isOverMe && !(isLast && overItemAtEnd)
-              const showIndicatorAfter =
-                isOverMe && isLast && overItemAtEnd
+              const showIndicatorBefore = isOverMe && !(isLast && overItemAtEnd)
+              const showIndicatorAfter = isOverMe && isLast && overItemAtEnd
               return (
                 <Fragment key={task.id}>
                   {showIndicatorBefore && (
@@ -3763,9 +3861,10 @@ function BoardFilter({
   const triggerRef = useRef<HTMLButtonElement | null>(null)
   const popoverRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
-  const [position, setPosition] = useState<{ top: number; right: number } | null>(
-    null
-  )
+  const [position, setPosition] = useState<{
+    top: number
+    right: number
+  } | null>(null)
 
   const filterCount =
     (filter.search.trim() ? 1 : 0) +
@@ -3894,7 +3993,7 @@ function BoardFilter({
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.6 }}
               transition={{ type: "spring", stiffness: 500, damping: 30 }}
-              className="flex min-w-[16px] items-center justify-center rounded-full bg-primary px-1 py-0 text-[10px] font-semibold leading-4 text-primary-foreground"
+              className="flex min-w-[16px] items-center justify-center rounded-full bg-primary px-1 py-0 text-[10px] leading-4 font-semibold text-primary-foreground"
             >
               {filterCount}
             </motion.span>
@@ -3939,9 +4038,7 @@ function BoardFilter({
                   {filter.search && (
                     <button
                       type="button"
-                      onClick={() =>
-                        onFilterChange({ ...filter, search: "" })
-                      }
+                      onClick={() => onFilterChange({ ...filter, search: "" })}
                       className="shrink-0 rounded-[3px] p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
                       title="Clear search"
                     >
@@ -4190,6 +4287,17 @@ export function KanbanBoard() {
   const { user: clerkUser } = useUser()
   const currentUserId = clerkUser?.id ?? null
 
+  const unreadMentionCounts = useQuery(
+    api.taskComments.unreadMentionCountsForWorkspace,
+    currentWorkspace
+      ? { workspaceId: currentWorkspace._id as Id<"workspaces"> }
+      : "skip"
+  )
+  const unreadMentionsMap = useMemo(
+    () => unreadMentionCounts ?? {},
+    [unreadMentionCounts]
+  )
+
   // Side panel state — lifted here so the panel is a layout sibling of the
   // board content and shifts the main view when open.
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
@@ -4401,7 +4509,10 @@ export function KanbanBoard() {
         }
       }
 
-      if (filter.statuses.length > 0 && !filter.statuses.includes(task.status)) {
+      if (
+        filter.statuses.length > 0 &&
+        !filter.statuses.includes(task.status)
+      ) {
         return false
       }
       if (
@@ -4864,103 +4975,106 @@ export function KanbanBoard() {
 
   const selectedTask = selectedTaskId
     ? (filteredTasks.find((task) => task.id === selectedTaskId) ??
-       tasks.find((task) => task.id === selectedTaskId) ??
-       null)
+      tasks.find((task) => task.id === selectedTaskId) ??
+      null)
     : null
 
   return (
     <BoardMountedContext.Provider value={boardMounted}>
       <LabelConfigContext.Provider value={labelConfig}>
-        <div className="flex h-full">
-          {/* Main content — shrinks to make room for the side panel */}
-          <div className="flex min-w-0 flex-1 flex-col">
-            {!canManageTasks ? (
-              <div className="mx-4 mt-4 rounded-[4px] bg-card px-3 py-3 text-[13px] text-muted-foreground ring-1 ring-border">
-                You’re in guest mode. Tasks are read-only in this workspace.
-              </div>
-            ) : null}
+        <UnreadMentionsContext.Provider value={unreadMentionsMap}>
+          <div className="flex h-full">
+            {/* Main content — shrinks to make room for the side panel */}
+            <div className="flex min-w-0 flex-1 flex-col">
+              {!canManageTasks ? (
+                <div className="mx-4 mt-4 rounded-[4px] bg-card px-3 py-3 text-[13px] text-muted-foreground ring-1 ring-border">
+                  You’re in guest mode. Tasks are read-only in this workspace.
+                </div>
+              ) : null}
 
-            {/* Toolbar */}
-            <div className="scrollbar-hide flex items-center gap-1 overflow-x-auto border-b border-border bg-toolbar text-toolbar-foreground px-3 py-2">
-              <ViewToggle view={boardView} onViewChange={handleViewChange} />
-              {hiddenColumns.length > 0 && (
-                <HiddenColumnsToolbar
-                  hiddenColumns={hiddenColumns}
-                  onShow={handleShowColumn}
-                  tasks={filteredTasks}
-                />
-              )}
-              <div className="ml-auto flex items-center gap-1">
-                <BoardFilter
-                  filter={filter}
-                  onFilterChange={setFilter}
-                  availableLabels={
-                    currentWorkspace?.labels && currentWorkspace.labels.length > 0
-                      ? currentWorkspace.labels
-                      : DEFAULT_WORKSPACE_LABELS
-                  }
-                />
+              {/* Toolbar */}
+              <div className="scrollbar-hide flex items-center gap-1 overflow-x-auto border-b border-border bg-toolbar px-3 py-2 text-toolbar-foreground">
+                <ViewToggle view={boardView} onViewChange={handleViewChange} />
+                {hiddenColumns.length > 0 && (
+                  <HiddenColumnsToolbar
+                    hiddenColumns={hiddenColumns}
+                    onShow={handleShowColumn}
+                    tasks={filteredTasks}
+                  />
+                )}
+                <div className="ml-auto flex items-center gap-1">
+                  <BoardFilter
+                    filter={filter}
+                    onFilterChange={setFilter}
+                    availableLabels={
+                      currentWorkspace?.labels &&
+                      currentWorkspace.labels.length > 0
+                        ? currentWorkspace.labels
+                        : DEFAULT_WORKSPACE_LABELS
+                    }
+                  />
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="min-h-0 flex-1">
+                {boardView === "board" ? (
+                  <ColumnBoardView
+                    tasks={filteredTasks}
+                    hiddenColumns={hiddenColumns}
+                    canManageTasks={canManageTasks}
+                    selectedTaskId={selectedTaskId}
+                    onSelectTaskId={setSelectedTaskId}
+                    onMoveTask={handleMoveTask}
+                    onMoveMultipleTasks={handleMoveMultipleTasks}
+                    onUpdateTask={handleUpdateTask}
+                    onDeleteTask={handleDeleteTask}
+                    onBulkUpdateTasks={handleBulkUpdateTasks}
+                    onBulkDeleteTasks={handleBulkDeleteTasks}
+                    onAddTask={handleAddTask}
+                  />
+                ) : (
+                  <ListView
+                    tasks={filteredTasks}
+                    hiddenColumns={hiddenColumns}
+                    collapsedColumns={collapsedColumns}
+                    canManageTasks={canManageTasks}
+                    selectedTaskId={selectedTaskId}
+                    onSelectTaskId={setSelectedTaskId}
+                    onToggleCollapsedColumn={handleToggleCollapsedColumn}
+                    onMoveTask={handleMoveTask}
+                    onMoveMultipleTasks={handleMoveMultipleTasks}
+                    onUpdateTask={handleUpdateTask}
+                    onDeleteTask={handleDeleteTask}
+                    onBulkUpdateTasks={handleBulkUpdateTasks}
+                    onBulkDeleteTasks={handleBulkDeleteTasks}
+                    onAddTask={handleAddTask}
+                  />
+                )}
               </div>
             </div>
 
-            {/* Content */}
-            <div className="min-h-0 flex-1">
-              {boardView === "board" ? (
-                <ColumnBoardView
-                  tasks={filteredTasks}
-                  hiddenColumns={hiddenColumns}
-                  canManageTasks={canManageTasks}
-                  selectedTaskId={selectedTaskId}
-                  onSelectTaskId={setSelectedTaskId}
-                  onMoveTask={handleMoveTask}
-                  onMoveMultipleTasks={handleMoveMultipleTasks}
-                  onUpdateTask={handleUpdateTask}
-                  onDeleteTask={handleDeleteTask}
-                  onBulkUpdateTasks={handleBulkUpdateTasks}
-                  onBulkDeleteTasks={handleBulkDeleteTasks}
-                  onAddTask={handleAddTask}
-                />
-              ) : (
-                <ListView
-                  tasks={filteredTasks}
-                  hiddenColumns={hiddenColumns}
-                  collapsedColumns={collapsedColumns}
-                  canManageTasks={canManageTasks}
-                  selectedTaskId={selectedTaskId}
-                  onSelectTaskId={setSelectedTaskId}
-                  onToggleCollapsedColumn={handleToggleCollapsedColumn}
-                  onMoveTask={handleMoveTask}
-                  onMoveMultipleTasks={handleMoveMultipleTasks}
-                  onUpdateTask={handleUpdateTask}
-                  onDeleteTask={handleDeleteTask}
-                  onBulkUpdateTasks={handleBulkUpdateTasks}
-                  onBulkDeleteTasks={handleBulkDeleteTasks}
-                  onAddTask={handleAddTask}
-                />
-              )}
-            </div>
+            {/* Side panel — slides in from the right and shifts the layout */}
+            <TaskDetailSidePanel
+              task={selectedTask}
+              width={taskPanelWidth}
+              onWidthChange={setTaskPanelWidth}
+              onClose={handleClosePanel}
+              onUpdate={handleUpdateTask}
+              onDelete={handlePanelDelete}
+              onAccept={handlePanelAccept}
+              onDeny={handlePanelDeny}
+              canManageTasks={canManageTasks}
+            />
+
+            {/* New task modal */}
+            <NewTaskModal
+              open={modalOpen}
+              onOpenChange={setModalOpen}
+              defaultStatus={modalDefaultStatus}
+            />
           </div>
-
-          {/* Side panel — slides in from the right and shifts the layout */}
-          <TaskDetailSidePanel
-            task={selectedTask}
-            width={taskPanelWidth}
-            onWidthChange={setTaskPanelWidth}
-            onClose={handleClosePanel}
-            onUpdate={handleUpdateTask}
-            onDelete={handlePanelDelete}
-            onAccept={handlePanelAccept}
-            onDeny={handlePanelDeny}
-            canManageTasks={canManageTasks}
-          />
-
-          {/* New task modal */}
-          <NewTaskModal
-            open={modalOpen}
-            onOpenChange={setModalOpen}
-            defaultStatus={modalDefaultStatus}
-          />
-        </div>
+        </UnreadMentionsContext.Provider>
       </LabelConfigContext.Provider>
     </BoardMountedContext.Provider>
   )

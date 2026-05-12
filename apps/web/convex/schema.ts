@@ -281,6 +281,21 @@ export default defineSchema({
     .index("by_task", ["taskId"])
     .index("by_linear_issue", ["linearIssueId"]),
 
+  linearCommentLinks: defineTable({
+    workspaceId: v.id("workspaces"),
+    taskId: v.id("tasks"),
+    taskCommentId: v.id("taskComments"),
+    linearIssueId: v.string(),
+    linearCommentId: v.string(),
+    lastLinearUpdatedAt: v.optional(v.string()),
+    lastSyncedAt: v.number(),
+  })
+    .index("by_workspace", ["workspaceId"])
+    .index("by_task", ["taskId"])
+    .index("by_task_comment", ["taskCommentId"])
+    .index("by_linear_comment", ["linearCommentId"])
+    .index("by_linear_issue", ["linearIssueId"]),
+
   linearWebhookDeliveries: defineTable({
     deliveryId: v.string(),
     integrationId: v.id("linearWorkspaceIntegrations"),
@@ -880,6 +895,40 @@ export default defineSchema({
       "fixtureId",
     ])
     .index("by_suiteRun_suite", ["suiteRunId", "suite"]),
+
+  taskComments: defineTable({
+    workspaceId: v.id("workspaces"),
+    taskId: v.id("tasks"),
+    authorId: v.string(),
+    authorName: v.optional(v.string()),
+    authorImageUrl: v.optional(v.string()),
+    bodyMarkdown: v.string(),
+    mentionedUserIds: v.optional(v.array(v.string())),
+    reactions: v.optional(
+      v.array(
+        v.object({
+          userId: v.string(),
+          emoji: v.string(),
+        })
+      )
+    ),
+    createdAt: v.number(),
+    editedAt: v.optional(v.number()),
+  })
+    .index("by_task_created", ["taskId", "createdAt"])
+    .index("by_workspace", ["workspaceId"]),
+
+  taskCommentMentions: defineTable({
+    workspaceId: v.id("workspaces"),
+    taskId: v.id("tasks"),
+    commentId: v.id("taskComments"),
+    userId: v.string(),
+    createdAt: v.number(),
+    readAt: v.optional(v.number()),
+  })
+    .index("by_user_task", ["userId", "taskId"])
+    .index("by_user_workspace_read", ["userId", "workspaceId", "readAt"])
+    .index("by_comment", ["commentId"]),
 
   deletedTaskSources: defineTable({
     workspaceId: v.id("workspaces"),
