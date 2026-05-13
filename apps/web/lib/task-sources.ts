@@ -13,6 +13,23 @@ export const SOURCE_CONFIG: Record<
   api: { label: "API", color: "#0ea5e9", bg: "#0ea5e918" },
 }
 
+export function sanitizeExternalUrl(
+  url: string | null | undefined
+): string | undefined {
+  if (!url) return undefined
+  const trimmed = url.trim()
+  if (!trimmed) return undefined
+  try {
+    const parsed = new URL(trimmed)
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return undefined
+    }
+    return parsed.toString()
+  } catch {
+    return undefined
+  }
+}
+
 export function getTaskSources(task: {
   source?: TaskSource
   sources?: TaskSource[]

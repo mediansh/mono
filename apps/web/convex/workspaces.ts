@@ -13,10 +13,12 @@ import {
   getAuthUserIds,
   getIdentityProfile,
   requireIdentity,
+  requireTaskWriteAccess,
   requireWorkspaceAccess,
   requireWorkspaceAdminAccess,
 } from "./permissions"
 import { insertWorkspaceLog } from "./logs"
+import { isAdmin } from "./admins"
 import {
   WORKSPACE_ROLE_RANK,
   type WorkspaceInviteRole,
@@ -140,7 +142,13 @@ export const getWorkspaceMembers = query({
     workspaceId: v.id("workspaces"),
   },
   handler: async (ctx, args) => {
-    const { membership } = await requireWorkspaceAccess(ctx, args.workspaceId)
+    // Member-management settings are an admin-only view that exposes member
+    // email addresses and pending invite addresses. Enforce admin access on
+    // the server so a workspace member can't subscribe directly.
+    const { membership } = await requireWorkspaceAdminAccess(
+      ctx,
+      args.workspaceId
+    )
 
     const [workspace, members, invites] = await Promise.all([
       ctx.db.get(args.workspaceId),
@@ -212,7 +220,11 @@ export const getWorkspaceTaskGenerationContext = query({
     workspaceId: v.id("workspaces"),
   },
   handler: async (ctx, args) => {
-    await requireWorkspaceAccess(ctx, args.workspaceId)
+    // AI task generation is a paid operation and ends in writing tasks back
+    // to the workspace, so require the same write permission as creating a
+    // task. Read-only guests previously could trigger this endpoint and burn
+    // workspace credits.
+    await requireTaskWriteAccess(ctx, args.workspaceId)
 
     const workspace = await ctx.db.get(args.workspaceId)
     if (!workspace) {
@@ -810,6 +822,43 @@ export const createWorkspace = mutation({
     const userId = getAuthUserId(identity)
     const prefix = generatePrefix(args.name)
     const profile = getIdentityProfile(identity)
+
+    // Server-side enforcement of the early-access gate. The client-only
+    // EarlyAccessGuard is for UX; without this check, a signed-in user can
+    // call this mutation directly while early access is enabled and obtain
+    // workspace owner access without a redemption.
+    const earlyAccessSetting = await ctx.db
+      .query("appSettings")
+      .withIndex("by_key", (q) => q.eq("key", "earlyAccess.enabled"))
+      .unique()
+    const earlyAccessEnabled = earlyAccessSetting?.value === "true"
+    if (earlyAccessEnabled) {
+      let hasRedemption = false
+      for (const authUserId of getAuthUserIds(identity)) {
+        const redemption = await ctx.db
+          .query("earlyAccessRedemptions")
+          .withIndex("by_user", (q) => q.eq("userId", authUserId))
+          .first()
+        if (redemption) {
+          hasRedemption = true
+          break
+        }
+      }
+      // Mirror the redemption check: an admin record may be stored under
+      // any of the identifiers in getAuthUserIds (tokenIdentifier, subject,
+      // etc.). Checking just identity.subject would incorrectly block an
+      // admin whose admin row keys off a different identifier.
+      let adminAccess = false
+      for (const authUserId of getAuthUserIds(identity)) {
+        if (await isAdmin(ctx, authUserId)) {
+          adminAccess = true
+          break
+        }
+      }
+      if (!hasRedemption && !adminAccess) {
+        throw new Error("Early access required to create a workspace")
+      }
+    }
 
     const workspaceId = await ctx.db.insert("workspaces", {
       name: args.name,

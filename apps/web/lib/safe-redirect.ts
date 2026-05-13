@@ -1,0 +1,125 @@
+/**
+ * Helpers for validating user-supplied OAuth and billing redirect URLs.
+ *
+ * Untrusted redirect URLs are a common open-redirect sink: when a callback
+ * forwards a victim to a stored URL, an attacker who can mint that URL can
+ * use a trusted domain as a phishing bounce. We constrain redirect URLs to
+ * a small allowlist of Median application origins (plus localhost for dev).
+ */
+
+const DEFAULT_APP_ORIGINS = [
+  "https://median.sh",
+  "https://www.median.sh",
+]
+
+function localDevOrigins(): string[] {
+  const origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+  // Allow opting in/out via env if needed in the future.
+  return origins
+}
+
+function normalizeOrigin(value: string): string | null {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  try {
+    const parsed = new URL(trimmed)
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return null
+    }
+    return parsed.origin
+  } catch {
+    return null
+  }
+}
+
+function getAllowedOrigins(): string[] {
+  // Normalize env-supplied origins through the URL constructor so entries
+  // like "https://staging.example.com/" or "https://staging.example.com/app"
+  // still match the scheme://host[:port] form that URL.origin produces.
+  const fromEnv = (process.env.MEDIAN_ALLOWED_REDIRECT_ORIGINS ?? "")
+    .split(",")
+    .map((s) => normalizeOrigin(s))
+    .filter((origin): origin is string => Boolean(origin))
+  const origins = new Set<string>([...DEFAULT_APP_ORIGINS, ...fromEnv])
+  if (process.env.NODE_ENV !== "production") {
+    for (const o of localDevOrigins()) origins.add(o)
+  }
+  return Array.from(origins)
+}
+
+/**
+ * Returns a normalized absolute URL string if `input` is an allowed redirect,
+ * otherwise null.
+ *
+ * Rules:
+ *   - Must parse as an absolute URL with http: or https: scheme
+ *   - Origin (scheme + host + port) must match an entry in the allowlist
+ *   - Protocol-relative URLs ("//attacker.example") are rejected
+ *     (URL parsing without a base fails for these, which is what we want)
+ */
+export function safeAppRedirect(input: string | null | undefined): string | null {
+  if (!input) return null
+  const trimmed = input.trim()
+  if (!trimmed) return null
+  let parsed: URL
+  try {
+    parsed = new URL(trimmed)
+  } catch {
+    return null
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return null
+  }
+  const allowed = getAllowedOrigins()
+  if (!allowed.includes(parsed.origin)) {
+    return null
+  }
+  return parsed.toString()
+}
+
+/**
+ * Same as `safeAppRedirect` but throws on rejection. Use in mutation/action
+ * argument validation paths where the caller expects a user-visible error.
+ */
+export function requireSafeAppRedirect(
+  input: string | null | undefined,
+  fieldName = "redirectUrl"
+): string {
+  const safe = safeAppRedirect(input)
+  if (!safe) {
+    throw new Error(`Invalid ${fieldName}: must be a Median application URL`)
+  }
+  return safe
+}
+
+/**
+ * Returns the preferred app origin to use as a fallback when a stored or
+ * client-supplied redirect URL doesn't validate. In production this is
+ * usually `https://median.sh`; staging or self-hosted deployments can
+ * override the default via `MEDIAN_PRIMARY_APP_ORIGIN`.
+ */
+export function getPrimaryAppOrigin(): string {
+  const fromEnv = process.env.MEDIAN_PRIMARY_APP_ORIGIN?.trim()
+  if (fromEnv) {
+    try {
+      const parsed = new URL(fromEnv)
+      if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+        return parsed.origin
+      }
+    } catch {
+      // fall through to allowlist-based defaulting
+    }
+  }
+  return getAllowedOrigins()[0] ?? DEFAULT_APP_ORIGINS[0] ?? "https://median.sh"
+}
+
+/**
+ * Builds a same-origin fallback URL for a given app path. Useful when an
+ * OAuth callback needs to redirect somewhere safe because the stored
+ * redirect URL is no longer trusted.
+ */
+export function buildAppFallbackUrl(path: string): string {
+  const origin = getPrimaryAppOrigin()
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`
+  return `${origin}${normalizedPath}`
+}

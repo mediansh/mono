@@ -2589,9 +2589,17 @@ export const upsertTaskFromLinearIssue = internalMutation({
 
 export const previewLinearTeams = action({
   args: {
+    workspaceId: v.id("workspaces"),
     apiKey: v.string(),
   },
-  handler: async (_ctx, args) => {
+  handler: async (ctx, args) => {
+    // Previously this action was unauthenticated, which let any anonymous
+    // caller use the deployment as a Linear-API-key validation proxy.
+    // Require workspace admin access — the same gate as connecting the
+    // integration — and return only minimal team metadata.
+    await ctx.runMutation(internal.linear.assertWorkspaceAdminAccess, {
+      workspaceId: args.workspaceId,
+    })
     const result = await fetchViewerAndTeams(args.apiKey.trim())
     return {
       viewer: {
@@ -2675,17 +2683,9 @@ export const connectWorkspaceLinearIntegration = action({
       }
     )
 
-    if (existingIntegration?.webhookId) {
-      try {
-        await deleteWebhook(
-          existingIntegration.apiKey,
-          existingIntegration.webhookId
-        )
-      } catch {
-        // Replace the integration anyway so the workspace is not stuck on a bad webhook.
-      }
-    }
-
+    // Validate the new credentials and team BEFORE touching the existing
+    // webhook. If anything fails here, the workspace keeps its old working
+    // integration instead of being left in a broken state.
     const connectionData = await fetchViewerAndTeams(apiKey)
     const selectedTeam = connectionData.teams.find(
       (team) => team.id === args.teamId
@@ -2703,6 +2703,19 @@ export const connectWorkspaceLinearIntegration = action({
       selectedTeam.id,
       buildLinearWebhookUrl(webhookToken)
     )
+
+    // Only after the replacement webhook is registered do we tear down the
+    // old one so inbound sync isn't silently broken by a failed reconnect.
+    if (existingIntegration?.webhookId) {
+      try {
+        await deleteWebhook(
+          existingIntegration.apiKey,
+          existingIntegration.webhookId
+        )
+      } catch {
+        // Replace the integration anyway so the workspace is not stuck on a bad webhook.
+      }
+    }
 
     await ctx.runMutation(internal.linear.clearWorkspaceLinearIntegration, {
       workspaceId: args.workspaceId,

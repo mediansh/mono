@@ -296,7 +296,14 @@ export function LinearIntegrationPanel() {
 
     setIsLoadingTeams(true)
     try {
-      const result = await previewLinearTeams({ apiKey: apiKey.trim() })
+      if (!currentWorkspace) {
+        toast.error("No workspace selected.")
+        return
+      }
+      const result = await previewLinearTeams({
+        workspaceId: currentWorkspace._id,
+        apiKey: apiKey.trim(),
+      })
       setPreviewTeams(result.teams)
       setPreviewUser({
         name: result.viewer.name,

@@ -24,9 +24,18 @@ const EARLY_ACCESS_PLAN_ID = "scale"
 
 function generateCode(): string {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+  // Use a cryptographic RNG so codes are not predictable from observed
+  // outputs. Reject-sample to keep the distribution uniform across the
+  // 32-character alphabet.
+  const bytes = new Uint8Array(8)
   let out = ""
-  for (let i = 0; i < 8; i++) {
-    out += alphabet[Math.floor(Math.random() * alphabet.length)]
+  while (out.length < 8) {
+    crypto.getRandomValues(bytes)
+    for (const byte of bytes) {
+      // 256 is divisible by 32, so masking gives a uniform distribution.
+      out += alphabet[byte & 0x1f]
+      if (out.length >= 8) break
+    }
   }
   return out
 }
@@ -127,6 +136,11 @@ export const attachScaleForCurrentUser = action({
     if (redemption.scaleAttachedAt && !redemption.scaleRemovedAt) {
       return { attached: true, alreadyAttached: true }
     }
+    // Once an admin removes the complimentary Scale plan, the user must not
+    // be able to silently re-attach it through the normal user-facing flow.
+    if (redemption.scaleRemovedAt) {
+      return { attached: false, adminRemoved: true }
+    }
 
     const code = await ctx.runQuery(internal.earlyAccess.getCodeForRedemption, {
       codeId: redemption.codeId,
@@ -143,19 +157,124 @@ export const attachScaleForCurrentUser = action({
       throw new Error("Workspace not found or not owned by user")
     }
 
-    await attachComplimentaryWorkspacePlan({
-      workspaceId: args.workspaceId,
-      workspaceName: workspace.name,
-      email: redemption.email ?? null,
-      planId: EARLY_ACCESS_PLAN_ID,
-    })
+    // Atomically claim the redemption before any external billing call so
+    // concurrent invocations can't each attach a complimentary Scale plan.
+    // The mutation returns the claim timestamp as a token; only the caller
+    // holding that token can release or finalize the claim.
+    const claim = await ctx.runMutation(
+      internal.earlyAccess.claimScaleAttach,
+      {
+        redemptionId: redemption._id,
+        workspaceId: args.workspaceId,
+      }
+    )
+    if (!claim.ok) {
+      if (claim.reason === "alreadyAttached") {
+        return { attached: true, alreadyAttached: true }
+      }
+      return { attached: false, claimContended: true }
+    }
 
-    await ctx.runMutation(internal.earlyAccess.markScaleAttached, {
-      redemptionId: redemption._id,
-      workspaceId: args.workspaceId,
-    })
+    try {
+      await attachComplimentaryWorkspacePlan({
+        workspaceId: args.workspaceId,
+        workspaceName: workspace.name,
+        email: redemption.email ?? null,
+        planId: EARLY_ACCESS_PLAN_ID,
+      })
+    } catch (err) {
+      // Release the claim so a follow-up retry can succeed. Pass the
+      // claimedAt token so a newer claim from another caller isn't wiped.
+      await ctx.runMutation(internal.earlyAccess.releaseScaleAttachClaim, {
+        redemptionId: redemption._id,
+        workspaceId: args.workspaceId,
+        claimedAt: claim.claimedAt,
+      })
+      throw err
+    }
+
+    const finalized: { ok: true } | { ok: false; reason: string } =
+      await ctx.runMutation(internal.earlyAccess.markScaleAttached, {
+        redemptionId: redemption._id,
+        workspaceId: args.workspaceId,
+        claimedAt: claim.claimedAt,
+      })
+    if (!finalized.ok) {
+      // The external billing attach succeeded but Convex couldn't finalize
+      // the redemption (claim lost / row missing). Surface this instead of
+      // pretending success so the caller / on-call can reconcile manually.
+      throw new Error(
+        `Scale plan attached externally but redemption finalization failed: ${finalized.reason}`
+      )
+    }
 
     return { attached: true }
+  },
+})
+
+export const claimScaleAttach = internalMutation({
+  args: {
+    redemptionId: v.id("earlyAccessRedemptions"),
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (
+    ctx,
+    args
+  ): Promise<
+    | { ok: true; claimedAt: number }
+    | { ok: false; reason: string }
+  > => {
+    const row = await ctx.db.get(args.redemptionId)
+    if (!row) return { ok: false, reason: "missing" }
+    if (row.scaleAttachedAt && !row.scaleRemovedAt) {
+      return { ok: false, reason: "alreadyAttached" }
+    }
+    if (row.scaleRemovedAt) {
+      return { ok: false, reason: "adminRemoved" }
+    }
+    // Reject any active claim — including one from the same workspace — so
+    // two concurrent attach actions can't both proceed and both attach the
+    // complimentary plan. Treat claims older than the staleness window as
+    // abandoned and let the new caller take over.
+    const now = Date.now()
+    const STALE_MS = 5 * 60 * 1000
+    if (
+      row.scaleAttachClaimedAt &&
+      now - row.scaleAttachClaimedAt < STALE_MS
+    ) {
+      return { ok: false, reason: "claimed" }
+    }
+    await ctx.db.patch(args.redemptionId, {
+      scaleAttachClaimedAt: now,
+      scaleAttachClaimWorkspaceId: args.workspaceId,
+    })
+    return { ok: true, claimedAt: now }
+  },
+})
+
+export const releaseScaleAttachClaim = internalMutation({
+  args: {
+    redemptionId: v.id("earlyAccessRedemptions"),
+    workspaceId: v.id("workspaces"),
+    claimedAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const row = await ctx.db.get(args.redemptionId)
+    // Only the caller that holds this specific claim can clear it. If the
+    // stored claim has been overwritten by a newer one (or already
+    // finalized), leave it alone.
+    if (
+      !row ||
+      row.scaleAttachedAt ||
+      row.scaleAttachClaimWorkspaceId !== args.workspaceId ||
+      row.scaleAttachClaimedAt !== args.claimedAt
+    ) {
+      return
+    }
+    await ctx.db.patch(args.redemptionId, {
+      scaleAttachClaimedAt: undefined,
+      scaleAttachClaimWorkspaceId: undefined,
+    })
   },
 })
 
@@ -200,13 +319,33 @@ export const markScaleAttached = internalMutation({
   args: {
     redemptionId: v.id("earlyAccessRedemptions"),
     workspaceId: v.id("workspaces"),
+    claimedAt: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (
+    ctx,
+    args
+  ): Promise<{ ok: true } | { ok: false; reason: string }> => {
+    const row = await ctx.db.get(args.redemptionId)
+    if (!row) return { ok: false, reason: "missing" }
+    // If a claim token was passed in, only finalize when it still owns the
+    // claim. This prevents a stale caller from finalizing after a newer
+    // claim has taken over.
+    if (args.claimedAt !== undefined) {
+      if (
+        row.scaleAttachClaimWorkspaceId !== args.workspaceId ||
+        row.scaleAttachClaimedAt !== args.claimedAt
+      ) {
+        return { ok: false, reason: "claimLost" }
+      }
+    }
     await ctx.db.patch(args.redemptionId, {
       workspaceId: args.workspaceId,
       scaleAttachedAt: Date.now(),
       scaleRemovedAt: undefined,
+      scaleAttachClaimedAt: undefined,
+      scaleAttachClaimWorkspaceId: undefined,
     })
+    return { ok: true }
   },
 })
 

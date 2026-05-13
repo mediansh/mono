@@ -104,9 +104,17 @@ function updateWorkspaceMembersQueries(
 
 export default function MembersSettingsPage() {
   const { currentWorkspace } = useWorkspace()
+  // Only fetch admin-scoped member settings when the current user is an
+  // admin. The Convex query is now admin-only on the server; skipping here
+  // avoids a redundant unauthorized fetch when a non-admin visits the page.
+  const canAdminister = currentWorkspace
+    ? hasWorkspaceAdminPermission(currentWorkspace.role)
+    : false
   const workspaceData = useQuery(
     api.workspaces.getWorkspaceMembers,
-    currentWorkspace ? { workspaceId: currentWorkspace._id } : "skip"
+    currentWorkspace && canAdminister
+      ? { workspaceId: currentWorkspace._id }
+      : "skip"
   )
   const syncMyProfile = useMutation(api.workspaces.syncMyProfile)
   const createInviteLink = useMutation(

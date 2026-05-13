@@ -27,6 +27,7 @@ import {
   requireWorkspaceAccess,
   requireWorkspaceAdminAccess,
 } from "./permissions"
+import { safeAppRedirect } from "../lib/safe-redirect"
 
 type AggregateRow = {
   period: number
@@ -626,11 +627,15 @@ export const openWorkspaceBillingPortal = action({
       }
     )
 
+    const safeReturnUrl = args.returnUrl
+      ? safeAppRedirect(args.returnUrl) ?? undefined
+      : undefined
+
     const portal = await createBillingPortalUrl({
       workspaceId: billingContext.workspaceId,
       workspaceName: billingContext.workspaceName,
       email: billingContext.user.email,
-      returnUrl: args.returnUrl,
+      returnUrl: safeReturnUrl,
     })
 
     return {
@@ -650,6 +655,13 @@ export const attachWorkspaceBillingPlan = action({
       workspaceId: args.workspaceId,
     })
 
+    const allowedPlanIds = new Set<string>(
+      AUTUMN_BILLING_PLANS.map((p) => p.id)
+    )
+    if (!allowedPlanIds.has(args.planId)) {
+      throw new Error(`Unknown billing plan: ${args.planId}`)
+    }
+
     const billingContext = await ctx.runQuery(
       internal.billing.getWorkspaceBillingContext,
       {
@@ -657,12 +669,16 @@ export const attachWorkspaceBillingPlan = action({
       }
     )
 
+    const safeSuccessUrl = args.successUrl
+      ? safeAppRedirect(args.successUrl) ?? undefined
+      : undefined
+
     const response = await attachWorkspacePlan({
       workspaceId: billingContext.workspaceId,
       workspaceName: billingContext.workspaceName,
       email: billingContext.user.email,
       planId: args.planId,
-      successUrl: args.successUrl,
+      successUrl: safeSuccessUrl,
     })
 
     return {

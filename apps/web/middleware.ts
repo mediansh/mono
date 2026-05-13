@@ -8,8 +8,14 @@ export default clerkMiddleware(async (auth, req) => {
     req.nextUrl.pathname === "/app/admin" ||
     req.nextUrl.pathname.startsWith("/app/admin/")
   ) {
-    const adminPath = req.nextUrl.pathname.replace(/^\/app\/admin/, "") || "/"
-    const redirectUrl = new URL(adminPath, ADMIN_HOST)
+    // Strip the /app/admin prefix and normalize so attacker paths like
+    // `/app/admin//attacker.example/foo` cannot turn into a protocol-relative
+    // URL that points at another origin.
+    const rawPath = req.nextUrl.pathname.replace(/^\/app\/admin/, "") || "/"
+    const normalizedPath =
+      "/" + rawPath.replace(/^\/+/, "").replace(/\\+/g, "/")
+    const redirectUrl = new URL(ADMIN_HOST)
+    redirectUrl.pathname = normalizedPath
     redirectUrl.search = req.nextUrl.search
     return NextResponse.redirect(redirectUrl)
   }

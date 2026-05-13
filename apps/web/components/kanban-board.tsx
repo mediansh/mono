@@ -135,6 +135,7 @@ import {
   type LocalTaskDoc as TaskDoc,
 } from "@/lib/local-first-store"
 import { hasTaskWritePermission } from "@/lib/workspace-permissions"
+import { sanitizeExternalUrl } from "@/lib/task-sources"
 import { useSearchPaletteTaskEvent } from "@/components/search-palette"
 import {
   trackTaskUpdated,
@@ -2279,10 +2280,11 @@ function TaskDetailSidePanel({
                 <div className="flex flex-wrap items-center gap-2 border-t border-border px-4 py-2.5">
                   {taskSources.map((src) => {
                     const cfg = SOURCE_CONFIG[src.platform]
-                    return src.url ? (
+                    const safeUrl = sanitizeExternalUrl(src.url)
+                    return safeUrl ? (
                       <a
                         key={`${src.platform}-${src.url}-${src.author}`}
-                        href={src.url}
+                        href={safeUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium transition-opacity hover:opacity-80"
