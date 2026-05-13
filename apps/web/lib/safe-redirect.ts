@@ -18,11 +18,28 @@ function localDevOrigins(): string[] {
   return origins
 }
 
+function normalizeOrigin(value: string): string | null {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  try {
+    const parsed = new URL(trimmed)
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return null
+    }
+    return parsed.origin
+  } catch {
+    return null
+  }
+}
+
 function getAllowedOrigins(): string[] {
+  // Normalize env-supplied origins through the URL constructor so entries
+  // like "https://staging.example.com/" or "https://staging.example.com/app"
+  // still match the scheme://host[:port] form that URL.origin produces.
   const fromEnv = (process.env.MEDIAN_ALLOWED_REDIRECT_ORIGINS ?? "")
     .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean)
+    .map((s) => normalizeOrigin(s))
+    .filter((origin): origin is string => Boolean(origin))
   const origins = new Set<string>([...DEFAULT_APP_ORIGINS, ...fromEnv])
   if (process.env.NODE_ENV !== "production") {
     for (const o of localDevOrigins()) origins.add(o)
