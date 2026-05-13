@@ -130,7 +130,19 @@ export default function WorkspaceSetupPage() {
             Name your workspace to get started
           </p>
 
-          <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-3">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+
+          <form
+            onSubmit={handleSubmit}
+            noValidate
+            className="mt-5 flex flex-col gap-3"
+          >
             <div className="flex flex-col gap-1">
               <label className="text-[13px] font-medium">
                 Logo{" "}
@@ -138,13 +150,6 @@ export default function WorkspaceSetupPage() {
                   (optional)
                 </span>
               </label>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
@@ -195,6 +200,14 @@ export default function WorkspaceSetupPage() {
                 onChange={(e) => {
                   setName(e.target.value)
                   if (error) setError("")
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                    if (!loading && name.trim()) {
+                      e.currentTarget.form?.requestSubmit()
+                    }
+                  }
                 }}
                 autoFocus
                 className="h-9 rounded-[4px] bg-background px-3 text-[13px] ring-1 ring-border transition-all outline-none placeholder:text-muted-foreground focus:ring-foreground/30"
