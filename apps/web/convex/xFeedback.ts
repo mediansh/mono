@@ -121,30 +121,26 @@ const feedbackClassificationSchema = z.object({
   relevantPostIds: z.array(z.string()).max(25),
 })
 
+const extractedFeedbackActionSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("create"),
+    title: z.string().min(1).max(140),
+    description: z.string().max(2000).nullable(),
+    priority: z.enum(["urgent", "high", "medium", "low", "none"]).nullable(),
+    labels: z.array(z.string()),
+  }),
+  z.object({
+    action: z.literal("update"),
+    taskCode: z.string().min(1),
+    title: z.string().min(1).max(140),
+    description: z.string().max(2000).nullable(),
+    priority: z.enum(["urgent", "high", "medium", "low", "none"]).nullable(),
+    labels: z.array(z.string()),
+  }),
+])
+
 const extractedFeedbackTasksSchema = z.object({
-  actions: z.array(
-    z.discriminatedUnion("action", [
-      z.object({
-        action: z.literal("create"),
-        title: z.string().min(1).max(140),
-        description: z.string().max(2000).nullable(),
-        priority: z
-          .enum(["urgent", "high", "medium", "low", "none"])
-          .nullable(),
-        labels: z.array(z.string()),
-      }),
-      z.object({
-        action: z.literal("update"),
-        taskCode: z.string().min(1),
-        title: z.string().min(1).max(140),
-        description: z.string().max(2000).nullable(),
-        priority: z
-          .enum(["urgent", "high", "medium", "low", "none"])
-          .nullable(),
-        labels: z.array(z.string()),
-      }),
-    ])
-  ),
+  actions: z.array(extractedFeedbackActionSchema).default([]),
 })
 
 function getFeedbackWorkpoolParallelism() {
@@ -296,6 +292,25 @@ function extractJsonObject(text: string) {
   }
 
   return text.slice(start, end + 1)
+}
+
+function normalizeExtractedFeedbackTasksPayload(payload: unknown) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return payload
+  }
+
+  if ("actions" in payload) {
+    return payload
+  }
+
+  for (const key of ["actionItems", "items", "tasks"]) {
+    const actions = (payload as Record<string, unknown>)[key]
+    if (Array.isArray(actions)) {
+      return { actions }
+    }
+  }
+
+  return payload
 }
 
 function normalizeId(id: string) {
@@ -896,7 +911,7 @@ export const processFeedbackWindow = internalAction({
         "Priority may be urgent, high, medium, low, or none.",
         `Allowed labels: ${labelsText}`,
         "Only use labels from the allowed list. Use an empty array when none apply.",
-        'Return valid structured output only with action items shaped like {"action":"create",...} or {"action":"update","taskCode":"MDN-123",...}.',
+        'Return one JSON object with an "actions" array. Each item must be shaped like {"action":"create",...} or {"action":"update","taskCode":"MDN-123",...}. Return {"actions":[]} when there is nothing to create or update.',
       ]
 
       if (feedbackWindow.integration.additionalContext) {
@@ -957,21 +972,33 @@ export const processFeedbackWindow = internalAction({
         })
         extractorDurationMs = Date.now() - extractorStart
         extractorUsage = extractorResult.usage
-        const parsedExtraction = extractedFeedbackTasksSchema.safeParse(
-          JSON.parse(extractJsonObject(extractorResult.text))
-        )
-        if (parsedExtraction.success) {
-          extracted = parsedExtraction.data
-        } else {
+        try {
+          const parsedExtraction = extractedFeedbackTasksSchema.safeParse(
+            normalizeExtractedFeedbackTasksPayload(
+              JSON.parse(extractJsonObject(extractorResult.text))
+            )
+          )
+          if (parsedExtraction.success) {
+            extracted = parsedExtraction.data
+          } else {
+            logError(
+              "X feedback extractor schema mismatch",
+              parsedExtraction.error,
+              {
+                integrationId: args.integrationId,
+                workspaceId: feedbackWindow.integration.workspaceId,
+              }
+            )
+          }
+        } catch (error) {
           logError(
-            "X feedback extractor schema mismatch",
-            parsedExtraction.error,
+            "X feedback extractor structured output parse failure",
+            error,
             {
               integrationId: args.integrationId,
               workspaceId: feedbackWindow.integration.workspaceId,
             }
           )
-          throw parsedExtraction.error
         }
 
         await trackLLMGeneration({
@@ -981,7 +1008,7 @@ export const processFeedbackWindow = internalAction({
           inputTokens: extractorResult.usage?.inputTokens,
           outputTokens: extractorResult.usage?.outputTokens,
           durationMs: extractorDurationMs,
-          success: true,
+          success: extracted !== null,
           metadata: {
             integration_id: args.integrationId,
             relevant_post_count: relevantPosts.length,
