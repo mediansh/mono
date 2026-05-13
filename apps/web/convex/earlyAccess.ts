@@ -159,6 +159,8 @@ export const attachScaleForCurrentUser = action({
 
     // Atomically claim the redemption before any external billing call so
     // concurrent invocations can't each attach a complimentary Scale plan.
+    // The mutation returns the claim timestamp as a token; only the caller
+    // holding that token can release or finalize the claim.
     const claim = await ctx.runMutation(
       internal.earlyAccess.claimScaleAttach,
       {
@@ -181,9 +183,12 @@ export const attachScaleForCurrentUser = action({
         planId: EARLY_ACCESS_PLAN_ID,
       })
     } catch (err) {
-      // Release the claim so a follow-up retry can succeed.
+      // Release the claim so a follow-up retry can succeed. Pass the
+      // claimedAt token so a newer claim from another caller isn't wiped.
       await ctx.runMutation(internal.earlyAccess.releaseScaleAttachClaim, {
         redemptionId: redemption._id,
+        workspaceId: args.workspaceId,
+        claimedAt: claim.claimedAt,
       })
       throw err
     }
@@ -191,6 +196,7 @@ export const attachScaleForCurrentUser = action({
     await ctx.runMutation(internal.earlyAccess.markScaleAttached, {
       redemptionId: redemption._id,
       workspaceId: args.workspaceId,
+      claimedAt: claim.claimedAt,
     })
 
     return { attached: true }
@@ -205,7 +211,10 @@ export const claimScaleAttach = internalMutation({
   handler: async (
     ctx,
     args
-  ): Promise<{ ok: true } | { ok: false; reason: string }> => {
+  ): Promise<
+    | { ok: true; claimedAt: number }
+    | { ok: false; reason: string }
+  > => {
     const row = await ctx.db.get(args.redemptionId)
     if (!row) return { ok: false, reason: "missing" }
     if (row.scaleAttachedAt && !row.scaleRemovedAt) {
@@ -214,13 +223,15 @@ export const claimScaleAttach = internalMutation({
     if (row.scaleRemovedAt) {
       return { ok: false, reason: "adminRemoved" }
     }
-    // Allow re-claiming if a previous claim is stale (>5 min) or matches.
+    // Reject any active claim — including one from the same workspace — so
+    // two concurrent attach actions can't both proceed and both attach the
+    // complimentary plan. Treat claims older than the staleness window as
+    // abandoned and let the new caller take over.
     const now = Date.now()
     const STALE_MS = 5 * 60 * 1000
     if (
       row.scaleAttachClaimedAt &&
-      now - row.scaleAttachClaimedAt < STALE_MS &&
-      row.scaleAttachClaimWorkspaceId !== args.workspaceId
+      now - row.scaleAttachClaimedAt < STALE_MS
     ) {
       return { ok: false, reason: "claimed" }
     }
@@ -228,15 +239,29 @@ export const claimScaleAttach = internalMutation({
       scaleAttachClaimedAt: now,
       scaleAttachClaimWorkspaceId: args.workspaceId,
     })
-    return { ok: true }
+    return { ok: true, claimedAt: now }
   },
 })
 
 export const releaseScaleAttachClaim = internalMutation({
-  args: { redemptionId: v.id("earlyAccessRedemptions") },
+  args: {
+    redemptionId: v.id("earlyAccessRedemptions"),
+    workspaceId: v.id("workspaces"),
+    claimedAt: v.number(),
+  },
   handler: async (ctx, args) => {
     const row = await ctx.db.get(args.redemptionId)
-    if (!row || row.scaleAttachedAt) return
+    // Only the caller that holds this specific claim can clear it. If the
+    // stored claim has been overwritten by a newer one (or already
+    // finalized), leave it alone.
+    if (
+      !row ||
+      row.scaleAttachedAt ||
+      row.scaleAttachClaimWorkspaceId !== args.workspaceId ||
+      row.scaleAttachClaimedAt !== args.claimedAt
+    ) {
+      return
+    }
     await ctx.db.patch(args.redemptionId, {
       scaleAttachClaimedAt: undefined,
       scaleAttachClaimWorkspaceId: undefined,
@@ -285,12 +310,28 @@ export const markScaleAttached = internalMutation({
   args: {
     redemptionId: v.id("earlyAccessRedemptions"),
     workspaceId: v.id("workspaces"),
+    claimedAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const row = await ctx.db.get(args.redemptionId)
+    if (!row) return
+    // If a claim token was passed in, only finalize when it still owns the
+    // claim. This prevents a stale caller from finalizing after a newer
+    // claim has taken over.
+    if (args.claimedAt !== undefined) {
+      if (
+        row.scaleAttachClaimWorkspaceId !== args.workspaceId ||
+        row.scaleAttachClaimedAt !== args.claimedAt
+      ) {
+        return
+      }
+    }
     await ctx.db.patch(args.redemptionId, {
       workspaceId: args.workspaceId,
       scaleAttachedAt: Date.now(),
       scaleRemovedAt: undefined,
+      scaleAttachClaimedAt: undefined,
+      scaleAttachClaimWorkspaceId: undefined,
     })
   },
 })

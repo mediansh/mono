@@ -844,7 +844,17 @@ export const createWorkspace = mutation({
           break
         }
       }
-      const adminAccess = await isAdmin(ctx, identity.subject)
+      // Mirror the redemption check: an admin record may be stored under
+      // any of the identifiers in getAuthUserIds (tokenIdentifier, subject,
+      // etc.). Checking just identity.subject would incorrectly block an
+      // admin whose admin row keys off a different identifier.
+      let adminAccess = false
+      for (const authUserId of getAuthUserIds(identity)) {
+        if (await isAdmin(ctx, authUserId)) {
+          adminAccess = true
+          break
+        }
+      }
       if (!hasRedemption && !adminAccess) {
         throw new Error("Early access required to create a workspace")
       }

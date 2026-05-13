@@ -2471,6 +2471,35 @@ export const githubWebhook = httpAction(async (ctx, request) => {
     return new Response("Ignored", { status: 200 })
   }
 
+  // Webhook payloads carry every repository in the installation. Honor the
+  // workspace's `selectedRepoIds` allowlist so ingest events from repos the
+  // admin didn't pick aren't recorded, tracked, or billed.
+  const selectedRepoIds = new Set(integration.selectedRepoIds ?? [])
+  const isRepoSelected = (repositoryId: string | null | undefined) =>
+    Boolean(repositoryId && selectedRepoIds.has(repositoryId))
+
+  // For repo-scoped events, enforce the allowlist BEFORE we record the
+  // delivery (which both inserts a log row and schedules a billing
+  // tracking event). Non-repo events (installation, etc.) fall through.
+  const isIngestEvent =
+    eventType === "issues" ||
+    eventType === "pull_request" ||
+    eventType === "push"
+  if (isIngestEvent) {
+    const repoPayload = payload as
+      | GitHubIssueWebhookPayload
+      | GitHubPullRequestWebhookPayload
+      | GitHubPushWebhookPayload
+    const eventRepoId =
+      repoPayload.repository?.id !== undefined &&
+      repoPayload.repository?.id !== null
+        ? String(repoPayload.repository.id)
+        : null
+    if (!isRepoSelected(eventRepoId)) {
+      return new Response("Ignored — repository not selected", { status: 200 })
+    }
+  }
+
   const action = "action" in payload ? payload.action : undefined
   const accepted = await ctx.runMutation(
     internal.github.recordGitHubWebhookDelivery,
@@ -2490,10 +2519,6 @@ export const githubWebhook = httpAction(async (ctx, request) => {
   // Skip ingest events (issues / PRs / pushes) when overages are disabled and
   // events are exhausted. Installation/management events fall through so the
   // app keeps reflecting connection state.
-  const isIngestEvent =
-    eventType === "issues" ||
-    eventType === "pull_request" ||
-    eventType === "push"
   if (isIngestEvent) {
     try {
       const quota = await ctx.runAction(
@@ -2519,13 +2544,6 @@ export const githubWebhook = httpAction(async (ctx, request) => {
       )
     }
   }
-
-  // Webhook payloads carry every repository in the installation. Honor the
-  // workspace's `selectedRepoIds` allowlist so ingest events from repos the
-  // admin didn't pick aren't silently turned into tasks.
-  const selectedRepoIds = new Set(integration.selectedRepoIds ?? [])
-  const isRepoSelected = (repositoryId: string | null | undefined) =>
-    Boolean(repositoryId && selectedRepoIds.has(repositoryId))
 
   try {
     if (eventType === "issues") {
