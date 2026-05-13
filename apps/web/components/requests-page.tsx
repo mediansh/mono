@@ -46,7 +46,11 @@ import {
   ApiIcon,
 } from "@/components/brand-icons"
 import { useRequestActions } from "@/hooks/use-request-actions"
-import { getTaskSources, SOURCE_CONFIG } from "@/lib/task-sources"
+import {
+  getTaskSources,
+  sanitizeExternalUrl,
+  SOURCE_CONFIG,
+} from "@/lib/task-sources"
 import {
   REQUEST_SOURCES,
   formatTaskDate,
@@ -920,34 +924,46 @@ function RequestDetail({
 function SourceRow({ source }: { source: TaskSource }) {
   const cfg = SOURCE_CONFIG[source.platform]
   const themeFollowing = THEME_FOLLOWING_SOURCES.has(source.platform)
+  const safeUrl = sanitizeExternalUrl(source.url)
+  const rowClassName =
+    "flex items-center gap-2 rounded-[4px] bg-card p-2 ring-1 ring-border transition-colors hover:ring-foreground/30"
+  const inner = (
+    <>
+      <span
+        className={`flex size-7 shrink-0 items-center justify-center rounded-[4px] ${themeFollowing ? "bg-foreground/10" : ""}`}
+        style={themeFollowing ? undefined : { backgroundColor: cfg.bg }}
+      >
+        <SourceGlyph platform={source.platform} size={14} />
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col leading-tight">
+        <span className="text-[12px] font-medium text-foreground">
+          {cfg.label} · {source.author}
+        </span>
+        {safeUrl && (
+          <span className="truncate text-[11px] text-muted-foreground">
+            {safeUrl}
+          </span>
+        )}
+      </div>
+      {safeUrl && (
+        <LinkIcon size={12} className="shrink-0 text-muted-foreground" />
+      )}
+    </>
+  )
   return (
     <li>
-      <a
-        href={source.url || undefined}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center gap-2 rounded-[4px] bg-card p-2 ring-1 ring-border transition-colors hover:ring-foreground/30"
-      >
-        <span
-          className={`flex size-7 shrink-0 items-center justify-center rounded-[4px] ${themeFollowing ? "bg-foreground/10" : ""}`}
-          style={themeFollowing ? undefined : { backgroundColor: cfg.bg }}
+      {safeUrl ? (
+        <a
+          href={safeUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={rowClassName}
         >
-          <SourceGlyph platform={source.platform} size={14} />
-        </span>
-        <div className="flex min-w-0 flex-1 flex-col leading-tight">
-          <span className="text-[12px] font-medium text-foreground">
-            {cfg.label} · {source.author}
-          </span>
-          {source.url && (
-            <span className="truncate text-[11px] text-muted-foreground">
-              {source.url}
-            </span>
-          )}
-        </div>
-        {source.url && (
-          <LinkIcon size={12} className="shrink-0 text-muted-foreground" />
-        )}
-      </a>
+          {inner}
+        </a>
+      ) : (
+        <div className={rowClassName}>{inner}</div>
+      )}
     </li>
   )
 }

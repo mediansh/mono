@@ -18,6 +18,7 @@ import {
   feedbackImageAttachmentValidator,
   normalizeImageAttachments,
 } from "./feedbackAttachments"
+import { requireSafeAppRedirect, safeAppRedirect } from "../lib/safe-redirect"
 
 const X_OAUTH_REQUEST_TOKEN_URL = "https://api.x.com/oauth/request_token"
 const X_OAUTH_ACCESS_TOKEN_URL = "https://api.x.com/oauth/access_token"
@@ -919,7 +920,9 @@ function formatStatusRedirect(
   status: "connected" | "error",
   message?: string
 ) {
-  const redirectUrl = new URL(baseRedirectUrl)
+  const safeBase =
+    safeAppRedirect(baseRedirectUrl) ?? "https://median.sh/app/integrations/x"
+  const redirectUrl = new URL(safeBase)
   redirectUrl.searchParams.set("x_status", status)
   if (message) {
     redirectUrl.searchParams.set("x_message", message)
@@ -1433,15 +1436,12 @@ export const beginWorkspaceXConnect = action({
       workspaceId: args.workspaceId,
     })
 
-    const redirectUrl = new URL(args.redirectUrl)
-    if (!["http:", "https:"].includes(redirectUrl.protocol)) {
-      throw new Error("Invalid redirect URL")
-    }
+    const safeRedirect = requireSafeAppRedirect(args.redirectUrl)
 
     logInfo("Starting X OAuth connect flow", {
       workspaceId: args.workspaceId,
       callbackUrl: getOAuthCallbackUrl(),
-      redirectUrl: redirectUrl.toString(),
+      redirectUrl: safeRedirect,
     })
 
     const state = await requestOAuthToken({
@@ -1457,7 +1457,7 @@ export const beginWorkspaceXConnect = action({
       initiatedByUserId: identity.userId,
       requestToken: state.requestToken,
       requestTokenSecretEncrypted: await encryptSecret(state.requestTokenSecret),
-      redirectUrl: redirectUrl.toString(),
+      redirectUrl: safeRedirect,
       expiresAt: Date.now() + X_OAUTH_STATE_TTL_MS,
     })
 

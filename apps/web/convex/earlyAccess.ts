@@ -24,9 +24,18 @@ const EARLY_ACCESS_PLAN_ID = "scale"
 
 function generateCode(): string {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+  // Use a cryptographic RNG so codes are not predictable from observed
+  // outputs. Reject-sample to keep the distribution uniform across the
+  // 32-character alphabet.
+  const bytes = new Uint8Array(8)
   let out = ""
-  for (let i = 0; i < 8; i++) {
-    out += alphabet[Math.floor(Math.random() * alphabet.length)]
+  while (out.length < 8) {
+    crypto.getRandomValues(bytes)
+    for (const byte of bytes) {
+      // 256 is divisible by 32, so masking gives a uniform distribution.
+      out += alphabet[byte & 0x1f]
+      if (out.length >= 8) break
+    }
   }
   return out
 }
@@ -127,6 +136,11 @@ export const attachScaleForCurrentUser = action({
     if (redemption.scaleAttachedAt && !redemption.scaleRemovedAt) {
       return { attached: true, alreadyAttached: true }
     }
+    // Once an admin removes the complimentary Scale plan, the user must not
+    // be able to silently re-attach it through the normal user-facing flow.
+    if (redemption.scaleRemovedAt) {
+      return { attached: false, adminRemoved: true }
+    }
 
     const code = await ctx.runQuery(internal.earlyAccess.getCodeForRedemption, {
       codeId: redemption.codeId,
@@ -143,12 +157,36 @@ export const attachScaleForCurrentUser = action({
       throw new Error("Workspace not found or not owned by user")
     }
 
-    await attachComplimentaryWorkspacePlan({
-      workspaceId: args.workspaceId,
-      workspaceName: workspace.name,
-      email: redemption.email ?? null,
-      planId: EARLY_ACCESS_PLAN_ID,
-    })
+    // Atomically claim the redemption before any external billing call so
+    // concurrent invocations can't each attach a complimentary Scale plan.
+    const claim = await ctx.runMutation(
+      internal.earlyAccess.claimScaleAttach,
+      {
+        redemptionId: redemption._id,
+        workspaceId: args.workspaceId,
+      }
+    )
+    if (!claim.ok) {
+      if (claim.reason === "alreadyAttached") {
+        return { attached: true, alreadyAttached: true }
+      }
+      return { attached: false, claimContended: true }
+    }
+
+    try {
+      await attachComplimentaryWorkspacePlan({
+        workspaceId: args.workspaceId,
+        workspaceName: workspace.name,
+        email: redemption.email ?? null,
+        planId: EARLY_ACCESS_PLAN_ID,
+      })
+    } catch (err) {
+      // Release the claim so a follow-up retry can succeed.
+      await ctx.runMutation(internal.earlyAccess.releaseScaleAttachClaim, {
+        redemptionId: redemption._id,
+      })
+      throw err
+    }
 
     await ctx.runMutation(internal.earlyAccess.markScaleAttached, {
       redemptionId: redemption._id,
@@ -156,6 +194,53 @@ export const attachScaleForCurrentUser = action({
     })
 
     return { attached: true }
+  },
+})
+
+export const claimScaleAttach = internalMutation({
+  args: {
+    redemptionId: v.id("earlyAccessRedemptions"),
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (
+    ctx,
+    args
+  ): Promise<{ ok: true } | { ok: false; reason: string }> => {
+    const row = await ctx.db.get(args.redemptionId)
+    if (!row) return { ok: false, reason: "missing" }
+    if (row.scaleAttachedAt && !row.scaleRemovedAt) {
+      return { ok: false, reason: "alreadyAttached" }
+    }
+    if (row.scaleRemovedAt) {
+      return { ok: false, reason: "adminRemoved" }
+    }
+    // Allow re-claiming if a previous claim is stale (>5 min) or matches.
+    const now = Date.now()
+    const STALE_MS = 5 * 60 * 1000
+    if (
+      row.scaleAttachClaimedAt &&
+      now - row.scaleAttachClaimedAt < STALE_MS &&
+      row.scaleAttachClaimWorkspaceId !== args.workspaceId
+    ) {
+      return { ok: false, reason: "claimed" }
+    }
+    await ctx.db.patch(args.redemptionId, {
+      scaleAttachClaimedAt: now,
+      scaleAttachClaimWorkspaceId: args.workspaceId,
+    })
+    return { ok: true }
+  },
+})
+
+export const releaseScaleAttachClaim = internalMutation({
+  args: { redemptionId: v.id("earlyAccessRedemptions") },
+  handler: async (ctx, args) => {
+    const row = await ctx.db.get(args.redemptionId)
+    if (!row || row.scaleAttachedAt) return
+    await ctx.db.patch(args.redemptionId, {
+      scaleAttachClaimedAt: undefined,
+      scaleAttachClaimWorkspaceId: undefined,
+    })
   },
 })
 

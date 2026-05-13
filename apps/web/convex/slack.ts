@@ -19,6 +19,7 @@ import {
   feedbackImageAttachmentValidator,
   normalizeImageAttachments,
 } from "./feedbackAttachments"
+import { requireSafeAppRedirect, safeAppRedirect } from "../lib/safe-redirect"
 
 // ── Env helpers ──────────────────────────────────────────
 
@@ -233,6 +234,7 @@ export const initiateSlackOAuth = mutation({
       args.workspaceId
     )
 
+    const safeRedirect = requireSafeAppRedirect(args.redirectUrl)
     const state = crypto.randomUUID()
     const expiresAt = Date.now() + 1000 * 60 * 10 // 10 min
 
@@ -240,7 +242,7 @@ export const initiateSlackOAuth = mutation({
       workspaceId: args.workspaceId,
       initiatedByUserId: identity.subject,
       state,
-      redirectUrl: args.redirectUrl,
+      redirectUrl: safeRedirect,
       expiresAt,
     })
 
@@ -291,7 +293,7 @@ export const completeSlackOAuth = internalMutation({
 
     await ctx.db.patch(args.stateId, { completedAt: Date.now() })
 
-    // Remove any existing integration for this workspace or team
+    // Remove any existing integration for this workspace or team.
     const [workspaceIntegrations, teamIntegrations] = await Promise.all([
       ctx.db
         .query("slackWorkspaceIntegrations")
@@ -304,6 +306,20 @@ export const completeSlackOAuth = internalMutation({
         .withIndex("by_team", (q) => q.eq("teamId", args.teamId))
         .collect(),
     ])
+
+    // If the Slack team is already linked to a different workspace, refuse
+    // to silently transfer it. Otherwise a Slack admin with admin access to
+    // their own Median workspace could re-authorize the app and steal the
+    // integration (and all inbound channel data) away from the workspace
+    // that legitimately owns it.
+    const foreignTeamIntegration = teamIntegrations.find(
+      (integration) => integration.workspaceId !== state.workspaceId
+    )
+    if (foreignTeamIntegration) {
+      throw new Error(
+        "This Slack team is already connected to another Median workspace. Have that workspace disconnect it first."
+      )
+    }
 
     const integrationIds = new Set([
       ...workspaceIntegrations.map((i) => i._id),
@@ -342,7 +358,8 @@ function formatStatusRedirect(
   status: "success" | "error",
   message: string
 ) {
-  const url = new URL(baseUrl)
+  const safeBase = safeAppRedirect(baseUrl) ?? "https://median.sh/app/integrations/slack"
+  const url = new URL(safeBase)
   url.searchParams.set("slack_status", status)
   url.searchParams.set("slack_message", message)
   return url.toString()

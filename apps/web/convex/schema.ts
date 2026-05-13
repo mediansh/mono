@@ -759,6 +759,11 @@ export default defineSchema({
     workspaceId: v.optional(v.id("workspaces")),
     scaleAttachedAt: v.optional(v.number()),
     scaleRemovedAt: v.optional(v.number()),
+    // Atomic claim used to prevent concurrent attach actions for the same
+    // redemption from creating multiple complimentary Scale plans before
+    // `scaleAttachedAt` has been written.
+    scaleAttachClaimedAt: v.optional(v.number()),
+    scaleAttachClaimWorkspaceId: v.optional(v.id("workspaces")),
   })
     .index("by_user", ["userId"])
     .index("by_workspace", ["workspaceId"]),

@@ -23,8 +23,6 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    env:
-      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -39,7 +37,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Typecheck Discord bot
         run: pnpm --filter discord-bot typecheck
@@ -50,5 +48,9 @@ jobs:
       - name: Setup Flyctl
         uses: superfly/flyctl-actions/setup-flyctl@master
 
+      # Scope the Fly deploy token to the deploy step only so the install,
+      # typecheck, and build steps cannot read or exfiltrate it.
       - name: Deploy to Fly.io
         run: flyctl deploy --remote-only --config apps/discord-bot/fly.toml --app median-discord-bot --ha=false .
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

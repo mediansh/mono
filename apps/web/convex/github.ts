@@ -16,6 +16,7 @@ import {
   requireWorkspaceAdminAccess,
 } from "./permissions"
 import { STATUS_ORDER, type TaskStatus } from "../lib/task-board"
+import { requireSafeAppRedirect, safeAppRedirect } from "../lib/safe-redirect"
 
 const GITHUB_API_URL = "https://api.github.com"
 const GITHUB_INSTALL_STATE_TTL_MS = 1000 * 60 * 15
@@ -734,7 +735,9 @@ function formatStatusRedirect(
   status: "connected" | "error",
   message: string
 ) {
-  const url = new URL(redirectUrl)
+  const safeBase =
+    safeAppRedirect(redirectUrl) ?? "https://median.sh/app/integrations/github"
+  const url = new URL(safeBase)
   url.searchParams.set("github_status", status)
   url.searchParams.set("github_message", message)
   return url.toString()
@@ -1990,10 +1993,7 @@ export const beginWorkspaceGitHubConnect = action({
       workspaceId: args.workspaceId,
     })
 
-    const redirectUrl = new URL(args.redirectUrl)
-    if (!["http:", "https:"].includes(redirectUrl.protocol)) {
-      throw new Error("Invalid redirect URL")
-    }
+    const safeRedirect = requireSafeAppRedirect(args.redirectUrl)
 
     const identity = await ctx.runQuery(
       internal.github.getWorkspaceMembershipUserId,
@@ -2007,7 +2007,7 @@ export const beginWorkspaceGitHubConnect = action({
       workspaceId: args.workspaceId,
       initiatedByUserId: identity.userId,
       state,
-      redirectUrl: redirectUrl.toString(),
+      redirectUrl: safeRedirect,
       expiresAt: Date.now() + GITHUB_INSTALL_STATE_TTL_MS,
     })
 
@@ -2520,6 +2520,13 @@ export const githubWebhook = httpAction(async (ctx, request) => {
     }
   }
 
+  // Webhook payloads carry every repository in the installation. Honor the
+  // workspace's `selectedRepoIds` allowlist so ingest events from repos the
+  // admin didn't pick aren't silently turned into tasks.
+  const selectedRepoIds = new Set(integration.selectedRepoIds ?? [])
+  const isRepoSelected = (repositoryId: string | null | undefined) =>
+    Boolean(repositoryId && selectedRepoIds.has(repositoryId))
+
   try {
     if (eventType === "issues") {
       const issuePayload = payload as GitHubIssueWebhookPayload
@@ -2533,6 +2540,10 @@ export const githubWebhook = httpAction(async (ctx, request) => {
 
       if (!repository || !issue) {
         return new Response("Ignored", { status: 200 })
+      }
+
+      if (!isRepoSelected(repository.id)) {
+        return new Response("Ignored — repository not selected", { status: 200 })
       }
 
       await ctx.runAction(internal.github.syncIssueFromWebhook, {
@@ -2552,6 +2563,10 @@ export const githubWebhook = httpAction(async (ctx, request) => {
 
       if (!repository || !pullRequest?.number || !pullRequest.title) {
         return new Response("Ignored", { status: 200 })
+      }
+
+      if (!isRepoSelected(repository.id)) {
+        return new Response("Ignored — repository not selected", { status: 200 })
       }
 
       await ctx.runAction(internal.github.processPullRequestWebhook, {
@@ -2577,6 +2592,10 @@ export const githubWebhook = httpAction(async (ctx, request) => {
         : null
       if (!repository) {
         return new Response("Ignored", { status: 200 })
+      }
+
+      if (!isRepoSelected(repository.id)) {
+        return new Response("Ignored — repository not selected", { status: 200 })
       }
 
       const ref = normalizeOptionalText(pushPayload.ref)

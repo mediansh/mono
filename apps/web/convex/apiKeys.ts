@@ -21,5 +21,14 @@ export async function requireApiKey(
     throw new Error("Invalid or revoked API key")
   }
 
+  // Fail closed when the workspace this key was issued for no longer
+  // exists. Workspace deletion schedules an async purge of CLI API keys,
+  // so without this check a key can remain valid against orphaned data
+  // until the cleanup runs (or longer if cleanup fails).
+  const workspace = await ctx.db.get(keyRecord.workspaceId)
+  if (!workspace) {
+    throw new Error("Invalid or revoked API key")
+  }
+
   return keyRecord
 }

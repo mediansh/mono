@@ -26,8 +26,6 @@ jobs:
     defaults:
       run:
         working-directory: apps/web
-    env:
-      CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -42,11 +40,15 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --ignore-scripts
         working-directory: .
 
       - name: Typecheck web
         run: pnpm typecheck
 
+      # Scope the Convex deploy key to the single step that needs it so
+      # dependency install/typecheck cannot read or exfiltrate the secret.
       - name: Deploy Convex
         run: pnpm exec convex deploy
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
