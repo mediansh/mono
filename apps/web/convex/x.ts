@@ -18,7 +18,11 @@ import {
   feedbackImageAttachmentValidator,
   normalizeImageAttachments,
 } from "./feedbackAttachments"
-import { requireSafeAppRedirect, safeAppRedirect } from "../lib/safe-redirect"
+import {
+  buildAppFallbackUrl,
+  requireSafeAppRedirect,
+  safeAppRedirect,
+} from "../lib/safe-redirect"
 
 const X_OAUTH_REQUEST_TOKEN_URL = "https://api.x.com/oauth/request_token"
 const X_OAUTH_ACCESS_TOKEN_URL = "https://api.x.com/oauth/access_token"
@@ -921,7 +925,8 @@ function formatStatusRedirect(
   message?: string
 ) {
   const safeBase =
-    safeAppRedirect(baseRedirectUrl) ?? "https://median.sh/app/integrations/x"
+    safeAppRedirect(baseRedirectUrl) ??
+    buildAppFallbackUrl("/app/integrations/x")
   const redirectUrl = new URL(safeBase)
   redirectUrl.searchParams.set("x_status", status)
   if (message) {

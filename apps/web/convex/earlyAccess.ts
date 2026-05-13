@@ -193,11 +193,20 @@ export const attachScaleForCurrentUser = action({
       throw err
     }
 
-    await ctx.runMutation(internal.earlyAccess.markScaleAttached, {
-      redemptionId: redemption._id,
-      workspaceId: args.workspaceId,
-      claimedAt: claim.claimedAt,
-    })
+    const finalized: { ok: true } | { ok: false; reason: string } =
+      await ctx.runMutation(internal.earlyAccess.markScaleAttached, {
+        redemptionId: redemption._id,
+        workspaceId: args.workspaceId,
+        claimedAt: claim.claimedAt,
+      })
+    if (!finalized.ok) {
+      // The external billing attach succeeded but Convex couldn't finalize
+      // the redemption (claim lost / row missing). Surface this instead of
+      // pretending success so the caller / on-call can reconcile manually.
+      throw new Error(
+        `Scale plan attached externally but redemption finalization failed: ${finalized.reason}`
+      )
+    }
 
     return { attached: true }
   },
@@ -312,9 +321,12 @@ export const markScaleAttached = internalMutation({
     workspaceId: v.id("workspaces"),
     claimedAt: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (
+    ctx,
+    args
+  ): Promise<{ ok: true } | { ok: false; reason: string }> => {
     const row = await ctx.db.get(args.redemptionId)
-    if (!row) return
+    if (!row) return { ok: false, reason: "missing" }
     // If a claim token was passed in, only finalize when it still owns the
     // claim. This prevents a stale caller from finalizing after a newer
     // claim has taken over.
@@ -323,7 +335,7 @@ export const markScaleAttached = internalMutation({
         row.scaleAttachClaimWorkspaceId !== args.workspaceId ||
         row.scaleAttachClaimedAt !== args.claimedAt
       ) {
-        return
+        return { ok: false, reason: "claimLost" }
       }
     }
     await ctx.db.patch(args.redemptionId, {
@@ -333,6 +345,7 @@ export const markScaleAttached = internalMutation({
       scaleAttachClaimedAt: undefined,
       scaleAttachClaimWorkspaceId: undefined,
     })
+    return { ok: true }
   },
 })
 

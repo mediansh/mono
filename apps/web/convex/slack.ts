@@ -19,7 +19,11 @@ import {
   feedbackImageAttachmentValidator,
   normalizeImageAttachments,
 } from "./feedbackAttachments"
-import { requireSafeAppRedirect, safeAppRedirect } from "../lib/safe-redirect"
+import {
+  buildAppFallbackUrl,
+  requireSafeAppRedirect,
+  safeAppRedirect,
+} from "../lib/safe-redirect"
 
 // ── Env helpers ──────────────────────────────────────────
 
@@ -358,7 +362,8 @@ function formatStatusRedirect(
   status: "success" | "error",
   message: string
 ) {
-  const safeBase = safeAppRedirect(baseUrl) ?? "https://median.sh/app/integrations/slack"
+  const safeBase =
+    safeAppRedirect(baseUrl) ?? buildAppFallbackUrl("/app/integrations/slack")
   const url = new URL(safeBase)
   url.searchParams.set("slack_status", status)
   url.searchParams.set("slack_message", message)

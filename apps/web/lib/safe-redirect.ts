@@ -74,3 +74,35 @@ export function requireSafeAppRedirect(
   }
   return safe
 }
+
+/**
+ * Returns the preferred app origin to use as a fallback when a stored or
+ * client-supplied redirect URL doesn't validate. In production this is
+ * usually `https://median.sh`; staging or self-hosted deployments can
+ * override the default via `MEDIAN_PRIMARY_APP_ORIGIN`.
+ */
+export function getPrimaryAppOrigin(): string {
+  const fromEnv = process.env.MEDIAN_PRIMARY_APP_ORIGIN?.trim()
+  if (fromEnv) {
+    try {
+      const parsed = new URL(fromEnv)
+      if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+        return parsed.origin
+      }
+    } catch {
+      // fall through to allowlist-based defaulting
+    }
+  }
+  return getAllowedOrigins()[0] ?? DEFAULT_APP_ORIGINS[0] ?? "https://median.sh"
+}
+
+/**
+ * Builds a same-origin fallback URL for a given app path. Useful when an
+ * OAuth callback needs to redirect somewhere safe because the stored
+ * redirect URL is no longer trusted.
+ */
+export function buildAppFallbackUrl(path: string): string {
+  const origin = getPrimaryAppOrigin()
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`
+  return `${origin}${normalizedPath}`
+}

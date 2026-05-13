@@ -16,7 +16,11 @@ import {
   requireWorkspaceAdminAccess,
 } from "./permissions"
 import { STATUS_ORDER, type TaskStatus } from "../lib/task-board"
-import { requireSafeAppRedirect, safeAppRedirect } from "../lib/safe-redirect"
+import {
+  buildAppFallbackUrl,
+  requireSafeAppRedirect,
+  safeAppRedirect,
+} from "../lib/safe-redirect"
 
 const GITHUB_API_URL = "https://api.github.com"
 const GITHUB_INSTALL_STATE_TTL_MS = 1000 * 60 * 15
@@ -736,7 +740,8 @@ function formatStatusRedirect(
   message: string
 ) {
   const safeBase =
-    safeAppRedirect(redirectUrl) ?? "https://median.sh/app/integrations/github"
+    safeAppRedirect(redirectUrl) ??
+    buildAppFallbackUrl("/app/integrations/github")
   const url = new URL(safeBase)
   url.searchParams.set("github_status", status)
   url.searchParams.set("github_message", message)
