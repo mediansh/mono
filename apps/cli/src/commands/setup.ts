@@ -2,7 +2,13 @@ import type { Crust } from "@crustjs/core"
 import { input, confirm, spinner } from "@crustjs/prompts"
 import { style } from "@crustjs/style"
 import { MedianApi } from "../lib/api.ts"
-import { saveConfig, isConfigured, parseConvexUrlFromKey } from "../lib/config.ts"
+import {
+  saveConfig,
+  saveLocalConfig,
+  hasProfile,
+  parseConvexUrlFromKey,
+  profileNameFromWorkspacePrefix,
+} from "../lib/config.ts"
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { resolve } from "node:path"
 
@@ -10,6 +16,17 @@ const s = style
 
 const AGENT_INSTRUCTIONS = `
 ## Median Tasks
+
+Median can use a project-local workspace binding. If this repository has
+\`.median/config.json\`, run \`mdn\` commands from inside this repository so the
+correct Median workspace profile is selected. The local config stores only a
+profile name; API keys stay in your user config.
+
+To bind this repository to a workspace:
+
+\`\`\`
+mdn setup --local
+\`\`\`
 
 Before starting work, check your assigned tasks:
 
@@ -55,20 +72,18 @@ export function registerSetupCommand<T extends Crust<any, any, any>>(
 ) {
   return cmd
     .meta({ description: "Connect the CLI to your Median workspace" })
-    .run(async () => {
+    .flags({
+      profile: {
+        type: "string",
+        description: "Name for this workspace profile",
+      },
+      local: {
+        type: "boolean",
+        description: "Bind this directory to the workspace profile",
+      },
+    })
+    .run(async ({ flags }) => {
       console.log(s.bold("\n  Median CLI Setup\n"))
-
-      // Check if already configured
-      if (await isConfigured()) {
-        const overwrite = await confirm({
-          message: "Already configured. Overwrite existing setup?",
-          default: false,
-        })
-        if (!overwrite) {
-          console.log(s.dim("  Setup cancelled.\n"))
-          return
-        }
-      }
 
       const apiKey = await input({
         message: "API key (from Settings > API Keys)",
@@ -96,18 +111,48 @@ export function registerSetupCommand<T extends Crust<any, any, any>>(
         },
       })
 
+      const profile =
+        typeof flags.profile === "string" && flags.profile.trim()
+          ? flags.profile.trim().toLowerCase()
+          : profileNameFromWorkspacePrefix(result.workspacePrefix)
+
+      if (await hasProfile(profile)) {
+        const overwrite = await confirm({
+          message: `Profile "${profile}" already exists. Overwrite it?`,
+          default: false,
+        })
+        if (!overwrite) {
+          console.log(s.dim("  Setup cancelled.\n"))
+          return
+        }
+      }
+
       // Save config
-      await saveConfig({
-        apiKey,
-        convexUrl,
-        workspaceId: result.workspaceId,
-        workspaceName: result.workspaceName,
-        workspacePrefix: result.workspacePrefix,
-      })
+      await saveConfig(
+        profile,
+        {
+          apiKey,
+          convexUrl,
+          workspaceId: result.workspaceId,
+          workspaceName: result.workspaceName,
+          workspacePrefix: result.workspacePrefix,
+        },
+        { makeDefault: true }
+      )
+
+      if (flags.local) {
+        await saveLocalConfig(profile)
+      }
 
       console.log(
-        `\n  ${s.green("\u2713")} Connected to workspace ${s.bold(result.workspaceName)} (${result.workspacePrefix})\n`
+        `\n  ${s.green("\u2713")} Connected profile ${s.bold(profile)} to workspace ${s.bold(result.workspaceName)} (${result.workspacePrefix})`
       )
+      if (flags.local) {
+        console.log(
+          `  ${s.green("\u2713")} Bound this directory with ${s.bold(".median/config.json")}`
+        )
+      }
+      console.log()
 
       // Offer to append to CLAUDE.md / AGENTS.md
       const appendInstructions = await confirm({

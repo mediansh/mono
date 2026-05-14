@@ -7,6 +7,9 @@ description: "Connect the CLI to your workspace."
 
 ```bash
 mdn setup
+mdn setup --profile acme
+mdn setup --local
+mdn setup --profile acme --local
 ```
 
 Paste your API key when prompted. Find it in your [Median dashboard](https://median.sh) under **Settings > API Keys**.
@@ -14,21 +17,64 @@ Paste your API key when prompted. Find it in your [Median dashboard](https://med
 ## What it does
 
 1. Validates your API key against the Median backend
-2. Saves credentials to `~/.config/mdn/`
-3. Optionally writes agent instructions to `CLAUDE.md` and `AGENTS.md` in your project
+2. Saves credentials to a named profile in `~/.config/mdn/`
+3. Optionally binds the current directory to that profile with `.median/config.json`
+4. Optionally writes agent instructions to `CLAUDE.md` and `AGENTS.md` in your project
+
+## Profiles
+
+Median API keys are scoped to one workspace. Profiles let you keep multiple workspace keys on the same machine:
+
+```bash
+mdn setup --profile personal
+mdn setup --profile acme
+```
+
+If you do not pass `--profile`, Median uses the workspace prefix lowercased, such as `med`.
+
+## Project-local config
+
+Use `--local` when a repository should always use a specific workspace:
+
+```bash
+mdn setup --profile acme --local
+```
+
+This writes `.median/config.json` in the current directory:
+
+```json
+{
+  "profile": "acme"
+}
+```
+
+The local config only stores the profile name. API keys stay in `~/.config/mdn/`.
+
+Median looks for `.median/config.json` in the current directory and parent directories. Run `mdn` commands from inside the repository so the right workspace is selected.
 
 ## Reconfiguring
 
-Run `mdn setup` again to switch workspaces or update your API key.
+Run `mdn setup --profile <name>` again to update that profile's API key.
+
+Run `mdn setup --profile <name> --local` inside a repository to switch that repository to another workspace profile.
 
 ## Stored config
 
-All config lives in `~/.config/mdn/`:
+Global credentials live in `~/.config/mdn/`:
 
 | Field | Description |
 | --- | --- |
-| `apiKey` | Your Median API key |
-| `convexUrl` | Backend URL (extracted from key) |
+| `defaultProfile` | Profile used when no local project config is found |
+| `profiles` | Saved workspace credentials by profile name |
+
+Each profile stores:
+
+| Field | Description |
+| --- | --- |
+| `apiKey` | Median API key for one workspace |
+| `convexUrl` | Backend URL extracted from the key |
 | `workspaceId` | Workspace identifier |
 | `workspaceName` | Workspace name |
-| `workspacePrefix` | Task code prefix (e.g. `MED`) |
+| `workspacePrefix` | Task code prefix, such as `MED` |
+
+Project-local config lives in `.median/config.json` and stores only `profile`.
