@@ -70,6 +70,18 @@ type WorkspaceGitHubSyncResult = {
   repositoryCount: number
 }
 
+function latestGitHubIntegration(
+  integrations: Doc<"githubWorkspaceIntegrations">[]
+) {
+  return integrations.reduce<Doc<"githubWorkspaceIntegrations"> | null>(
+    (latest, integration) =>
+      !latest || integration.connectedAt > latest.connectedAt
+        ? integration
+        : latest,
+    null
+  )
+}
+
 type GitHubRestRepository = {
   id?: number
   name?: string
@@ -857,10 +869,11 @@ export const getWorkspaceGitHubIntegration = query({
   },
   handler: async (ctx, args) => {
     const { membership } = await requireWorkspaceAccess(ctx, args.workspaceId)
-    const integration = await ctx.db
+    const integrations = await ctx.db
       .query("githubWorkspaceIntegrations")
       .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
-      .unique()
+      .collect()
+    const integration = latestGitHubIntegration(integrations)
     const links = integration
       ? await ctx.db
           .query("githubTaskLinks")
@@ -919,10 +932,12 @@ export const getGitHubIntegrationForWorkspace = internalQuery({
     workspaceId: v.id("workspaces"),
   },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const integrations = await ctx.db
       .query("githubWorkspaceIntegrations")
       .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
-      .unique()
+      .collect()
+
+    return latestGitHubIntegration(integrations)
   },
 })
 
@@ -931,12 +946,41 @@ export const getGitHubIntegrationByInstallationId = internalQuery({
     installationId: v.string(),
   },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const integrations = await ctx.db
       .query("githubWorkspaceIntegrations")
       .withIndex("by_installation", (q) =>
         q.eq("installationId", args.installationId)
       )
-      .unique()
+      .collect()
+
+    return latestGitHubIntegration(integrations)
+  },
+})
+
+export const getGitHubIntegrationsByInstallationId = internalQuery({
+  args: {
+    installationId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const integrations = await ctx.db
+      .query("githubWorkspaceIntegrations")
+      .withIndex("by_installation", (q) =>
+        q.eq("installationId", args.installationId)
+      )
+      .collect()
+
+    const latestByWorkspace = new Map<
+      Id<"workspaces">,
+      Doc<"githubWorkspaceIntegrations">
+    >()
+    for (const integration of integrations) {
+      const existing = latestByWorkspace.get(integration.workspaceId)
+      if (!existing || integration.connectedAt > existing.connectedAt) {
+        latestByWorkspace.set(integration.workspaceId, integration)
+      }
+    }
+
+    return Array.from(latestByWorkspace.values())
   },
 })
 
@@ -990,12 +1034,12 @@ export const clearWorkspaceGitHubIntegration = internalMutation({
     workspaceId: v.id("workspaces"),
   },
   handler: async (ctx, args) => {
-    const integration = await ctx.db
+    const integrations = await ctx.db
       .query("githubWorkspaceIntegrations")
       .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
-      .unique()
+      .collect()
 
-    if (integration) {
+    for (const integration of integrations) {
       await ctx.db.delete(integration._id)
     }
 
@@ -1043,10 +1087,11 @@ export const saveWorkspaceGitHubIntegration = internalMutation({
     connectedByUserId: v.string(),
   },
   handler: async (ctx, args) => {
-    const existing = await ctx.db
+    const existingIntegrations = await ctx.db
       .query("githubWorkspaceIntegrations")
       .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
-      .unique()
+      .collect()
+    const existing = latestGitHubIntegration(existingIntegrations)
     const selection = normalizeRepositorySelection(
       args.repositories,
       args.selectedRepoIds,
@@ -1073,6 +1118,11 @@ export const saveWorkspaceGitHubIntegration = internalMutation({
 
     if (existing) {
       await ctx.db.patch(existing._id, payload)
+      for (const stale of existingIntegrations) {
+        if (stale._id !== existing._id) {
+          await ctx.db.delete(stale._id)
+        }
+      }
       return existing._id
     }
 
@@ -1088,10 +1138,11 @@ export const saveWorkspaceGitHubRepositories = internalMutation({
     defaultRepoId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const integration = await ctx.db
+    const integrations = await ctx.db
       .query("githubWorkspaceIntegrations")
       .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
-      .unique()
+      .collect()
+    const integration = latestGitHubIntegration(integrations)
 
     if (!integration) {
       throw new Error("GitHub integration not found")
@@ -1278,9 +1329,9 @@ export const recordGitHubWebhookDelivery = internalMutation({
     const existing = await ctx.db
       .query("githubWebhookDeliveries")
       .withIndex("by_delivery", (q) => q.eq("deliveryId", args.deliveryId))
-      .unique()
+      .collect()
 
-    if (existing) {
+    if (existing.some((delivery) => delivery.workspaceId === args.workspaceId)) {
       return false
     }
 
@@ -1379,10 +1430,11 @@ export const getLinkedTaskSnapshot = internalQuery({
     const task = await ctx.db.get(args.taskId)
     if (!task) return null
 
-    const integration = await ctx.db
+    const integrations = await ctx.db
       .query("githubWorkspaceIntegrations")
       .withIndex("by_workspace", (q) => q.eq("workspaceId", task.workspaceId))
-      .unique()
+      .collect()
+    const integration = latestGitHubIntegration(integrations)
 
     if (!integration) return null
 
@@ -2033,10 +2085,11 @@ export const updateWorkspaceGitHubFeatureToggles = mutation({
   handler: async (ctx, args) => {
     await requireWorkspaceAdminAccess(ctx, args.workspaceId)
 
-    const integration = await ctx.db
+    const integrations = await ctx.db
       .query("githubWorkspaceIntegrations")
       .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
-      .unique()
+      .collect()
+    const integration = latestGitHubIntegration(integrations)
 
     if (!integration) {
       throw new Error("GitHub integration not found")
