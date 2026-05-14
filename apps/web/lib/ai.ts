@@ -13,25 +13,16 @@ const openrouter = createOpenRouter({
 export const AI_MODEL_IDS = {
   feedbackClassifier: "google/gemini-3.1-flash-lite",
   feedbackExtractor: "google/gemini-3-flash-preview",
-  taskGeneration: "openai/gpt-oss-120b",
+  taskGeneration: "google/gemini-3.1-flash-lite",
 } as const satisfies Record<
   "feedbackClassifier" | "feedbackExtractor" | "taskGeneration",
   TrackedAiModel
 >
 
-const AI_MODEL_PROVIDER_OPTIONS = {
-  taskGeneration: {
-    extraBody: { provider: { only: ["cerebras/fp16"] } },
-  },
-} as const
-
 export const AI_MODELS: Record<keyof typeof AI_MODEL_IDS, LanguageModel> = {
   feedbackClassifier: openrouter(AI_MODEL_IDS.feedbackClassifier),
   feedbackExtractor: openrouter(AI_MODEL_IDS.feedbackExtractor),
-  taskGeneration: openrouter(
-    AI_MODEL_IDS.taskGeneration,
-    AI_MODEL_PROVIDER_OPTIONS.taskGeneration
-  ),
+  taskGeneration: openrouter(AI_MODEL_IDS.taskGeneration),
 }
 
 // The fallback model used when a workspace's plan disallows the advanced tier.
