@@ -1,6 +1,6 @@
 "use client"
 
-import { useConvexAuth, useMutation } from "convex/react"
+import { useMutation } from "convex/react"
 
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
@@ -39,8 +39,6 @@ function generatePrefix(name: string) {
 }
 
 export function useWorkspaceOptimisticMutations() {
-  const { isLoading: isAuthLoading, isAuthenticated } = useConvexAuth()
-
   // No optimistic update for createWorkspace: Convex guarantees that by the
   // time `await createWorkspace(...)` resolves, the live getUserWorkspaces
   // subscription has been updated with the new workspace. Adding an
@@ -61,10 +59,6 @@ export function useWorkspaceOptimisticMutations() {
     iconUrl?: string | null
   }) {
     const normalizedName = name.trim()
-
-    if (isAuthLoading || !isAuthenticated) {
-      throw new Error("Not authenticated")
-    }
 
     const workspaceId = await createWorkspace({
       name: normalizedName,
