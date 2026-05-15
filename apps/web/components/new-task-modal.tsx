@@ -19,6 +19,7 @@ import {
   WarningCircle,
   Rocket,
   Paperclip,
+  UploadSimple,
   PencilSimple,
   Sparkle,
   ArrowRight,
@@ -222,15 +223,13 @@ export function NewTaskModal({
     })
   }, [])
 
-  const handleFileSelect = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const uploadFiles = useCallback(
+    async (incomingFiles: File[]) => {
       if (!canManageTasks) {
         toast.error("Guests can only view tasks.")
         return
       }
-
-      const files = e.target.files
-      if (!files || files.length === 0) return
+      if (incomingFiles.length === 0) return
 
       setUploading(true)
       setError("")
@@ -238,7 +237,7 @@ export function NewTaskModal({
       try {
         const newAttachments: typeof attachments = []
 
-        for (const file of Array.from(files)) {
+        for (const file of incomingFiles) {
           if (file.size > 10 * 1024 * 1024) {
             setError(`File "${file.name}" exceeds 10MB limit.`)
             continue
@@ -283,15 +282,85 @@ export function NewTaskModal({
         setError("Upload failed. Try again.")
       } finally {
         setUploading(false)
-        if (fileInputRef.current) fileInputRef.current.value = ""
       }
     },
     [canManageTasks, generateUploadUrl, readImageMetadata]
   )
 
+  const handleFileSelect = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files
+      if (!files || files.length === 0) return
+      await uploadFiles(Array.from(files))
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    },
+    [uploadFiles]
+  )
+
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      const files = Array.from(e.clipboardData?.files ?? [])
+      if (files.length === 0) return
+      e.preventDefault()
+      void uploadFiles(files)
+    },
+    [uploadFiles]
+  )
+
+  const [isDragging, setIsDragging] = useState(false)
+  const dragCounterRef = useRef(0)
+
+  const dragHasFiles = (e: React.DragEvent) =>
+    Array.from(e.dataTransfer?.types ?? []).includes("Files")
+
+  const handleDragEnter = useCallback(
+    (e: React.DragEvent) => {
+      if (activeTab !== "manual" || !dragHasFiles(e)) return
+      e.preventDefault()
+      dragCounterRef.current += 1
+      setIsDragging(true)
+    },
+    [activeTab]
+  )
+
+  const handleDragOver = useCallback(
+    (e: React.DragEvent) => {
+      if (activeTab !== "manual" || !dragHasFiles(e)) return
+      e.preventDefault()
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "copy"
+    },
+    [activeTab]
+  )
+
+  const handleDragLeave = useCallback(
+    (e: React.DragEvent) => {
+      if (activeTab !== "manual") return
+      e.preventDefault()
+      dragCounterRef.current = Math.max(0, dragCounterRef.current - 1)
+      if (dragCounterRef.current === 0) setIsDragging(false)
+    },
+    [activeTab]
+  )
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      if (activeTab !== "manual") return
+      e.preventDefault()
+      dragCounterRef.current = 0
+      setIsDragging(false)
+      const files = Array.from(e.dataTransfer?.files ?? [])
+      if (files.length === 0) return
+      void uploadFiles(files)
+    },
+    [activeTab, uploadFiles]
+  )
+
   useEffect(() => {
     if (open) {
       setStatus(defaultStatus)
+    } else {
+      dragCounterRef.current = 0
+      setIsDragging(false)
     }
   }, [defaultStatus, open])
 
@@ -784,6 +853,10 @@ export function NewTaskModal({
                   }
                 }
               }}
+              onDragEnter={handleDragEnter}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
             >
               {/* ── Header: segmented tab + Send + Title ── */}
               <div className="px-5 pt-5 pb-0">
@@ -861,6 +934,7 @@ export function NewTaskModal({
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     onKeyDown={handleTitleKeyDown}
+                    onPaste={handlePaste}
                     placeholder="Task title"
                     autoFocus
                     rows={1}
@@ -876,7 +950,8 @@ export function NewTaskModal({
                     ref={descriptionRef}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Add a description..."
+                    onPaste={handlePaste}
+                    placeholder="Add a description, or paste an image..."
                     className="w-full flex-1 resize-none bg-transparent text-[13px] leading-relaxed text-foreground/80 outline-none placeholder:text-muted-foreground/40"
                     style={{ minHeight: "180px" }}
                   />
@@ -1164,6 +1239,25 @@ export function NewTaskModal({
                   </div>
                 </div>
               )}
+
+              <AnimatePresence>
+                {isDragging && activeTab === "manual" ? (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.1 }}
+                    className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-[8px] bg-background/85 ring-2 ring-primary ring-inset"
+                  >
+                    <div className="flex flex-col items-center gap-2 text-foreground">
+                      <UploadSimple size={28} weight="bold" />
+                      <span className="text-[12px] font-medium">
+                        Drop to attach
+                      </span>
+                    </div>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
             </motion.div>
           </div>
         </>
