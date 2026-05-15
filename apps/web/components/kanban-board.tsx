@@ -97,8 +97,9 @@ import {
   useDroppable,
   useSensor,
   useSensors,
-  closestCenter,
+  closestCorners,
   pointerWithin,
+  rectIntersection,
   type DragStartEvent,
   type DragMoveEvent,
   type DragOverEvent,
@@ -1126,28 +1127,32 @@ const SortableListRow = memo(function SortableListRow({
 }) {
   const boardMounted = useBoardMounted()
   const isMobile = useIsMobile()
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useSortable({
-      id: task.id,
-      data: { type: "task", task },
-      transition: SORTABLE_TRANSITION,
-      disabled: !canManageTasks || isMobile,
-    })
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: task.id,
+    data: { type: "task", task },
+    transition: SORTABLE_TRANSITION,
+    disabled: !canManageTasks || isMobile,
+  })
 
   const [hasAnimated, setHasAnimated] = useState(boardMounted)
   const rowDelay = groupDelay + Math.min(rowIndex, 8) * 0.02
-  const hidden = isDragging || isDraggedAway
+  // Keep the row's layout slot in place while dragging — only fade.
+  // Collapsing height/padding makes siblings reflow under dnd-kit's measurements
+  // and produces the jittery over-target behavior we used to see.
   const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    opacity: hidden ? 0 : undefined,
-    height: hidden ? 0 : undefined,
-    padding: hidden ? 0 : undefined,
-    margin: hidden ? 0 : undefined,
-    border: hidden ? "none" : undefined,
-    overflow: hidden ? "hidden" : undefined,
-    pointerEvents: hidden ? "none" : undefined,
+    transform: CSS.Translate.toString(transform),
+    transition,
+    opacity: isDragging ? 0 : isDraggedAway ? 0.4 : undefined,
+    pointerEvents: isDragging || isDraggedAway ? "none" : undefined,
     willChange: transform ? "transform" : undefined,
-    ...(!hasAnimated
+    ...(!hasAnimated && !isDragging
       ? { animation: `kanban-row-in 0.25s ease-out ${rowDelay}s both` }
       : {}),
   }
@@ -2562,23 +2567,26 @@ const KanbanCard = memo(function KanbanCard({
   const boardMounted = useBoardMounted()
   const isMobile = useIsMobile()
   const activeAgent = getActiveAgent(task)
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useSortable({
-      id: task.id,
-      data: { type: "task", task },
-      transition: SORTABLE_TRANSITION,
-      disabled: !canManageTasks || isMobile,
-    })
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: task.id,
+    data: { type: "task", task },
+    transition: SORTABLE_TRANSITION,
+    disabled: !canManageTasks || isMobile,
+  })
 
-  const hidden = isDragging || isDraggedAway
+  // Keep the card's layout slot stable while dragging — only fade.
   const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    opacity: hidden ? 0 : undefined,
-    height: hidden ? 0 : undefined,
-    padding: hidden ? 0 : undefined,
-    margin: hidden ? 0 : undefined,
-    overflow: hidden ? "hidden" : undefined,
-    pointerEvents: hidden ? "none" : undefined,
+    transform: CSS.Translate.toString(transform),
+    transition,
+    opacity: isDragging ? 0 : isDraggedAway ? 0.4 : undefined,
+    pointerEvents: isDragging || isDraggedAway ? "none" : undefined,
     willChange: transform ? "transform" : undefined,
   }
 
@@ -2628,7 +2636,7 @@ const KanbanCard = memo(function KanbanCard({
         {...attributes}
         {...listeners}
         onClick={handleClick}
-        className={`group relative cursor-pointer rounded-[4px] bg-background ring-1 ring-border transition-[background-color,box-shadow,opacity] duration-150 select-none hover:bg-accent/20 dark:bg-card ${isMobile ? "" : "touch-none"} ${isSelected ? "bg-primary/[0.06] ring-2 ring-primary/40" : ""} ${hidden ? "!ring-0" : ""}`}
+        className={`group relative cursor-pointer rounded-[4px] bg-background ring-1 ring-border transition-[background-color,box-shadow,opacity] duration-150 select-none hover:bg-accent/20 dark:bg-card ${isMobile ? "" : "touch-none"} ${isSelected ? "bg-primary/[0.06] ring-2 ring-primary/40" : ""} ${isDragging || isDraggedAway ? "!ring-0" : ""}`}
       >
         {/* Checkbox overlay */}
         <div
@@ -3027,6 +3035,10 @@ function useKanbanDragAndDrop({
     )
   }
 
+  function handleDragCancel() {
+    resetDragState()
+  }
+
   return {
     activeTask,
     draggedTaskIds,
@@ -3037,6 +3049,7 @@ function useKanbanDragAndDrop({
     handleDragStart,
     handleDragOver,
     handleDragEnd,
+    handleDragCancel,
   }
 }
 
@@ -3254,6 +3267,7 @@ function ColumnBoardView({
     handleDragStart,
     handleDragOver,
     handleDragEnd: hookHandleDragEnd,
+    handleDragCancel: hookHandleDragCancel,
   } = useKanbanDragAndDrop({
     tasksByColumn,
     selectedTaskIds,
@@ -3380,6 +3394,11 @@ function ColumnBoardView({
     hookHandleDragEnd(event)
   }
 
+  function handleDragCancel() {
+    stopAutoScroll()
+    hookHandleDragCancel()
+  }
+
   // Clean up on unmount
   useEffect(() => {
     return () => {
@@ -3394,14 +3413,20 @@ function ColumnBoardView({
       <DndContext
         sensors={sensors}
         collisionDetection={(args) => {
+          // Prefer pointer-based hits (works for empty columns), fall back
+          // to corner-based for sortable stability, then rect-intersection
+          // as a last resort during fast moves.
           const pointerIntersections = pointerWithin(args)
           if (pointerIntersections.length > 0) return pointerIntersections
-          return closestCenter(args)
+          const corners = closestCorners(args)
+          if (corners.length > 0) return corners
+          return rectIntersection(args)
         }}
         onDragStart={handleDragStart}
         onDragMove={handleDragMove}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
       >
         <div
           ref={scrollContainerRef}
@@ -3735,6 +3760,7 @@ function ListView({
     handleDragStart,
     handleDragOver,
     handleDragEnd,
+    handleDragCancel,
   } = useKanbanDragAndDrop({
     tasksByColumn,
     selectedTaskIds,
@@ -3752,14 +3778,15 @@ function ListView({
         sensors={sensors}
         collisionDetection={(args) => {
           const pointerIntersections = pointerWithin(args)
-          if (pointerIntersections.length > 0) {
-            return pointerIntersections
-          }
-          return closestCenter(args)
+          if (pointerIntersections.length > 0) return pointerIntersections
+          const corners = closestCorners(args)
+          if (corners.length > 0) return corners
+          return rectIntersection(args)
         }}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
       >
         <div className="scrollbar-hide h-full overflow-y-auto px-3 py-2">
           {visibleColumns.map((column, groupIndex) => {
