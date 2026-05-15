@@ -18,7 +18,7 @@ export type ChangelogEntry = {
 }
 
 function formatDate(ms: number) {
-  return new Date(ms).toLocaleDateString(undefined, {
+  return new Date(ms).toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
     year: "numeric",
