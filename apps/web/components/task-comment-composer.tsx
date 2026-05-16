@@ -75,7 +75,7 @@ type SuggestionState = {
 }
 
 const editorContentClass = cn(
-  "min-h-[64px] max-w-none px-3 py-2 text-[14px] leading-relaxed text-foreground focus:outline-none",
+  "min-h-[28px] max-w-[100%] max-h-[180px] overflow-y-auto px-2.5 py-1.5 text-[13.5px] leading-relaxed text-foreground focus:outline-none",
   "[&_p]:my-1 [&_p]:leading-relaxed",
   "[&_h1]:my-2 [&_h1]:text-[17px] [&_h1]:font-semibold",
   "[&_h2]:my-2 [&_h2]:text-[15px] [&_h2]:font-semibold",
@@ -373,47 +373,55 @@ export const TaskCommentComposer = forwardRef<CommentComposerHandle, Props>(
       }
     }
 
+    const isEditMode = onCancel !== undefined
+
     return (
       <div className="relative">
         <div
           className={cn(
-            "overflow-hidden rounded-[10px] border border-sidebar-border bg-background",
+            "group/composer flex items-end gap-1.5 rounded-[18px] border border-sidebar-border bg-muted/40 pr-1.5 pl-0.5 py-1 transition-colors focus-within:border-ring/40 focus-within:bg-background",
             disabled && "opacity-60"
           )}
           onKeyDown={onKeyDown}
         >
-          <div ref={hostRef} />
-          <div className="flex items-center justify-between gap-2 border-t border-sidebar-border bg-sidebar/40 px-2 py-1.5">
-            <span className="text-[10.5px] text-muted-foreground">
-              {submitError ?? "Markdown supported · ⌘↵ to send · @ to mention"}
-            </span>
-            <div className="flex items-center gap-1">
-              {onCancel ? (
-                <button
-                  type="button"
-                  onClick={onCancel}
-                  className="rounded-[8px] px-2 py-1 text-[11.5px] text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-                >
-                  Cancel
-                </button>
-              ) : null}
+          <div ref={hostRef} className="min-w-0 flex-1" />
+          <div className="flex shrink-0 items-center gap-1 pb-1">
+            {onCancel ? (
               <button
                 type="button"
-                onClick={() => {
-                  void handleSubmit()
-                }}
-                disabled={disabled || isEmpty || isSubmitting}
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-[8px] bg-primary px-2 py-1 text-[11.5px] font-medium text-primary-foreground",
-                  "hover:opacity-90 disabled:pointer-events-none disabled:opacity-40"
-                )}
+                onClick={onCancel}
+                className="rounded-full px-2 py-1 text-[11.5px] text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
               >
-                <PaperPlaneRight size={11} weight="fill" />
-                {submitLabel}
+                Cancel
               </button>
-            </div>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => {
+                void handleSubmit()
+              }}
+              disabled={disabled || isEmpty || isSubmitting}
+              aria-label={submitLabel}
+              className={cn(
+                "inline-flex h-7 items-center justify-center gap-1 rounded-full bg-primary text-primary-foreground transition-all",
+                isEditMode ? "px-2.5 text-[11.5px] font-medium" : "w-7",
+                "hover:opacity-90 disabled:pointer-events-none disabled:opacity-40"
+              )}
+            >
+              <PaperPlaneRight size={12} weight="fill" />
+              {isEditMode ? <span>{submitLabel}</span> : null}
+            </button>
           </div>
         </div>
+        {submitError ? (
+          <p className="mt-1 px-2 text-[10.5px] text-destructive">
+            {submitError}
+          </p>
+        ) : (
+          <p className="mt-1 px-2 text-[10.5px] text-muted-foreground/70">
+            ⌘↵ to send · @ to mention · Markdown supported
+          </p>
+        )}
         <MentionSuggestionDropdown
           state={suggestion}
           members={filteredMembers}

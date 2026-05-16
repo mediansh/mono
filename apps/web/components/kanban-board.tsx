@@ -44,6 +44,7 @@ import {
   FunnelSimple,
   MagnifyingGlass,
   DotsSixVertical,
+  DotsThree,
   Users,
   At,
 } from "@phosphor-icons/react"
@@ -1883,18 +1884,42 @@ function TaskDetailSidePanel({
               transition={{ duration: 0.2, ease: "easeOut" }}
               className="flex min-h-0 flex-1 flex-col"
             >
-              {/* ── Header: Title + Date + Close ── */}
-              <div className="relative px-5 pt-5 pb-0">
-                {/* Close button */}
-                <button
-                  onClick={handleClose}
-                  className="absolute top-4 right-4 rounded-[8px] p-1.5 text-muted-foreground/50 ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground"
-                >
-                  <X size={14} weight="bold" />
-                </button>
+              {/* ── Header: Title + Meta + Top-right actions ── */}
+              <div className="relative px-5 pt-5 pb-3">
+                {/* Top-right action cluster */}
+                <div className="absolute top-4 right-4 flex items-center gap-1">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      disabled={!canManageTasks}
+                      className="rounded-[8px] p-1.5 text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                      title="More actions"
+                    >
+                      <DotsThree size={16} weight="bold" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent side="bottom" align="end">
+                      <DropdownMenuItem
+                        disabled={!canManageTasks}
+                        onClick={() => onDelete(task.id)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Trash size={13} />
+                          <span>Delete task</span>
+                        </div>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <button
+                    onClick={handleClose}
+                    className="rounded-[8px] p-1.5 text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
+                    title="Close"
+                  >
+                    <X size={14} weight="bold" />
+                  </button>
+                </div>
 
                 {/* Title */}
-                <div>
+                <div className="pr-16">
                   <span className="sr-only">{task.title}</span>
                   {editingTitle ? (
                     <textarea
@@ -1916,7 +1941,7 @@ function TaskDetailSidePanel({
                           setEditingTitle(false)
                         }
                       }}
-                      className="block w-full resize-none overflow-hidden bg-transparent pr-8 text-[17px] leading-snug font-semibold tracking-tight break-words outline-none"
+                      className="block w-full resize-none overflow-hidden bg-transparent text-[17px] leading-snug font-semibold tracking-tight break-words outline-none"
                     />
                   ) : (
                     <h2
@@ -1925,32 +1950,28 @@ function TaskDetailSidePanel({
                         setTitleValue(task.title)
                         setEditingTitle(true)
                       }}
-                      className={`pr-8 text-[17px] leading-snug font-semibold tracking-tight break-words transition-colors ${canManageTasks ? "cursor-text" : ""}`}
+                      className={`text-[17px] leading-snug font-semibold tracking-tight break-words transition-colors ${canManageTasks ? "cursor-text" : ""}`}
                     >
                       {task.title}
                     </h2>
                   )}
                 </div>
 
-                {/* Date + task code */}
-                <div className="mt-1.5 flex items-center gap-2">
-                  <span className="font-mono text-[12px] text-muted-foreground/50">
-                    {task.taskCode}
-                  </span>
-                  <span className="text-muted-foreground/20">·</span>
-                  <span className="text-[12px] text-muted-foreground/50">
-                    {task.createdAt}
-                  </span>
+                {/* Meta row: task code · date */}
+                <div className="mt-1.5 flex items-center gap-2 text-[12px] text-muted-foreground/60">
+                  <span className="font-mono">{task.taskCode}</span>
+                  <span className="text-muted-foreground/30">·</span>
+                  <span>{task.createdAt}</span>
                 </div>
               </div>
 
-              {/* ── Properties row (Status, Priority, Labels, Assignees) ── */}
-              <div className="flex flex-wrap items-center gap-2 px-5 pt-3 pb-3">
+              {/* ── Properties row (Status, Priority, Labels, Assignees) — floating, borderless ── */}
+              <div className="flex flex-wrap items-center gap-1 px-4 pb-3">
                 {/* Status */}
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     disabled={!canManageTasks}
-                    className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex items-center gap-1.5 rounded-[8px] px-2 py-1.5 text-[12px] font-medium text-foreground/80 transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {getStatusIcon(task.status, 12)}
                     <span>{STATUS_LABELS[task.status]}</span>
@@ -1975,7 +1996,7 @@ function TaskDetailSidePanel({
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     disabled={!canManageTasks}
-                    className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex items-center gap-1.5 rounded-[8px] px-2 py-1.5 text-[12px] font-medium text-foreground/80 transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {getPriorityIcon(task.priority, 12)}
                     <span>{PRIORITY_LABELS[task.priority]}</span>
@@ -2000,7 +2021,7 @@ function TaskDetailSidePanel({
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     disabled={!canManageTasks}
-                    className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex items-center gap-1.5 rounded-[8px] px-2 py-1.5 text-[12px] font-medium text-foreground/80 transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {(task.labels ?? []).length > 0 ? (
                       <div className="flex items-center gap-1.5">
@@ -2023,9 +2044,9 @@ function TaskDetailSidePanel({
                         </span>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-1.5">
-                        <Tag size={12} className="text-muted-foreground" />
-                        <span className="text-muted-foreground">Labels</span>
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <Tag size={12} />
+                        <span>Labels</span>
                       </div>
                     )}
                   </DropdownMenuTrigger>
@@ -2061,7 +2082,7 @@ function TaskDetailSidePanel({
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     disabled={!canManageTasks}
-                    className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex items-center gap-1.5 rounded-[8px] px-2 py-1.5 text-[12px] font-medium text-foreground/80 transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {normalizedAssignees.length > 0 ? (
                       <div className="flex items-center gap-1.5">
@@ -2076,9 +2097,9 @@ function TaskDetailSidePanel({
                         </span>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-1.5">
-                        <Users size={12} className="text-muted-foreground" />
-                        <span className="text-muted-foreground">Assign</span>
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <Users size={12} />
+                        <span>Assign</span>
                       </div>
                     )}
                   </DropdownMenuTrigger>
@@ -2104,66 +2125,45 @@ function TaskDetailSidePanel({
                 </DropdownMenu>
               </div>
 
-              {/* ── Separator between properties and actions ── */}
-              <div className="border-t border-border" />
+              {/* Hidden file input (Attach lives inline in description) */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                onChange={handleFileSelect}
+                className="hidden"
+              />
 
-              {/* ── Action buttons row (below properties) ── */}
-              <div className="flex flex-wrap items-center gap-1.5 border-b border-border px-5 pt-3 pb-3">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  onChange={handleFileSelect}
-                  className="hidden"
-                />
-                <button
-                  disabled={!canManageTasks || uploading}
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                  title="Attach files"
-                >
-                  {uploading ? (
-                    <SpinnerGap size={14} className="animate-spin" />
-                  ) : (
-                    <Paperclip size={14} />
-                  )}
-                  {uploading ? "Uploading..." : "Attach"}
-                </button>
-                {task.status === "requests" && onAccept && onDeny && (
-                  <>
-                    <button
-                      disabled={!canManageTasks}
-                      onClick={() => {
-                        onAccept(task)
-                        handleClose()
-                      }}
-                      className="flex items-center gap-1.5 rounded-[8px] border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 text-[12px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
-                    >
-                      <CheckCircle size={13} weight="fill" />
-                      Accept
-                    </button>
-                    <button
-                      disabled={!canManageTasks}
-                      onClick={() => {
-                        onDeny(task)
-                        handleClose()
-                      }}
-                      className="flex items-center gap-1.5 rounded-[8px] border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-[12px] font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
-                    >
-                      <XCircle size={13} />
-                      Deny
-                    </button>
-                  </>
-                )}
-                <button
-                  disabled={!canManageTasks}
-                  onClick={() => onDelete(task.id)}
-                  className="flex items-center justify-center rounded-[8px] px-[7px] py-[7px] text-muted-foreground/40 ring-1 ring-border transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-60"
-                  title="Delete task"
-                >
-                  <Trash size={14} />
-                </button>
-              </div>
+              {/* ── Accept / Deny row — only for incoming requests ── */}
+              {task.status === "requests" && onAccept && onDeny && (
+                <div className="flex items-center gap-1.5 border-t border-border bg-muted/30 px-5 py-2.5">
+                  <button
+                    disabled={!canManageTasks}
+                    onClick={() => {
+                      onAccept(task)
+                      handleClose()
+                    }}
+                    className="flex items-center gap-1.5 rounded-[8px] border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 text-[12px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
+                  >
+                    <CheckCircle size={13} weight="fill" />
+                    Accept
+                  </button>
+                  <button
+                    disabled={!canManageTasks}
+                    onClick={() => {
+                      onDeny(task)
+                      handleClose()
+                    }}
+                    className="flex items-center gap-1.5 rounded-[8px] border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-[12px] font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
+                  >
+                    <XCircle size={13} />
+                    Deny
+                  </button>
+                </div>
+              )}
+
+              {/* Top divider for body section */}
+              <div className="border-t border-border" />
 
               {/* ── Body: Description (top) + Comments (bottom), resizable ── */}
               <div
@@ -2246,6 +2246,23 @@ function TaskDetailSidePanel({
                       />
                     </div>
                   ) : null}
+
+                  {/* Inline attach affordance */}
+                  <div className="mt-3">
+                    <button
+                      disabled={!canManageTasks || uploading}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="inline-flex items-center gap-1.5 rounded-[8px] px-2 py-1 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                      title="Attach files"
+                    >
+                      {uploading ? (
+                        <SpinnerGap size={13} className="animate-spin" />
+                      ) : (
+                        <Paperclip size={13} />
+                      )}
+                      {uploading ? "Uploading..." : "Attach files"}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Horizontal resize handle between description and comments */}
