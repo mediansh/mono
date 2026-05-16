@@ -1795,7 +1795,7 @@ function TaskDetailSidePanel({
       document.body.style.cursor = "row-resize"
 
       function onMove(ev: PointerEvent) {
-        const offsetY = ev.clientY - rect.top
+        const offsetY = rect.bottom - ev.clientY
         const nextRatio = clampCommentSplit(offsetY / rect.height)
         setCommentSplitRatio(nextRatio)
       }
@@ -2165,14 +2165,16 @@ function TaskDetailSidePanel({
               {/* Top divider for body section */}
               <div className="border-t border-border" />
 
-              {/* ── Body: Description (top) + Comments (bottom), resizable ── */}
+              {/* ── Body: Description scrolls naturally; Comments float as a card on top ── */}
               <div
                 ref={splitContainerRef}
-                className="flex min-h-0 flex-1 flex-col overflow-hidden"
+                className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
               >
                 <div
-                  className="flex min-h-0 flex-col overflow-y-auto px-5 pt-4 pb-4"
-                  style={{ flexBasis: `${commentSplitRatio * 100}%` }}
+                  className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-4"
+                  style={{
+                    paddingBottom: `calc(${commentSplitRatio * 100}% + 32px)`,
+                  }}
                 >
                   {task._syncStatus === "error" ? (
                     <motion.div
@@ -2265,30 +2267,36 @@ function TaskDetailSidePanel({
                   </div>
                 </div>
 
-                {/* Horizontal resize handle between description and comments */}
+                {/* Floating Comments card — sits on top of the description */}
                 <div
-                  onPointerDown={handleSplitResizeStart}
-                  role="separator"
-                  aria-orientation="horizontal"
-                  aria-label="Resize comments section"
-                  className="group relative flex h-2 shrink-0 cursor-row-resize items-center justify-center border-y border-border/60 bg-sidebar/40 transition-colors hover:bg-primary/10"
+                  className="pointer-events-none absolute right-3 bottom-3 left-3"
+                  style={{ height: `${commentSplitRatio * 100}%` }}
                 >
-                  <div
-                    className={`h-px w-8 rounded-full transition-colors ${
-                      isSplitResizing
-                        ? "bg-primary"
-                        : "bg-muted-foreground/30 group-hover:bg-primary/60"
-                    }`}
-                  />
-                </div>
-
-                {/* Comments */}
-                <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                  <TaskCommentsPanel
-                    workspaceId={task.workspaceId as Id<"workspaces">}
-                    taskId={task.id as Id<"tasks">}
-                    canComment={canManageTasks}
-                  />
+                  <div className="pointer-events-auto flex h-full min-h-[180px] flex-col overflow-hidden rounded-[16px] border border-border bg-card shadow-xl shadow-black/20 ring-1 ring-black/[0.03]">
+                    {/* Drag handle to grow/shrink the floating card */}
+                    <div
+                      onPointerDown={handleSplitResizeStart}
+                      role="separator"
+                      aria-orientation="horizontal"
+                      aria-label="Resize comments card"
+                      className="group relative flex h-3 shrink-0 cursor-row-resize items-center justify-center"
+                    >
+                      <div
+                        className={`h-1 w-9 rounded-full transition-colors ${
+                          isSplitResizing
+                            ? "bg-primary"
+                            : "bg-muted-foreground/30 group-hover:bg-muted-foreground/60"
+                        }`}
+                      />
+                    </div>
+                    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                      <TaskCommentsPanel
+                        workspaceId={task.workspaceId as Id<"workspaces">}
+                        taskId={task.id as Id<"tasks">}
+                        canComment={canManageTasks}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 
