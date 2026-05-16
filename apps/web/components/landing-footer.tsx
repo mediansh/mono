@@ -70,14 +70,14 @@ export function LandingFooter() {
 
         {/* Bottom bar */}
         <div className="mt-12 flex flex-col items-center gap-3 border-t border-foreground/[0.06] pt-6 sm:flex-row sm:justify-between sm:gap-0">
-          <p className="text-[10px] text-muted-foreground/50 sm:text-xs">
+          <p className="text-[11px] text-muted-foreground/50 sm:text-xs">
             &copy; {new Date().getFullYear()} Median. All rights reserved.
           </p>
           <div className="flex gap-4">
-            <Link href="/terms" className="text-[10px] text-muted-foreground/50 transition-colors hover:text-muted-foreground sm:text-xs">
+            <Link href="/terms" className="text-[11px] text-muted-foreground/50 transition-colors hover:text-muted-foreground sm:text-xs">
               Terms of Service
             </Link>
-            <Link href="/privacy" className="text-[10px] text-muted-foreground/50 transition-colors hover:text-muted-foreground sm:text-xs">
+            <Link href="/privacy" className="text-[11px] text-muted-foreground/50 transition-colors hover:text-muted-foreground sm:text-xs">
               Privacy Policy
             </Link>
           </div>

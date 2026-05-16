@@ -161,7 +161,7 @@ function PlanCard({
         <div className="flex items-center gap-2">
           <h3 className="text-lg font-semibold">{copy.name}</h3>
           {copy.trialDays > 0 && (
-            <span className="rounded-full bg-foreground/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-foreground/70">
+            <span className="rounded-full bg-foreground/10 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-foreground/70">
               {copy.trialDays}-day free trial
             </span>
           )}
@@ -302,7 +302,7 @@ function FreePlanCard({
         <div className="md:max-w-xs">
           <div className="flex items-center gap-2">
             <h3 className="text-lg font-semibold">{copy.name}</h3>
-            <span className="rounded-full bg-foreground/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-foreground/70">
+            <span className="rounded-full bg-foreground/10 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-foreground/70">
               No card required
             </span>
           </div>
@@ -435,7 +435,7 @@ function CreditsTooltip({ credits }: { credits: number }) {
             className="absolute bottom-full right-0 z-50 mb-2 w-56 rounded-xl border border-foreground/10 bg-background/95 p-3 shadow-lg backdrop-blur-xl sm:right-auto sm:left-1/2 sm:-translate-x-1/2"
           >
             <p className="text-xs font-medium text-foreground">How credits work</p>
-            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+            <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
               Your plan includes ${credits < 1 ? credits.toFixed(2) : credits} of
               credits each month. Integration events cost ${EVENT_CREDIT_COST.toFixed(3)} each,
               AI is charged at cost. Usage beyond your credits is auto-charged

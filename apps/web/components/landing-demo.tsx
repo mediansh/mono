@@ -176,7 +176,7 @@ function TaskLabel({ label }: { label: LabelName }) {
   const color = LABEL_COLORS[label]
   return (
     <span
-      className="rounded-[4px] px-1.5 py-0.5 text-[9px] font-medium capitalize"
+      className="rounded-[8px] px-1.5 py-0.5 text-[10px] font-medium capitalize"
       style={{ backgroundColor: color + "18", color }}
     >
       {label}
@@ -186,9 +186,9 @@ function TaskLabel({ label }: { label: LabelName }) {
 
 function RequestCard({ task }: { task: MockTask }) {
   return (
-    <div className="flex min-w-0 flex-col rounded-[4px] bg-[var(--demo-surface)] ring-1 ring-[var(--demo-border)]">
+    <div className="flex min-w-0 flex-col rounded-[8px] bg-[var(--demo-surface)] ring-1 ring-[var(--demo-border)]">
       <div className="flex flex-1 flex-col p-2.5 pb-0">
-        <p className="mb-2 text-[12px] leading-snug font-medium text-[var(--demo-text)]/90">
+        <p className="mb-2 text-[13px] leading-snug font-medium text-[var(--demo-text)]/90">
           {task.title}
         </p>
         <div className="mb-2 flex items-center gap-1.5">
@@ -198,20 +198,20 @@ function RequestCard({ task }: { task: MockTask }) {
         </div>
       </div>
       <div className="flex items-center justify-between border-t border-[var(--demo-border)] px-2.5 py-1">
-        <span className="text-[10px] text-[var(--demo-muted)]/60">
+        <span className="text-[11px] text-[var(--demo-muted)]/60">
           {task.date}
         </span>
-        <span className="font-mono text-[10px] text-[var(--demo-muted)]/60 tabular-nums">
+        <span className="font-mono text-[11px] text-[var(--demo-muted)]/60 tabular-nums">
           {task.code}
         </span>
       </div>
       <div className="flex items-stretch border-t border-[var(--demo-border)]">
-        <div className="flex flex-1 items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium text-emerald-400">
+        <div className="flex flex-1 items-center justify-center gap-1.5 py-1.5 text-[12px] font-medium text-emerald-400">
           <CheckCircle size={12} weight="fill" />
           Accept
         </div>
         <div className="w-px bg-[var(--demo-border)]" />
-        <div className="flex flex-1 items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium text-red-400">
+        <div className="flex flex-1 items-center justify-center gap-1.5 py-1.5 text-[12px] font-medium text-red-400">
           <XCircle size={12} />
           Deny
         </div>
@@ -222,9 +222,9 @@ function RequestCard({ task }: { task: MockTask }) {
 
 function KanbanCard({ task }: { task: MockTask }) {
   return (
-    <div className="rounded-[4px] bg-[var(--demo-surface)] ring-1 ring-[var(--demo-border)]">
+    <div className="rounded-[8px] bg-[var(--demo-surface)] ring-1 ring-[var(--demo-border)]">
       <div className="p-2.5 pb-0">
-        <p className="mb-2 line-clamp-2 pr-5 text-[12px] leading-snug font-medium text-[var(--demo-text)]/90">
+        <p className="mb-2 line-clamp-2 pr-5 text-[13px] leading-snug font-medium text-[var(--demo-text)]/90">
           {task.title}
         </p>
         <div className="mb-2 flex items-center gap-1.5">
@@ -235,10 +235,10 @@ function KanbanCard({ task }: { task: MockTask }) {
         </div>
       </div>
       <div className="flex items-center justify-between border-t border-[var(--demo-border)] px-2.5 py-1">
-        <span className="text-[10px] text-[var(--demo-muted)]/60">
+        <span className="text-[11px] text-[var(--demo-muted)]/60">
           {task.date}
         </span>
-        <span className="font-mono text-[10px] text-[var(--demo-muted)]/60 tabular-nums">
+        <span className="font-mono text-[11px] text-[var(--demo-muted)]/60 tabular-nums">
           {task.code}
         </span>
       </div>
@@ -291,13 +291,13 @@ function Column({
   children: React.ReactNode
 }) {
   return (
-    <div className="flex h-full w-[230px] shrink-0 flex-col overflow-hidden rounded-[4px] ring-1 ring-[var(--demo-border)]">
+    <div className="flex h-full w-[230px] shrink-0 flex-col overflow-hidden rounded-[8px] ring-1 ring-[var(--demo-border)]">
       <div className="flex items-center gap-2 bg-[var(--demo-surface)] px-3 py-1.5 shadow-[inset_0_-1px_0_var(--demo-border)]">
         <StatusIcon status={status} />
-        <span className="text-[13px] font-semibold tracking-tight text-[var(--demo-text)]">
+        <span className="text-[14px] font-semibold tracking-tight text-[var(--demo-text)]">
           {label}
         </span>
-        <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-[var(--demo-border-strong)] px-1.5 text-[10px] font-medium text-[var(--demo-muted)]">
+        <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[8px] bg-[var(--demo-border-strong)] px-1.5 text-[11px] font-medium text-[var(--demo-muted)]">
           {count}
         </span>
         <Plus size={14} className="ml-auto text-[var(--demo-muted)]/40" />
@@ -310,7 +310,7 @@ function Column({
 function ListRow({ task, status }: { task: MockTask; status: ColumnStatus }) {
   return (
     <div className="flex cursor-pointer items-center gap-3 border-b border-[var(--demo-border)] px-3 py-2 transition-colors last:border-b-0 hover:bg-[var(--demo-surface)]/60">
-      <span className="w-14 shrink-0 font-mono text-[11px] text-[var(--demo-muted)]/60 tabular-nums">
+      <span className="w-14 shrink-0 font-mono text-[12px] text-[var(--demo-muted)]/60 tabular-nums">
         {task.code}
       </span>
       <span className="flex size-3.5 shrink-0 items-center justify-center">
@@ -323,14 +323,14 @@ function ListRow({ task, status }: { task: MockTask; status: ColumnStatus }) {
       <span className="flex size-3.5 shrink-0 items-center justify-center">
         <StatusIcon status={status} size={13} />
       </span>
-      <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-[var(--demo-text)]/90">
+      <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-[var(--demo-text)]/90">
         {task.title}
       </span>
       <div className="flex shrink-0 items-center gap-1.5">
         {task.labels?.map((l) => (
           <TaskLabel key={l} label={l} />
         ))}
-        <span className="ml-1 text-[11px] text-[var(--demo-muted)]/60">
+        <span className="ml-1 text-[12px] text-[var(--demo-muted)]/60">
           {task.date}
         </span>
       </div>
@@ -356,13 +356,13 @@ function ListGroup({
   children?: React.ReactNode
 }) {
   return (
-    <div className="mb-1.5 overflow-hidden rounded-[4px] ring-1 ring-[var(--demo-border)]">
+    <div className="mb-1.5 overflow-hidden rounded-[8px] ring-1 ring-[var(--demo-border)]">
       <button
         onClick={onToggle}
         className="flex w-full cursor-pointer items-center gap-2.5 bg-[var(--demo-surface)] px-3 py-1.5 text-left transition-colors hover:bg-[var(--demo-surface-hover)]"
       >
         <span
-          className="text-[10px] text-[var(--demo-muted)]/60 transition-transform"
+          className="text-[11px] text-[var(--demo-muted)]/60 transition-transform"
           style={{
             display: "inline-block",
             transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)",
@@ -371,10 +371,10 @@ function ListGroup({
           ▼
         </span>
         <StatusIcon status={status} />
-        <span className="text-[13px] font-semibold tracking-tight text-[var(--demo-text)]">
+        <span className="text-[14px] font-semibold tracking-tight text-[var(--demo-text)]">
           {label}
         </span>
-        <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-[var(--demo-border-strong)] px-1.5 text-[10px] font-medium text-[var(--demo-muted)]">
+        <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[8px] bg-[var(--demo-border-strong)] px-1.5 text-[11px] font-medium text-[var(--demo-muted)]">
           {tasks.length}
         </span>
         {extraHeader}
@@ -417,7 +417,7 @@ function ListView() {
         collapsed={isCollapsed("requests")}
         onToggle={() => toggle("requests")}
         extraHeader={
-          <span className="ml-1 text-[11px] text-[var(--demo-muted)]/50">
+          <span className="ml-1 text-[12px] text-[var(--demo-muted)]/50">
             from users
           </span>
         }
@@ -490,16 +490,16 @@ function ListView() {
 function BoardView() {
   return (
     <div className="scrollbar-hide flex flex-1 gap-2 overflow-x-auto px-4 pt-1 pb-4">
-      <div className="flex h-full w-[230px] shrink-0 flex-col overflow-hidden rounded-[4px] ring-1 ring-[var(--demo-border)]">
+      <div className="flex h-full w-[230px] shrink-0 flex-col overflow-hidden rounded-[8px] ring-1 ring-[var(--demo-border)]">
         <div className="flex items-center gap-2 bg-[var(--demo-surface)] px-3 py-1.5 shadow-[inset_0_-1px_0_var(--demo-border)]">
           <StatusIcon status="requests" />
-          <span className="text-[13px] font-semibold tracking-tight text-[var(--demo-text)]">
+          <span className="text-[14px] font-semibold tracking-tight text-[var(--demo-text)]">
             Requests
           </span>
-          <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-[var(--demo-border-strong)] px-1.5 text-[10px] font-medium text-[var(--demo-muted)]">
+          <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[8px] bg-[var(--demo-border-strong)] px-1.5 text-[11px] font-medium text-[var(--demo-muted)]">
             {REQUESTS.length}
           </span>
-          <span className="ml-1 text-[11px] text-[var(--demo-muted)]/50">
+          <span className="ml-1 text-[12px] text-[var(--demo-muted)]/50">
             from users
           </span>
         </div>
@@ -557,7 +557,7 @@ function SidebarItem({
 }) {
   return (
     <div
-      className={`flex items-center gap-2 rounded-[4px] px-2 py-1 ${
+      className={`flex items-center gap-2 rounded-[8px] px-2 py-1 ${
         active
           ? "bg-[var(--demo-surface)] text-[var(--demo-text)] ring-1 ring-[var(--demo-border-strong)]"
           : muted
@@ -568,9 +568,9 @@ function SidebarItem({
       <span className="flex size-[15px] items-center justify-center">
         {icon}
       </span>
-      <span className="text-[13px]">{label}</span>
+      <span className="text-[14px]">{label}</span>
       {shortcut && (
-        <kbd className="ml-auto rounded-[3px] border border-[var(--demo-border-strong)] px-1 py-px font-mono text-[10px] text-[var(--demo-text)]/40">
+        <kbd className="ml-auto rounded-[6px] border border-[var(--demo-border-strong)] px-1 py-px font-mono text-[11px] text-[var(--demo-text)]/40">
           {shortcut}
         </kbd>
       )}
@@ -586,7 +586,7 @@ function SidebarSubItem({
   label: string
 }) {
   return (
-    <div className="flex items-center gap-2 rounded-[4px] py-1 pr-2 pl-7 text-[13px] text-[var(--demo-text)]/70">
+    <div className="flex items-center gap-2 rounded-[8px] py-1 pr-2 pl-7 text-[14px] text-[var(--demo-text)]/70">
       <span className="flex size-3 items-center justify-center text-[var(--demo-text)]/70">
         {icon}
       </span>
@@ -625,17 +625,17 @@ export function LandingDemo() {
               </div>
 
               <div className="mt-2 flex flex-col gap-1">
-                <div className="flex items-center gap-2 rounded-[4px] px-2 py-1 text-[var(--demo-text)]/60 ring-1 ring-[var(--demo-border-strong)]">
+                <div className="flex items-center gap-2 rounded-[8px] px-2 py-1 text-[var(--demo-text)]/60 ring-1 ring-[var(--demo-border-strong)]">
                   <MagnifyingGlass size={15} />
-                  <span className="text-[13px]">Search</span>
-                  <kbd className="ml-auto rounded-[3px] border border-[var(--demo-border-strong)] px-1 py-px font-mono text-[10px] text-[var(--demo-text)]/40">
+                  <span className="text-[14px]">Search</span>
+                  <kbd className="ml-auto rounded-[6px] border border-[var(--demo-border-strong)] px-1 py-px font-mono text-[11px] text-[var(--demo-text)]/40">
                     ⌘K
                   </kbd>
                 </div>
-                <div className="flex items-center gap-2 rounded-[4px] bg-[var(--demo-text)] px-2 py-1 text-[var(--demo-shell)] ring-1 ring-[var(--demo-text)]/10">
+                <div className="flex items-center gap-2 rounded-[8px] bg-[var(--demo-text)] px-2 py-1 text-[var(--demo-shell)] ring-1 ring-[var(--demo-text)]/10">
                   <PenNib size={15} weight="fill" />
-                  <span className="text-[13px] font-medium">New</span>
-                  <kbd className="ml-auto rounded-[3px] border border-[var(--demo-shell)]/15 px-1 py-px font-mono text-[10px] text-[var(--demo-shell)]/50">
+                  <span className="text-[14px] font-medium">New</span>
+                  <kbd className="ml-auto rounded-[6px] border border-[var(--demo-shell)]/15 px-1 py-px font-mono text-[11px] text-[var(--demo-shell)]/50">
                     C
                   </kbd>
                 </div>
@@ -680,15 +680,15 @@ export function LandingDemo() {
 
               <div className="mt-auto flex flex-col gap-0.5">
                 <SidebarItem icon={<Gear size={15} />} label="Settings" />
-                <div className="flex items-center gap-2 rounded-[4px] px-2 py-1">
-                  <div className="flex size-5 shrink-0 items-center justify-center rounded-[4px] bg-[var(--demo-surface)] text-[10px] font-medium text-[var(--demo-text)] ring-1 ring-[var(--demo-border-strong)]">
+                <div className="flex items-center gap-2 rounded-[8px] px-2 py-1">
+                  <div className="flex size-5 shrink-0 items-center justify-center rounded-[8px] bg-[var(--demo-surface)] text-[11px] font-medium text-[var(--demo-text)] ring-1 ring-[var(--demo-border-strong)]">
                     M
                   </div>
                   <div className="flex min-w-0 flex-col leading-tight">
-                    <span className="truncate text-[12px] font-medium text-[var(--demo-text)]">
+                    <span className="truncate text-[13px] font-medium text-[var(--demo-text)]">
                       Median
                     </span>
-                    <span className="truncate text-[10px] text-[var(--demo-text)]/50">
+                    <span className="truncate text-[11px] text-[var(--demo-text)]/50">
                       Workspace
                     </span>
                   </div>
@@ -697,13 +697,13 @@ export function LandingDemo() {
             </aside>
 
             {/* Main (inset panel) */}
-            <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-[4px] bg-[var(--demo-main)] ring-1 ring-[var(--demo-border-strong)]">
+            <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-[8px] bg-[var(--demo-main)] ring-1 ring-[var(--demo-border-strong)]">
               {/* Toolbar — toggle hidden on mobile (board-only) */}
               <div className="hidden items-center gap-2 px-4 pt-3 pb-2 md:flex">
-                <div className="flex items-center gap-0.5 rounded-[4px] bg-[var(--demo-surface)]/60 p-0.5 ring-1 ring-[var(--demo-border-strong)]">
+                <div className="flex items-center gap-0.5 rounded-[8px] bg-[var(--demo-surface)]/60 p-0.5 ring-1 ring-[var(--demo-border-strong)]">
                   <button
                     onClick={() => setView("list")}
-                    className={`flex size-6 cursor-pointer items-center justify-center rounded-[4px] transition-colors ${
+                    className={`flex size-6 cursor-pointer items-center justify-center rounded-[8px] transition-colors ${
                       view === "list"
                         ? "bg-[var(--demo-border-strong)] text-[var(--demo-text)]"
                         : "text-[var(--demo-text)]/50 hover:text-[var(--demo-text)]"
@@ -714,7 +714,7 @@ export function LandingDemo() {
                   </button>
                   <button
                     onClick={() => setView("board")}
-                    className={`flex size-6 cursor-pointer items-center justify-center rounded-[4px] transition-colors ${
+                    className={`flex size-6 cursor-pointer items-center justify-center rounded-[8px] transition-colors ${
                       view === "board"
                         ? "bg-[var(--demo-border-strong)] text-[var(--demo-text)]"
                         : "text-[var(--demo-text)]/50 hover:text-[var(--demo-text)]"

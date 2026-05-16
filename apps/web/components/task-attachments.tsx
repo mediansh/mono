@@ -205,24 +205,24 @@ function AttachmentImageCard({
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[12px] font-medium text-foreground/80">
+        <span className="text-[13px] font-medium text-foreground/80">
           {attachment.name}
         </span>
-        <span className="text-[11px] text-muted-foreground">
+        <span className="text-[12px] text-muted-foreground">
           {formatFileSize(attachment.size)}
         </span>
         {canManageAttachments ? (
           <button
             type="button"
             onClick={onRemove}
-            className="ml-auto rounded-[8px] border border-border/80 bg-background px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="ml-auto rounded-[12px] border border-border/80 bg-background px-2.5 py-1 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             Remove
           </button>
         ) : null}
       </div>
 
-      <div className="w-full overflow-hidden rounded-[14px] border border-border/80 bg-accent/20">
+      <div className="w-full overflow-hidden rounded-[18px] border border-border/80 bg-accent/20">
         {attachment.url ? (
           <div
             className="group relative min-w-0"
@@ -234,13 +234,13 @@ function AttachmentImageCard({
             <img
               src={attachment.url}
               alt={attachment.name}
-              className="block h-auto w-full rounded-[14px] object-contain"
+              className="block h-auto w-full rounded-[18px] object-contain"
             />
             {canManageAttachments ? (
               <button
                 type="button"
                 onPointerDown={handleResizeStart}
-                className="absolute right-2 bottom-2 z-10 flex size-5 cursor-nwse-resize items-center justify-center rounded-[4px] bg-black/40 text-white/80 backdrop-blur-sm transition-colors hover:bg-black/60"
+                className="absolute right-2 bottom-2 z-10 flex size-5 cursor-nwse-resize items-center justify-center rounded-[8px] bg-black/40 text-white/80 backdrop-blur-sm transition-colors hover:bg-black/60"
                 aria-label={`Resize ${attachment.name}`}
               >
                 <svg
@@ -260,7 +260,7 @@ function AttachmentImageCard({
           </div>
         ) : (
           <div
-            className="flex items-center justify-center rounded-[14px] bg-accent/40 px-4 py-12 text-[12px] text-muted-foreground"
+            className="flex items-center justify-center rounded-[18px] bg-accent/40 px-4 py-12 text-[13px] text-muted-foreground"
             style={{
               width: `${displayWidth}px`,
               maxWidth: "100%",
@@ -383,7 +383,7 @@ export function TaskAttachmentGallery({
     <div className="space-y-4">
       {imageAttachments.length > 0 ? (
         <div className="space-y-4">
-          <span className="block text-[11px] font-medium tracking-[0.16em] text-muted-foreground/70 uppercase">
+          <span className="block text-[12px] font-medium tracking-[0.16em] text-muted-foreground/70 uppercase">
             Attachments
           </span>
           {imageAttachments.map((attachment) => (
@@ -402,14 +402,14 @@ export function TaskAttachmentGallery({
 
       {fileAttachments.length > 0 ? (
         <div className="space-y-2">
-          <span className="block text-[11px] font-medium tracking-[0.16em] text-muted-foreground/70 uppercase">
+          <span className="block text-[12px] font-medium tracking-[0.16em] text-muted-foreground/70 uppercase">
             Files
           </span>
           <div className="flex flex-wrap gap-2">
             {fileAttachments.map((attachment) => (
               <div
                 key={attachment.storageId}
-                className="flex items-center gap-2 rounded-[10px] border border-border/80 bg-background px-3 py-2 text-[12px]"
+                className="flex items-center gap-2 rounded-[14px] border border-border/80 bg-background px-3 py-2 text-[13px]"
               >
                 <a
                   href={attachment.url ?? "#"}
@@ -428,7 +428,7 @@ export function TaskAttachmentGallery({
                   <button
                     type="button"
                     onClick={() => handleRemove(attachment.storageId)}
-                    className="rounded-[8px] border border-border/80 bg-background px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    className="rounded-[12px] border border-border/80 bg-background px-2.5 py-1 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                   >
                     Remove
                   </button>

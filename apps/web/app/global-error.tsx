@@ -29,7 +29,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
   return (
     <html lang="en">
       <body className="flex min-h-screen items-center justify-center bg-background px-6 text-foreground">
-        <div className="w-full max-w-md rounded-[4px] border-2 border-border bg-card p-6 shadow-none">
+        <div className="w-full max-w-md rounded-[8px] border-2 border-border bg-card p-6 shadow-none">
           <p className="text-sm font-medium text-foreground">
             Application error
           </p>
@@ -39,13 +39,13 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
             the details below to trace it.
           </p>
           {error.digest ? (
-            <p className="mt-4 rounded-[4px] bg-accent px-3 py-2 font-mono text-xs text-muted-foreground">
+            <p className="mt-4 rounded-[8px] bg-accent px-3 py-2 font-mono text-xs text-muted-foreground">
               Digest: {error.digest}
             </p>
           ) : null}
           <button
             onClick={reset}
-            className="mt-5 inline-flex rounded-[4px] bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="mt-5 inline-flex rounded-[8px] bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
             Try again
           </button>

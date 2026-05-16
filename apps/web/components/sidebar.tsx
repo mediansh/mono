@@ -195,7 +195,7 @@ function CreateWorkspaceModal({
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
-            <label className="text-[13px] font-medium">Logo <span className="text-muted-foreground font-normal">(optional)</span></label>
+            <label className="text-[14px] font-medium">Logo <span className="text-muted-foreground font-normal">(optional)</span></label>
             <input
               ref={fileInputRef}
               type="file"
@@ -206,7 +206,7 @@ function CreateWorkspaceModal({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="group flex size-11 items-center justify-center overflow-hidden rounded-[4px] bg-card ring-1 ring-border transition-colors hover:bg-muted"
+              className="group flex size-11 items-center justify-center overflow-hidden rounded-[8px] bg-card ring-1 ring-border transition-colors hover:bg-muted"
             >
               {iconPreview ? (
                 <img
@@ -231,7 +231,7 @@ function CreateWorkspaceModal({
                   setIconPreview(null)
                   if (fileInputRef.current) fileInputRef.current.value = ""
                 }}
-                className="w-fit text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+                className="w-fit text-[12px] text-muted-foreground transition-colors hover:text-foreground"
               >
                 Remove
               </button>
@@ -239,7 +239,7 @@ function CreateWorkspaceModal({
           </div>
 
           <div className="flex flex-col gap-1">
-            <label htmlFor="modal-workspace-name" className="text-[13px] font-medium">
+            <label htmlFor="modal-workspace-name" className="text-[14px] font-medium">
               Workspace name
             </label>
             <input
@@ -252,16 +252,16 @@ function CreateWorkspaceModal({
                 if (error) setError("")
               }}
               autoFocus
-              className="h-8 rounded-[4px] bg-card px-2.5 text-[13px] ring-1 ring-border outline-none transition-all placeholder:text-muted-foreground focus:ring-foreground/30"
+              className="h-8 rounded-[8px] bg-card px-2.5 text-[14px] ring-1 ring-border outline-none transition-all placeholder:text-muted-foreground focus:ring-foreground/30"
             />
           </div>
 
-          {error && <p className="text-[12px] text-destructive">{error}</p>}
+          {error && <p className="text-[13px] text-destructive">{error}</p>}
 
           <button
             type="submit"
             disabled={loading || !name.trim()}
-            className="flex h-8 items-center justify-center rounded-[4px] bg-primary text-[13px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+            className="flex h-8 items-center justify-center rounded-[8px] bg-primary text-[14px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
           >
             {loading ? (
               <svg className="size-4 animate-spin" viewBox="0 0 24 24" fill="none">
@@ -308,15 +308,15 @@ function ContactModal({
 
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
-            <label className="text-[13px] font-medium">Email</label>
-            <div className="group flex items-center gap-2 rounded-[4px] bg-card px-2.5 py-1.5 ring-1 ring-border">
-              <code className="flex-1 select-all font-mono text-[13px]">
+            <label className="text-[14px] font-medium">Email</label>
+            <div className="group flex items-center gap-2 rounded-[8px] bg-card px-2.5 py-1.5 ring-1 ring-border">
+              <code className="flex-1 select-all font-mono text-[14px]">
                 {CONTACT_EMAIL}
               </code>
               <button
                 type="button"
                 onClick={handleCopy}
-                className="flex h-6 items-center gap-1 rounded-[3px] px-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="flex h-6 items-center gap-1 rounded-[6px] px-1.5 text-[12px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 aria-label="Copy email"
               >
                 {copied ? (
@@ -335,17 +335,17 @@ function ContactModal({
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-[13px] font-medium">Discord</label>
+            <label className="text-[14px] font-medium">Discord</label>
             <a
               href={DISCORD_INVITE_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="group flex items-center gap-2 rounded-[4px] bg-card px-2.5 py-1.5 ring-1 ring-border transition-colors hover:bg-muted"
+              className="group flex items-center gap-2 rounded-[8px] bg-card px-2.5 py-1.5 ring-1 ring-border transition-colors hover:bg-muted"
             >
               <span style={{ lineHeight: 0 }}>
                 <DiscordIcon size={14} />
               </span>
-              <span className="flex-1 text-[13px]">Join the Discord server</span>
+              <span className="flex-1 text-[14px]">Join the Discord server</span>
               <ArrowSquareOut
                 size={12}
                 weight="regular"
@@ -440,7 +440,7 @@ export function AppSidebar() {
                   >
                     <MagnifyingGlass size={15} weight="regular" />
                     <span>Search</span>
-                    <kbd className="ml-auto hidden rounded-[3px] border border-sidebar-border px-1 py-px font-mono text-[10px] text-sidebar-foreground/40 group-data-[collapsible=icon]:hidden lg:inline">
+                    <kbd className="ml-auto hidden rounded-[6px] border border-sidebar-border px-1 py-px font-mono text-[11px] text-sidebar-foreground/40 group-data-[collapsible=icon]:hidden lg:inline">
                       {mounted ? (/Mac|iPhone/.test(navigator.userAgent) ? "⌘K" : "Ctrl+K") : null}
                     </kbd>
                   </SidebarMenuButton>
@@ -456,7 +456,7 @@ export function AppSidebar() {
                   >
                     <PenNib size={15} weight="fill" />
                     <span>New</span>
-                    <kbd className="ml-auto hidden rounded-[3px] border border-primary-foreground/15 px-1 py-px font-mono text-[10px] text-primary-foreground/50 group-data-[collapsible=icon]:hidden lg:inline">
+                    <kbd className="ml-auto hidden rounded-[6px] border border-primary-foreground/15 px-1 py-px font-mono text-[11px] text-primary-foreground/50 group-data-[collapsible=icon]:hidden lg:inline">
                       C
                     </kbd>
                   </SidebarMenuButton>
@@ -489,7 +489,7 @@ export function AppSidebar() {
                         <item.icon size={15} weight={isActive ? "fill" : "regular"} />
                         <span>{item.label}</span>
                         {showRequestsBadge && (
-                          <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-[4px] bg-sidebar-accent px-1 font-mono text-[10px] font-medium text-sidebar-accent-foreground tabular-nums group-data-[collapsible=icon]:hidden">
+                          <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-[8px] bg-sidebar-accent px-1 font-mono text-[11px] font-medium text-sidebar-accent-foreground tabular-nums group-data-[collapsible=icon]:hidden">
                             {requestsCount}
                           </span>
                         )}
@@ -608,24 +608,24 @@ export function AppSidebar() {
             <SidebarMenuItem>
               {mounted ? (
               <DropdownMenu>
-                <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-[4px] px-2 py-1 outline-none transition-colors duration-150 ease-out hover:bg-sidebar-accent active:bg-sidebar-border focus-visible:ring-2 focus-visible:ring-sidebar-ring">
+                <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-[8px] px-2 py-1 outline-none transition-colors duration-150 ease-out hover:bg-sidebar-accent active:bg-sidebar-border focus-visible:ring-2 focus-visible:ring-sidebar-ring">
                   {user?.imageUrl ? (
                     <img
                       src={user.imageUrl}
                       alt={user.fullName ?? "Profile"}
-                      className="h-5 w-5 shrink-0 rounded-[4px] object-cover ring-1 ring-sidebar-border"
+                      className="h-5 w-5 shrink-0 rounded-[8px] object-cover ring-1 ring-sidebar-border"
                     />
                   ) : (
-                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] bg-sidebar-accent text-[10px] font-medium text-sidebar-accent-foreground ring-1 ring-sidebar-border">
+                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[8px] bg-sidebar-accent text-[11px] font-medium text-sidebar-accent-foreground ring-1 ring-sidebar-border">
                       {user?.firstName?.charAt(0) ?? "?"}
                     </div>
                   )}
                   <div className="flex min-w-0 flex-1 flex-col justify-center group-data-[collapsible=icon]:hidden">
-                    <span className="truncate text-left text-[13px] font-medium leading-tight">
+                    <span className="truncate text-left text-[14px] font-medium leading-tight">
                       {user?.fullName}
                     </span>
                     {currentWorkspace && (
-                      <span className="truncate text-left text-[11px] leading-tight text-sidebar-foreground/50">
+                      <span className="truncate text-left text-[12px] leading-tight text-sidebar-foreground/50">
                         {currentWorkspace.name}
                       </span>
                     )}
@@ -638,16 +638,16 @@ export function AppSidebar() {
                       <img
                         src={user.imageUrl}
                         alt={user.fullName ?? "Profile"}
-                        className="h-7 w-7 shrink-0 rounded-[4px] object-cover ring-1 ring-border"
+                        className="h-7 w-7 shrink-0 rounded-[8px] object-cover ring-1 ring-border"
                       />
                     ) : (
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[4px] bg-accent text-xs font-medium ring-1 ring-border">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-accent text-xs font-medium ring-1 ring-border">
                         {user?.firstName?.charAt(0) ?? "?"}
                       </div>
                     )}
                     <div className="flex min-w-0 flex-col">
-                      <span className="truncate text-[13px] font-medium leading-tight">{user?.fullName}</span>
-                      <span className="truncate text-[11px] leading-tight text-muted-foreground">
+                      <span className="truncate text-[14px] font-medium leading-tight">{user?.fullName}</span>
+                      <span className="truncate text-[12px] leading-tight text-muted-foreground">
                         {user?.primaryEmailAddress?.emailAddress}
                       </span>
                     </div>
@@ -658,7 +658,7 @@ export function AppSidebar() {
                   {workspaces.length > 0 && (
                     <>
                       <DropdownMenuGroup>
-                        <DropdownMenuLabel className="text-[11px]">Workspaces</DropdownMenuLabel>
+                        <DropdownMenuLabel className="text-[12px]">Workspaces</DropdownMenuLabel>
                         {workspaces.map((ws) => (
                           <DropdownMenuItem
                             key={ws._id}
@@ -669,10 +669,10 @@ export function AppSidebar() {
                               <img
                                 src={ws.iconUrl}
                                 alt={ws.name}
-                                className="!h-4 !w-4 shrink-0 rounded-[3px] object-cover ring-1 ring-border"
+                                className="!h-4 !w-4 shrink-0 rounded-[6px] object-cover ring-1 ring-border"
                               />
                             ) : (
-                              <div className="flex h-4 w-4 shrink-0 items-center justify-center overflow-hidden rounded-[3px] ring-1 ring-border">
+                              <div className="flex h-4 w-4 shrink-0 items-center justify-center overflow-hidden rounded-[6px] ring-1 ring-border">
                                 <Facehash name={ws.name} size={16} />
                               </div>
                             )}
@@ -731,8 +731,8 @@ export function AppSidebar() {
                 </DropdownMenuContent>
               </DropdownMenu>
               ) : (
-                <div className="flex w-full items-center gap-2 rounded-[4px] px-2 py-1">
-                  <div className="h-5 w-5 shrink-0 rounded-[4px] bg-sidebar-accent" />
+                <div className="flex w-full items-center gap-2 rounded-[8px] px-2 py-1">
+                  <div className="h-5 w-5 shrink-0 rounded-[8px] bg-sidebar-accent" />
                 </div>
               )}
             </SidebarMenuItem>

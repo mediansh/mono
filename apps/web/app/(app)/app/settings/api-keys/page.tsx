@@ -119,8 +119,8 @@ export default function ApiKeysSettingsPage() {
     <Stagger className="mx-auto w-full max-w-lg px-6 py-6">
       {/* Header */}
       <motion.div variants={fadeUp} className="mb-4">
-        <h2 className="text-[14px] font-semibold">API Keys</h2>
-        <p className="mt-0.5 text-[12px] text-muted-foreground">
+        <h2 className="text-[15px] font-semibold">API Keys</h2>
+        <p className="mt-0.5 text-[13px] text-muted-foreground">
           API keys authenticate the Median CLI and the public HTTP API.
         </p>
       </motion.div>
@@ -135,36 +135,36 @@ export default function ApiKeysSettingsPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center gap-2">
-            <code className="min-w-0 flex-1 truncate rounded-[4px] ring-1 ring-border bg-background px-3 py-2 font-mono text-[12px] select-all">
+            <code className="min-w-0 flex-1 truncate rounded-[8px] ring-1 ring-border bg-background px-3 py-2 font-mono text-[13px] select-all">
               {newKey}
             </code>
             <button
               type="button"
               onClick={handleCopyKey}
-              className="flex size-9 shrink-0 items-center justify-center rounded-[4px] ring-1 ring-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className="flex size-9 shrink-0 items-center justify-center rounded-[8px] ring-1 ring-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
               <Copy size={14} />
             </button>
           </div>
-          <p className="text-[11px] text-muted-foreground">
-            Use this key with <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px]">mdn setup</code> to connect the CLI to this workspace.
+          <p className="text-[12px] text-muted-foreground">
+            Use this key with <code className="rounded bg-muted px-1 py-0.5 font-mono text-[12px]">mdn setup</code> to connect the CLI to this workspace.
           </p>
         </DialogContent>
       </Dialog>
 
       {/* Generate card */}
-      <motion.div variants={fadeUp} className="rounded-[4px] ring-1 ring-border bg-card">
+      <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border bg-card">
         <div className="p-5">
           <div className="flex flex-col gap-3">
             <div>
-              <label className="mb-2 block text-[13px] font-medium">Label</label>
+              <label className="mb-2 block text-[14px] font-medium">Label</label>
               <input
                 type="text"
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
                 disabled={creating}
                 placeholder='e.g. "MacBook Pro" or "CI Pipeline"'
-                className="h-8 w-full rounded-[4px] ring-1 ring-border bg-background px-3 text-[13px] outline-none transition-colors placeholder:text-muted-foreground focus:ring-foreground/30 disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-8 w-full rounded-[8px] ring-1 ring-border bg-background px-3 text-[14px] outline-none transition-colors placeholder:text-muted-foreground focus:ring-foreground/30 disabled:cursor-not-allowed disabled:opacity-60"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleGenerate()
                 }}
@@ -174,13 +174,13 @@ export default function ApiKeysSettingsPage() {
               type="button"
               disabled={creating || !label.trim()}
               onClick={handleGenerate}
-              className="flex h-8 w-fit items-center justify-center gap-1.5 rounded-[4px] bg-primary px-3.5 text-[11px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex h-8 w-fit items-center justify-center gap-1.5 rounded-[8px] bg-primary px-3.5 text-[12px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Plus size={12} weight="bold" />
               {creating ? "Generating..." : "Generate API key"}
             </button>
-            <p className="text-[11px] text-muted-foreground">
-              Use this key with <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px]">mdn setup</code> to connect the CLI to this workspace.
+            <p className="text-[12px] text-muted-foreground">
+              Use this key with <code className="rounded bg-muted px-1 py-0.5 font-mono text-[12px]">mdn setup</code> to connect the CLI to this workspace.
             </p>
           </div>
         </div>
@@ -189,11 +189,11 @@ export default function ApiKeysSettingsPage() {
       {/* Existing keys */}
       {apiKeys.length > 0 && (
         <motion.div variants={fadeUp} className="mt-4">
-          <h3 className="mb-3 text-[13px] font-medium">
+          <h3 className="mb-3 text-[14px] font-medium">
             Active keys
             <span className="ml-1.5 text-muted-foreground">({apiKeys.length})</span>
           </h3>
-          <div className="rounded-[4px] ring-1 ring-border bg-card">
+          <div className="rounded-[8px] ring-1 ring-border bg-card">
             <div className="divide-y divide-border">
               {apiKeys.map((key) => (
                 <div
@@ -202,12 +202,12 @@ export default function ApiKeysSettingsPage() {
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <p className="truncate text-[13px] font-medium">{key.label}</p>
-                      <code className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
+                      <p className="truncate text-[14px] font-medium">{key.label}</p>
+                      <code className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[12px] text-muted-foreground">
                         {key.keyPrefix}
                       </code>
                     </div>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    <p className="mt-0.5 text-[12px] text-muted-foreground">
                       Created {formatDate(key.createdAt)}
                       {key.lastUsedAt && ` · Last used ${formatDate(key.lastUsedAt)}`}
                     </p>
@@ -216,7 +216,7 @@ export default function ApiKeysSettingsPage() {
                     type="button"
                     disabled={revokingId === key._id}
                     onClick={() => handleRevoke(key._id)}
-                    className="flex size-8 items-center justify-center rounded-[4px] text-muted-foreground opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex size-8 items-center justify-center rounded-[8px] text-muted-foreground opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <Trash size={14} />
                   </button>

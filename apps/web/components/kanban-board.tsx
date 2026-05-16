@@ -608,26 +608,26 @@ function EmptyBoardState({ onCreateTask }: { onCreateTask: () => void }) {
         initial={{ opacity: 0, y: 12, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
-        className="w-full max-w-sm rounded-[4px] bg-card p-5 text-center ring-1 ring-border"
+        className="w-full max-w-sm rounded-[8px] bg-card p-5 text-center ring-1 ring-border"
       >
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.3, delay: 0.1, ease: [0.25, 0.1, 0.25, 1] }}
-          className="mx-auto mb-4 flex size-12 items-center justify-center rounded-[4px] bg-accent text-foreground"
+          className="mx-auto mb-4 flex size-12 items-center justify-center rounded-[8px] bg-accent text-foreground"
         >
           <SealCheck size={22} weight="fill" />
         </motion.div>
-        <h2 className="text-[14px] font-semibold tracking-tight text-pretty">
+        <h2 className="text-[15px] font-semibold tracking-tight text-pretty">
           No tasks yet
         </h2>
-        <p className="mt-2 text-[13px] leading-6 text-muted-foreground">
+        <p className="mt-2 text-[14px] leading-6 text-muted-foreground">
           This workspace starts empty now. Create your first task and the board
           will fill in immediately.
         </p>
         <button
           onClick={onCreateTask}
-          className="mt-6 inline-flex h-8 items-center justify-center rounded-[4px] bg-primary px-3.5 text-[13px] font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          className="mt-6 inline-flex h-8 items-center justify-center rounded-[8px] bg-primary px-3.5 text-[14px] font-medium text-primary-foreground transition-colors hover:bg-primary/90"
         >
           Create first task
         </button>
@@ -670,7 +670,7 @@ function HiddenColumnsToolbar({
             <button
               key={status}
               onClick={() => setSelectedColumn(status)}
-              className="flex items-center gap-1.5 rounded-[4px] bg-sidebar px-2 py-1 text-[12px] text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground dark:bg-card"
+              className="flex items-center gap-1.5 rounded-[8px] bg-sidebar px-2 py-1 text-[13px] text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground dark:bg-card"
             >
               {getStatusIcon(status, 12)}
               {col.label}
@@ -694,7 +694,7 @@ function HiddenColumnsToolbar({
               <div className="flex items-center gap-2">
                 {selectedColumn && getStatusIcon(selectedColumn, 16)}
                 <DialogTitle>{selectedCol?.label ?? ""}</DialogTitle>
-                <span className="text-[12px] text-muted-foreground">
+                <span className="text-[13px] text-muted-foreground">
                   {selectedTasks.length} tasks
                 </span>
               </div>
@@ -705,7 +705,7 @@ function HiddenColumnsToolbar({
                     setSelectedColumn(null)
                   }
                 }}
-                className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[12px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground"
+                className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[13px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground"
               >
                 <Eye size={13} />
                 Show column
@@ -714,7 +714,7 @@ function HiddenColumnsToolbar({
           </DialogHeader>
           <div className="min-h-0 flex-1 overflow-y-auto">
             {selectedTasks.length === 0 ? (
-              <div className="flex items-center justify-center py-12 text-[13px] text-muted-foreground">
+              <div className="flex items-center justify-center py-12 text-[14px] text-muted-foreground">
                 No tasks in this column
               </div>
             ) : (
@@ -916,7 +916,7 @@ function TaskContextMenuContent({
   return (
     <ContextMenuContent>
       {!canManageTasks ? (
-        <div className="px-2 py-1.5 text-[12px] text-muted-foreground">
+        <div className="px-2 py-1.5 text-[13px] text-muted-foreground">
           Guests can only view tasks.
         </div>
       ) : null}
@@ -983,7 +983,7 @@ function TaskContextMenuContent({
               className="capitalize"
             >
               <div
-                className="size-2.5 shrink-0 rounded-[4px]"
+                className="size-2.5 shrink-0 rounded-[8px]"
                 style={{ backgroundColor: labelConfig.colors[label] ?? "#888" }}
               />
               <span>{label}</span>
@@ -1034,7 +1034,7 @@ const UnreadMentionBadge = memo(function UnreadMentionBadge({
     <span
       title={`${count} unread mention${count === 1 ? "" : "s"}`}
       aria-label={`${count} unread mention${count === 1 ? "" : "s"}`}
-      className="inline-flex h-[18px] min-w-[18px] items-center justify-center gap-0.5 rounded-full bg-primary/15 px-1 text-[10px] font-semibold text-primary ring-1 ring-primary/30"
+      className="inline-flex h-[18px] min-w-[18px] items-center justify-center gap-0.5 rounded-full bg-primary/15 px-1 text-[11px] font-semibold text-primary ring-1 ring-primary/30"
     >
       <At size={10} weight="bold" aria-hidden="true" />
       {count > 1 ? <span>{count}</span> : null}
@@ -1048,7 +1048,7 @@ const AgentBadge = memo(function AgentBadge({
   agentName: string
 }) {
   return (
-    <span className="flex shrink-0 items-center gap-1 rounded-[4px] border border-yellow-500/25 bg-yellow-500/10 px-1.5 py-0.5 text-[10px] font-medium text-yellow-500">
+    <span className="flex shrink-0 items-center gap-1 rounded-[8px] border border-yellow-500/25 bg-yellow-500/10 px-1.5 py-0.5 text-[11px] font-medium text-yellow-500">
       <SpinnerGap size={10} className="animate-spin" />
       <span>{getAgentIcon(agentName)}</span>
       <span className="max-w-[80px] truncate">{agentName}</span>
@@ -1061,12 +1061,12 @@ const ListRowContent = memo(function ListRowContent({ task }: { task: Task }) {
   const activeAgent = getActiveAgent(task)
   return (
     <>
-      <span className="hidden w-14 shrink-0 font-mono text-[11px] text-muted-foreground/50 tabular-nums sm:inline">
+      <span className="hidden w-14 shrink-0 font-mono text-[12px] text-muted-foreground/50 tabular-nums sm:inline">
         {task.taskCode}
       </span>
       <div className="shrink-0">{getPriorityIcon(task.priority)}</div>
       <div className="shrink-0">{getStatusIcon(task.status)}</div>
-      <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground/90">
+      <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-foreground/90">
         {task.title}
       </span>
       <div className="hidden shrink-0 items-center gap-1.5 sm:flex">
@@ -1075,7 +1075,7 @@ const ListRowContent = memo(function ListRowContent({ task }: { task: Task }) {
         {(task.labels ?? []).map((label) => (
           <span
             key={label}
-            className="rounded-[4px] px-2 py-0.5 text-[10px] font-medium capitalize"
+            className="rounded-[8px] px-2 py-0.5 text-[11px] font-medium capitalize"
             style={{
               backgroundColor: (labelColors[label] ?? "#888") + "18",
               color: labelColors[label] ?? "#888",
@@ -1091,7 +1091,7 @@ const ListRowContent = memo(function ListRowContent({ task }: { task: Task }) {
             max={3}
           />
         ) : null}
-        <span className="ml-1 text-[11px] text-muted-foreground/60">
+        <span className="ml-1 text-[12px] text-muted-foreground/60">
           {task.createdAt}
         </span>
       </div>
@@ -1219,20 +1219,20 @@ function DragOverlayCard({
     <div className="relative">
       {dragCount > 1 && (
         <>
-          <div className="absolute inset-0 translate-x-1 translate-y-1 rounded-[4px] bg-muted ring-1 ring-border" />
+          <div className="absolute inset-0 translate-x-1 translate-y-1 rounded-[8px] bg-muted ring-1 ring-border" />
           {dragCount > 2 && (
-            <div className="absolute inset-0 translate-x-2 translate-y-2 rounded-[4px] bg-muted/60 ring-1 ring-border" />
+            <div className="absolute inset-0 translate-x-2 translate-y-2 rounded-[8px] bg-muted/60 ring-1 ring-border" />
           )}
         </>
       )}
-      <div className="relative w-[240px] rounded-[4px] bg-background shadow-lg ring-2 ring-primary/40 dark:bg-card">
+      <div className="relative w-[240px] rounded-[8px] bg-background shadow-lg ring-2 ring-primary/40 dark:bg-card">
         <div className="p-2.5 pb-0">
           {dragCount > 1 && (
-            <span className="float-right ml-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+            <span className="float-right ml-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-semibold text-primary-foreground">
               {dragCount}
             </span>
           )}
-          <p className="mb-2 line-clamp-2 text-[13px] leading-snug font-medium text-foreground/90">
+          <p className="mb-2 line-clamp-2 text-[14px] leading-snug font-medium text-foreground/90">
             {task.title}
           </p>
           <div className="mb-2 flex items-center justify-between gap-2">
@@ -1245,7 +1245,7 @@ function DragOverlayCard({
               {(task.labels ?? []).map((label) => (
                 <span
                   key={label}
-                  className="rounded-[4px] px-1.5 py-0.5 text-[9px] font-medium capitalize"
+                  className="rounded-[8px] px-1.5 py-0.5 text-[10px] font-medium capitalize"
                   style={{
                     backgroundColor: (labelColors[label] ?? "#888") + "18",
                     color: labelColors[label] ?? "#888",
@@ -1259,10 +1259,10 @@ function DragOverlayCard({
           </div>
         </div>
         <div className="flex items-center justify-between border-t border-border px-2.5 py-1.5">
-          <span className="text-[10px] text-muted-foreground/50">
+          <span className="text-[11px] text-muted-foreground/50">
             {task.createdAt}
           </span>
-          <span className="font-mono text-[10px] text-muted-foreground/50 tabular-nums">
+          <span className="font-mono text-[11px] text-muted-foreground/50 tabular-nums">
             {task.taskCode}
           </span>
         </div>
@@ -1291,9 +1291,9 @@ function DragOverlayListRow({
       )}
       <div className="relative flex w-fit max-w-sm items-center gap-2.5 border-2 border-border bg-background px-3.5 py-2 shadow-none">
         <div className="shrink-0">{getStatusIcon(task.status, 13)}</div>
-        <span className="truncate text-[13px] font-medium">{task.title}</span>
+        <span className="truncate text-[14px] font-medium">{task.title}</span>
         {dragCount > 1 && (
-          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
+          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[12px] font-semibold text-primary-foreground">
             {dragCount}
           </span>
         )}
@@ -1355,7 +1355,7 @@ function ListGroup({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.25, delay: groupIndex * 0.04, ease: "easeOut" }}
-      className="mb-1.5 overflow-hidden rounded-[4px] ring-1 ring-border"
+      className="mb-1.5 overflow-hidden rounded-[8px] ring-1 ring-border"
       style={
         isDropTarget
           ? { outline: "2px solid var(--primary)", outlineOffset: "-2px" }
@@ -1368,7 +1368,7 @@ function ListGroup({
         className="flex w-full items-center gap-2.5 bg-card px-3 py-1.5 text-left transition-colors hover:bg-accent dark:bg-card dark:hover:bg-accent/50"
       >
         <span
-          className="text-[10px] text-muted-foreground/60"
+          className="text-[11px] text-muted-foreground/60"
           style={{
             display: "inline-block",
             transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)",
@@ -1377,10 +1377,10 @@ function ListGroup({
           ▼
         </span>
         {getColumnIcon(column.id)}
-        <span className="text-[13px] font-semibold tracking-tight">
+        <span className="text-[14px] font-semibold tracking-tight">
           {column.label}
         </span>
-        <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
+        <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[8px] bg-muted px-1.5 text-[11px] font-medium text-muted-foreground">
           {tasks.length}
         </span>
         {canManageTasks && (
@@ -1390,7 +1390,7 @@ function ListGroup({
               e.stopPropagation()
               onAddTask(column.id)
             }}
-            className="ml-auto rounded-[4px] p-0.5 text-muted-foreground/50 transition-colors hover:bg-accent hover:text-foreground"
+            className="ml-auto rounded-[8px] p-0.5 text-muted-foreground/50 transition-colors hover:bg-accent hover:text-foreground"
             title={`Add task to ${column.label}`}
           >
             <Plus size={14} />
@@ -1873,7 +1873,7 @@ function TaskDetailSidePanel({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 16 }}
             transition={{ duration: 0.45, ease: "anticipate" }}
-            className="absolute top-px right-0 bottom-px flex flex-col overflow-hidden rounded-[4px] bg-background ring-1 ring-sidebar-border"
+            className="absolute top-px right-0 bottom-px flex flex-col overflow-hidden rounded-[8px] bg-background ring-1 ring-sidebar-border"
             style={{ width: `${Math.max(width - 6, 1)}px` }}
           >
             <motion.div
@@ -1888,7 +1888,7 @@ function TaskDetailSidePanel({
                 {/* Close button */}
                 <button
                   onClick={handleClose}
-                  className="absolute top-4 right-4 rounded-[4px] p-1.5 text-muted-foreground/50 ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground"
+                  className="absolute top-4 right-4 rounded-[8px] p-1.5 text-muted-foreground/50 ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground"
                 >
                   <X size={14} weight="bold" />
                 </button>
@@ -1916,7 +1916,7 @@ function TaskDetailSidePanel({
                           setEditingTitle(false)
                         }
                       }}
-                      className="block w-full resize-none overflow-hidden bg-transparent pr-8 text-[16px] leading-snug font-semibold tracking-tight break-words outline-none"
+                      className="block w-full resize-none overflow-hidden bg-transparent pr-8 text-[17px] leading-snug font-semibold tracking-tight break-words outline-none"
                     />
                   ) : (
                     <h2
@@ -1925,7 +1925,7 @@ function TaskDetailSidePanel({
                         setTitleValue(task.title)
                         setEditingTitle(true)
                       }}
-                      className={`pr-8 text-[16px] leading-snug font-semibold tracking-tight break-words transition-colors ${canManageTasks ? "cursor-text" : ""}`}
+                      className={`pr-8 text-[17px] leading-snug font-semibold tracking-tight break-words transition-colors ${canManageTasks ? "cursor-text" : ""}`}
                     >
                       {task.title}
                     </h2>
@@ -1934,11 +1934,11 @@ function TaskDetailSidePanel({
 
                 {/* Date + task code */}
                 <div className="mt-1.5 flex items-center gap-2">
-                  <span className="font-mono text-[11px] text-muted-foreground/50">
+                  <span className="font-mono text-[12px] text-muted-foreground/50">
                     {task.taskCode}
                   </span>
                   <span className="text-muted-foreground/20">·</span>
-                  <span className="text-[11px] text-muted-foreground/50">
+                  <span className="text-[12px] text-muted-foreground/50">
                     {task.createdAt}
                   </span>
                 </div>
@@ -1950,7 +1950,7 @@ function TaskDetailSidePanel({
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     disabled={!canManageTasks}
-                    className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {getStatusIcon(task.status, 12)}
                     <span>{STATUS_LABELS[task.status]}</span>
@@ -1975,7 +1975,7 @@ function TaskDetailSidePanel({
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     disabled={!canManageTasks}
-                    className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {getPriorityIcon(task.priority, 12)}
                     <span>{PRIORITY_LABELS[task.priority]}</span>
@@ -2000,7 +2000,7 @@ function TaskDetailSidePanel({
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     disabled={!canManageTasks}
-                    className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {(task.labels ?? []).length > 0 ? (
                       <div className="flex items-center gap-1.5">
@@ -2061,7 +2061,7 @@ function TaskDetailSidePanel({
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     disabled={!canManageTasks}
-                    className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {normalizedAssignees.length > 0 ? (
                       <div className="flex items-center gap-1.5">
@@ -2119,7 +2119,7 @@ function TaskDetailSidePanel({
                 <button
                   disabled={!canManageTasks || uploading}
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                   title="Attach files"
                 >
                   {uploading ? (
@@ -2137,7 +2137,7 @@ function TaskDetailSidePanel({
                         onAccept(task)
                         handleClose()
                       }}
-                      className="flex items-center gap-1.5 rounded-[4px] border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
+                      className="flex items-center gap-1.5 rounded-[8px] border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 text-[12px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
                     >
                       <CheckCircle size={13} weight="fill" />
                       Accept
@@ -2148,7 +2148,7 @@ function TaskDetailSidePanel({
                         onDeny(task)
                         handleClose()
                       }}
-                      className="flex items-center gap-1.5 rounded-[4px] border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-[11px] font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
+                      className="flex items-center gap-1.5 rounded-[8px] border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-[12px] font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
                     >
                       <XCircle size={13} />
                       Deny
@@ -2158,7 +2158,7 @@ function TaskDetailSidePanel({
                 <button
                   disabled={!canManageTasks}
                   onClick={() => onDelete(task.id)}
-                  className="flex items-center justify-center rounded-[4px] px-[7px] py-[7px] text-muted-foreground/40 ring-1 ring-border transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-60"
+                  className="flex items-center justify-center rounded-[8px] px-[7px] py-[7px] text-muted-foreground/40 ring-1 ring-border transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-60"
                   title="Delete task"
                 >
                   <Trash size={14} />
@@ -2178,7 +2178,7 @@ function TaskDetailSidePanel({
                     <motion.div
                       initial={{ opacity: 0, y: -4 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="mb-4 flex items-start gap-2 rounded-[6px] border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-200"
+                      className="mb-4 flex items-start gap-2 rounded-[10px] border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[13px] text-amber-200"
                     >
                       <WarningCircle
                         size={14}
@@ -2209,7 +2209,7 @@ function TaskDetailSidePanel({
                           }
                         }}
                         placeholder="Add a description..."
-                        className="min-h-[180px] w-full resize-none rounded-[4px] bg-transparent text-[13px] leading-relaxed text-foreground/80 outline-none placeholder:text-muted-foreground/40"
+                        className="min-h-[180px] w-full resize-none rounded-[8px] bg-transparent text-[14px] leading-relaxed text-foreground/80 outline-none placeholder:text-muted-foreground/40"
                       />
                     ) : (
                       <div
@@ -2218,7 +2218,7 @@ function TaskDetailSidePanel({
                           setDescValue(task.description ?? "")
                           setEditingDesc(true)
                         }}
-                        className={`min-h-[180px] text-[13px] leading-relaxed transition-colors ${canManageTasks ? "cursor-text" : ""}`}
+                        className={`min-h-[180px] text-[14px] leading-relaxed transition-colors ${canManageTasks ? "cursor-text" : ""}`}
                       >
                         {task.description ? (
                           <span className="block break-words whitespace-pre-wrap text-foreground/80">
@@ -2287,7 +2287,7 @@ function TaskDetailSidePanel({
                         href={safeUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium transition-opacity hover:opacity-80"
+                        className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium transition-opacity hover:opacity-80"
                         style={{
                           backgroundColor: cfg.bg,
                           color: cfg.color,
@@ -2300,7 +2300,7 @@ function TaskDetailSidePanel({
                     ) : (
                       <span
                         key={`${src.platform}-${src.url}-${src.author}`}
-                        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium"
+                        className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium"
                         style={{
                           backgroundColor: cfg.bg,
                           color: cfg.color,
@@ -2312,8 +2312,8 @@ function TaskDetailSidePanel({
                     )
                   })}
                   {activeAgent && (
-                    <span className="flex items-center gap-1.5 rounded-[4px] bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                      <span className="text-[12px]">
+                    <span className="flex items-center gap-1.5 rounded-[8px] bg-emerald-500/10 px-2.5 py-1.5 text-[12px] font-medium text-emerald-600 dark:text-emerald-400">
+                      <span className="text-[13px]">
                         {getAgentIcon(activeAgent)}
                       </span>
                       <span className="capitalize">{activeAgent}</span>
@@ -2361,15 +2361,15 @@ function BulkActionToolbar({
   const labelConfig = useLabelConfig()
 
   return createPortal(
-    <div className="fixed bottom-6 left-1/2 z-50 scrollbar-hide flex w-[calc(100%-2rem)] max-w-fit -translate-x-1/2 items-center gap-1.5 overflow-x-auto rounded-[4px] border-2 border-border bg-popover px-3 py-2 shadow-none">
+    <div className="fixed bottom-6 left-1/2 z-50 scrollbar-hide flex w-[calc(100%-2rem)] max-w-fit -translate-x-1/2 items-center gap-1.5 overflow-x-auto rounded-[8px] border-2 border-border bg-popover px-3 py-2 shadow-none">
       {/* Selection count & clear */}
       <div className="mr-1 flex items-center gap-2 border-r border-border pr-2">
-        <span className="text-[12px] font-semibold text-foreground tabular-nums">
+        <span className="text-[13px] font-semibold text-foreground tabular-nums">
           {selectedCount} selected
         </span>
         <button
           onClick={onClearSelection}
-          className="rounded-[4px] p-0.5 text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
+          className="rounded-[8px] p-0.5 text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
           title="Clear selection"
         >
           <X size={13} />
@@ -2378,7 +2378,7 @@ function BulkActionToolbar({
 
       {/* Status */}
       <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[12px] font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
+        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[13px] font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
           {getStatusIcon("todo", 13)}
           <span>Status</span>
         </DropdownMenuTrigger>
@@ -2396,7 +2396,7 @@ function BulkActionToolbar({
 
       {/* Priority */}
       <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[12px] font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
+        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[13px] font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
           {getPriorityIcon("medium", 13)}
           <span>Priority</span>
         </DropdownMenuTrigger>
@@ -2414,7 +2414,7 @@ function BulkActionToolbar({
 
       {/* Labels */}
       <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[12px] font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
+        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[13px] font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
           <Tag size={13} />
           <span>Label</span>
         </DropdownMenuTrigger>
@@ -2426,7 +2426,7 @@ function BulkActionToolbar({
             >
               <div className="flex items-center gap-2 capitalize">
                 <div
-                  className="size-2.5 rounded-[4px]"
+                  className="size-2.5 rounded-[8px]"
                   style={{
                     backgroundColor: labelConfig.colors[label] ?? "#888",
                   }}
@@ -2447,7 +2447,7 @@ function BulkActionToolbar({
 
       {/* Assignees */}
       <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[12px] font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
+        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[13px] font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
           {commonAssignees.length > 0 ? (
             <AssigneeStack
               assignees={commonAssignees}
@@ -2488,7 +2488,7 @@ function BulkActionToolbar({
       {/* Delete */}
       <button
         onClick={onDelete}
-        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[12px] font-medium text-destructive transition-colors hover:bg-destructive/10"
+        className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[13px] font-medium text-destructive transition-colors hover:bg-destructive/10"
       >
         <Trash size={13} />
         <span>Delete</span>
@@ -2519,7 +2519,7 @@ function SourceIcons({ task }: { task: Pick<Task, "source" | "sources"> }) {
         return (
           <span
             key={source.platform}
-            className="flex size-6 items-center justify-center rounded-[4px] ring-1 ring-border"
+            className="flex size-6 items-center justify-center rounded-[8px] ring-1 ring-border"
             style={{ backgroundColor: config.bg }}
             title={config.label}
           >
@@ -2628,7 +2628,7 @@ const KanbanCard = memo(function KanbanCard({
         {...attributes}
         {...listeners}
         onClick={handleClick}
-        className={`group relative cursor-pointer rounded-[4px] bg-background ring-1 ring-border transition-[background-color,box-shadow,opacity] duration-150 select-none hover:bg-accent/20 dark:bg-card ${isMobile ? "" : "touch-none"} ${isSelected ? "bg-primary/[0.06] ring-2 ring-primary/40" : ""} ${hidden ? "!ring-0" : ""}`}
+        className={`group relative cursor-pointer rounded-[8px] bg-background ring-1 ring-border transition-[background-color,box-shadow,opacity] duration-150 select-none hover:bg-accent/20 dark:bg-card ${isMobile ? "" : "touch-none"} ${isSelected ? "bg-primary/[0.06] ring-2 ring-primary/40" : ""} ${hidden ? "!ring-0" : ""}`}
       >
         {/* Checkbox overlay */}
         <div
@@ -2645,7 +2645,7 @@ const KanbanCard = memo(function KanbanCard({
         {/* Card body */}
         <div className="relative p-2.5 pb-0">
           {/* Title */}
-          <p className="mb-2 line-clamp-2 pr-5 text-[13px] leading-snug font-medium text-foreground/90">
+          <p className="mb-2 line-clamp-2 pr-5 text-[14px] leading-snug font-medium text-foreground/90">
             {task.title}
           </p>
 
@@ -2660,7 +2660,7 @@ const KanbanCard = memo(function KanbanCard({
               {(task.labels ?? []).map((label) => (
                 <span
                   key={label}
-                  className="rounded-[4px] px-1.5 py-0.5 text-[9px] font-medium capitalize"
+                  className="rounded-[8px] px-1.5 py-0.5 text-[10px] font-medium capitalize"
                   style={{
                     backgroundColor: (labelColors[label] ?? "#888") + "18",
                     color: labelColors[label] ?? "#888",
@@ -2676,7 +2676,7 @@ const KanbanCard = memo(function KanbanCard({
 
         {/* Footer: date + task code */}
         <div className="flex items-center justify-between gap-2 border-t border-border px-2.5 py-1.5">
-          <span className="text-[10px] text-muted-foreground/50">
+          <span className="text-[11px] text-muted-foreground/50">
             {task.createdAt}
           </span>
           <div className="flex items-center gap-2">
@@ -2687,7 +2687,7 @@ const KanbanCard = memo(function KanbanCard({
                 max={3}
               />
             ) : null}
-            <span className="font-mono text-[10px] text-muted-foreground/50 tabular-nums">
+            <span className="font-mono text-[11px] text-muted-foreground/50 tabular-nums">
               {task.taskCode}
             </span>
           </div>
@@ -2758,12 +2758,12 @@ function KanbanColumn({
         delay: columnIndex * 0.06,
         ease: [0.25, 0.1, 0.25, 1],
       }}
-      className={`flex h-full w-[260px] shrink-0 flex-col overflow-hidden rounded-[4px] ring-1 ring-border transition-shadow duration-200 ${isDropTarget ? "bg-primary/[0.03] ring-2 ring-primary" : ""}`}
+      className={`flex h-full w-[260px] shrink-0 flex-col overflow-hidden rounded-[8px] ring-1 ring-border transition-shadow duration-200 ${isDropTarget ? "bg-primary/[0.03] ring-2 ring-primary" : ""}`}
     >
       {/* Column header */}
       <div className="flex items-center gap-2 bg-card px-3 py-1.5 shadow-[inset_0_-1px_0_var(--border)] dark:bg-card">
         {getColumnIcon(column.id)}
-        <span className="text-[13px] font-semibold tracking-tight">
+        <span className="text-[14px] font-semibold tracking-tight">
           {column.label}
         </span>
         <motion.span
@@ -2771,14 +2771,14 @@ function KanbanColumn({
           initial={{ scale: 0.8 }}
           animate={{ scale: 1 }}
           transition={{ type: "spring", stiffness: 400, damping: 20 }}
-          className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-muted px-1.5 text-[10px] font-medium text-muted-foreground"
+          className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[8px] bg-muted px-1.5 text-[11px] font-medium text-muted-foreground"
         >
           {tasks.length}
         </motion.span>
         {canManageTasks && (
           <button
             onClick={() => onAddTask(column.id)}
-            className="ml-auto rounded-[4px] p-0.5 text-muted-foreground/50 transition-colors hover:bg-accent hover:text-foreground"
+            className="ml-auto rounded-[8px] p-0.5 text-muted-foreground/50 transition-colors hover:bg-accent hover:text-foreground"
             title={`Add task to ${column.label}`}
           >
             <Plus size={14} />
@@ -3477,18 +3477,18 @@ function ViewToggle({
   onViewChange: (view: BoardView) => void
 }) {
   return (
-    <div className="relative flex items-center gap-0.5 rounded-[5px] bg-muted/60 p-0.5">
+    <div className="relative flex items-center gap-0.5 rounded-[9px] bg-muted/60 p-0.5">
       {/* Sliding indicator */}
       <motion.div
         layout
         layoutId="view-toggle-indicator"
-        className="absolute inset-y-0.5 w-[calc(50%-2px)] rounded-[4px] bg-background shadow-sm ring-1 ring-border/50"
+        className="absolute inset-y-0.5 w-[calc(50%-2px)] rounded-[8px] bg-background shadow-sm ring-1 ring-border/50"
         style={{ left: view === "list" ? 2 : "calc(50% + 0px)" }}
         transition={{ type: "spring", stiffness: 500, damping: 35 }}
       />
       <button
         onClick={() => onViewChange("list")}
-        className={`relative z-10 flex items-center justify-center rounded-[4px] p-1.5 transition-colors ${
+        className={`relative z-10 flex items-center justify-center rounded-[8px] p-1.5 transition-colors ${
           view === "list"
             ? "text-foreground"
             : "text-muted-foreground hover:text-foreground"
@@ -3499,7 +3499,7 @@ function ViewToggle({
       </button>
       <button
         onClick={() => onViewChange("board")}
-        className={`relative z-10 flex items-center justify-center rounded-[4px] p-1.5 transition-colors ${
+        className={`relative z-10 flex items-center justify-center rounded-[8px] p-1.5 transition-colors ${
           view === "board"
             ? "text-foreground"
             : "text-muted-foreground hover:text-foreground"
@@ -3979,7 +3979,7 @@ function BoardFilter({
         onClick={() => setOpen((prev) => !prev)}
         title="Filter tasks"
         aria-expanded={open}
-        className={`relative flex items-center gap-1.5 rounded-[5px] px-2 py-1.5 text-[12px] font-medium transition-colors ${
+        className={`relative flex items-center gap-1.5 rounded-[9px] px-2 py-1.5 text-[13px] font-medium transition-colors ${
           isActive
             ? "bg-primary/10 text-primary ring-1 ring-primary/30 hover:bg-primary/15 dark:bg-primary/15 dark:text-primary dark:ring-primary/40"
             : "text-muted-foreground ring-1 ring-border hover:bg-accent hover:text-foreground"
@@ -3995,7 +3995,7 @@ function BoardFilter({
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.6 }}
               transition={{ type: "spring", stiffness: 500, damping: 30 }}
-              className="flex min-w-[16px] items-center justify-center rounded-full bg-primary px-1 py-0 text-[10px] leading-4 font-semibold text-primary-foreground"
+              className="flex min-w-[16px] items-center justify-center rounded-full bg-primary px-1 py-0 text-[11px] leading-4 font-semibold text-primary-foreground"
             >
               {filterCount}
             </motion.span>
@@ -4019,7 +4019,7 @@ function BoardFilter({
                   right: position.right,
                   zIndex: 50,
                 }}
-                className="w-[280px] origin-top-right overflow-hidden rounded-[6px] bg-popover text-popover-foreground shadow-lg ring-1 ring-border"
+                className="w-[280px] origin-top-right overflow-hidden rounded-[10px] bg-popover text-popover-foreground shadow-lg ring-1 ring-border"
               >
                 {/* Search input */}
                 <div className="flex items-center gap-2 border-b border-border px-2.5 py-2">
@@ -4035,13 +4035,13 @@ function BoardFilter({
                       onFilterChange({ ...filter, search: e.target.value })
                     }
                     placeholder="Search tasks..."
-                    className="w-full bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none"
+                    className="w-full bg-transparent text-[14px] text-foreground placeholder:text-muted-foreground focus:outline-none"
                   />
                   {filter.search && (
                     <button
                       type="button"
                       onClick={() => onFilterChange({ ...filter, search: "" })}
-                      className="shrink-0 rounded-[3px] p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                      className="shrink-0 rounded-[6px] p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
                       title="Clear search"
                     >
                       <X size={11} />
@@ -4052,7 +4052,7 @@ function BoardFilter({
                 <div className="max-h-[60vh] overflow-y-auto">
                   {/* Assignee */}
                   <div className="px-2 pt-2 pb-1">
-                    <div className="px-1 pb-1 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
+                    <div className="px-1 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
                       Assignee
                     </div>
                     <div className="flex flex-col">
@@ -4064,14 +4064,14 @@ function BoardFilter({
                             assignedToMe: !filter.assignedToMe,
                           })
                         }
-                        className={`flex items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-accent ${
+                        className={`flex items-center gap-2 rounded-[8px] px-1.5 py-1 text-[14px] transition-colors hover:bg-accent ${
                           filter.assignedToMe
                             ? "text-foreground"
                             : "text-muted-foreground"
                         }`}
                       >
                         <span
-                          className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px] ring-1 transition-colors ${
+                          className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[6px] ring-1 transition-colors ${
                             filter.assignedToMe
                               ? "bg-primary text-primary-foreground ring-primary"
                               : "bg-transparent ring-border"
@@ -4089,7 +4089,7 @@ function BoardFilter({
 
                   {/* Status */}
                   <div className="px-2 pt-2 pb-1">
-                    <div className="px-1 pb-1 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
+                    <div className="px-1 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
                       Status
                     </div>
                     <div className="flex flex-col">
@@ -4100,14 +4100,14 @@ function BoardFilter({
                             key={status}
                             type="button"
                             onClick={() => toggleStatus(status)}
-                            className={`flex items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-accent ${
+                            className={`flex items-center gap-2 rounded-[8px] px-1.5 py-1 text-[14px] transition-colors hover:bg-accent ${
                               checked
                                 ? "text-foreground"
                                 : "text-muted-foreground"
                             }`}
                           >
                             <span
-                              className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px] ring-1 transition-colors ${
+                              className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[6px] ring-1 transition-colors ${
                                 checked
                                   ? "bg-primary text-primary-foreground ring-primary"
                                   : "bg-transparent ring-border"
@@ -4127,7 +4127,7 @@ function BoardFilter({
 
                   {/* Priority */}
                   <div className="px-2 pt-2 pb-1">
-                    <div className="px-1 pb-1 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
+                    <div className="px-1 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
                       Priority
                     </div>
                     <div className="flex flex-col">
@@ -4138,14 +4138,14 @@ function BoardFilter({
                             key={priority}
                             type="button"
                             onClick={() => togglePriority(priority)}
-                            className={`flex items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-accent ${
+                            className={`flex items-center gap-2 rounded-[8px] px-1.5 py-1 text-[14px] transition-colors hover:bg-accent ${
                               checked
                                 ? "text-foreground"
                                 : "text-muted-foreground"
                             }`}
                           >
                             <span
-                              className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px] ring-1 transition-colors ${
+                              className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[6px] ring-1 transition-colors ${
                                 checked
                                   ? "bg-primary text-primary-foreground ring-primary"
                                   : "bg-transparent ring-border"
@@ -4166,7 +4166,7 @@ function BoardFilter({
                   {/* Labels */}
                   {availableLabels.length > 0 && (
                     <div className="px-2 pt-2 pb-1">
-                      <div className="px-1 pb-1 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
+                      <div className="px-1 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
                         Labels
                       </div>
                       <div className="flex flex-col">
@@ -4177,14 +4177,14 @@ function BoardFilter({
                               key={label.name}
                               type="button"
                               onClick={() => toggleLabel(label.name)}
-                              className={`flex items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-accent ${
+                              className={`flex items-center gap-2 rounded-[8px] px-1.5 py-1 text-[14px] transition-colors hover:bg-accent ${
                                 checked
                                   ? "text-foreground"
                                   : "text-muted-foreground"
                               }`}
                             >
                               <span
-                                className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px] ring-1 transition-colors ${
+                                className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[6px] ring-1 transition-colors ${
                                   checked
                                     ? "bg-primary text-primary-foreground ring-primary"
                                     : "bg-transparent ring-border"
@@ -4206,7 +4206,7 @@ function BoardFilter({
 
                   {/* Sources */}
                   <div className="px-2 pt-2 pb-2">
-                    <div className="px-1 pb-1 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
+                    <div className="px-1 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
                       Source
                     </div>
                     <div className="flex flex-col">
@@ -4218,14 +4218,14 @@ function BoardFilter({
                             key={source}
                             type="button"
                             onClick={() => toggleSource(source)}
-                            className={`flex items-center gap-2 rounded-[4px] px-1.5 py-1 text-[13px] transition-colors hover:bg-accent ${
+                            className={`flex items-center gap-2 rounded-[8px] px-1.5 py-1 text-[14px] transition-colors hover:bg-accent ${
                               checked
                                 ? "text-foreground"
                                 : "text-muted-foreground"
                             }`}
                           >
                             <span
-                              className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px] ring-1 transition-colors ${
+                              className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[6px] ring-1 transition-colors ${
                                 checked
                                   ? "bg-primary text-primary-foreground ring-primary"
                                   : "bg-transparent ring-border"
@@ -4247,14 +4247,14 @@ function BoardFilter({
                 {/* Footer: clear all */}
                 {isActive && (
                   <div className="flex items-center justify-between border-t border-border px-2.5 py-1.5">
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className="text-[12px] text-muted-foreground">
                       {filterCount} active{" "}
                       {filterCount === 1 ? "filter" : "filters"}
                     </span>
                     <button
                       type="button"
                       onClick={clearAll}
-                      className="flex items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                      className="flex items-center gap-1 rounded-[8px] px-1.5 py-0.5 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                     >
                       <X size={10} />
                       Clear all
@@ -4989,7 +4989,7 @@ export function KanbanBoard() {
             {/* Main content — shrinks to make room for the side panel */}
             <div className="flex min-w-0 flex-1 flex-col">
               {!canManageTasks ? (
-                <div className="mx-4 mt-4 rounded-[4px] bg-card px-3 py-3 text-[13px] text-muted-foreground ring-1 ring-border">
+                <div className="mx-4 mt-4 rounded-[8px] bg-card px-3 py-3 text-[14px] text-muted-foreground ring-1 ring-border">
                   You’re in guest mode. Tasks are read-only in this workspace.
                 </div>
               ) : null}

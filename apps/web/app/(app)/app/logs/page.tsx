@@ -202,10 +202,10 @@ function formatCurrency(amount: number) {
 function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) {
   if (!active || !payload?.length) return null
   return (
-    <div className="rounded-[4px] border border-border bg-card px-2.5 py-1.5 shadow-sm">
-      <p className="mb-1 text-[11px] font-medium text-foreground">{label}</p>
+    <div className="rounded-[8px] border border-border bg-card px-2.5 py-1.5 shadow-sm">
+      <p className="mb-1 text-[12px] font-medium text-foreground">{label}</p>
       {payload.map((entry) => (
-        <div key={entry.name} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <div key={entry.name} className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
           <div className="size-1.5 rounded-full" style={{ backgroundColor: entry.color }} />
           <span>{entry.name}:</span>
           <span className="font-medium text-foreground">{entry.value}</span>
@@ -293,9 +293,9 @@ export default function LogsPage() {
         <motion.div variants={fadeUp} className="mb-6">
           <div className="flex items-center gap-2">
             <ClockCounterClockwise size={16} weight="bold" className="text-foreground" />
-            <h2 className="text-[14px] font-semibold">Logs</h2>
+            <h2 className="text-[15px] font-semibold">Logs</h2>
           </div>
-          <p className="mt-0.5 text-[12px] text-muted-foreground">
+          <p className="mt-0.5 text-[13px] text-muted-foreground">
             Activity feed and event history for your workspace.
           </p>
         </motion.div>
@@ -303,8 +303,8 @@ export default function LogsPage() {
         {/* Charts row */}
         <motion.div variants={fadeUp} className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-3">
           {/* Activity over time */}
-          <div className="col-span-1 rounded-[4px] ring-1 ring-border p-4 md:col-span-2">
-            <h3 className="mb-3 text-[13px] font-medium">Activity this week</h3>
+          <div className="col-span-1 rounded-[8px] ring-1 ring-border p-4 md:col-span-2">
+            <h3 className="mb-3 text-[14px] font-medium">Activity this week</h3>
             <div className="h-[180px]">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={activityData} margin={{ top: 4, right: 4, left: 4, bottom: 16 }}>
@@ -329,8 +329,8 @@ export default function LogsPage() {
           </div>
 
           {/* Source distribution */}
-          <div className="rounded-[4px] ring-1 ring-border p-4">
-            <h3 className="mb-3 text-[13px] font-medium">Events by source</h3>
+          <div className="rounded-[8px] ring-1 ring-border p-4">
+            <h3 className="mb-3 text-[14px] font-medium">Events by source</h3>
             <div className="h-[180px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -353,7 +353,7 @@ export default function LogsPage() {
             </div>
             <div className="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1">
               {sourceDistribution.map((s: { name: string; value: number; color: string }) => (
-                <div key={s.name} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <div key={s.name} className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
                   <div className="size-1.5 rounded-full" style={{ backgroundColor: s.color }} />
                   {s.name}
                 </div>
@@ -363,8 +363,8 @@ export default function LogsPage() {
         </motion.div>
 
         {/* Webhook health */}
-        <motion.div variants={fadeUp} className="mb-6 rounded-[4px] ring-1 ring-border p-4">
-          <h3 className="mb-3 text-[13px] font-medium">Webhook deliveries</h3>
+        <motion.div variants={fadeUp} className="mb-6 rounded-[8px] ring-1 ring-border p-4">
+          <h3 className="mb-3 text-[14px] font-medium">Webhook deliveries</h3>
           <div className="h-[160px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={webhooksByPlatform} margin={{ top: 4, right: 4, left: 4, bottom: 16 }} barGap={2}>
@@ -396,13 +396,13 @@ export default function LogsPage() {
         {/* Event feed */}
         <motion.div variants={fadeUp}>
           <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <h3 className="text-[13px] font-medium">Recent activity</h3>
-            <div className="flex items-center gap-1 overflow-x-auto rounded-[4px] ring-1 ring-border p-0.5 scrollbar-hide">
+            <h3 className="text-[14px] font-medium">Recent activity</h3>
+            <div className="flex items-center gap-1 overflow-x-auto rounded-[8px] ring-1 ring-border p-0.5 scrollbar-hide">
               {FILTER_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
                   onClick={() => setFilter(opt.value)}
-                  className={`rounded-[3px] px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                  className={`rounded-[6px] px-2 py-0.5 text-[12px] font-medium transition-colors ${
                     filter === opt.value
                       ? "bg-background text-foreground ring-1 ring-border"
                       : "text-muted-foreground hover:text-foreground"
@@ -414,11 +414,11 @@ export default function LogsPage() {
             </div>
           </div>
 
-          <div className="rounded-[4px] ring-1 ring-border">
+          <div className="rounded-[8px] ring-1 ring-border">
             {events.length === 0 && status === "Exhausted" ? (
               <div className="flex flex-col items-center justify-center py-12">
                 <ClockCounterClockwise size={24} className="text-muted-foreground/40" />
-                <p className="mt-2 text-[13px] text-muted-foreground">No events match this filter</p>
+                <p className="mt-2 text-[14px] text-muted-foreground">No events match this filter</p>
               </div>
             ) : (
               <div className="divide-y divide-border">
@@ -432,20 +432,20 @@ export default function LogsPage() {
                       key={event._id}
                       className="group flex items-center gap-2.5 px-3 py-1.5 transition-colors hover:bg-muted/30"
                     >
-                      <div className={`flex size-5 shrink-0 items-center justify-center rounded-[3px] bg-muted/50 ${config.color}`}>
+                      <div className={`flex size-5 shrink-0 items-center justify-center rounded-[6px] bg-muted/50 ${config.color}`}>
                         <Icon size={11} weight="bold" />
                       </div>
-                      <span className="shrink-0 text-[11px] font-medium text-muted-foreground">{config.label}</span>
+                      <span className="shrink-0 text-[12px] font-medium text-muted-foreground">{config.label}</span>
                       {SourceIcon && (
                         <SourceIcon size={11} className="shrink-0 text-muted-foreground/60" />
                       )}
-                      <p className="min-w-0 flex-1 truncate text-[12px] text-foreground">{event.message}</p>
+                      <p className="min-w-0 flex-1 truncate text-[13px] text-foreground">{event.message}</p>
                       {event.cost !== undefined && event.cost > 0 && (
-                        <span className="shrink-0 text-[11px] tabular-nums font-medium text-muted-foreground">
+                        <span className="shrink-0 text-[12px] tabular-nums font-medium text-muted-foreground">
                           {formatCurrency(event.cost)}
                         </span>
                       )}
-                      <span className="shrink-0 text-[11px] text-muted-foreground">
+                      <span className="shrink-0 text-[12px] text-muted-foreground">
                         {formatRelativeTime(event.timestamp)}
                       </span>
                     </div>
@@ -459,7 +459,7 @@ export default function LogsPage() {
             <div className="mt-3 flex justify-center">
               <button
                 onClick={() => loadMore(PAGE_SIZE)}
-                className="flex h-7 items-center rounded-[4px] px-3 text-[12px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-muted hover:text-foreground"
+                className="flex h-7 items-center rounded-[8px] px-3 text-[13px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-muted hover:text-foreground"
               >
                 Load more
               </button>
@@ -468,7 +468,7 @@ export default function LogsPage() {
 
           {status === "LoadingMore" && (
             <div className="mt-3 flex justify-center">
-              <span className="text-[12px] text-muted-foreground">Loading...</span>
+              <span className="text-[13px] text-muted-foreground">Loading...</span>
             </div>
           )}
         </motion.div>

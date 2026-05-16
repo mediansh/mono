@@ -400,10 +400,10 @@ export function SlackIntegrationPanel() {
         <Stagger className="mx-auto w-full max-w-lg px-6 py-6">
           <div className="flex flex-col gap-3">
             <motion.div variants={fadeUp}>
-              <h2 className="text-[14px] font-semibold tracking-tight">
+              <h2 className="text-[15px] font-semibold tracking-tight">
                 Slack
               </h2>
-              <p className="mt-0.5 text-[12px] text-muted-foreground">
+              <p className="mt-0.5 text-[13px] text-muted-foreground">
                 Manage the Slack workspace connected to this workspace.
               </p>
             </motion.div>
@@ -411,28 +411,28 @@ export function SlackIntegrationPanel() {
             {/* Connection status card */}
             <motion.div
               variants={fadeUp}
-              className="rounded-[4px] bg-card ring-1 ring-border"
+              className="rounded-[8px] bg-card ring-1 ring-border"
             >
               <div className="flex items-center gap-3 p-3.5">
-                <div className="flex size-8 items-center justify-center rounded-[4px] bg-muted ring-1 ring-border">
+                <div className="flex size-8 items-center justify-center rounded-[8px] bg-muted ring-1 ring-border">
                   <SlackBrandIcon size={18} />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-[13px] font-medium">
+                  <h3 className="text-[14px] font-medium">
                     {integration.teamName}
                   </h3>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-[12px] text-muted-foreground">
                     Connected {formatTimestamp(integration.connectedAt)}
                   </p>
                 </div>
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-600">
+                <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-emerald-600">
                   <span className="size-1.5 bg-emerald-500" />
                   Connected
                 </span>
               </div>
 
               <div className="flex items-center justify-between border-t border-border bg-muted/30 px-3.5 py-2">
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-[12px] text-muted-foreground">
                   Automations from this Slack workspace are routed to{" "}
                   {workspace.name}.
                 </p>
@@ -451,26 +451,26 @@ export function SlackIntegrationPanel() {
             {/* Feature request notifications */}
             <motion.div
               variants={fadeUp}
-              className="rounded-[4px] bg-card ring-1 ring-border"
+              className="rounded-[8px] bg-card ring-1 ring-border"
             >
               <div className="flex items-center gap-3 border-b border-border px-3.5 py-2.5">
                 <PaperPlaneTilt size={15} className="text-muted-foreground" />
                 <div className="flex-1">
-                  <h3 className="text-[13px] font-medium">
+                  <h3 className="text-[14px] font-medium">
                     Feature request notifications
                   </h3>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-[12px] text-muted-foreground">
                     Send new feature requests to a Slack channel with
                     accept/deny buttons.
                   </p>
                 </div>
               </div>
               <div className="p-3.5">
-                <label className="mb-1.5 block text-[12px] font-medium">
+                <label className="mb-1.5 block text-[13px] font-medium">
                   Notification channel
                 </label>
                 {teamChannels.length === 0 ? (
-                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground/60">
+                  <div className="flex items-center gap-2 text-[12px] text-muted-foreground/60">
                     <svg
                       className="size-3.5 animate-spin"
                       viewBox="0 0 16 16"
@@ -499,7 +499,7 @@ export function SlackIntegrationPanel() {
                     onChange={(e) =>
                       handleNotificationChannelChange(e.target.value)
                     }
-                    className="h-8 w-full rounded-[4px] border border-border bg-background px-2 text-[12px] text-foreground"
+                    className="h-8 w-full rounded-[8px] border border-border bg-background px-2 text-[13px] text-foreground"
                   >
                     <option value="">Disabled — no notifications</option>
                     {teamChannels.map((ch) => (
@@ -509,7 +509,7 @@ export function SlackIntegrationPanel() {
                     ))}
                   </select>
                 )}
-                <p className="mt-1.5 text-[11px] text-muted-foreground/60">
+                <p className="mt-1.5 text-[12px] text-muted-foreground/60">
                   When a new feature request arrives, a message with accept and
                   deny buttons will be posted here.
                 </p>
@@ -519,15 +519,15 @@ export function SlackIntegrationPanel() {
             {/* Feedback collection */}
             <motion.div
               variants={fadeUp}
-              className="rounded-[4px] bg-card ring-1 ring-border"
+              className="rounded-[8px] bg-card ring-1 ring-border"
             >
               <div className="flex items-center gap-3 border-b border-border px-3.5 py-2.5">
                 <Info size={15} className="text-muted-foreground" />
                 <div className="flex-1">
-                  <h3 className="text-[13px] font-medium">
+                  <h3 className="text-[14px] font-medium">
                     Feedback collection
                   </h3>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-[12px] text-muted-foreground">
                     Scan Slack messages for product feedback and automatically
                     create tasks.
                   </p>
@@ -556,11 +556,11 @@ export function SlackIntegrationPanel() {
               {feedbackCollectionEnabled ? (
                 <div className="flex flex-col gap-3 p-3.5">
                   <div>
-                    <label className="mb-1.5 block text-[12px] font-medium">
+                    <label className="mb-1.5 block text-[13px] font-medium">
                       Feedback channel
                     </label>
                     {teamChannels.length === 0 ? (
-                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground/60">
+                      <div className="flex items-center gap-2 text-[12px] text-muted-foreground/60">
                         <svg
                           className="size-3.5 animate-spin"
                           viewBox="0 0 16 16"
@@ -589,7 +589,7 @@ export function SlackIntegrationPanel() {
                         onChange={(e) =>
                           handleFeedbackChannelChange(e.target.value)
                         }
-                        className="h-8 w-full rounded-[4px] border border-border bg-background px-2 text-[12px] text-foreground"
+                        className="h-8 w-full rounded-[8px] border border-border bg-background px-2 text-[13px] text-foreground"
                       >
                         <option value="">All channels</option>
                         {teamChannels.map((ch) => (
@@ -599,20 +599,20 @@ export function SlackIntegrationPanel() {
                         ))}
                       </select>
                     )}
-                    <p className="mt-1 text-[11px] text-muted-foreground/60">
+                    <p className="mt-1 text-[12px] text-muted-foreground/60">
                       Limit feedback scanning to a specific channel, or scan all
                       channels.
                     </p>
                   </div>
 
-                  <div className="rounded-[4px] border border-border">
+                  <div className="rounded-[8px] border border-border">
                     <div className="flex items-center gap-3 border-b border-border px-3.5 py-2.5">
                       <Info size={15} className="text-muted-foreground" />
                       <div className="flex-1">
-                        <h4 className="text-[13px] font-medium">
+                        <h4 className="text-[14px] font-medium">
                           Ignored channels
                         </h4>
-                        <p className="text-[11px] text-muted-foreground">
+                        <p className="text-[12px] text-muted-foreground">
                           Skip feedback processing for selected Slack channels.
                         </p>
                       </div>
@@ -636,15 +636,15 @@ export function SlackIntegrationPanel() {
             {feedbackCollectionEnabled ? (
               <motion.div
                 variants={fadeUp}
-                className="rounded-[4px] bg-card ring-1 ring-border"
+                className="rounded-[8px] bg-card ring-1 ring-border"
               >
                 <div className="flex items-center gap-3 border-b border-border px-3.5 py-2.5">
                   <TextT size={15} className="text-muted-foreground" />
                   <div className="flex-1">
-                    <h3 className="text-[13px] font-medium">
+                    <h3 className="text-[14px] font-medium">
                       Additional context
                     </h3>
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-[12px] text-muted-foreground">
                       Describe your product so the AI can better classify
                       feedback.
                     </p>
@@ -656,9 +656,9 @@ export function SlackIntegrationPanel() {
                     onChange={handleContextChange}
                     placeholder="e.g. Median is a project management tool for small teams. Key features include task boards, Slack integration, and AI-powered feedback triage..."
                     rows={4}
-                    className="resize-none text-[13px]"
+                    className="resize-none text-[14px]"
                   />
-                  <p className="mt-2 text-[11px] text-muted-foreground/60">
+                  <p className="mt-2 text-[12px] text-muted-foreground/60">
                     This context is passed to the AI when scanning messages.
                     Changes save automatically.
                   </p>
@@ -670,13 +670,13 @@ export function SlackIntegrationPanel() {
             {feedbackCollectionEnabled ? (
               <motion.div
                 variants={fadeUp}
-                className="rounded-[4px] bg-card ring-1 ring-border"
+                className="rounded-[8px] bg-card ring-1 ring-border"
               >
                 <div className="flex items-center gap-3 border-b border-border px-3.5 py-2.5">
                   <PaperPlaneTilt size={15} className="text-muted-foreground" />
                   <div className="flex-1">
-                    <h3 className="text-[13px] font-medium">Respond for me</h3>
-                    <p className="text-[11px] text-muted-foreground">
+                    <h3 className="text-[14px] font-medium">Respond for me</h3>
+                    <p className="text-[12px] text-muted-foreground">
                       Automatically reply in Slack when a request is received
                       and when the change ships.
                     </p>
@@ -689,7 +689,7 @@ export function SlackIntegrationPanel() {
                       key={mode}
                       type="button"
                       onClick={() => handleRespondModeChange(mode)}
-                      className="flex items-center gap-3 rounded-[4px] px-2 py-2 text-left text-[13px] transition-colors hover:bg-muted/50"
+                      className="flex items-center gap-3 rounded-[8px] px-2 py-2 text-left text-[14px] transition-colors hover:bg-muted/50"
                     >
                       <span
                         className={`flex size-4 shrink-0 items-center justify-center rounded-full border ${
@@ -755,7 +755,7 @@ export function SlackIntegrationPanel() {
                 <button
                   type="button"
                   onClick={() => setDisconnectOpen(false)}
-                  className="flex h-8 flex-1 items-center justify-center rounded-[4px] border border-border text-[13px] font-medium transition-colors hover:bg-muted"
+                  className="flex h-8 flex-1 items-center justify-center rounded-[8px] border border-border text-[14px] font-medium transition-colors hover:bg-muted"
                 >
                   Cancel
                 </button>
@@ -763,7 +763,7 @@ export function SlackIntegrationPanel() {
                   type="button"
                   disabled={isDisconnecting}
                   onClick={handleDisconnect}
-                  className="text-destructive-foreground flex h-8 flex-1 items-center justify-center rounded-[4px] bg-destructive text-[13px] font-medium transition-colors hover:bg-destructive/90 disabled:opacity-50"
+                  className="text-destructive-foreground flex h-8 flex-1 items-center justify-center rounded-[8px] bg-destructive text-[14px] font-medium transition-colors hover:bg-destructive/90 disabled:opacity-50"
                 >
                   {isDisconnecting ? "Disconnecting..." : "Disconnect"}
                 </button>
@@ -780,8 +780,8 @@ export function SlackIntegrationPanel() {
     <Stagger className="mx-auto w-full max-w-lg px-6 py-6">
       <div className="flex flex-col gap-3">
         <motion.div variants={fadeUp}>
-          <h2 className="text-[14px] font-semibold tracking-tight">Slack</h2>
-          <p className="mt-0.5 text-[12px] text-muted-foreground">
+          <h2 className="text-[15px] font-semibold tracking-tight">Slack</h2>
+          <p className="mt-0.5 text-[13px] text-muted-foreground">
             Connect a Slack workspace to receive feedback and send
             notifications.
           </p>
@@ -790,15 +790,15 @@ export function SlackIntegrationPanel() {
         {/* Connection card */}
         <motion.div
           variants={fadeUp}
-          className="rounded-[4px] bg-card ring-1 ring-border"
+          className="rounded-[8px] bg-card ring-1 ring-border"
         >
           <div className="flex items-center gap-3 p-3.5">
-            <div className="flex size-8 items-center justify-center rounded-[4px] bg-muted ring-1 ring-border">
+            <div className="flex size-8 items-center justify-center rounded-[8px] bg-muted ring-1 ring-border">
               <SlackBrandIcon size={18} />
             </div>
             <div className="flex-1">
-              <h3 className="text-[13px] font-medium">Not connected</h3>
-              <p className="text-[11px] text-muted-foreground">
+              <h3 className="text-[14px] font-medium">Not connected</h3>
+              <p className="text-[12px] text-muted-foreground">
                 Connect your Slack workspace to get started.
               </p>
             </div>
@@ -817,7 +817,7 @@ export function SlackIntegrationPanel() {
           </div>
 
           <div className="flex items-center border-t border-border bg-muted/30 px-3.5 py-2">
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[12px] text-muted-foreground">
               You&apos;ll be redirected to Slack to authorize the Median app.
             </p>
           </div>
@@ -826,14 +826,14 @@ export function SlackIntegrationPanel() {
         {/* Info card */}
         <motion.div
           variants={fadeUp}
-          className="flex items-start gap-2.5 rounded-[4px] bg-card px-3.5 py-3 ring-1 ring-border"
+          className="flex items-start gap-2.5 rounded-[8px] bg-card px-3.5 py-3 ring-1 ring-border"
         >
           <Info size={14} className="mt-0.5 shrink-0 text-muted-foreground" />
           <div className="min-w-0 flex-1">
-            <p className="text-[12px] font-medium">
+            <p className="text-[13px] font-medium">
               What does this integration do?
             </p>
-            <ul className="mt-1.5 flex flex-col gap-1 text-[11px] text-muted-foreground">
+            <ul className="mt-1.5 flex flex-col gap-1 text-[12px] text-muted-foreground">
               <li>
                 Scan Slack messages for product feedback and auto-create tasks
               </li>

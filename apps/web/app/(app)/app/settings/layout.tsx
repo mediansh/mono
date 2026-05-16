@@ -28,7 +28,7 @@ export default function SettingsLayout({
       {/* Settings sub-sidebar — desktop */}
       <div className="hidden w-52 shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex">
         <div className="px-3 pb-1 pt-3">
-          <h1 className="text-[13px] font-semibold">Settings</h1>
+          <h1 className="text-[14px] font-semibold">Settings</h1>
         </div>
 
         <nav className="flex flex-col gap-0.5 p-1.5">
@@ -38,7 +38,7 @@ export default function SettingsLayout({
               <Link
                 key={item.href}
                 href={item.href}
-                className={`group relative flex items-center gap-2 rounded-[4px] px-2 py-1 text-[13px] font-medium transition-colors duration-150 ease-out active:bg-sidebar-border active:text-foreground ${
+                className={`group relative flex items-center gap-2 rounded-[8px] px-2 py-1 text-[14px] font-medium transition-colors duration-150 ease-out active:bg-sidebar-border active:text-foreground ${
                   isActive
                     ? "bg-sidebar-accent text-foreground"
                     : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
@@ -67,7 +67,7 @@ export default function SettingsLayout({
               <Link
                 key={item.href}
                 href={item.href}
-                className={`group relative flex shrink-0 items-center gap-1.5 rounded-[4px] px-2 py-1 text-[13px] font-medium transition-colors duration-150 ease-out active:bg-sidebar-border active:text-foreground ${
+                className={`group relative flex shrink-0 items-center gap-1.5 rounded-[8px] px-2 py-1 text-[14px] font-medium transition-colors duration-150 ease-out active:bg-sidebar-border active:text-foreground ${
                   isActive
                     ? "bg-sidebar-accent text-foreground"
                     : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"

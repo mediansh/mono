@@ -111,10 +111,10 @@ export function TaskCommentsPanel({ workspaceId, taskId, canComment }: Props) {
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex shrink-0 items-center gap-2 border-b border-sidebar-border bg-sidebar/30 px-4 py-2">
         <ChatCircle size={14} className="text-muted-foreground" />
-        <h3 className="text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">
+        <h3 className="text-[13px] font-semibold tracking-wide text-muted-foreground uppercase">
           Comments
         </h3>
-        <span className="text-[11px] text-muted-foreground">
+        <span className="text-[12px] text-muted-foreground">
           {ordered.length}
         </span>
       </header>
@@ -125,9 +125,9 @@ export function TaskCommentsPanel({ workspaceId, taskId, canComment }: Props) {
         className="min-h-0 flex-1 overflow-y-auto px-4 py-3"
       >
         {comments === undefined ? (
-          <p className="text-[12px] text-muted-foreground">Loading…</p>
+          <p className="text-[13px] text-muted-foreground">Loading…</p>
         ) : ordered.length === 0 ? (
-          <p className="text-[12px] text-muted-foreground">
+          <p className="text-[13px] text-muted-foreground">
             No comments yet. Start the conversation.
           </p>
         ) : (
@@ -254,7 +254,7 @@ function CommentItem({
               <DropdownMenu>
                 <DropdownMenuTrigger
                   aria-label="Comment actions"
-                  className="flex h-6 w-6 items-center justify-center rounded-[4px] text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                  className="flex h-6 w-6 items-center justify-center rounded-[8px] text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
                 >
                   <DotsThree size={14} weight="bold" />
                 </DropdownMenuTrigger>

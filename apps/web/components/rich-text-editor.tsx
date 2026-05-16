@@ -37,15 +37,15 @@ type RichTextEditorProps = {
 }
 
 const editorContentClass = cn(
-  "min-h-[300px] max-w-none px-4 py-3 text-[13px] text-foreground focus:outline-none",
+  "min-h-[300px] max-w-none px-4 py-3 text-[14px] text-foreground focus:outline-none",
   "[&_p]:my-2 [&_p]:leading-relaxed",
-  "[&_h1]:mt-5 [&_h1]:mb-2 [&_h1]:text-[20px] [&_h1]:font-semibold [&_h1]:leading-tight",
-  "[&_h2]:mt-4 [&_h2]:mb-2 [&_h2]:text-[16px] [&_h2]:font-semibold [&_h2]:leading-tight",
-  "[&_h3]:mt-3 [&_h3]:mb-1.5 [&_h3]:text-[14px] [&_h3]:font-semibold [&_h3]:leading-tight",
+  "[&_h1]:mt-5 [&_h1]:mb-2 [&_h1]:text-[21px] [&_h1]:font-semibold [&_h1]:leading-tight",
+  "[&_h2]:mt-4 [&_h2]:mb-2 [&_h2]:text-[17px] [&_h2]:font-semibold [&_h2]:leading-tight",
+  "[&_h3]:mt-3 [&_h3]:mb-1.5 [&_h3]:text-[15px] [&_h3]:font-semibold [&_h3]:leading-tight",
   "[&_strong]:font-semibold",
   "[&_em]:italic",
-  "[&_code]:rounded-[3px] [&_code]:bg-sidebar-accent [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[12px]",
-  "[&_pre]:my-3 [&_pre]:overflow-x-auto [&_pre]:rounded-[6px] [&_pre]:bg-sidebar-accent [&_pre]:p-3 [&_pre]:font-mono [&_pre]:text-[12px]",
+  "[&_code]:rounded-[6px] [&_code]:bg-sidebar-accent [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[13px]",
+  "[&_pre]:my-3 [&_pre]:overflow-x-auto [&_pre]:rounded-[10px] [&_pre]:bg-sidebar-accent [&_pre]:p-3 [&_pre]:font-mono [&_pre]:text-[13px]",
   "[&_pre_code]:bg-transparent [&_pre_code]:p-0",
   "[&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2",
   "[&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5",
@@ -126,7 +126,7 @@ export function RichTextEditor({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-[6px] border border-sidebar-border bg-background",
+        "overflow-hidden rounded-[10px] border border-sidebar-border bg-background",
         className,
       )}
     >
@@ -325,7 +325,7 @@ function TBtn({
       disabled={disabled}
       data-active={active ? "true" : undefined}
       className={cn(
-        "flex h-7 w-7 items-center justify-center rounded-[4px] text-muted-foreground transition-colors",
+        "flex h-7 w-7 items-center justify-center rounded-[8px] text-muted-foreground transition-colors",
         "hover:bg-sidebar-accent hover:text-foreground",
         "disabled:pointer-events-none disabled:opacity-40",
         "data-[active=true]:bg-sidebar-accent data-[active=true]:text-foreground data-[active=true]:ring-1 data-[active=true]:ring-sidebar-border",

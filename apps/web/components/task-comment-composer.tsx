@@ -75,16 +75,16 @@ type SuggestionState = {
 }
 
 const editorContentClass = cn(
-  "min-h-[64px] max-w-none px-3 py-2 text-[13px] leading-relaxed text-foreground focus:outline-none",
+  "min-h-[64px] max-w-none px-3 py-2 text-[14px] leading-relaxed text-foreground focus:outline-none",
   "[&_p]:my-1 [&_p]:leading-relaxed",
-  "[&_h1]:my-2 [&_h1]:text-[16px] [&_h1]:font-semibold",
-  "[&_h2]:my-2 [&_h2]:text-[14px] [&_h2]:font-semibold",
-  "[&_h3]:my-1 [&_h3]:text-[13px] [&_h3]:font-semibold",
+  "[&_h1]:my-2 [&_h1]:text-[17px] [&_h1]:font-semibold",
+  "[&_h2]:my-2 [&_h2]:text-[15px] [&_h2]:font-semibold",
+  "[&_h3]:my-1 [&_h3]:text-[14px] [&_h3]:font-semibold",
   "[&_strong]:font-semibold",
   "[&_em]:italic",
   "[&_s]:line-through",
-  "[&_code]:rounded-[3px] [&_code]:bg-sidebar-accent [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[12px]",
-  "[&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-[6px] [&_pre]:bg-sidebar-accent [&_pre]:p-2 [&_pre]:font-mono [&_pre]:text-[12px]",
+  "[&_code]:rounded-[6px] [&_code]:bg-sidebar-accent [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[13px]",
+  "[&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-[10px] [&_pre]:bg-sidebar-accent [&_pre]:p-2 [&_pre]:font-mono [&_pre]:text-[13px]",
   "[&_pre_code]:bg-transparent [&_pre_code]:p-0",
   "[&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2",
   "[&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5",
@@ -183,7 +183,7 @@ export const TaskCommentComposer = forwardRef<CommentComposerHandle, Props>(
           MentionWithMarkdown.configure({
             HTMLAttributes: {
               class:
-                "mention-chip inline-flex items-center rounded-[4px] bg-primary/10 px-1 py-px text-[12px] font-medium text-primary",
+                "mention-chip inline-flex items-center rounded-[8px] bg-primary/10 px-1 py-px text-[13px] font-medium text-primary",
             },
             renderHTML({ options, node }) {
               return [
@@ -377,7 +377,7 @@ export const TaskCommentComposer = forwardRef<CommentComposerHandle, Props>(
       <div className="relative">
         <div
           className={cn(
-            "overflow-hidden rounded-[6px] border border-sidebar-border bg-background",
+            "overflow-hidden rounded-[10px] border border-sidebar-border bg-background",
             disabled && "opacity-60"
           )}
           onKeyDown={onKeyDown}
@@ -392,7 +392,7 @@ export const TaskCommentComposer = forwardRef<CommentComposerHandle, Props>(
                 <button
                   type="button"
                   onClick={onCancel}
-                  className="rounded-[4px] px-2 py-1 text-[11.5px] text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                  className="rounded-[8px] px-2 py-1 text-[11.5px] text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
                 >
                   Cancel
                 </button>
@@ -404,7 +404,7 @@ export const TaskCommentComposer = forwardRef<CommentComposerHandle, Props>(
                 }}
                 disabled={disabled || isEmpty || isSubmitting}
                 className={cn(
-                  "inline-flex items-center gap-1 rounded-[4px] bg-primary px-2 py-1 text-[11.5px] font-medium text-primary-foreground",
+                  "inline-flex items-center gap-1 rounded-[8px] bg-primary px-2 py-1 text-[11.5px] font-medium text-primary-foreground",
                   "hover:opacity-90 disabled:pointer-events-none disabled:opacity-40"
                 )}
               >
@@ -450,7 +450,7 @@ function MentionSuggestionDropdown({
 
   return createPortal(
     <div
-      className="fixed z-[1000] w-[220px] overflow-hidden rounded-[6px] border border-border bg-popover shadow-lg"
+      className="fixed z-[1000] w-[220px] overflow-hidden rounded-[10px] border border-border bg-popover shadow-lg"
       style={{ top, left }}
       role="listbox"
     >
@@ -469,7 +469,7 @@ function MentionSuggestionDropdown({
               }}
               onMouseEnter={() => onHover(idx)}
               className={cn(
-                "flex w-full items-center gap-2 px-2 py-1.5 text-left text-[12px]",
+                "flex w-full items-center gap-2 px-2 py-1.5 text-left text-[13px]",
                 active ? "bg-accent text-foreground" : "text-foreground/90"
               )}
             >

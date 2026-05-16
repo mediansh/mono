@@ -30,7 +30,7 @@ function renderMarks(text: string, marks: Mark[] | undefined, key: string): Reac
         return (
           <code
             key={markKey}
-            className="rounded-[3px] bg-foreground/[0.06] px-1 py-0.5 font-mono text-[0.85em]"
+            className="rounded-[6px] bg-foreground/[0.06] px-1 py-0.5 font-mono text-[0.85em]"
           >
             {acc}
           </code>
@@ -136,7 +136,7 @@ function renderNode(node: Node, key: string): ReactNode {
       return (
         <pre
           key={key}
-          className="my-5 overflow-x-auto rounded-[6px] bg-foreground/[0.04] p-4 font-mono text-[12px] leading-6 text-foreground"
+          className="my-5 overflow-x-auto rounded-[10px] bg-foreground/[0.04] p-4 font-mono text-[13px] leading-6 text-foreground"
         >
           <code>{renderChildren(node.content, key)}</code>
         </pre>

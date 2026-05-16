@@ -326,20 +326,20 @@ export function GitHubIntegrationPanel() {
       <Stagger className="mx-auto w-full max-w-lg px-6 py-6">
         <div className="flex flex-col gap-3">
           <motion.div variants={fadeUp}>
-            <h2 className="text-[14px] font-semibold tracking-tight">GitHub</h2>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">
+            <h2 className="text-[15px] font-semibold tracking-tight">GitHub</h2>
+            <p className="mt-0.5 text-[13px] text-muted-foreground">
               Install a GitHub App to sync issues with Median tasks and automate workflows from PRs and commits.
             </p>
           </motion.div>
 
-          <motion.div variants={fadeUp} className="rounded-[4px] ring-1 ring-border bg-card">
+          <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border bg-card">
             <div className="flex items-center gap-3 p-3.5">
-              <div className="flex size-8 items-center justify-center rounded-[4px] bg-foreground/5">
+              <div className="flex size-8 items-center justify-center rounded-[8px] bg-foreground/5">
                 <GitHubBrandIcon size={20} className="text-foreground" />
               </div>
               <div className="flex-1">
-                <h3 className="text-[13px] font-medium">Not connected</h3>
-                <p className="text-[11px] text-muted-foreground">
+                <h3 className="text-[14px] font-medium">Not connected</h3>
+                <p className="text-[12px] text-muted-foreground">
                   Connect selected repositories to import issues and detect PR or commit references like <span className="font-mono text-foreground/70">MDN-123</span>.
                 </p>
               </div>
@@ -350,7 +350,7 @@ export function GitHubIntegrationPanel() {
             </div>
 
             <div className="border-t border-border bg-muted/30 px-3.5 py-2">
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-[12px] text-muted-foreground">
                 You&apos;ll be redirected to GitHub to install the Median app.
               </p>
             </div>
@@ -366,25 +366,25 @@ export function GitHubIntegrationPanel() {
     <Stagger className="mx-auto w-full max-w-lg px-6 py-6">
       <div className="flex flex-col gap-3">
         <motion.div variants={fadeUp}>
-          <h2 className="text-[14px] font-semibold tracking-tight">GitHub</h2>
-          <p className="mt-0.5 text-[12px] text-muted-foreground">
+          <h2 className="text-[15px] font-semibold tracking-tight">GitHub</h2>
+          <p className="mt-0.5 text-[13px] text-muted-foreground">
             Manage the GitHub App installation connected to this workspace.
           </p>
         </motion.div>
 
         {/* Connection status card */}
-        <motion.div variants={fadeUp} className="rounded-[4px] ring-1 ring-border bg-card">
+        <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border bg-card">
           <div className="flex items-center gap-3 p-3.5">
-            <div className="flex size-8 items-center justify-center rounded-[4px] bg-foreground/5">
+            <div className="flex size-8 items-center justify-center rounded-[8px] bg-foreground/5">
               <GitHubBrandIcon size={20} className="text-foreground" />
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="truncate text-[13px] font-medium">{integration.accountLogin}</h3>
-              <p className="text-[11px] text-muted-foreground">
+              <h3 className="truncate text-[14px] font-medium">{integration.accountLogin}</h3>
+              <p className="text-[12px] text-muted-foreground">
                 {integration.accountType} account &middot; {integration.issueLinkCount} linked issue{integration.issueLinkCount === 1 ? "" : "s"} &middot; Last sync {formatTimestamp(integration.lastSyncedAt)}
               </p>
             </div>
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-600">
+            <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-emerald-600">
               <span className="size-1.5 bg-emerald-500" />
               Connected
             </span>
@@ -397,7 +397,7 @@ export function GitHubIntegrationPanel() {
               size="sm"
               onClick={handleSync}
               disabled={isSyncing}
-              className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+              className="h-7 px-2 text-[12px] text-muted-foreground hover:text-foreground"
             >
               <HugeiconsIcon icon={RotateRight06Icon} size={13} strokeWidth={1.8} className={isSyncing ? "animate-spin" : ""} />
               {isSyncing ? "Syncing..." : "Sync now"}
@@ -410,24 +410,24 @@ export function GitHubIntegrationPanel() {
         </motion.div>
 
         {/* Repositories */}
-        <motion.div variants={fadeUp} className="rounded-[4px] ring-1 ring-border bg-card">
+        <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border bg-card">
           <div className="border-b border-border px-3.5 py-2.5">
-            <h3 className="text-[13px] font-medium">Repositories</h3>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
+            <h3 className="text-[14px] font-medium">Repositories</h3>
+            <p className="mt-0.5 text-[12px] text-muted-foreground">
               Select which repositories sync with Median. The default repo is where new issues are created.
             </p>
           </div>
 
           {repositories.length > 0 && (
             <div className="flex items-center justify-between border-b border-border/50 bg-muted/20 px-3.5 py-2">
-              <span className="text-[11px] text-muted-foreground">
+              <span className="text-[12px] text-muted-foreground">
                 {selectedRepoIds.length} of {repositories.length} selected
               </span>
               <button
                 type="button"
                 disabled={isSaving}
                 onClick={handleToggleAllRepos}
-                className="text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                className="text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {selectedRepoIds.length === repositories.length ? "Deselect all" : "Select all"}
               </button>
@@ -444,7 +444,7 @@ export function GitHubIntegrationPanel() {
                     type="button"
                     disabled={isSaving}
                     onClick={() => handleToggleRepo(repository.id)}
-                    className={`flex size-3.5 shrink-0 items-center justify-center rounded-[3px] border transition-colors ${
+                    className={`flex size-3.5 shrink-0 items-center justify-center rounded-[6px] border transition-colors ${
                       isSelected ? "border-foreground bg-foreground" : "border-muted-foreground/30"
                     } disabled:cursor-not-allowed disabled:opacity-60`}
                     aria-pressed={isSelected}
@@ -456,7 +456,7 @@ export function GitHubIntegrationPanel() {
                     ) : null}
                   </button>
                   <div className="min-w-0 flex-1">
-                    <p className={`truncate text-[13px] ${isSelected ? "text-foreground" : "text-muted-foreground"}`}>
+                    <p className={`truncate text-[14px] ${isSelected ? "text-foreground" : "text-muted-foreground"}`}>
                       {repository.fullName}
                     </p>
                   </div>
@@ -465,7 +465,7 @@ export function GitHubIntegrationPanel() {
                       type="button"
                       disabled={isSaving}
                       onClick={() => handleMakeDefault(repository.id)}
-                      className={`rounded-[4px] px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                      className={`rounded-[8px] px-2 py-0.5 text-[12px] font-medium transition-colors ${
                         isDefault
                           ? "bg-foreground text-background"
                           : "text-muted-foreground hover:text-foreground"
@@ -494,18 +494,18 @@ export function GitHubIntegrationPanel() {
         </motion.div>
 
         {/* Automations */}
-        <motion.div variants={fadeUp} className="rounded-[4px] ring-1 ring-border bg-card">
+        <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border bg-card">
           <div className="border-b border-border px-3.5 py-2.5">
-            <h3 className="text-[13px] font-medium">Automations</h3>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
+            <h3 className="text-[14px] font-medium">Automations</h3>
+            <p className="mt-0.5 text-[12px] text-muted-foreground">
               Choose which GitHub events update task statuses automatically.
             </p>
           </div>
           <div className="divide-y divide-border/50">
             <div className="flex items-center gap-3 px-3.5 py-3">
               <div className="min-w-0 flex-1">
-                <p className="text-[13px] text-foreground">Issue sync</p>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">Keep linked tasks and GitHub issues in sync.</p>
+                <p className="text-[14px] text-foreground">Issue sync</p>
+                <p className="mt-0.5 text-[12px] text-muted-foreground">Keep linked tasks and GitHub issues in sync.</p>
               </div>
               <Switch
                 checked={integration.issueSyncEnabled}
@@ -514,8 +514,8 @@ export function GitHubIntegrationPanel() {
             </div>
             <div className="flex items-center gap-3 px-3.5 py-3">
               <div className="min-w-0 flex-1">
-                <p className="text-[13px] text-foreground">PR automation</p>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                <p className="text-[14px] text-foreground">PR automation</p>
+                <p className="mt-0.5 text-[12px] text-muted-foreground">
                   Open PRs mentioning <span className="font-mono text-foreground/70">MDN-123</span> set Ready. Merged PRs set Shipped.
                 </p>
               </div>
@@ -526,8 +526,8 @@ export function GitHubIntegrationPanel() {
             </div>
             <div className="flex items-center gap-3 px-3.5 py-3">
               <div className="min-w-0 flex-1">
-                <p className="text-[13px] text-foreground">Commit automation</p>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">Default-branch commits set Shipped. Other branches set In Progress.</p>
+                <p className="text-[14px] text-foreground">Commit automation</p>
+                <p className="mt-0.5 text-[12px] text-muted-foreground">Default-branch commits set Shipped. Other branches set In Progress.</p>
               </div>
               <Switch
                 checked={integration.commitAutomationEnabled}

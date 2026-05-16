@@ -93,10 +93,10 @@ export function PostForm({
     >
       <motion.div variants={fadeUp} className="mb-6 flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-[15px] font-semibold leading-tight">
+          <h1 className="text-[16px] font-semibold leading-tight">
             {initial ? "Edit" : "New"} {variant === "blog" ? "post" : "changelog entry"}
           </h1>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
+          <p className="mt-0.5 text-[12px] text-muted-foreground">
             {status === "draft" ? "Draft — not visible publicly." : "Published."}
           </p>
         </div>
@@ -106,7 +106,7 @@ export function PostForm({
               type="button"
               onClick={handleDelete}
               disabled={deleting || saving}
-              className="flex h-7 items-center gap-1.5 rounded-[4px] px-2 text-[12px] text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:pointer-events-none disabled:opacity-40"
+              className="flex h-7 items-center gap-1.5 rounded-[8px] px-2 text-[13px] text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:pointer-events-none disabled:opacity-40"
             >
               <Trash size={13} />
               <span>Delete</span>
@@ -115,7 +115,7 @@ export function PostForm({
           <button
             type="submit"
             disabled={saving || deleting}
-            className="flex h-7 items-center gap-1.5 rounded-[4px] bg-foreground px-2.5 text-[12px] font-medium text-background transition-colors hover:bg-foreground/90 disabled:pointer-events-none disabled:opacity-40"
+            className="flex h-7 items-center gap-1.5 rounded-[8px] bg-foreground px-2.5 text-[13px] font-medium text-background transition-colors hover:bg-foreground/90 disabled:pointer-events-none disabled:opacity-40"
           >
             <FloppyDisk size={13} weight="fill" />
             <span>{saving ? "Saving…" : submitLabel}</span>
@@ -126,7 +126,7 @@ export function PostForm({
       {error && (
         <motion.div
           variants={fadeUp}
-          className="mb-4 rounded-[5px] border border-destructive/30 bg-destructive/10 px-3 py-2 text-[12px] text-destructive"
+          className="mb-4 rounded-[9px] border border-destructive/30 bg-destructive/10 px-3 py-2 text-[13px] text-destructive"
         >
           {error}
         </motion.div>
@@ -191,7 +191,7 @@ export function PostForm({
 }
 
 const inputClass =
-  "w-full rounded-[5px] border border-sidebar-border bg-background px-3 py-1.5 text-[13px] text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:ring-1 focus:ring-sidebar-border"
+  "w-full rounded-[9px] border border-sidebar-border bg-background px-3 py-1.5 text-[14px] text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:ring-1 focus:ring-sidebar-border"
 
 function Field({
   label,
@@ -205,8 +205,8 @@ function Field({
   return (
     <label className="block">
       <div className="mb-1 flex items-baseline justify-between">
-        <span className="text-[12px] font-medium">{label}</span>
-        {hint && <span className="text-[10px] text-muted-foreground">{hint}</span>}
+        <span className="text-[13px] font-medium">{label}</span>
+        {hint && <span className="text-[11px] text-muted-foreground">{hint}</span>}
       </div>
       {children}
     </label>
@@ -229,8 +229,8 @@ function FieldGroup({
   return (
     <div className="block">
       <div className="mb-1 flex items-baseline justify-between">
-        <span className="text-[12px] font-medium">{label}</span>
-        {hint && <span className="text-[10px] text-muted-foreground">{hint}</span>}
+        <span className="text-[13px] font-medium">{label}</span>
+        {hint && <span className="text-[11px] text-muted-foreground">{hint}</span>}
       </div>
       {children}
     </div>

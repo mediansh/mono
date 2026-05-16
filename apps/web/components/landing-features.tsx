@@ -51,7 +51,7 @@ function InboxGraphic() {
                 style={{ transform: `rotate(${item.rot}deg)` }}
               >
                 <Icon size={10} />
-                <span className="truncate text-[7px] leading-none text-foreground/30">
+                <span className="truncate text-[8px] leading-none text-foreground/30">
                   {item.text}
                 </span>
               </div>
@@ -68,10 +68,10 @@ function InboxGraphic() {
 
         {/* Central inbox */}
         <div className="flex h-12 w-36 flex-col justify-center gap-[3px] overflow-hidden rounded-xl border border-foreground/[0.15] bg-foreground/[0.04] px-3">
-          <span className="text-[8px] font-semibold leading-none text-foreground/60">
+          <span className="text-[9px] font-semibold leading-none text-foreground/60">
             Inbox
           </span>
-          <span className="truncate text-[7px] leading-none text-foreground/30">
+          <span className="truncate text-[8px] leading-none text-foreground/30">
             3 new feedback items
           </span>
         </div>
@@ -95,7 +95,7 @@ function SparkGraphic() {
         <div className="w-56 overflow-hidden rounded-xl border border-foreground/[0.15] bg-foreground/[0.04] shadow-[0_0_24px_rgba(255,255,255,0.02)]">
           {/* Body */}
           <div className="flex items-start gap-2 px-3 pt-3 pb-2">
-            <p className="flex-1 text-[10px] font-semibold leading-snug text-foreground/85">
+            <p className="flex-1 text-[11px] font-semibold leading-snug text-foreground/85">
               Fix onboarding bug blocking new signup flow
             </p>
             <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-foreground/[0.1] bg-foreground/[0.05] text-foreground/70">
@@ -103,12 +103,12 @@ function SparkGraphic() {
             </div>
           </div>
           {/* Meta row */}
-          <div className="flex items-center justify-between border-t border-foreground/[0.08] px-3 py-1.5 text-[8px] text-foreground/35">
+          <div className="flex items-center justify-between border-t border-foreground/[0.08] px-3 py-1.5 text-[9px] text-foreground/35">
             <span>Mar 10</span>
             <span>MED-42</span>
           </div>
           {/* Actions */}
-          <div className="grid grid-cols-2 border-t border-foreground/[0.08] text-[9px] font-medium">
+          <div className="grid grid-cols-2 border-t border-foreground/[0.08] text-[10px] font-medium">
             <div className="flex items-center justify-center gap-1 py-1.5 text-emerald-400/85">
               <CheckCircle weight="fill" size={10} />
               Accept
@@ -179,7 +179,7 @@ function CubesGraphic() {
           className="absolute flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-xl border border-foreground/[0.15] bg-foreground/[0.05] text-foreground"
           style={{ left: center, top: center }}
         >
-          <Logo symbolOnly className="text-[18px]" />
+          <Logo symbolOnly className="text-[19px]" />
         </div>
       </div>
     </div>
@@ -203,7 +203,7 @@ function TagsGraphic() {
             className={`flex h-9 ${tag.w} items-center gap-2.5 rounded-full border ${tag.opacity} px-3`}
           >
             <div className={`h-2.5 w-2.5 shrink-0 rounded-full ${tag.dotOpacity}`} />
-            <span className={`truncate text-[10px] leading-none ${tag.textOpacity}`}>
+            <span className={`truncate text-[11px] leading-none ${tag.textOpacity}`}>
               {tag.label}
             </span>
           </div>
@@ -236,7 +236,7 @@ function LogsGraphic() {
             style={{ opacity: 1 - i * 0.15 }}
           >
             <div className="relative z-10 h-[10px] w-[10px] shrink-0 rounded-full border border-foreground/[0.12] bg-background" />
-            <span className="whitespace-nowrap text-[9px] leading-none text-foreground/45">
+            <span className="whitespace-nowrap text-[10px] leading-none text-foreground/45">
               {entry}
             </span>
           </div>
@@ -261,33 +261,33 @@ function TerminalGraphic() {
         <div className="flex flex-col gap-2 p-3.5 font-mono">
           {/* Prompt 1 */}
           <div className="flex items-center gap-1.5">
-            <span className="text-[8px] leading-none text-foreground/40">$</span>
-            <span className="truncate text-[8px] leading-none text-foreground/55">
+            <span className="text-[9px] leading-none text-foreground/40">$</span>
+            <span className="truncate text-[9px] leading-none text-foreground/55">
               median sync --source discord
             </span>
           </div>
           {/* Response */}
           <div className="pl-1">
-            <span className="truncate text-[8px] leading-none text-foreground/30">
+            <span className="truncate text-[9px] leading-none text-foreground/30">
               webhook received
             </span>
           </div>
           <div className="pl-1">
-            <span className="truncate text-[8px] leading-none text-foreground/30">
+            <span className="truncate text-[9px] leading-none text-foreground/30">
               task.created
             </span>
           </div>
           {/* Prompt 2 */}
           <div className="flex items-center gap-1.5">
-            <span className="text-[8px] leading-none text-foreground/40">$</span>
-            <span className="truncate text-[8px] leading-none text-foreground/55">
+            <span className="text-[9px] leading-none text-foreground/40">$</span>
+            <span className="truncate text-[9px] leading-none text-foreground/55">
               linear.push=true
             </span>
           </div>
           {/* Cursor */}
           <div className="flex items-center gap-1.5">
-            <span className="text-[8px] leading-none text-foreground/40">$</span>
-            <div className="h-3 w-[5px] rounded-[1px] bg-foreground/[0.15]" />
+            <span className="text-[9px] leading-none text-foreground/40">$</span>
+            <div className="h-3 w-[5px] rounded-[3px] bg-foreground/[0.15]" />
           </div>
         </div>
       </div>

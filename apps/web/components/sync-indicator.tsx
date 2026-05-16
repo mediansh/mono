@@ -29,7 +29,7 @@ export function SyncIndicator({ className }: { className?: string }) {
       aria-label={isSyncing ? "Syncing" : undefined}
       title={isSyncing ? "Syncing\u2026" : undefined}
       className={cn(
-        "pointer-events-none inline-block font-mono text-[9px] leading-none tabular-nums text-sidebar-foreground/40 transition-opacity duration-200 select-none",
+        "pointer-events-none inline-block font-mono text-[10px] leading-none tabular-nums text-sidebar-foreground/40 transition-opacity duration-200 select-none",
         isSyncing ? "opacity-100" : "opacity-0",
         className,
       )}

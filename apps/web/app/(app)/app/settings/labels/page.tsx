@@ -87,14 +87,14 @@ export default function LabelsSettingsPage() {
     >
       {/* Header */}
       <motion.div variants={fadeUp} className="mb-4">
-        <h2 className="text-[14px] font-semibold">Labels</h2>
-        <p className="mt-0.5 text-[12px] text-muted-foreground">
+        <h2 className="text-[15px] font-semibold">Labels</h2>
+        <p className="mt-0.5 text-[13px] text-muted-foreground">
           Manage the labels available for tasks in this workspace.
         </p>
       </motion.div>
 
       {/* Labels card */}
-      <motion.div variants={fadeUp} className="rounded-[4px] ring-1 ring-border bg-card">
+      <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border bg-card">
         <div className="p-5">
           <div className="flex flex-col gap-2">
             <AnimatePresence initial={false}>
@@ -113,7 +113,7 @@ export default function LabelsSettingsPage() {
                       next[index] = { ...next[index]!, color: e.target.value }
                       setLabels(next)
                     }}
-                    className="size-8 shrink-0 cursor-pointer appearance-none rounded-[4px] border border-border bg-transparent p-0.5 [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-[4px] [&::-webkit-color-swatch]:border-none"
+                    className="size-8 shrink-0 cursor-pointer appearance-none rounded-[8px] border border-border bg-transparent p-0.5 [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-[8px] [&::-webkit-color-swatch]:border-none"
                   />
                   <input
                     type="text"
@@ -125,12 +125,12 @@ export default function LabelsSettingsPage() {
                     }}
                     placeholder="Label name"
                     autoFocus={label.name === ""}
-                    className="h-8 w-full rounded-[4px] ring-1 ring-border bg-background px-2.5 text-[13px] outline-none transition-colors placeholder:text-muted-foreground focus:ring-foreground/30"
+                    className="h-8 w-full rounded-[8px] ring-1 ring-border bg-background px-2.5 text-[14px] outline-none transition-colors placeholder:text-muted-foreground focus:ring-foreground/30"
                   />
                   <button
                     type="button"
                     onClick={() => removeLabel(index)}
-                    className="flex size-8 shrink-0 items-center justify-center rounded-[4px] text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive md:invisible md:group-hover:visible"
+                    className="flex size-8 shrink-0 items-center justify-center rounded-[8px] text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive md:invisible md:group-hover:visible"
                   >
                     <Trash size={14} />
                   </button>
@@ -142,7 +142,7 @@ export default function LabelsSettingsPage() {
           <button
             type="button"
             onClick={addLabel}
-            className="mt-3 flex h-8 w-full items-center justify-center gap-1.5 rounded-[4px] border border-dashed border-border text-[11px] text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+            className="mt-3 flex h-8 w-full items-center justify-center gap-1.5 rounded-[8px] border border-dashed border-border text-[12px] text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
           >
             <Plus size={13} />
             Add label
@@ -151,7 +151,7 @@ export default function LabelsSettingsPage() {
 
         {/* Save bar */}
         <div className="flex items-center justify-between border-t border-border bg-muted/30 px-3.5 py-2">
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[12px] text-muted-foreground">
             {labels.length} label{labels.length !== 1 ? "s" : ""} configured
           </p>
           <div className="flex items-center gap-2">
@@ -164,7 +164,7 @@ export default function LabelsSettingsPage() {
               type="button"
               disabled={saving || labels.some((l) => !l.name.trim())}
               onClick={handleSave}
-              className="flex h-8 items-center justify-center rounded-[4px] bg-primary px-3.5 text-[11px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
+              className="flex h-8 items-center justify-center rounded-[8px] bg-primary px-3.5 text-[12px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
             >
               {saving ? "Saving..." : "Save"}
             </button>
