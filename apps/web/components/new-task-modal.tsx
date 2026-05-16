@@ -913,214 +913,214 @@ export function NewTaskModal({
 
               {/* ── Bottom toolbar ── */}
               {activeTab === "manual" ? (
-                <div>
+                <div className="border-t border-border">
                   {error ? (
-                    <div className="px-5 pt-2">
+                    <div className="px-4 pt-2">
                       <span className="text-[12px] text-red-500">{error}</span>
                     </div>
                   ) : null}
-                  <div className="flex flex-wrap items-center gap-3 border-t border-border px-4 pt-3 pb-3 md:flex-nowrap md:justify-between">
-                    {/* Metadata group — left side on desktop */}
-                    <div className="flex flex-wrap items-center gap-1.5 md:min-w-0">
-                      {/* Status */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
-                          {getStatusIcon(status)}
-                          <span>{statusLabel}</span>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent side="top" align="start">
-                          {STATUS_OPTIONS.map((opt) => (
-                            <DropdownMenuItem
-                              key={opt.id}
-                              onClick={() => setStatus(opt.id)}
-                              className={status === opt.id ? "font-medium" : ""}
-                            >
-                              <div className="flex items-center gap-2">
-                                {getStatusIcon(opt.id)}
-                                <span>{opt.label}</span>
-                              </div>
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
 
-                      {/* Priority */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
-                          {getPriorityIcon(priority)}
-                          <span>{priorityLabel}</span>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent side="top" align="start">
-                          {PRIORITY_OPTIONS.map((opt) => (
-                            <DropdownMenuItem
-                              key={opt.id}
-                              onClick={() => setPriority(opt.id)}
-                              className={
-                                priority === opt.id ? "font-medium" : ""
-                              }
-                            >
-                              <div className="flex items-center gap-2">
-                                {getPriorityIcon(opt.id)}
-                                <span>{opt.label}</span>
-                              </div>
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                  {/* Row 1 — Properties strip */}
+                  <div className="flex flex-wrap items-center gap-1.5 px-4 pt-3 pb-2">
+                    {/* Status */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
+                        {getStatusIcon(status)}
+                        <span>{statusLabel}</span>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent side="top" align="start">
+                        {STATUS_OPTIONS.map((opt) => (
+                          <DropdownMenuItem
+                            key={opt.id}
+                            onClick={() => setStatus(opt.id)}
+                            className={status === opt.id ? "font-medium" : ""}
+                          >
+                            <div className="flex items-center gap-2">
+                              {getStatusIcon(opt.id)}
+                              <span>{opt.label}</span>
+                            </div>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
 
-                      {/* Labels */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
-                          {labels.length > 0 ? (
-                            <div className="flex items-center gap-1.5">
-                              <div className="flex -space-x-0.5">
-                                {labels.map((label) => (
-                                  <div
-                                    key={label}
-                                    className="size-2 rounded-full ring-1 ring-background"
-                                    style={{
-                                      backgroundColor:
-                                        labelOptions.find((o) => o.id === label)
-                                          ?.color ?? "#888",
-                                    }}
-                                  />
-                                ))}
-                              </div>
-                              <span>
-                                {labels.length === 1
-                                  ? (labelOptions.find(
-                                      (o) => o.id === labels[0]
-                                    )?.label ?? labels[0])
-                                  : `${labels.length} labels`}
-                              </span>
+                    {/* Priority */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
+                        {getPriorityIcon(priority)}
+                        <span>{priorityLabel}</span>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent side="top" align="start">
+                        {PRIORITY_OPTIONS.map((opt) => (
+                          <DropdownMenuItem
+                            key={opt.id}
+                            onClick={() => setPriority(opt.id)}
+                            className={
+                              priority === opt.id ? "font-medium" : ""
+                            }
+                          >
+                            <div className="flex items-center gap-2">
+                              {getPriorityIcon(opt.id)}
+                              <span>{opt.label}</span>
                             </div>
-                          ) : (
-                            <div className="flex items-center gap-1.5">
-                              <Tag
-                                size={12}
-                                className="text-muted-foreground"
-                              />
-                              <span className="text-muted-foreground">
-                                Labels
-                              </span>
-                            </div>
-                          )}
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          side="top"
-                          align="start"
-                          className="w-auto min-w-[180px]"
-                        >
-                          {labelOptions.map((opt) => (
-                            <DropdownMenuCheckboxItem
-                              key={opt.id}
-                              checked={labels.includes(opt.id)}
-                              onCheckedChange={() => toggleLabel(opt.id)}
-                            >
-                              <span
-                                className="inline-block size-2.5 shrink-0 rounded-full"
-                                style={{ backgroundColor: opt.color }}
-                              />
-                              {opt.label}
-                            </DropdownMenuCheckboxItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
 
-                      {/* Assignees */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
-                          {assignees.length > 0 ? (
-                            <div className="flex items-center gap-1.5">
-                              <AssigneeStack
-                                assignees={assignees}
-                                size={16}
-                              />
-                              <span>
-                                {assignees.length === 1
-                                  ? (assignees[0]?.name ?? "Assignee")
-                                  : `${assignees.length} assignees`}
-                              </span>
+                    {/* Labels */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
+                        {labels.length > 0 ? (
+                          <div className="flex items-center gap-1.5">
+                            <div className="flex -space-x-0.5">
+                              {labels.map((label) => (
+                                <div
+                                  key={label}
+                                  className="size-2 rounded-full ring-1 ring-background"
+                                  style={{
+                                    backgroundColor:
+                                      labelOptions.find((o) => o.id === label)
+                                        ?.color ?? "#888",
+                                  }}
+                                />
+                              ))}
                             </div>
-                          ) : (
-                            <div className="flex items-center gap-1.5">
-                              <Users
-                                size={12}
-                                className="text-muted-foreground"
-                              />
-                              <span className="text-muted-foreground">
-                                Assign
-                              </span>
-                            </div>
-                          )}
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          side="top"
-                          align="start"
-                          className="w-auto p-0"
-                        >
-                          <AssigneePickerContent
-                            workspaceId={currentWorkspace?._id}
-                            assignees={assignees}
-                            onChange={setAssignees}
-                          />
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-
-                    {/* Action group — pinned right via parent's md:justify-between + md:shrink-0 here */}
-                    <div className="flex flex-wrap items-center gap-2 md:shrink-0">
-                      {/* Attach */}
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        multiple
-                        onChange={handleFileSelect}
-                        className="hidden"
-                      />
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={uploading}
-                        title="Attach files"
-                        className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium whitespace-nowrap text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {uploading ? (
-                          <SpinnerGap size={14} className="animate-spin" />
+                            <span>
+                              {labels.length === 1
+                                ? (labelOptions.find(
+                                    (o) => o.id === labels[0]
+                                  )?.label ?? labels[0])
+                                : `${labels.length} labels`}
+                            </span>
+                          </div>
                         ) : (
-                          <Paperclip size={14} />
+                          <div className="flex items-center gap-1.5">
+                            <Tag size={12} className="text-muted-foreground" />
+                            <span className="text-muted-foreground">
+                              Labels
+                            </span>
+                          </div>
                         )}
-                        {uploading ? "Uploading..." : "Attach"}
-                      </button>
-
-                      {/* Create more */}
-                      <label
-                        title="Keep the modal open after creating"
-                        className="flex items-center gap-1.5 rounded-[8px] px-2 py-1.5 text-[12px] font-medium whitespace-nowrap text-muted-foreground transition-colors select-none hover:text-foreground"
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        side="top"
+                        align="start"
+                        className="w-auto min-w-[180px]"
                       >
-                        <input
-                          type="checkbox"
-                          checked={createMore}
-                          onChange={(e) => setCreateMore(e.target.checked)}
-                          className="size-3.5 cursor-pointer accent-primary"
-                        />
-                        Create more
-                      </label>
+                        {labelOptions.map((opt) => (
+                          <DropdownMenuCheckboxItem
+                            key={opt.id}
+                            checked={labels.includes(opt.id)}
+                            onCheckedChange={() => toggleLabel(opt.id)}
+                          >
+                            <span
+                              className="inline-block size-2.5 shrink-0 rounded-full"
+                              style={{ backgroundColor: opt.color }}
+                            />
+                            {opt.label}
+                          </DropdownMenuCheckboxItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
 
-                      {/* Create — desktop only; mobile uses the header send button */}
-                      <button
-                        type="button"
-                        onClick={handleCreate}
-                        disabled={!title.trim() || !currentWorkspace}
-                        className="hidden items-center gap-1.5 rounded-[8px] bg-primary px-3.5 py-2 text-[13px] font-semibold whitespace-nowrap text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 md:flex"
+                    {/* Assignees */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
+                        {assignees.length > 0 ? (
+                          <div className="flex items-center gap-1.5">
+                            <AssigneeStack assignees={assignees} size={16} />
+                            <span>
+                              {assignees.length === 1
+                                ? (assignees[0]?.name ?? "Assignee")
+                                : `${assignees.length} assignees`}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <Users
+                              size={12}
+                              className="text-muted-foreground"
+                            />
+                            <span className="text-muted-foreground">
+                              Assign
+                            </span>
+                          </div>
+                        )}
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        side="top"
+                        align="start"
+                        className="w-auto p-0"
                       >
-                        Create
-                        <ArrowRight
-                          size={13}
-                          weight="bold"
-                          className="opacity-80"
+                        <AssigneePickerContent
+                          workspaceId={currentWorkspace?._id}
+                          assignees={assignees}
+                          onChange={setAssignees}
                         />
-                      </button>
-                    </div>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {/* Attach — visually grouped with the rest of the properties */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      multiple
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                      title="Attach files"
+                      className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium whitespace-nowrap text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {uploading ? (
+                        <SpinnerGap size={14} className="animate-spin" />
+                      ) : (
+                        <Paperclip size={14} />
+                      )}
+                      {uploading ? "Uploading..." : "Attach"}
+                    </button>
+                  </div>
+
+                  {/* Row 2 — Action strip */}
+                  <div className="flex flex-wrap items-center justify-end gap-2 px-4 pt-1 pb-3">
+                    {/* Create more — restored hollow-circle pill */}
+                    <button
+                      type="button"
+                      onClick={() => setCreateMore(!createMore)}
+                      title="Keep the modal open after creating"
+                      className={`flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent ${
+                        createMore
+                          ? "text-foreground"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      <span
+                        className={`inline-block size-2.5 rounded-full ring-1 transition-colors ${
+                          createMore
+                            ? "bg-primary ring-primary"
+                            : "ring-border"
+                        }`}
+                      />
+                      Create more
+                    </button>
+
+                    {/* Create — desktop only; mobile uses the header send button */}
+                    <button
+                      type="button"
+                      onClick={handleCreate}
+                      disabled={!title.trim() || !currentWorkspace}
+                      className="hidden items-center gap-1.5 rounded-[8px] bg-primary px-3.5 py-2 text-[13px] font-semibold whitespace-nowrap text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 md:flex"
+                    >
+                      Create
+                      <ArrowRight
+                        size={13}
+                        weight="bold"
+                        className="opacity-80"
+                      />
+                    </button>
                   </div>
                 </div>
               ) : (
