@@ -773,7 +773,7 @@ export function NewTaskModal({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.98, y: 6 }}
               transition={{ duration: 0.1, ease: [0.32, 0, 0.67, 0] }}
-              className="relative flex h-[min(480px,85vh)] max-h-[85vh] w-[min(92vw,40rem)] max-w-2xl flex-col overflow-hidden rounded-[12px] bg-background shadow-2xl ring-1 ring-border"
+              className="relative flex h-[min(480px,85vh)] max-h-[85vh] w-[min(92vw,40rem)] max-w-2xl flex-col overflow-hidden rounded-[14px] bg-card shadow-2xl ring-1 ring-border"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                   e.preventDefault()
@@ -849,7 +849,7 @@ export function NewTaskModal({
                     type="button"
                     onClick={handleClose}
                     aria-label="Close"
-                    className="hidden size-7 items-center justify-center rounded-[8px] text-muted-foreground/50 ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground md:flex"
+                    className="hidden size-7 items-center justify-center rounded-[8px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:flex"
                   >
                     <X size={14} weight="bold" />
                   </button>
@@ -919,9 +919,9 @@ export function NewTaskModal({
                       <span className="text-[12px] text-red-500">{error}</span>
                     </div>
                   ) : null}
-                  <div className="flex flex-wrap items-center gap-2 border-t border-border px-4 pt-2.5 pb-3 md:flex-nowrap md:justify-between">
+                  <div className="flex flex-wrap items-center gap-3 border-t border-border px-4 pt-3 pb-3 md:flex-nowrap md:justify-between">
                     {/* Metadata group — left side on desktop */}
-                    <div className="flex flex-wrap items-center gap-2 md:min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5 md:min-w-0">
                       {/* Status */}
                       <DropdownMenu>
                         <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
@@ -1069,7 +1069,7 @@ export function NewTaskModal({
                     </div>
 
                     {/* Action group — pinned right via parent's md:justify-between + md:shrink-0 here */}
-                    <div className="flex flex-wrap items-center gap-2 md:shrink-0 md:gap-1.5">
+                    <div className="flex flex-wrap items-center gap-2 md:shrink-0">
                       {/* Attach */}
                       <input
                         ref={fileInputRef}
@@ -1093,38 +1093,31 @@ export function NewTaskModal({
                       </button>
 
                       {/* Create more */}
-                      <button
-                        type="button"
-                        onClick={() => setCreateMore(!createMore)}
+                      <label
                         title="Keep the modal open after creating"
-                        className={`flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent ${
-                          createMore
-                            ? "text-foreground"
-                            : "text-muted-foreground"
-                        }`}
+                        className="flex items-center gap-1.5 rounded-[8px] px-2 py-1.5 text-[12px] font-medium whitespace-nowrap text-muted-foreground transition-colors select-none hover:text-foreground"
                       >
-                        <span
-                          className={`inline-block size-2.5 rounded-full ring-1 transition-colors ${
-                            createMore
-                              ? "bg-primary ring-primary"
-                              : "ring-border"
-                          }`}
+                        <input
+                          type="checkbox"
+                          checked={createMore}
+                          onChange={(e) => setCreateMore(e.target.checked)}
+                          className="size-3.5 cursor-pointer accent-primary"
                         />
                         Create more
-                      </button>
+                      </label>
 
                       {/* Create — desktop only; mobile uses the header send button */}
                       <button
                         type="button"
                         onClick={handleCreate}
                         disabled={!title.trim() || !currentWorkspace}
-                        className="hidden items-center gap-1.5 rounded-[8px] bg-primary px-3 py-1.5 text-[12px] font-medium whitespace-nowrap text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 md:flex"
+                        className="hidden items-center gap-1.5 rounded-[8px] bg-primary px-3.5 py-2 text-[13px] font-semibold whitespace-nowrap text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 md:flex"
                       >
                         Create
                         <ArrowRight
-                          size={12}
+                          size={13}
                           weight="bold"
-                          className="opacity-70"
+                          className="opacity-80"
                         />
                       </button>
                     </div>
@@ -1138,23 +1131,23 @@ export function NewTaskModal({
                       <span className="text-[12px] text-red-500">{error}</span>
                     </div>
                   ) : null}
-                  <div className="hidden items-center justify-end border-t border-border px-4 pt-2.5 pb-3 md:flex">
+                  <div className="hidden items-center justify-end border-t border-border px-4 pt-3 pb-3 md:flex">
                     <button
                       type="button"
                       onClick={handleGenerateTasks}
                       disabled={!aiPrompt.trim() || isGenerating}
-                      className="flex items-center gap-1.5 rounded-[8px] bg-primary px-3 py-1.5 text-[12px] font-medium whitespace-nowrap text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex items-center gap-1.5 rounded-[8px] bg-primary px-3.5 py-2 text-[13px] font-semibold whitespace-nowrap text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {isGenerating ? (
                         <>
-                          <SpinnerGap size={12} className="animate-spin" />
+                          <SpinnerGap size={13} className="animate-spin" />
                           Generating…
                         </>
                       ) : (
                         <>
                           Generate
                           <Sparkle
-                            size={12}
+                            size={13}
                             weight="fill"
                             className="opacity-80"
                           />
