@@ -80,7 +80,7 @@ type SuggestionState = {
 }
 
 const editorContentClass = cn(
-  "min-h-[28px] flex max-w-[100%] max-h-[160px] flex-col justify-center overflow-y-auto text-[13.5px] leading-relaxed text-foreground focus:outline-none",
+  "min-h-[20px] max-w-[100%] max-h-[140px] overflow-y-auto text-[13.5px] leading-relaxed text-foreground focus:outline-none",
   "[&_p]:my-1 [&_p]:leading-relaxed",
   "[&_h1]:my-2 [&_h1]:text-[17px] [&_h1]:font-semibold",
   "[&_h2]:my-2 [&_h2]:text-[15px] [&_h2]:font-semibold",
@@ -384,13 +384,13 @@ export const TaskCommentComposer = forwardRef<CommentComposerHandle, Props>(
       <div className="relative">
         <div
           className={cn(
-            "group/composer flex items-end gap-1 rounded-[20px] border border-sidebar-border bg-muted/40 py-1 pl-3 pr-1 transition-colors focus-within:border-ring/40 focus-within:bg-background",
+            "group/composer flex items-center gap-1 rounded-[20px] border border-sidebar-border bg-muted/40 py-1 pl-3 pr-1 transition-colors focus-within:border-ring/40 focus-within:bg-background",
             disabled && "opacity-60"
           )}
           onKeyDown={onKeyDown}
         >
-          <div ref={hostRef} className="min-w-0 flex-1 py-1" />
-          <div className="flex h-7 shrink-0 items-center gap-0.5">
+          <div ref={hostRef} className="min-w-0 flex-1" />
+          <div className="flex shrink-0 items-center gap-1">
             <Tooltip>
               <TooltipTrigger
                 render={
