@@ -38,7 +38,7 @@ const MentionWithMarkdown = Mention.extend({
   },
 })
 import { useQuery } from "convex/react"
-import { Info, PaperPlaneRight } from "@phosphor-icons/react"
+import { PaperPlaneRight } from "@phosphor-icons/react"
 import { cn } from "@workspace/ui/lib/utils"
 import {
   Tooltip,
@@ -384,30 +384,13 @@ export const TaskCommentComposer = forwardRef<CommentComposerHandle, Props>(
       <div className="relative">
         <div
           className={cn(
-            "group/composer flex items-center gap-1 rounded-[20px] border border-sidebar-border bg-muted/40 py-1 pl-3 pr-1 transition-colors focus-within:border-ring/40 focus-within:bg-background",
+            "group/composer flex items-center gap-1 rounded-[20px] border border-sidebar-border bg-muted/40 py-1 px-3 transition-colors focus-within:border-ring/40 focus-within:bg-background",
             disabled && "opacity-60"
           )}
           onKeyDown={onKeyDown}
         >
           <div ref={hostRef} className="min-w-0 flex-1" />
           <div className="flex shrink-0 items-center gap-1">
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <button
-                    type="button"
-                    tabIndex={-1}
-                    aria-label="Comment shortcuts"
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-foreground"
-                  />
-                }
-              >
-                <Info size={13} />
-              </TooltipTrigger>
-              <TooltipContent side="top" align="end">
-                ⌘↵ to send · @ to mention · Markdown supported
-              </TooltipContent>
-            </Tooltip>
             {onCancel ? (
               <button
                 type="button"
@@ -417,22 +400,31 @@ export const TaskCommentComposer = forwardRef<CommentComposerHandle, Props>(
                 Cancel
               </button>
             ) : null}
-            <button
-              type="button"
-              onClick={() => {
-                void handleSubmit()
-              }}
-              disabled={disabled || isEmpty || isSubmitting}
-              aria-label={submitLabel}
-              className={cn(
-                "inline-flex h-7 items-center justify-center gap-1 rounded-full bg-primary text-primary-foreground transition-all",
-                isEditMode ? "px-2.5 text-[11.5px] font-medium" : "w-7",
-                "hover:opacity-90 disabled:pointer-events-none disabled:opacity-40"
-              )}
-            >
-              <PaperPlaneRight size={12} weight="fill" />
-              {isEditMode ? <span>{submitLabel}</span> : null}
-            </button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleSubmit()
+                    }}
+                    disabled={disabled || isEmpty || isSubmitting}
+                    aria-label={submitLabel}
+                    className={cn(
+                      "inline-flex h-7 items-center justify-center gap-1 rounded-full bg-primary text-primary-foreground transition-all",
+                      isEditMode ? "px-2.5 text-[11.5px] font-medium" : "w-7",
+                      "hover:opacity-90 disabled:pointer-events-none disabled:opacity-40"
+                    )}
+                  />
+                }
+              >
+                <PaperPlaneRight size={12} weight="fill" />
+                {isEditMode ? <span>{submitLabel}</span> : null}
+              </TooltipTrigger>
+              <TooltipContent side="top" align="end">
+                ⌘↵ to send · @ to mention · Markdown supported
+              </TooltipContent>
+            </Tooltip>
           </div>
         </div>
         {submitError ? (
@@ -471,16 +463,32 @@ function MentionSuggestionDropdown({
   if (!state.visible || !state.rect) return null
   if (members.length === 0) return null
 
-  const top = state.rect.bottom + 4
-  const left = state.rect.left
+  const DROPDOWN_MAX_HEIGHT = 240
+  const viewportHeight =
+    typeof window !== "undefined" ? window.innerHeight : 1000
+  const spaceBelow = viewportHeight - state.rect.bottom
+  const placeAbove =
+    spaceBelow < DROPDOWN_MAX_HEIGHT + 8 && state.rect.top > spaceBelow
+
+  const positionStyle: React.CSSProperties = placeAbove
+    ? {
+        bottom: viewportHeight - state.rect.top + 4,
+        left: state.rect.left,
+        maxHeight: Math.max(120, state.rect.top - 12),
+      }
+    : {
+        top: state.rect.bottom + 4,
+        left: state.rect.left,
+        maxHeight: Math.max(120, spaceBelow - 12),
+      }
 
   return createPortal(
     <div
-      className="fixed z-[1000] w-[220px] overflow-hidden rounded-[10px] border border-border bg-popover shadow-lg"
-      style={{ top, left }}
+      className="fixed z-[1000] flex w-[220px] flex-col overflow-hidden rounded-[10px] border border-border bg-popover shadow-lg"
+      style={positionStyle}
       role="listbox"
     >
-      <div className="max-h-[240px] overflow-y-auto py-1">
+      <div className="min-h-0 flex-1 overflow-y-auto py-1">
         {members.map((m, idx) => {
           const active = idx === activeIndex
           return (
