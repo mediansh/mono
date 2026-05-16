@@ -58,7 +58,7 @@ export function QuotaBanner() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-          className="sticky top-0 z-40 flex items-center justify-center gap-2.5 border-b border-amber-500/20 bg-amber-500/10 px-4 py-2 text-[12px] font-medium text-foreground backdrop-blur"
+          className="sticky top-0 z-40 flex items-center justify-center gap-2.5 border-b border-amber-500/20 bg-amber-500/10 px-4 py-2 text-[13px] font-medium text-foreground backdrop-blur"
         >
           <Warning size={14} weight="fill" className="shrink-0 text-amber-500" />
           <span className="text-center">

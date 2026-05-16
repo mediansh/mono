@@ -370,7 +370,7 @@ export function SearchPalette({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.97 }}
             transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
-            className="fixed top-[min(20%,180px)] left-1/2 z-50 w-[calc(100%-2rem)] max-w-[540px] -translate-x-1/2 overflow-hidden rounded-[4px] bg-background shadow-2xl ring-1 ring-border"
+            className="fixed top-[min(20%,180px)] left-1/2 z-50 w-[calc(100%-2rem)] max-w-[540px] -translate-x-1/2 overflow-hidden rounded-[8px] bg-background shadow-2xl ring-1 ring-border"
           >
             {/* Search input */}
             <div className="flex items-center gap-2.5 border-b border-border px-3">
@@ -384,14 +384,14 @@ export function SearchPalette({
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Search tasks, navigate..."
-                className="h-9 flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground/60"
+                className="h-9 flex-1 bg-transparent text-[14px] outline-none placeholder:text-muted-foreground/60"
                 autoComplete="off"
                 spellCheck={false}
               />
               {query && (
                 <button
                   onClick={() => setQuery("")}
-                  className="shrink-0 rounded-[4px] px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground"
+                  className="shrink-0 rounded-[8px] px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground"
                 >
                   Clear
                 </button>
@@ -405,8 +405,8 @@ export function SearchPalette({
             >
               {results.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <p className="text-[13px] text-muted-foreground">No results found</p>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground/60">
+                  <p className="text-[14px] text-muted-foreground">No results found</p>
+                  <p className="mt-0.5 text-[12px] text-muted-foreground/60">
                     Try a different search term
                   </p>
                 </div>
@@ -414,7 +414,7 @@ export function SearchPalette({
                 groupedResults.map((section) => {
                   const sectionEl = (
                     <div key={section.label} className="mb-1 last:mb-0">
-                      <div className="px-2.5 pb-1 pt-2 text-[11px] font-medium text-muted-foreground/60">
+                      <div className="px-2.5 pb-1 pt-2 text-[12px] font-medium text-muted-foreground/60">
                         {section.label}
                       </div>
                       {section.items.map((result) => {
@@ -452,25 +452,25 @@ export function SearchPalette({
             {/* Footer */}
             <div className="hidden items-center gap-3 border-t border-border px-3 py-1.5 sm:flex">
               <div className="flex items-center gap-1.5">
-                <kbd className="flex h-5 min-w-5 items-center justify-center rounded-[4px] border border-border bg-muted px-1 font-mono text-[10px] text-muted-foreground">
+                <kbd className="flex h-5 min-w-5 items-center justify-center rounded-[8px] border border-border bg-muted px-1 font-mono text-[11px] text-muted-foreground">
                   ↑
                 </kbd>
-                <kbd className="flex h-5 min-w-5 items-center justify-center rounded-[4px] border border-border bg-muted px-1 font-mono text-[10px] text-muted-foreground">
+                <kbd className="flex h-5 min-w-5 items-center justify-center rounded-[8px] border border-border bg-muted px-1 font-mono text-[11px] text-muted-foreground">
                   ↓
                 </kbd>
-                <span className="text-[11px] text-muted-foreground/60">navigate</span>
+                <span className="text-[12px] text-muted-foreground/60">navigate</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <kbd className="flex h-5 min-w-5 items-center justify-center rounded-[4px] border border-border bg-muted px-1 font-mono text-[10px] text-muted-foreground">
+                <kbd className="flex h-5 min-w-5 items-center justify-center rounded-[8px] border border-border bg-muted px-1 font-mono text-[11px] text-muted-foreground">
                   ↵
                 </kbd>
-                <span className="text-[11px] text-muted-foreground/60">open</span>
+                <span className="text-[12px] text-muted-foreground/60">open</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <kbd className="flex h-5 min-w-5 items-center justify-center rounded-[4px] border border-border bg-muted px-1 font-mono text-[10px] text-muted-foreground">
+                <kbd className="flex h-5 min-w-5 items-center justify-center rounded-[8px] border border-border bg-muted px-1 font-mono text-[11px] text-muted-foreground">
                   esc
                 </kbd>
-                <span className="text-[11px] text-muted-foreground/60">close</span>
+                <span className="text-[12px] text-muted-foreground/60">close</span>
               </div>
             </div>
           </motion.div>
@@ -502,14 +502,14 @@ function NavResultRow({
       onClick={onSelect}
       onMouseMove={onHover}
       className={cn(
-        "flex w-full items-center gap-2 rounded-[4px] px-2 py-1.5 text-left transition-colors",
+        "flex w-full items-center gap-2 rounded-[8px] px-2 py-1.5 text-left transition-colors",
         isActive ? "bg-accent text-foreground" : "text-foreground/80 hover:bg-accent/50"
       )}
     >
-      <div className="flex size-6 shrink-0 items-center justify-center rounded-[4px] bg-muted/80">
+      <div className="flex size-6 shrink-0 items-center justify-center rounded-[8px] bg-muted/80">
         <result.icon size={13} className="text-muted-foreground" />
       </div>
-      <span className="flex-1 truncate text-[12px] font-medium">{result.label}</span>
+      <span className="flex-1 truncate text-[13px] font-medium">{result.label}</span>
       <ArrowRight
         size={13}
         className={cn(
@@ -540,29 +540,29 @@ function TaskResultRow({
       onClick={onSelect}
       onMouseMove={onHover}
       className={cn(
-        "flex w-full items-center gap-2 rounded-[4px] px-2 py-1.5 text-left transition-colors",
+        "flex w-full items-center gap-2 rounded-[8px] px-2 py-1.5 text-left transition-colors",
         isActive ? "bg-accent text-foreground" : "text-foreground/80 hover:bg-accent/50"
       )}
     >
       <div className="shrink-0">{getPriorityIcon(result.priority)}</div>
       <div className="shrink-0">{getStatusIcon(result.status)}</div>
-      <span className="shrink-0 font-mono text-[10px] text-muted-foreground/50">
+      <span className="shrink-0 font-mono text-[11px] text-muted-foreground/50">
         {result.taskCode}
       </span>
-      <span className="min-w-0 flex-1 truncate text-[12px] font-medium">{result.title}</span>
+      <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{result.title}</span>
       {result.labels.length > 0 && (
         <div className="hidden shrink-0 items-center gap-1 sm:flex">
           {result.labels.slice(0, 2).map((label) => (
             <span
               key={label}
-              className="rounded-[4px] bg-muted px-1.5 py-0.5 text-[9px] font-medium capitalize text-muted-foreground"
+              className="rounded-[8px] bg-muted px-1.5 py-0.5 text-[10px] font-medium capitalize text-muted-foreground"
             >
               {label}
             </span>
           ))}
         </div>
       )}
-      <span className="shrink-0 text-[10px] text-muted-foreground/40">{result.createdAt}</span>
+      <span className="shrink-0 text-[11px] text-muted-foreground/40">{result.createdAt}</span>
     </button>
   )
 }

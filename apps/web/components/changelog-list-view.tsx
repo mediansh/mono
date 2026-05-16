@@ -86,7 +86,7 @@ export function ChangelogListView({ entries }: { entries: ChangelogListEntry[] }
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-      <div className="flex h-11 w-11 items-center justify-center rounded-[6px] bg-foreground/[0.04] ring-1 ring-foreground/[0.06]">
+      <div className="flex h-11 w-11 items-center justify-center rounded-[10px] bg-foreground/[0.04] ring-1 ring-foreground/[0.06]">
         <Sparkle size={18} className="text-muted-foreground" />
       </div>
       <div className="text-sm font-medium">No changes yet</div>

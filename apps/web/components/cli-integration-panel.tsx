@@ -33,7 +33,7 @@ function CodeBlock({ children }: { children: string }) {
   }
 
   return (
-    <div className="group relative flex items-center gap-2 rounded-[4px] bg-muted/50 px-3 py-2 font-mono text-[12px] text-foreground ring-1 ring-border">
+    <div className="group relative flex items-center gap-2 rounded-[8px] bg-muted/50 px-3 py-2 font-mono text-[13px] text-foreground ring-1 ring-border">
       <code className="flex-1 select-all">{children}</code>
       <button
         type="button"
@@ -52,16 +52,16 @@ export function CliIntegrationPanel() {
     <Stagger className="mx-auto w-full max-w-lg px-6 py-6">
       <div className="flex flex-col gap-3">
         <motion.div variants={fadeUp}>
-          <h2 className="text-[14px] font-semibold tracking-tight">CLI</h2>
-          <p className="mt-0.5 text-[12px] text-muted-foreground">
+          <h2 className="text-[15px] font-semibold tracking-tight">CLI</h2>
+          <p className="mt-0.5 text-[13px] text-muted-foreground">
             A command-line tool for AI agents to manage tasks in your workspace.
           </p>
         </motion.div>
 
         {/* Quick start */}
-        <motion.div variants={fadeUp} className="rounded-[4px] ring-1 ring-border bg-card">
+        <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card">
           <div className="border-b border-border px-3.5 py-2.5">
-            <h3 className="text-[13px] font-medium">Quick start</h3>
+            <h3 className="text-[14px] font-medium">Quick start</h3>
           </div>
           <div className="flex flex-col gap-2.5 px-3.5 py-3">
             <CodeBlock>npm install -g @mediansh/cli</CodeBlock>

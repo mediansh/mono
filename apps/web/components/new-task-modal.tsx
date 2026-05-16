@@ -842,7 +842,7 @@ export function NewTaskModal({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.98, y: 6 }}
               transition={{ duration: 0.1, ease: [0.32, 0, 0.67, 0] }}
-              className="relative flex h-[min(480px,85vh)] max-h-[85vh] w-[min(92vw,40rem)] max-w-2xl flex-col overflow-hidden rounded-[8px] bg-background shadow-2xl ring-1 ring-border"
+              className="relative flex h-[min(480px,85vh)] max-h-[85vh] w-[min(92vw,40rem)] max-w-2xl flex-col overflow-hidden rounded-[14px] bg-card shadow-2xl ring-1 ring-border"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                   e.preventDefault()
@@ -862,17 +862,17 @@ export function NewTaskModal({
               <div className="px-5 pt-5 pb-0">
                 {/* Tab switcher and send button row */}
                 <div className="mb-3 flex items-center justify-between gap-2">
-                  <div className="inline-flex items-center gap-0.5 rounded-[6px] p-0.5 ring-1 ring-border">
+                  <div className="inline-flex items-center gap-0.5 rounded-[10px] bg-muted p-0.5">
                     <button
                       type="button"
                       onClick={() => setActiveTab("manual")}
-                      className={`flex items-center gap-1.5 rounded-[4px] px-2 py-1 text-[11px] font-medium transition-colors ${
+                      className={`flex items-center gap-1.5 rounded-[8px] px-2.5 py-1 text-[12px] font-medium transition-colors ${
                         activeTab === "manual"
-                          ? "bg-accent text-foreground"
+                          ? "bg-card text-foreground shadow-sm ring-1 ring-border"
                           : "text-muted-foreground hover:text-foreground"
                       }`}
                     >
-                      <PencilSimple size={12} />
+                      <PencilSimple size={12} weight={activeTab === "manual" ? "fill" : "regular"} />
                       Manual
                     </button>
                     <button
@@ -881,13 +881,13 @@ export function NewTaskModal({
                         setActiveTab("ai")
                         trackAIPromptTabSelected()
                       }}
-                      className={`flex items-center gap-1.5 rounded-[4px] px-2 py-1 text-[11px] font-medium transition-colors ${
+                      className={`flex items-center gap-1.5 rounded-[8px] px-2.5 py-1 text-[12px] font-medium transition-colors ${
                         activeTab === "ai"
-                          ? "bg-accent text-foreground"
+                          ? "bg-card text-foreground shadow-sm ring-1 ring-border"
                           : "text-muted-foreground hover:text-foreground"
                       }`}
                     >
-                      <Sparkle size={12} />
+                      <Sparkle size={12} weight={activeTab === "ai" ? "fill" : "regular"} />
                       AI Prompt
                     </button>
                   </div>
@@ -908,7 +908,7 @@ export function NewTaskModal({
                     aria-label={
                       activeTab === "manual" ? "Create task" : "Generate tasks"
                     }
-                    className="flex items-center justify-center rounded-[4px] bg-primary p-1.5 text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40 md:hidden"
+                    className="flex items-center justify-center rounded-[8px] bg-primary p-1.5 text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40 md:hidden"
                   >
                     {activeTab === "ai" && isGenerating ? (
                       <SpinnerGap size={14} className="animate-spin" />
@@ -922,7 +922,7 @@ export function NewTaskModal({
                     type="button"
                     onClick={handleClose}
                     aria-label="Close"
-                    className="hidden size-7 items-center justify-center rounded-[4px] text-muted-foreground/50 ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground md:flex"
+                    className="hidden size-7 items-center justify-center rounded-[8px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:flex"
                   >
                     <X size={14} weight="bold" />
                   </button>
@@ -938,7 +938,7 @@ export function NewTaskModal({
                     placeholder="Task title"
                     autoFocus
                     rows={1}
-                    className="block w-full resize-none overflow-hidden bg-transparent text-[16px] leading-snug font-semibold tracking-tight break-words outline-none placeholder:text-muted-foreground/40"
+                    className="block w-full resize-none overflow-hidden bg-transparent text-[17px] leading-snug font-semibold tracking-tight break-words outline-none placeholder:text-muted-foreground/40"
                   />
                 ) : null}
               </div>
@@ -952,7 +952,7 @@ export function NewTaskModal({
                     onChange={(e) => setDescription(e.target.value)}
                     onPaste={handlePaste}
                     placeholder="Add a description, or paste an image..."
-                    className="w-full flex-1 resize-none bg-transparent text-[13px] leading-relaxed text-foreground/80 outline-none placeholder:text-muted-foreground/40"
+                    className="w-full flex-1 resize-none bg-transparent text-[14px] leading-relaxed text-foreground/80 outline-none placeholder:text-muted-foreground/40"
                     style={{ minHeight: "180px" }}
                   />
 
@@ -980,7 +980,7 @@ export function NewTaskModal({
                     onChange={(e) => setAiPrompt(e.target.value)}
                     placeholder="e.g. Create tasks for building a user authentication flow…"
                     autoFocus
-                    className="w-full flex-1 resize-none bg-transparent text-[13px] leading-relaxed text-foreground/80 outline-none placeholder:text-muted-foreground/40"
+                    className="w-full flex-1 resize-none bg-transparent text-[14px] leading-relaxed text-foreground/80 outline-none placeholder:text-muted-foreground/40"
                     style={{ minHeight: "180px" }}
                   />
                 </div>
@@ -990,219 +990,212 @@ export function NewTaskModal({
               {activeTab === "manual" ? (
                 <div>
                   {error ? (
-                    <div className="px-5 pt-2">
-                      <span className="text-[11px] text-red-500">{error}</span>
+                    <div className="px-4 pt-2">
+                      <span className="text-[12px] text-red-500">{error}</span>
                     </div>
                   ) : null}
-                  <div className="flex flex-wrap items-center gap-2 border-t border-border px-4 pt-2.5 pb-3 md:flex-nowrap md:justify-between">
-                    {/* Metadata group — left side on desktop */}
-                    <div className="flex flex-wrap items-center gap-2 md:min-w-0">
-                      {/* Status */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
-                          {getStatusIcon(status)}
-                          <span>{statusLabel}</span>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent side="top" align="start">
-                          {STATUS_OPTIONS.map((opt) => (
-                            <DropdownMenuItem
-                              key={opt.id}
-                              onClick={() => setStatus(opt.id)}
-                              className={status === opt.id ? "font-medium" : ""}
-                            >
-                              <div className="flex items-center gap-2">
-                                {getStatusIcon(opt.id)}
-                                <span>{opt.label}</span>
-                              </div>
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
 
-                      {/* Priority */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
-                          {getPriorityIcon(priority)}
-                          <span>{priorityLabel}</span>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent side="top" align="start">
-                          {PRIORITY_OPTIONS.map((opt) => (
-                            <DropdownMenuItem
-                              key={opt.id}
-                              onClick={() => setPriority(opt.id)}
-                              className={
-                                priority === opt.id ? "font-medium" : ""
-                              }
-                            >
-                              <div className="flex items-center gap-2">
-                                {getPriorityIcon(opt.id)}
-                                <span>{opt.label}</span>
-                              </div>
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                  {/* Row 1 — Properties strip (floats inside the body, no top border) */}
+                  <div className="flex flex-wrap items-center gap-1.5 px-4 pt-1 pb-3">
+                    {/* Status */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
+                        {getStatusIcon(status)}
+                        <span>{statusLabel}</span>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent side="top" align="start">
+                        {STATUS_OPTIONS.map((opt) => (
+                          <DropdownMenuItem
+                            key={opt.id}
+                            onClick={() => setStatus(opt.id)}
+                            className={status === opt.id ? "font-medium" : ""}
+                          >
+                            <div className="flex items-center gap-2">
+                              {getStatusIcon(opt.id)}
+                              <span>{opt.label}</span>
+                            </div>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
 
-                      {/* Labels */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
-                          {labels.length > 0 ? (
-                            <div className="flex items-center gap-1.5">
-                              <div className="flex -space-x-0.5">
-                                {labels.map((label) => (
-                                  <div
-                                    key={label}
-                                    className="size-2 rounded-full ring-1 ring-background"
-                                    style={{
-                                      backgroundColor:
-                                        labelOptions.find((o) => o.id === label)
-                                          ?.color ?? "#888",
-                                    }}
-                                  />
-                                ))}
-                              </div>
-                              <span>
-                                {labels.length === 1
-                                  ? (labelOptions.find(
-                                      (o) => o.id === labels[0]
-                                    )?.label ?? labels[0])
-                                  : `${labels.length} labels`}
-                              </span>
+                    {/* Priority */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
+                        {getPriorityIcon(priority)}
+                        <span>{priorityLabel}</span>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent side="top" align="start">
+                        {PRIORITY_OPTIONS.map((opt) => (
+                          <DropdownMenuItem
+                            key={opt.id}
+                            onClick={() => setPriority(opt.id)}
+                            className={
+                              priority === opt.id ? "font-medium" : ""
+                            }
+                          >
+                            <div className="flex items-center gap-2">
+                              {getPriorityIcon(opt.id)}
+                              <span>{opt.label}</span>
                             </div>
-                          ) : (
-                            <div className="flex items-center gap-1.5">
-                              <Tag
-                                size={12}
-                                className="text-muted-foreground"
-                              />
-                              <span className="text-muted-foreground">
-                                Labels
-                              </span>
-                            </div>
-                          )}
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          side="top"
-                          align="start"
-                          className="w-auto min-w-[180px]"
-                        >
-                          {labelOptions.map((opt) => (
-                            <DropdownMenuCheckboxItem
-                              key={opt.id}
-                              checked={labels.includes(opt.id)}
-                              onCheckedChange={() => toggleLabel(opt.id)}
-                            >
-                              <span
-                                className="inline-block size-2.5 shrink-0 rounded-full"
-                                style={{ backgroundColor: opt.color }}
-                              />
-                              {opt.label}
-                            </DropdownMenuCheckboxItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
 
-                      {/* Assignees */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
-                          {assignees.length > 0 ? (
-                            <div className="flex items-center gap-1.5">
-                              <AssigneeStack
-                                assignees={assignees}
-                                size={16}
-                              />
-                              <span>
-                                {assignees.length === 1
-                                  ? (assignees[0]?.name ?? "Assignee")
-                                  : `${assignees.length} assignees`}
-                              </span>
+                    {/* Labels */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
+                        {labels.length > 0 ? (
+                          <div className="flex items-center gap-1.5">
+                            <div className="flex -space-x-0.5">
+                              {labels.map((label) => (
+                                <div
+                                  key={label}
+                                  className="size-2 rounded-full ring-1 ring-background"
+                                  style={{
+                                    backgroundColor:
+                                      labelOptions.find((o) => o.id === label)
+                                        ?.color ?? "#888",
+                                  }}
+                                />
+                              ))}
                             </div>
-                          ) : (
-                            <div className="flex items-center gap-1.5">
-                              <Users
-                                size={12}
-                                className="text-muted-foreground"
-                              />
-                              <span className="text-muted-foreground">
-                                Assign
-                              </span>
-                            </div>
-                          )}
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          side="top"
-                          align="start"
-                          className="w-auto p-0"
-                        >
-                          <AssigneePickerContent
-                            workspaceId={currentWorkspace?._id}
-                            assignees={assignees}
-                            onChange={setAssignees}
-                          />
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-
-                    {/* Action group — pinned right via parent's md:justify-between + md:shrink-0 here */}
-                    <div className="flex flex-wrap items-center gap-2 md:shrink-0 md:gap-1.5">
-                      {/* Attach */}
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        multiple
-                        onChange={handleFileSelect}
-                        className="hidden"
-                      />
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={uploading}
-                        title="Attach files"
-                        className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {uploading ? (
-                          <SpinnerGap size={14} className="animate-spin" />
+                            <span>
+                              {labels.length === 1
+                                ? (labelOptions.find(
+                                    (o) => o.id === labels[0]
+                                  )?.label ?? labels[0])
+                                : `${labels.length} labels`}
+                            </span>
+                          </div>
                         ) : (
-                          <Paperclip size={14} />
+                          <div className="flex items-center gap-1.5">
+                            <Tag size={12} className="text-muted-foreground" />
+                            <span className="text-muted-foreground">
+                              Labels
+                            </span>
+                          </div>
                         )}
-                        {uploading ? "Uploading..." : "Attach"}
-                      </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        side="top"
+                        align="start"
+                        className="w-auto min-w-[180px]"
+                      >
+                        {labelOptions.map((opt) => (
+                          <DropdownMenuCheckboxItem
+                            key={opt.id}
+                            checked={labels.includes(opt.id)}
+                            onCheckedChange={() => toggleLabel(opt.id)}
+                          >
+                            <span
+                              className="inline-block size-2.5 shrink-0 rounded-full"
+                              style={{ backgroundColor: opt.color }}
+                            />
+                            {opt.label}
+                          </DropdownMenuCheckboxItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
 
-                      {/* Create more */}
-                      <button
-                        type="button"
-                        onClick={() => setCreateMore(!createMore)}
-                        title="Keep the modal open after creating"
-                        className={`flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent ${
+                    {/* Assignees */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
+                        {assignees.length > 0 ? (
+                          <div className="flex items-center gap-1.5">
+                            <AssigneeStack assignees={assignees} size={16} />
+                            <span>
+                              {assignees.length === 1
+                                ? (assignees[0]?.name ?? "Assignee")
+                                : `${assignees.length} assignees`}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <Users
+                              size={12}
+                              className="text-muted-foreground"
+                            />
+                            <span className="text-muted-foreground">
+                              Assign
+                            </span>
+                          </div>
+                        )}
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        side="top"
+                        align="start"
+                        className="w-auto p-0"
+                      >
+                        <AssigneePickerContent
+                          workspaceId={currentWorkspace?._id}
+                          assignees={assignees}
+                          onChange={setAssignees}
+                        />
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {/* Attach — visually grouped with the rest of the properties */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      multiple
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                      title="Attach files"
+                      className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium whitespace-nowrap text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {uploading ? (
+                        <SpinnerGap size={14} className="animate-spin" />
+                      ) : (
+                        <Paperclip size={14} />
+                      )}
+                      {uploading ? "Uploading..." : "Attach"}
+                    </button>
+                  </div>
+
+                  {/* Row 2 — Action strip (separator above) */}
+                  <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-4 pt-3 pb-3">
+                    {/* Create more — hollow-circle pill, sized to match Create */}
+                    <button
+                      type="button"
+                      onClick={() => setCreateMore(!createMore)}
+                      title="Keep the modal open after creating"
+                      className={`flex items-center gap-1.5 rounded-[8px] px-3.5 py-2 text-[13px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent ${
+                        createMore
+                          ? "text-foreground"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      <span
+                        className={`inline-block size-2.5 rounded-full ring-1 transition-colors ${
                           createMore
-                            ? "text-foreground"
-                            : "text-muted-foreground"
+                            ? "bg-primary ring-primary"
+                            : "ring-border"
                         }`}
-                      >
-                        <span
-                          className={`inline-block size-2.5 rounded-full ring-1 transition-colors ${
-                            createMore
-                              ? "bg-primary ring-primary"
-                              : "ring-border"
-                          }`}
-                        />
-                        Create more
-                      </button>
+                      />
+                      Create more
+                    </button>
 
-                      {/* Create — desktop only; mobile uses the header send button */}
-                      <button
-                        type="button"
-                        onClick={handleCreate}
-                        disabled={!title.trim() || !currentWorkspace}
-                        className="hidden items-center gap-1.5 rounded-[4px] bg-primary px-3 py-1.5 text-[11px] font-medium whitespace-nowrap text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 md:flex"
-                      >
-                        Create
-                        <ArrowRight
-                          size={12}
-                          weight="bold"
-                          className="opacity-70"
-                        />
-                      </button>
-                    </div>
+                    {/* Create — desktop only; mobile uses the header send button */}
+                    <button
+                      type="button"
+                      onClick={handleCreate}
+                      disabled={!title.trim() || !currentWorkspace}
+                      className="hidden items-center gap-1.5 rounded-[8px] bg-primary px-3.5 py-2 text-[13px] font-semibold whitespace-nowrap text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 md:flex"
+                    >
+                      Create
+                      <ArrowRight
+                        size={13}
+                        weight="bold"
+                        className="opacity-80"
+                      />
+                    </button>
                   </div>
                 </div>
               ) : (
@@ -1210,26 +1203,26 @@ export function NewTaskModal({
                 <div>
                   {error ? (
                     <div className="px-5 pt-2">
-                      <span className="text-[11px] text-red-500">{error}</span>
+                      <span className="text-[12px] text-red-500">{error}</span>
                     </div>
                   ) : null}
-                  <div className="hidden items-center justify-end border-t border-border px-4 pt-2.5 pb-3 md:flex">
+                  <div className="hidden items-center justify-end border-t border-border px-4 pt-3 pb-3 md:flex">
                     <button
                       type="button"
                       onClick={handleGenerateTasks}
                       disabled={!aiPrompt.trim() || isGenerating}
-                      className="flex items-center gap-1.5 rounded-[4px] bg-primary px-3 py-1.5 text-[11px] font-medium whitespace-nowrap text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex items-center gap-1.5 rounded-[8px] bg-primary px-3.5 py-2 text-[13px] font-semibold whitespace-nowrap text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {isGenerating ? (
                         <>
-                          <SpinnerGap size={12} className="animate-spin" />
+                          <SpinnerGap size={13} className="animate-spin" />
                           Generating…
                         </>
                       ) : (
                         <>
                           Generate
                           <Sparkle
-                            size={12}
+                            size={13}
                             weight="fill"
                             className="opacity-80"
                           />

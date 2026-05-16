@@ -486,17 +486,17 @@ export function RequestsPage() {
       className="flex h-full min-h-0 flex-1 flex-col overflow-hidden"
     >
       {/* Toolbar — matches the home tab's compact toolbar */}
-      <div className="scrollbar-hide flex shrink-0 items-center gap-1 overflow-x-auto border-b border-border bg-toolbar text-toolbar-foreground px-3 py-2">
+      <div className="scrollbar-hide flex shrink-0 items-center gap-1 overflow-x-auto bg-sidebar text-toolbar-foreground px-3 py-2">
         <div className="flex items-center gap-2 pr-2">
           <Tray size={14} weight="fill" className="text-foreground/80" />
-          <span className="text-[13px] font-semibold tracking-tight">Requests</span>
-          <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[4px] bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
+          <span className="text-[14px] font-semibold tracking-tight">Requests</span>
+          <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[8px] bg-muted px-1.5 text-[11px] font-medium text-muted-foreground">
             {requests.length}
           </span>
         </div>
 
         <div className="ml-auto flex items-center gap-1">
-          <div className="flex h-7 w-[200px] items-center gap-1.5 rounded-[4px] bg-card px-2 ring-1 ring-border focus-within:ring-foreground/30 sm:w-[240px]">
+          <div className="flex h-7 w-[200px] items-center gap-1.5 rounded-[8px] gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card px-2 ring-1 ring-border focus-within:ring-foreground/30 sm:w-[240px]">
             <MagnifyingGlass size={12} className="text-muted-foreground" />
             <input
               ref={searchInputRef}
@@ -504,7 +504,7 @@ export function RequestsPage() {
               placeholder="Search"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-full min-w-0 flex-1 bg-transparent text-[12px] outline-none placeholder:text-muted-foreground"
+              className="h-full min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground"
             />
             {searchTerm ? (
               <button
@@ -514,7 +514,7 @@ export function RequestsPage() {
                 <X size={11} />
               </button>
             ) : (
-              <kbd className="hidden rounded-[3px] border border-border px-1 py-px font-mono text-[10px] text-muted-foreground/60 sm:inline">
+              <kbd className="hidden rounded-[6px] border border-border px-1 py-px font-mono text-[11px] text-muted-foreground/60 sm:inline">
                 /
               </kbd>
             )}
@@ -630,7 +630,7 @@ export function RequestsPage() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
-                className="hidden flex-1 items-center justify-center text-[12px] text-muted-foreground md:flex"
+                className="hidden flex-1 items-center justify-center text-[13px] text-muted-foreground md:flex"
               >
                 Select a request to review
               </motion.div>
@@ -679,7 +679,7 @@ function RequestListItem({
             onSelect()
           }
         }}
-        className={`group relative flex w-full cursor-pointer items-start gap-2 rounded-[6px] border bg-card px-3 py-2.5 pr-2 text-left shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all hover:shadow-[0_2px_6px_rgba(0,0,0,0.08)] ${
+        className={`group relative flex w-full cursor-pointer items-start gap-2 rounded-[10px] border bg-card px-3 py-2.5 pr-2 text-left shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all hover:shadow-[0_2px_6px_rgba(0,0,0,0.08)] ${
           isSelected
             ? "border-foreground/30 bg-accent shadow-[0_2px_6px_rgba(0,0,0,0.08)]"
             : "border-border hover:border-foreground/20"
@@ -700,7 +700,7 @@ function RequestListItem({
               onToggleBulk()
             }
           }}
-          className={`mt-0.5 flex size-3.5 shrink-0 cursor-pointer items-center justify-center rounded-[3px] ring-1 transition-colors ${
+          className={`mt-0.5 flex size-3.5 shrink-0 cursor-pointer items-center justify-center rounded-[6px] ring-1 transition-colors ${
             isBulkSelected
               ? "bg-foreground text-background ring-foreground"
               : "bg-background ring-border opacity-0 group-hover:opacity-100 data-[checked=true]:opacity-100"
@@ -715,10 +715,10 @@ function RequestListItem({
         </span>
 
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <p className="truncate text-[13px] font-medium leading-snug text-foreground">
+          <p className="truncate text-[14px] font-medium leading-snug text-foreground">
             {task.title}
           </p>
-          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
             {dedupedPlatforms.map((platform) => (
               <span key={platform} className="inline-flex">
                 <SourceGlyph platform={platform} size={10} />
@@ -749,7 +749,7 @@ function RequestListItem({
                 e.stopPropagation()
                 onAccept()
               }}
-              className="flex size-5 items-center justify-center rounded-[3px] bg-background text-emerald-600 ring-1 ring-border transition-colors hover:bg-emerald-500/15 hover:text-emerald-600 hover:ring-emerald-500/40 dark:text-emerald-400"
+              className="flex size-5 items-center justify-center rounded-[6px] bg-background text-emerald-600 ring-1 ring-border transition-colors hover:bg-emerald-500/15 hover:text-emerald-600 hover:ring-emerald-500/40 dark:text-emerald-400"
             >
               <CheckCircle size={11} weight="fill" />
             </button>
@@ -760,7 +760,7 @@ function RequestListItem({
                 e.stopPropagation()
                 onDeny()
               }}
-              className="flex size-5 items-center justify-center rounded-[3px] bg-background text-red-600 ring-1 ring-border transition-colors hover:bg-red-500/15 hover:text-red-600 hover:ring-red-500/40 dark:text-red-400"
+              className="flex size-5 items-center justify-center rounded-[6px] bg-background text-red-600 ring-1 ring-border transition-colors hover:bg-red-500/15 hover:text-red-600 hover:ring-red-500/40 dark:text-red-400"
             >
               <XCircle size={11} />
             </button>
@@ -793,12 +793,12 @@ function RequestDetail({
       <div className="flex items-center gap-2 border-b border-border bg-toolbar px-3 py-2 md:hidden">
         <button
           onClick={onBack}
-          className="flex h-7 items-center gap-1.5 rounded-[4px] px-1.5 text-[12px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="flex h-7 items-center gap-1.5 rounded-[8px] px-1.5 text-[13px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <ArrowLeft size={13} />
           Back
         </button>
-        <span className="ml-auto font-mono text-[10px] text-muted-foreground/60">
+        <span className="ml-auto font-mono text-[11px] text-muted-foreground/60">
           {task.taskCode}
         </span>
       </div>
@@ -807,10 +807,10 @@ function RequestDetail({
         {/* Title row */}
         <div className="flex items-start gap-3">
           <div className="flex-1">
-            <h2 className="text-[18px] font-semibold leading-tight tracking-tight text-foreground">
+            <h2 className="text-[19px] font-semibold leading-tight tracking-tight text-foreground">
               {task.title}
             </h2>
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-muted-foreground">
               <span className="hidden font-mono md:inline">{task.taskCode}</span>
               <span>{formatTaskDate(task._creationTime, task.createdAtLabel)}</span>
               <span>
@@ -829,7 +829,7 @@ function RequestDetail({
             {task.labels.map((label) => (
               <span
                 key={label}
-                className="rounded-[4px] bg-muted px-1.5 py-0.5 text-[10px] font-medium capitalize text-muted-foreground"
+                className="rounded-[8px] bg-muted px-1.5 py-0.5 text-[11px] font-medium capitalize text-muted-foreground"
               >
                 {label}
               </span>
@@ -840,7 +840,7 @@ function RequestDetail({
         {/* Sources block */}
         {sources.length > 0 && (
           <section className="mt-5">
-            <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
               Sources
             </h3>
             <ul className="flex flex-col gap-1.5">
@@ -854,19 +854,19 @@ function RequestDetail({
         {/* Description */}
         {task.description && task.description.trim().length > 0 ? (
           <section className="mt-5">
-            <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
               Description
             </h3>
-            <div className="rounded-[4px] bg-card p-3 text-[13px] leading-relaxed whitespace-pre-wrap text-foreground/90 ring-1 ring-border">
+            <div className="rounded-[8px] gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card p-3 text-[14px] leading-relaxed whitespace-pre-wrap text-foreground/90 ring-1 ring-border">
               {task.description}
             </div>
           </section>
         ) : (
           <section className="mt-5">
-            <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
               Description
             </h3>
-            <p className="text-[12px] italic text-muted-foreground">
+            <p className="text-[13px] italic text-muted-foreground">
               No description provided.
             </p>
           </section>
@@ -875,14 +875,14 @@ function RequestDetail({
         {/* Attachments preview (read-only links) */}
         {task.attachments && task.attachments.length > 0 && (
           <section className="mt-5">
-            <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
               Attachments
             </h3>
             <ul className="flex flex-wrap gap-1.5">
               {task.attachments.map((att, idx) => (
                 <li
                   key={`${att.storageId}-${idx}`}
-                  className="flex items-center gap-1.5 rounded-[4px] bg-card px-2 py-1 text-[11px] text-muted-foreground ring-1 ring-border"
+                  className="flex items-center gap-1.5 rounded-[8px] gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card px-2 py-1 text-[12px] text-muted-foreground ring-1 ring-border"
                 >
                   <span className="truncate max-w-[180px]">{att.name}</span>
                 </li>
@@ -897,22 +897,22 @@ function RequestDetail({
         <button
           disabled={!canManageTasks}
           onClick={onDeny}
-          className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-[4px] bg-red-500/10 px-3 text-[12px] font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
+          className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-[8px] bg-red-500/10 px-3 text-[13px] font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
         >
           <XCircle size={13} />
           Deny
-          <kbd className="ml-1 hidden rounded-[3px] border border-red-500/30 px-1 py-px font-mono text-[10px] sm:inline">
+          <kbd className="ml-1 hidden rounded-[6px] border border-red-500/30 px-1 py-px font-mono text-[11px] sm:inline">
             D
           </kbd>
         </button>
         <button
           disabled={!canManageTasks}
           onClick={onAccept}
-          className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-[4px] bg-emerald-500/10 px-3 text-[12px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
+          className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-[8px] bg-emerald-500/10 px-3 text-[13px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
         >
           <CheckCircle size={13} weight="fill" />
           Accept
-          <kbd className="ml-1 hidden rounded-[3px] border border-emerald-500/30 px-1 py-px font-mono text-[10px] sm:inline">
+          <kbd className="ml-1 hidden rounded-[6px] border border-emerald-500/30 px-1 py-px font-mono text-[11px] sm:inline">
             A
           </kbd>
         </button>
@@ -926,21 +926,21 @@ function SourceRow({ source }: { source: TaskSource }) {
   const themeFollowing = THEME_FOLLOWING_SOURCES.has(source.platform)
   const safeUrl = sanitizeExternalUrl(source.url)
   const rowClassName =
-    "flex items-center gap-2 rounded-[4px] bg-card p-2 ring-1 ring-border transition-colors hover:ring-foreground/30"
+    "flex items-center gap-2 rounded-[8px] gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card p-2 ring-1 ring-border transition-colors hover:ring-foreground/30"
   const inner = (
     <>
       <span
-        className={`flex size-7 shrink-0 items-center justify-center rounded-[4px] ${themeFollowing ? "bg-foreground/10" : ""}`}
+        className={`flex size-7 shrink-0 items-center justify-center rounded-[8px] ${themeFollowing ? "bg-foreground/10" : ""}`}
         style={themeFollowing ? undefined : { backgroundColor: cfg.bg }}
       >
         <SourceGlyph platform={source.platform} size={14} />
       </span>
       <div className="flex min-w-0 flex-1 flex-col leading-tight">
-        <span className="text-[12px] font-medium text-foreground">
+        <span className="text-[13px] font-medium text-foreground">
           {cfg.label} · {source.author}
         </span>
         {safeUrl && (
-          <span className="truncate text-[11px] text-muted-foreground">
+          <span className="truncate text-[12px] text-muted-foreground">
             {safeUrl}
           </span>
         )}
@@ -973,12 +973,12 @@ function SourceRow({ source }: { source: TaskSource }) {
 function EmptyState() {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-10 text-center">
-      <div className="flex size-10 items-center justify-center rounded-[6px] bg-muted">
+      <div className="flex size-10 items-center justify-center rounded-[10px] bg-muted">
         <Tray size={18} className="text-muted-foreground" />
       </div>
       <div className="flex flex-col gap-1">
-        <p className="text-[13px] font-medium">All caught up</p>
-        <p className="max-w-[260px] text-[12px] text-muted-foreground">
+        <p className="text-[14px] font-medium">All caught up</p>
+        <p className="max-w-[260px] text-[13px] text-muted-foreground">
           New requests from Discord, Slack, X, Linear, GitHub, the CLI, and API will appear here.
         </p>
       </div>
@@ -994,7 +994,7 @@ function EmptyState() {
 }
 
 const TOOLBAR_BUTTON_BASE =
-  "flex h-7 items-center gap-1.5 rounded-[4px] px-2 text-[12px] font-medium ring-1 transition-colors outline-none"
+  "flex h-7 items-center gap-1.5 rounded-[8px] px-2 text-[13px] font-medium ring-1 transition-colors outline-none"
 const TOOLBAR_BUTTON_INACTIVE =
   "bg-card text-muted-foreground ring-border hover:text-foreground hover:ring-foreground/30"
 const TOOLBAR_BUTTON_ACTIVE =
@@ -1018,7 +1018,7 @@ function FilterMenu({
         <FunnelSimple size={12} />
         <span>Filter</span>
         {filterCount > 0 && (
-          <span className="rounded-[3px] bg-foreground px-1 py-px text-[10px] font-semibold text-background">
+          <span className="rounded-[6px] bg-foreground px-1 py-px text-[11px] font-semibold text-background">
             {filterCount}
           </span>
         )}
@@ -1033,7 +1033,7 @@ function FilterMenu({
                   e.preventDefault()
                   onClearSources()
                 }}
-                className="text-[10px] font-normal text-muted-foreground hover:text-foreground"
+                className="text-[11px] font-normal text-muted-foreground hover:text-foreground"
               >
                 Clear
               </button>
@@ -1051,7 +1051,7 @@ function FilterMenu({
                   e.stopPropagation()
                   onToggleSource(source)
                 }}
-                className="flex w-full items-center gap-2 rounded-[4px] px-1.5 py-1 text-[12px] outline-none hover:bg-accent"
+                className="flex w-full items-center gap-2 rounded-[8px] px-1.5 py-1 text-[13px] outline-none hover:bg-accent"
               >
                 <span className="flex size-3.5 items-center justify-center">
                   {checked ? <Check size={11} /> : null}
@@ -1091,7 +1091,7 @@ function SortMenu({
             onValueChange={(value) => onSortChange(value as SortKey)}
           >
             {(Object.keys(SORT_LABEL) as SortKey[]).map((key) => (
-              <DropdownMenuRadioItem key={key} value={key} className="text-[12px]">
+              <DropdownMenuRadioItem key={key} value={key} className="text-[13px]">
                 {SORT_LABEL[key]}
               </DropdownMenuRadioItem>
             ))}
@@ -1128,15 +1128,15 @@ function BulkActionBar({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 12 }}
           transition={{ duration: 0.18, ease: "easeOut" }}
-          className="scrollbar-hide fixed bottom-6 left-1/2 z-50 flex w-[calc(100%-2rem)] max-w-fit -translate-x-1/2 items-center gap-1.5 overflow-x-auto rounded-[4px] border-2 border-border bg-popover px-3 py-2 shadow-none"
+          className="scrollbar-hide fixed bottom-6 left-1/2 z-50 flex w-[calc(100%-2rem)] max-w-fit -translate-x-1/2 items-center gap-1.5 overflow-x-auto rounded-[8px] border-2 border-border bg-popover px-3 py-2 shadow-none"
         >
           <div className="mr-1 flex items-center gap-2 border-r border-border pr-2">
-            <span className="text-[12px] font-semibold tabular-nums text-foreground">
+            <span className="text-[13px] font-semibold tabular-nums text-foreground">
               {count} selected
             </span>
             <button
               onClick={onClear}
-              className="rounded-[4px] p-0.5 text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
+              className="rounded-[8px] p-0.5 text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
               title="Clear selection"
             >
               <X size={13} />
@@ -1145,7 +1145,7 @@ function BulkActionBar({
           <button
             disabled={!canManageTasks}
             onClick={onAccept}
-            className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[12px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/15 disabled:opacity-50 dark:text-emerald-400"
+            className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[13px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/15 disabled:opacity-50 dark:text-emerald-400"
           >
             <CheckCircle size={13} weight="fill" />
             Accept all
@@ -1153,7 +1153,7 @@ function BulkActionBar({
           <button
             disabled={!canManageTasks}
             onClick={onDeny}
-            className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[12px] font-medium text-red-600 transition-colors hover:bg-red-500/15 disabled:opacity-50 dark:text-red-400"
+            className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[13px] font-medium text-red-600 transition-colors hover:bg-red-500/15 disabled:opacity-50 dark:text-red-400"
           >
             <XCircle size={13} />
             Deny all
@@ -1168,10 +1168,10 @@ function BulkActionBar({
 function NoMatchesState({ onClear }: { onClear: () => void }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-10 text-center">
-      <p className="text-[13px] font-medium">No requests match your filters</p>
+      <p className="text-[14px] font-medium">No requests match your filters</p>
       <button
         onClick={onClear}
-        className="rounded-[4px] bg-card px-2.5 py-1 text-[12px] font-medium ring-1 ring-border transition-colors hover:bg-accent"
+        className="rounded-[8px] gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card px-2.5 py-1 text-[13px] font-medium ring-1 ring-border transition-colors hover:bg-accent"
       >
         Clear filters
       </button>

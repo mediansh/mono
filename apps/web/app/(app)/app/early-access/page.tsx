@@ -134,9 +134,9 @@ export default function EarlyAccessPage() {
           </Link>
         </div>
 
-        <div className="rounded-[4px] bg-card p-5 ring-1 ring-border">
-          <h1 className="text-center text-[15px] font-semibold">Enter your access code</h1>
-          <p className="mt-1 text-center text-[13px] text-muted-foreground">
+        <div className="rounded-[8px] gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card p-5 ring-1 ring-border">
+          <h1 className="text-center text-[16px] font-semibold">Enter your access code</h1>
+          <p className="mt-1 text-center text-[14px] text-muted-foreground">
             Median is in early access. Enter your invite code to continue.
           </p>
 
@@ -156,24 +156,24 @@ export default function EarlyAccessPage() {
                   onChange={(e) => setDigit(i, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(i, e)}
                   onPaste={handlePaste}
-                  className="h-10 w-full rounded-[4px] bg-background text-center text-[14px] font-medium uppercase ring-1 ring-border outline-none transition-all focus:ring-foreground/30"
+                  className="h-10 w-full rounded-[8px] bg-background text-center text-[15px] font-medium uppercase ring-1 ring-border outline-none transition-all focus:ring-foreground/30"
                 />
               ))}
             </div>
 
-            {error && <p className="text-[12px] text-destructive">{error}</p>}
+            {error && <p className="text-[13px] text-destructive">{error}</p>}
 
             <button
               type="submit"
               disabled={loading}
-              className="mt-1 flex h-9 items-center justify-center rounded-[4px] bg-primary text-[13px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+              className="mt-1 flex h-9 items-center justify-center rounded-[8px] bg-primary text-[14px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
             >
               {loading ? <Spinner /> : "Continue"}
             </button>
           </form>
         </div>
 
-        <p className="mt-4 text-center text-[13px] text-muted-foreground">
+        <p className="mt-4 text-center text-[14px] text-muted-foreground">
           Don&apos;t have a code?{" "}
           <button
             type="button"

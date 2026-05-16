@@ -89,7 +89,7 @@ function Section({
     <div className="border-b border-white/10 last:border-b-0">
       <button
         onClick={() => onToggle(id)}
-        className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-white/50 transition-colors hover:text-white/80"
+        className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-semibold uppercase tracking-wider text-white/50 transition-colors hover:text-white/80"
       >
         {isOpen ? <CaretDown size={10} /> : <CaretRight size={10} />}
         <Icon size={12} />
@@ -137,7 +137,7 @@ function Pill({
   return (
     <button
       onClick={onClick}
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 transition-all ${colors[color]}`}
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 transition-all ${colors[color]}`}
     >
       {label}
     </button>
@@ -157,7 +157,7 @@ function ToggleRow({
 }) {
   return (
     <label className="flex cursor-pointer items-center justify-between">
-      <span className="text-[11px] text-white/60">{label}</span>
+      <span className="text-[12px] text-white/60">{label}</span>
       <button
         role="switch"
         aria-checked={value}
@@ -188,7 +188,7 @@ function ActionButton({
   return (
     <button
       onClick={onClick}
-      className={`flex w-full items-center gap-1.5 rounded px-2 py-1 text-[11px] font-medium transition-colors ${
+      className={`flex w-full items-center gap-1.5 rounded px-2 py-1 text-[12px] font-medium transition-colors ${
         variant === "destructive"
           ? "bg-red-500/10 text-red-400 hover:bg-red-500/20"
           : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white/80"
@@ -214,7 +214,7 @@ function CSSVariableRow({ name }: { name: string }) {
 
   return (
     <div className="flex items-center justify-between gap-2">
-      <span className="truncate font-mono text-[10px] text-white/40">{name}</span>
+      <span className="truncate font-mono text-[11px] text-white/40">{name}</span>
       <div className="flex items-center gap-1.5 shrink-0">
         {isColor && (
           <div
@@ -222,7 +222,7 @@ function CSSVariableRow({ name }: { name: string }) {
             style={{ background: `var(${name})` }}
           />
         )}
-        <span className="font-mono text-[10px] text-white/60">{value || "–"}</span>
+        <span className="font-mono text-[11px] text-white/60">{value || "–"}</span>
       </div>
     </div>
   )
@@ -268,11 +268,11 @@ function SelectRow<T extends string>({
 }) {
   return (
     <div className="flex items-center justify-between gap-2">
-      <span className="text-[11px] text-white/60 shrink-0">{label}</span>
+      <span className="text-[12px] text-white/60 shrink-0">{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value as T)}
-        className="min-w-0 flex-1 rounded bg-white/5 pl-1.5 pr-7 py-0.5 text-[10px] text-white/70 ring-1 ring-white/10 outline-none focus:ring-blue-500/50"
+        className="min-w-0 flex-1 rounded bg-white/5 pl-1.5 pr-7 py-0.5 text-[11px] text-white/70 ring-1 ring-white/10 outline-none focus:ring-blue-500/50"
       >
         {options.map((opt) => (
           <option key={opt} value={opt} className="bg-[#1a1a1a] text-white/80">
@@ -299,13 +299,13 @@ function TextInputRow({
 }) {
   return (
     <div className="flex items-center justify-between gap-2">
-      <span className="text-[11px] text-white/60 shrink-0">{label}</span>
+      <span className="text-[12px] text-white/60 shrink-0">{label}</span>
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="min-w-0 flex-1 rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-white/70 ring-1 ring-white/10 outline-none placeholder:text-white/20 focus:ring-blue-500/50"
+        className="min-w-0 flex-1 rounded bg-white/5 px-1.5 py-0.5 text-[11px] text-white/70 ring-1 ring-white/10 outline-none placeholder:text-white/20 focus:ring-blue-500/50"
       />
     </div>
   )
@@ -502,7 +502,7 @@ function TaskInjectorForm({ onClose }: { onClose: () => void }) {
 
       {/* Labels multi-select */}
       <div className="space-y-1">
-        <span className="text-[11px] text-white/60">Labels</span>
+        <span className="text-[12px] text-white/60">Labels</span>
         <div className="flex flex-wrap gap-1">
           {labelPool.map((label) => {
             const active = selectedLabels.includes(label)
@@ -528,14 +528,14 @@ function TaskInjectorForm({ onClose }: { onClose: () => void }) {
       <div className="flex gap-1 pt-1">
         <button
           onClick={handleSubmit}
-          className="flex flex-1 items-center justify-center gap-1 rounded bg-blue-500/20 px-2 py-1 text-[11px] font-medium text-blue-300 ring-1 ring-blue-500/30 transition-colors hover:bg-blue-500/30"
+          className="flex flex-1 items-center justify-center gap-1 rounded bg-blue-500/20 px-2 py-1 text-[12px] font-medium text-blue-300 ring-1 ring-blue-500/30 transition-colors hover:bg-blue-500/30"
         >
           <Plus size={12} />
           Add Task
         </button>
         <button
           onClick={onClose}
-          className="rounded bg-white/5 px-2 py-1 text-[11px] text-white/40 ring-1 ring-white/10 transition-colors hover:bg-white/10"
+          className="rounded bg-white/5 px-2 py-1 text-[12px] text-white/40 ring-1 ring-white/10 transition-colors hover:bg-white/10"
         >
           Cancel
         </button>
@@ -611,8 +611,8 @@ function DevDebugPanelContent() {
           <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/10 bg-[#1a1a1a] px-3 py-2">
             <div className="flex items-center gap-2">
               <Bug size={14} className="text-yellow-400" />
-              <span className="text-[12px] font-semibold text-white/90">Dev Debug</span>
-              <span className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-[9px] text-white/30">
+              <span className="text-[13px] font-semibold text-white/90">Dev Debug</span>
+              <span className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-[10px] text-white/30">
                 {breakpoint} · {windowSize.w}×{windowSize.h}
               </span>
             </div>
@@ -646,14 +646,14 @@ function DevDebugPanelContent() {
                 />
               ))}
             </div>
-            <p className="text-[10px] text-white/30">
-              Resolved: {resolvedTheme} · Hotkey: <kbd className="rounded bg-white/10 px-1 py-0.5 font-mono text-[9px]">D</kbd>
+            <p className="text-[11px] text-white/30">
+              Resolved: {resolvedTheme} · Hotkey: <kbd className="rounded bg-white/10 px-1 py-0.5 font-mono text-[10px]">D</kbd>
             </p>
           </Section>
 
           {/* ── Auth & Roles ────────────────────── */}
           <Section title="Auth & Roles" icon={ShieldCheck} id="roles" expandedSection={debug.expandedSection} onToggle={toggleSection}>
-            <p className="text-[10px] text-white/30 mb-1">Simulate permission level</p>
+            <p className="text-[11px] text-white/30 mb-1">Simulate permission level</p>
             <div className="flex flex-wrap gap-1">
               {(["owner", "admin", "member", "guest", null] as SimulatedRole[]).map((role) => (
                 <Pill
@@ -716,7 +716,7 @@ function DevDebugPanelContent() {
             <TaskInjectorForm onClose={() => toggleSection("tasks")} />
 
             <div className="border-t border-white/10 pt-2 mt-2 space-y-1">
-              <p className="text-[10px] text-white/30 mb-1">Quick inject</p>
+              <p className="text-[11px] text-white/30 mb-1">Quick inject</p>
               <div className="grid grid-cols-2 gap-1">
                 <ActionButton label="Random task" icon={Shuffle} onClick={() => injectTask(generateMockTask({}))} />
                 <ActionButton label="+5 random" icon={Shuffle} onClick={() => injectBulkTasks(5)} />
@@ -724,7 +724,7 @@ function DevDebugPanelContent() {
                 <ActionButton label="+25 random" icon={Shuffle} onClick={() => injectBulkTasks(25)} />
               </div>
 
-              <p className="text-[10px] text-white/30 mt-2 mb-1">By status (1 each)</p>
+              <p className="text-[11px] text-white/30 mt-2 mb-1">By status (1 each)</p>
               <div className="flex flex-wrap gap-1">
                 {TASK_STATUSES.map((s) => (
                   <Pill
@@ -737,7 +737,7 @@ function DevDebugPanelContent() {
                 ))}
               </div>
 
-              <p className="text-[10px] text-white/30 mt-2 mb-1">By priority (1 each)</p>
+              <p className="text-[11px] text-white/30 mt-2 mb-1">By priority (1 each)</p>
               <div className="flex flex-wrap gap-1">
                 {TASK_PRIORITIES.map((p) => (
                   <Pill
@@ -750,7 +750,7 @@ function DevDebugPanelContent() {
                 ))}
               </div>
 
-              <p className="text-[10px] text-white/30 mt-2 mb-1">By source (1 each)</p>
+              <p className="text-[11px] text-white/30 mt-2 mb-1">By source (1 each)</p>
               <div className="flex flex-wrap gap-1">
                 {REQUEST_SOURCES.map((src) => (
                   <Pill
@@ -763,7 +763,7 @@ function DevDebugPanelContent() {
                 ))}
               </div>
 
-              <p className="text-[10px] text-white/30 mt-2 mb-1">Presets</p>
+              <p className="text-[11px] text-white/30 mt-2 mb-1">Presets</p>
               <div className="grid grid-cols-1 gap-1">
                 <ActionButton label="Full board (all columns)" icon={ListPlus} onClick={() => {
                   const store = getLocalFirstStoreSnapshot()
@@ -841,7 +841,7 @@ function DevDebugPanelContent() {
                 />
               ))}
             </div>
-            <p className="text-[10px] text-white/30">
+            <p className="text-[11px] text-white/30">
               {debug.networkState === "slow"
                 ? "Adds 2s delay to fetch/XHR"
                 : debug.networkState === "offline"
@@ -898,7 +898,7 @@ function DevDebugPanelContent() {
                       toast.info(`Viewport → ${w}px`)
                     }
                   }}
-                  className="rounded bg-white/5 px-1 py-0.5 text-center font-mono text-[9px] text-white/40 ring-1 ring-white/10 transition-colors hover:bg-white/10 hover:text-white/60"
+                  className="rounded bg-white/5 px-1 py-0.5 text-center font-mono text-[10px] text-white/40 ring-1 ring-white/10 transition-colors hover:bg-white/10 hover:text-white/60"
                 >
                   {w === 0 ? "Reset" : w}
                 </button>
@@ -1002,7 +1002,7 @@ export function DevDebugPanel() {
       <DevDebugPanelContent />
       <motion.button
         onClick={toggleDevPanel}
-        className="fixed bottom-3 right-3 z-[99999] flex items-center gap-1.5 rounded-lg border border-white/10 bg-[#1a1a1a] px-2.5 py-1.5 text-[11px] font-medium text-white/60 shadow-lg shadow-black/30 transition-colors hover:border-white/20 hover:text-white/90"
+        className="fixed bottom-3 right-3 z-[99999] flex items-center gap-1.5 rounded-lg border border-white/10 bg-[#1a1a1a] px-2.5 py-1.5 text-[12px] font-medium text-white/60 shadow-lg shadow-black/30 transition-colors hover:border-white/20 hover:text-white/90"
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
       >
@@ -1010,7 +1010,7 @@ export function DevDebugPanel() {
         {hasOverrides && (
           <span className="h-1.5 w-1.5 rounded-full bg-yellow-400" />
         )}
-        <span className="font-mono text-[9px] text-white/30">⌃⇧D</span>
+        <span className="font-mono text-[10px] text-white/30">⌃⇧D</span>
       </motion.button>
     </>,
     document.body

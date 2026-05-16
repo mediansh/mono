@@ -77,7 +77,7 @@ export default function SignUpPage() {
     }
   }
 
-  const inputClass = "h-9 rounded-[4px] bg-background px-3 text-[13px] ring-1 ring-border outline-none transition-all placeholder:text-muted-foreground focus:ring-foreground/30"
+  const inputClass = "h-9 rounded-[8px] bg-background px-3 text-[14px] ring-1 ring-border outline-none transition-all placeholder:text-muted-foreground focus:ring-foreground/30"
 
   return (
     <div className="flex min-h-svh items-center justify-center bg-background p-4">
@@ -95,11 +95,11 @@ export default function SignUpPage() {
         </div>
 
         {/* Card */}
-        <div className="rounded-[4px] bg-card p-5 ring-1 ring-border">
+        <div className="rounded-[8px] gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card p-5 ring-1 ring-border">
           {stage === "initial" && (
             <>
-              <h1 className="text-center text-[15px] font-semibold">Create your account</h1>
-              <p className="mt-1 text-center text-[13px] text-muted-foreground">
+              <h1 className="text-center text-[16px] font-semibold">Create your account</h1>
+              <p className="mt-1 text-center text-[14px] text-muted-foreground">
                 Get started with Median
               </p>
 
@@ -109,7 +109,7 @@ export default function SignUpPage() {
                   type="button"
                   disabled={!!ssoLoading}
                   onClick={() => handleOAuth("oauth_github")}
-                  className="flex h-9 flex-1 items-center justify-center gap-2 rounded-[4px] bg-background text-[13px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:opacity-50"
+                  className="flex h-9 flex-1 items-center justify-center gap-2 rounded-[8px] bg-background text-[14px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:opacity-50"
                 >
                   {ssoLoading === "oauth_github" ? <Spinner /> : (
                     <svg className="size-4" viewBox="0 0 24 24" fill="currentColor">
@@ -121,7 +121,7 @@ export default function SignUpPage() {
                   type="button"
                   disabled={!!ssoLoading}
                   onClick={() => handleOAuth("oauth_google")}
-                  className="flex h-9 flex-1 items-center justify-center gap-2 rounded-[4px] bg-background text-[13px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:opacity-50"
+                  className="flex h-9 flex-1 items-center justify-center gap-2 rounded-[8px] bg-background text-[14px] font-medium ring-1 ring-border transition-colors hover:bg-accent disabled:opacity-50"
                 >
                   {ssoLoading === "oauth_google" ? <Spinner /> : (
                     <svg className="size-4" viewBox="0 0 24 24">
@@ -140,7 +140,7 @@ export default function SignUpPage() {
                   <div className="w-full border-t border-border" />
                 </div>
                 <div className="relative flex justify-center">
-                  <span className="bg-card px-2 text-[11px] text-muted-foreground">or continue with email</span>
+                  <span className="bg-card px-2 text-[12px] text-muted-foreground">or continue with email</span>
                 </div>
               </div>
 
@@ -148,30 +148,30 @@ export default function SignUpPage() {
               <form onSubmit={handleEmailSignUp} className="flex flex-col gap-3">
                 <div className="grid grid-cols-2 gap-2">
                   <div className="flex flex-col gap-1">
-                    <label htmlFor="first-name" className="text-[13px] font-medium">First name</label>
+                    <label htmlFor="first-name" className="text-[14px] font-medium">First name</label>
                     <input id="first-name" type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="John" className={inputClass} />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label htmlFor="last-name" className="text-[13px] font-medium">Last name</label>
+                    <label htmlFor="last-name" className="text-[14px] font-medium">Last name</label>
                     <input id="last-name" type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Doe" className={inputClass} />
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label htmlFor="email" className="text-[13px] font-medium">Email</label>
+                  <label htmlFor="email" className="text-[14px] font-medium">Email</label>
                   <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required className={inputClass} />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label htmlFor="password" className="text-[13px] font-medium">Password</label>
+                  <label htmlFor="password" className="text-[14px] font-medium">Password</label>
                   <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Create a password" required className={inputClass} />
                 </div>
 
                 <div id="clerk-captcha" />
-                {error && <p className="text-[12px] text-destructive">{error}</p>}
+                {error && <p className="text-[13px] text-destructive">{error}</p>}
 
                 <button
                   type="submit"
                   disabled={loading}
-                  className="mt-1 flex h-9 items-center justify-center rounded-[4px] bg-primary text-[13px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+                  className="mt-1 flex h-9 items-center justify-center rounded-[8px] bg-primary text-[14px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                 >
                   {loading ? <Spinner /> : "Create account"}
                 </button>
@@ -181,8 +181,8 @@ export default function SignUpPage() {
 
           {stage === "verify" && (
             <>
-              <h1 className="text-center text-[15px] font-semibold">Verify your email</h1>
-              <p className="mt-1 text-center text-[13px] text-muted-foreground">
+              <h1 className="text-center text-[16px] font-semibold">Verify your email</h1>
+              <p className="mt-1 text-center text-[14px] text-muted-foreground">
                 Code sent to <span className="font-medium text-foreground">{email}</span>
               </p>
               <form onSubmit={handleVerify} className="mt-5 flex flex-col gap-3">
@@ -194,14 +194,14 @@ export default function SignUpPage() {
                   onChange={(e) => setCode(e.target.value)}
                   placeholder="6-digit code"
                   required
-                  className="h-9 rounded-[4px] bg-background px-3 text-center text-[13px] tracking-widest ring-1 ring-border outline-none transition-all placeholder:text-muted-foreground placeholder:tracking-normal focus:ring-foreground/30"
+                  className="h-9 rounded-[8px] bg-background px-3 text-center text-[14px] tracking-widest ring-1 ring-border outline-none transition-all placeholder:text-muted-foreground placeholder:tracking-normal focus:ring-foreground/30"
                 />
-                {error && <p className="text-[12px] text-destructive">{error}</p>}
-                <button type="submit" disabled={loading} className="flex h-9 items-center justify-center rounded-[4px] bg-primary text-[13px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50">
+                {error && <p className="text-[13px] text-destructive">{error}</p>}
+                <button type="submit" disabled={loading} className="flex h-9 items-center justify-center rounded-[8px] bg-primary text-[14px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50">
                   {loading ? <Spinner /> : "Verify email"}
                 </button>
               </form>
-              <button type="button" onClick={() => { setStage("initial"); setError("") }} className="mt-3 w-full text-center text-[12px] text-muted-foreground transition-colors hover:text-foreground">
+              <button type="button" onClick={() => { setStage("initial"); setError("") }} className="mt-3 w-full text-center text-[13px] text-muted-foreground transition-colors hover:text-foreground">
                 Back to sign up
               </button>
             </>
@@ -209,7 +209,7 @@ export default function SignUpPage() {
         </div>
 
         {/* Footer */}
-        <p className="mt-4 text-center text-[13px] text-muted-foreground">
+        <p className="mt-4 text-center text-[14px] text-muted-foreground">
           Already have an account?{" "}
           <Link href="/sign-in" className="font-medium text-foreground underline-offset-4 hover:underline">Sign in</Link>
         </p>

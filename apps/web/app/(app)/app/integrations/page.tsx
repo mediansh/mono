@@ -87,7 +87,7 @@ export default function IntegrationsPage() {
     >
       <motion.div variants={fadeUp}>
         <h1 className="text-lg font-semibold">Integrations</h1>
-        <p className="mt-1 text-[13px] text-muted-foreground">
+        <p className="mt-1 text-[14px] text-muted-foreground">
           Connect your workspace to the tools you already use.
         </p>
       </motion.div>
@@ -95,14 +95,14 @@ export default function IntegrationsPage() {
       {eventsPaused && (
         <motion.div
           variants={fadeUp}
-          className="mt-5 flex items-start gap-2.5 rounded-[4px] bg-amber-500/5 p-3 ring-1 ring-amber-500/20"
+          className="mt-5 flex items-start gap-2.5 rounded-[8px] bg-amber-500/5 p-3 ring-1 ring-amber-500/20"
         >
           <Warning size={14} weight="fill" className="mt-0.5 shrink-0 text-amber-500" />
           <div className="min-w-0 flex-1">
-            <p className="text-[12px] font-medium text-foreground">
+            <p className="text-[13px] font-medium text-foreground">
               Ingest paused — you&apos;re out of credits
             </p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
+            <p className="mt-0.5 text-[12px] text-muted-foreground">
               Discord scanning, Slack, Linear, GitHub, and X webhooks are paused
               because this workspace has exhausted its credits and overages are
               disabled.{" "}
@@ -135,14 +135,14 @@ export default function IntegrationsPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-[13px] font-medium">{item.label}</p>
+                  <p className="text-[14px] font-medium">{item.label}</p>
                   {showPaused && (
-                    <span className="shrink-0 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 ring-1 ring-amber-500/20">
+                    <span className="shrink-0 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-medium text-amber-600 ring-1 ring-amber-500/20">
                       Paused
                     </span>
                   )}
                 </div>
-                <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
+                <p className="mt-0.5 text-[13px] leading-relaxed text-muted-foreground">
                   {item.description}
                 </p>
               </div>

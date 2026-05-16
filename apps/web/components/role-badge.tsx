@@ -14,7 +14,7 @@ export function RoleBadge({ role, className }: { role: string; className?: strin
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium",
+        "inline-flex items-center rounded-full border px-2.5 py-1 text-[12px] font-medium",
         roleClassNames[role] ?? roleClassNames.guest,
         className
       )}

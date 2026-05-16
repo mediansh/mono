@@ -21,12 +21,12 @@ export function ThemeSwitcher() {
   if (!mounted) return null
 
   return (
-    <div className="border-navbar-foreground/10 inline-flex items-center gap-0.5 rounded-[4px] border p-0.5">
+    <div className="border-navbar-foreground/10 inline-flex items-center gap-0.5 rounded-[8px] border p-0.5">
       {themes.map(({ value, icon: Icon }) => (
         <button
           key={value}
           onClick={() => setTheme(value)}
-          className={`rounded-[4px] p-1.5 transition-colors ${
+          className={`rounded-[8px] p-1.5 transition-colors ${
             theme === value
               ? "bg-navbar-foreground/10 text-navbar-foreground"
               : "text-navbar-foreground/40 hover:text-navbar-foreground/70"

@@ -40,6 +40,11 @@ const MentionWithMarkdown = Mention.extend({
 import { useQuery } from "convex/react"
 import { PaperPlaneRight } from "@phosphor-icons/react"
 import { cn } from "@workspace/ui/lib/utils"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@workspace/ui/components/tooltip"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
 import { AssigneeAvatar } from "@/components/assignee-picker"
@@ -75,16 +80,16 @@ type SuggestionState = {
 }
 
 const editorContentClass = cn(
-  "min-h-[64px] max-w-none px-3 py-2 text-[13px] leading-relaxed text-foreground focus:outline-none",
+  "min-h-[20px] max-w-[100%] max-h-[140px] overflow-y-auto text-[13.5px] leading-relaxed text-foreground focus:outline-none",
   "[&_p]:my-1 [&_p]:leading-relaxed",
-  "[&_h1]:my-2 [&_h1]:text-[16px] [&_h1]:font-semibold",
-  "[&_h2]:my-2 [&_h2]:text-[14px] [&_h2]:font-semibold",
-  "[&_h3]:my-1 [&_h3]:text-[13px] [&_h3]:font-semibold",
+  "[&_h1]:my-2 [&_h1]:text-[17px] [&_h1]:font-semibold",
+  "[&_h2]:my-2 [&_h2]:text-[15px] [&_h2]:font-semibold",
+  "[&_h3]:my-1 [&_h3]:text-[14px] [&_h3]:font-semibold",
   "[&_strong]:font-semibold",
   "[&_em]:italic",
   "[&_s]:line-through",
-  "[&_code]:rounded-[3px] [&_code]:bg-sidebar-accent [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[12px]",
-  "[&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-[6px] [&_pre]:bg-sidebar-accent [&_pre]:p-2 [&_pre]:font-mono [&_pre]:text-[12px]",
+  "[&_code]:rounded-[6px] [&_code]:bg-sidebar-accent [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[13px]",
+  "[&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-[10px] [&_pre]:bg-sidebar-accent [&_pre]:p-2 [&_pre]:font-mono [&_pre]:text-[13px]",
   "[&_pre_code]:bg-transparent [&_pre_code]:p-0",
   "[&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2",
   "[&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5",
@@ -183,7 +188,7 @@ export const TaskCommentComposer = forwardRef<CommentComposerHandle, Props>(
           MentionWithMarkdown.configure({
             HTMLAttributes: {
               class:
-                "mention-chip inline-flex items-center rounded-[4px] bg-primary/10 px-1 py-px text-[12px] font-medium text-primary",
+                "mention-chip inline-flex items-center rounded-[8px] bg-primary/10 px-1 py-px text-[13px] font-medium text-primary",
             },
             renderHTML({ options, node }) {
               return [
@@ -373,47 +378,60 @@ export const TaskCommentComposer = forwardRef<CommentComposerHandle, Props>(
       }
     }
 
+    const isEditMode = onCancel !== undefined
+
     return (
       <div className="relative">
         <div
           className={cn(
-            "overflow-hidden rounded-[6px] border border-sidebar-border bg-background",
+            "group/composer flex items-center gap-1 rounded-[20px] border border-sidebar-border bg-muted/40 py-1 px-3 transition-colors focus-within:border-ring/40 focus-within:bg-background",
             disabled && "opacity-60"
           )}
           onKeyDown={onKeyDown}
         >
-          <div ref={hostRef} />
-          <div className="flex items-center justify-between gap-2 border-t border-sidebar-border bg-sidebar/40 px-2 py-1.5">
-            <span className="text-[10.5px] text-muted-foreground">
-              {submitError ?? "Markdown supported · ⌘↵ to send · @ to mention"}
-            </span>
-            <div className="flex items-center gap-1">
-              {onCancel ? (
-                <button
-                  type="button"
-                  onClick={onCancel}
-                  className="rounded-[4px] px-2 py-1 text-[11.5px] text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-                >
-                  Cancel
-                </button>
-              ) : null}
+          <div ref={hostRef} className="min-w-0 flex-1" />
+          <div className="flex shrink-0 items-center gap-1">
+            {onCancel ? (
               <button
                 type="button"
-                onClick={() => {
-                  void handleSubmit()
-                }}
-                disabled={disabled || isEmpty || isSubmitting}
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-[4px] bg-primary px-2 py-1 text-[11.5px] font-medium text-primary-foreground",
-                  "hover:opacity-90 disabled:pointer-events-none disabled:opacity-40"
-                )}
+                onClick={onCancel}
+                className="inline-flex h-7 items-center rounded-full px-2 text-[11.5px] text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
               >
-                <PaperPlaneRight size={11} weight="fill" />
-                {submitLabel}
+                Cancel
               </button>
-            </div>
+            ) : null}
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleSubmit()
+                    }}
+                    disabled={disabled || isEmpty || isSubmitting}
+                    aria-label={submitLabel}
+                    className={cn(
+                      "inline-flex h-7 items-center justify-center gap-1 rounded-full bg-primary text-primary-foreground transition-all",
+                      isEditMode ? "px-2.5 text-[11.5px] font-medium" : "w-7",
+                      "hover:opacity-90 disabled:pointer-events-none disabled:opacity-40"
+                    )}
+                  />
+                }
+              >
+                <PaperPlaneRight size={12} weight="fill" />
+                {isEditMode ? <span>{submitLabel}</span> : null}
+              </TooltipTrigger>
+              <TooltipContent side="top" align="end">
+                ⌘↵ to send · @ to mention · Markdown supported
+              </TooltipContent>
+            </Tooltip>
           </div>
         </div>
+        {submitError ? (
+          <p className="mt-1 px-2 text-[10.5px] text-destructive">
+            {submitError}
+          </p>
+        ) : null}
         <MentionSuggestionDropdown
           state={suggestion}
           members={filteredMembers}
@@ -445,16 +463,32 @@ function MentionSuggestionDropdown({
   if (!state.visible || !state.rect) return null
   if (members.length === 0) return null
 
-  const top = state.rect.bottom + 4
-  const left = state.rect.left
+  const DROPDOWN_MAX_HEIGHT = 240
+  const viewportHeight =
+    typeof window !== "undefined" ? window.innerHeight : 1000
+  const spaceBelow = viewportHeight - state.rect.bottom
+  const placeAbove =
+    spaceBelow < DROPDOWN_MAX_HEIGHT + 8 && state.rect.top > spaceBelow
+
+  const positionStyle: React.CSSProperties = placeAbove
+    ? {
+        bottom: viewportHeight - state.rect.top + 4,
+        left: state.rect.left,
+        maxHeight: Math.max(120, state.rect.top - 12),
+      }
+    : {
+        top: state.rect.bottom + 4,
+        left: state.rect.left,
+        maxHeight: Math.max(120, spaceBelow - 12),
+      }
 
   return createPortal(
     <div
-      className="fixed z-[1000] w-[220px] overflow-hidden rounded-[6px] border border-border bg-popover shadow-lg"
-      style={{ top, left }}
+      className="fixed z-[1000] flex w-[220px] flex-col overflow-hidden rounded-[10px] border border-border bg-popover shadow-lg"
+      style={positionStyle}
       role="listbox"
     >
-      <div className="max-h-[240px] overflow-y-auto py-1">
+      <div className="min-h-0 flex-1 overflow-y-auto py-1">
         {members.map((m, idx) => {
           const active = idx === activeIndex
           return (
@@ -469,7 +503,7 @@ function MentionSuggestionDropdown({
               }}
               onMouseEnter={() => onHover(idx)}
               className={cn(
-                "flex w-full items-center gap-2 px-2 py-1.5 text-left text-[12px]",
+                "flex w-full items-center gap-2 px-2 py-1.5 text-left text-[13px]",
                 active ? "bg-accent text-foreground" : "text-foreground/90"
               )}
             >

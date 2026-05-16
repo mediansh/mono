@@ -59,7 +59,7 @@ export function ChannelMultiSelect({
   if (channels.length === 0) {
     return (
       <div className="px-3.5 py-3">
-        <div className="flex items-center gap-2 text-[11px] text-muted-foreground/60">
+        <div className="flex items-center gap-2 text-[12px] text-muted-foreground/60">
           <SpinnerGap size={14} className="animate-spin" />
           {loadingLabel}
         </div>
@@ -82,14 +82,14 @@ export function ChannelMultiSelect({
 
       <div className="max-h-56 overflow-y-auto px-1.5 py-1.5">
         {filteredChannels.length === 0 ? (
-          <p className="px-3 py-2 text-[11px] text-muted-foreground/50">
+          <p className="px-3 py-2 text-[12px] text-muted-foreground/50">
             No channels match &ldquo;{search}&rdquo;
           </p>
         ) : (
           groupedChannels.map(([groupName, groupChannels]) => (
             <div key={groupName || "__ungrouped"}>
               {groupByParent && groupName ? (
-                <div className="mb-0.5 mt-1.5 px-2.5 pt-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40 first:mt-0">
+                <div className="mb-0.5 mt-1.5 px-2.5 pt-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/40 first:mt-0">
                   {groupName}
                 </div>
               ) : null}
@@ -100,10 +100,10 @@ export function ChannelMultiSelect({
                     key={channel.id}
                     type="button"
                     onClick={() => onToggleChannel(channel.id)}
-                    className="flex w-full items-center gap-2.5 rounded-sm px-2.5 py-1.5 text-left text-[12px] transition-colors hover:bg-muted/50"
+                    className="flex w-full items-center gap-2.5 rounded-sm px-2.5 py-1.5 text-left text-[13px] transition-colors hover:bg-muted/50"
                   >
                     <span
-                      className={`flex size-3.5 shrink-0 items-center justify-center rounded-[3px] border transition-colors ${
+                      className={`flex size-3.5 shrink-0 items-center justify-center rounded-[6px] border transition-colors ${
                         isSelected
                           ? "border-foreground bg-foreground"
                           : "border-muted-foreground/30"
@@ -130,7 +130,7 @@ export function ChannelMultiSelect({
       </div>
 
       <div className="border-t border-border px-3.5 py-1.5">
-        <p className="text-[11px] text-muted-foreground/60">
+        <p className="text-[12px] text-muted-foreground/60">
           {selectedChannelIds.length > 0
             ? selectedCountLabel(selectedChannelIds.length)
             : emptySelectionLabel}

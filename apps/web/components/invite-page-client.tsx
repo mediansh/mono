@@ -46,9 +46,9 @@ export function InvitePageClient({ token }: { token: string }) {
         initial={{ opacity: 0, y: 16, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-        className="mx-auto flex w-full max-w-xl flex-col gap-6 rounded-[4px] border-2 border-border bg-background p-8 shadow-none"
+        className="mx-auto flex w-full max-w-xl flex-col gap-6 rounded-[8px] border-2 border-border bg-background p-8 shadow-none"
       >
-        <div className="flex size-14 items-center justify-center rounded-[4px] border border-border bg-accent">
+        <div className="flex size-14 items-center justify-center rounded-[8px] border border-border bg-accent">
           <Users
             size={24}
             className="text-foreground"
@@ -71,7 +71,7 @@ export function InvitePageClient({ token }: { token: string }) {
             </p>
             <Link
               href="/"
-              className="inline-flex h-10 items-center justify-center rounded-[4px] border border-border px-4 text-sm font-medium transition-colors hover:bg-accent"
+              className="inline-flex h-10 items-center justify-center rounded-[8px] border border-border px-4 text-sm font-medium transition-colors hover:bg-accent"
             >
               Back to home
             </Link>
@@ -98,7 +98,7 @@ export function InvitePageClient({ token }: { token: string }) {
               </p>
             </div>
 
-            <div className="grid gap-3 rounded-[4px] border border-border/80 bg-muted/30 p-4">
+            <div className="grid gap-3 rounded-[8px] border border-border/80 bg-muted/30 p-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Permissions</span>
                 <SealCheck
@@ -121,7 +121,7 @@ export function InvitePageClient({ token }: { token: string }) {
                 type="button"
                 disabled={accepting}
                 onClick={handleAcceptInvite}
-                className="flex h-11 items-center justify-center gap-2 rounded-[4px] bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
+                className="flex h-11 items-center justify-center gap-2 rounded-[8px] bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
               >
                 <LinkIcon size={16} />
                 {accepting ? "Joining..." : "Accept invite"}
@@ -129,7 +129,7 @@ export function InvitePageClient({ token }: { token: string }) {
             ) : (
               <Link
                 href={authRedirect}
-                className="flex h-11 items-center justify-center gap-2 rounded-[4px] bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                className="flex h-11 items-center justify-center gap-2 rounded-[8px] bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
               >
                 <LinkIcon size={16} />
                 Sign in to accept

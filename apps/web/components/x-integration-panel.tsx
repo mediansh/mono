@@ -214,15 +214,15 @@ export function XIntegrationPanel() {
       <Stagger className="mx-auto w-full max-w-lg px-6 py-6">
         <div className="flex flex-col gap-3">
           <motion.div variants={fadeUp}>
-            <h2 className="text-[14px] font-semibold tracking-tight">X (Twitter)</h2>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">
+            <h2 className="text-[15px] font-semibold tracking-tight">X (Twitter)</h2>
+            <p className="mt-0.5 text-[13px] text-muted-foreground">
               Manage the X account connected to this workspace.
             </p>
           </motion.div>
 
-          <motion.div variants={fadeUp} className="rounded-[4px] ring-1 ring-border bg-card">
+          <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card">
             <div className="flex items-center gap-3 p-3.5">
-              <div className="flex size-8 items-center justify-center overflow-hidden rounded-[4px] bg-foreground/5">
+              <div className="flex size-8 items-center justify-center overflow-hidden rounded-[8px] bg-foreground/5">
                 {integration.profileImageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -235,21 +235,21 @@ export function XIntegrationPanel() {
                 )}
               </div>
               <div className="flex-1">
-                <h3 className="text-[13px] font-medium">
+                <h3 className="text-[14px] font-medium">
                   {integration.name ?? `@${integration.username}`}
                 </h3>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-[12px] text-muted-foreground">
                   @{integration.username} connected {formatTimestamp(integration.connectedAt)}
                 </p>
               </div>
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-600">
+              <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-emerald-600">
                 <span className="size-1.5 bg-emerald-500" />
                 Connected
               </span>
             </div>
 
             <div className="flex items-center justify-between border-t border-border bg-muted/30 px-3.5 py-2">
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-[12px] text-muted-foreground">
                 Median is watching mentions and replies for {workspace.name}.
               </p>
               <Button type="button" variant="destructive" size="sm" onClick={() => setDisconnectOpen(true)}>
@@ -259,12 +259,12 @@ export function XIntegrationPanel() {
             </div>
           </motion.div>
 
-          <motion.div variants={fadeUp} className="rounded-[4px] ring-1 ring-border bg-card">
+          <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card">
             <div className="flex items-center gap-3 border-b border-border px-3.5 py-2.5">
               <HugeiconsIcon icon={TextIcon} size={15} strokeWidth={1.8} className="text-muted-foreground" />
               <div className="flex-1">
-                <h3 className="text-[13px] font-medium">Additional context</h3>
-                <p className="text-[11px] text-muted-foreground">
+                <h3 className="text-[14px] font-medium">Additional context</h3>
+                <p className="text-[12px] text-muted-foreground">
                   Describe your product so the AI can better interpret incoming X feedback.
                 </p>
               </div>
@@ -275,9 +275,9 @@ export function XIntegrationPanel() {
                 onChange={handleContextChange}
                 placeholder="e.g. Median is a project management tool for small teams. Common feedback themes include task management workflows, collaboration handoffs, and integration pain points..."
                 rows={4}
-                className="resize-none text-[13px]"
+                className="resize-none text-[14px]"
               />
-              <p className="mt-2 text-[11px] text-muted-foreground/60">
+              <p className="mt-2 text-[12px] text-muted-foreground/60">
                 This context is used when Median classifies mentions and replies into request tasks. Changes save automatically.
               </p>
             </div>
@@ -312,20 +312,20 @@ export function XIntegrationPanel() {
     <Stagger className="mx-auto w-full max-w-lg px-6 py-6">
       <div className="flex flex-col gap-3">
         <motion.div variants={fadeUp}>
-          <h2 className="text-[14px] font-semibold tracking-tight">X (Twitter)</h2>
-          <p className="mt-0.5 text-[12px] text-muted-foreground">
+          <h2 className="text-[15px] font-semibold tracking-tight">X (Twitter)</h2>
+          <p className="mt-0.5 text-[13px] text-muted-foreground">
             Connect an X account and turn mentions or replies into request tasks automatically.
           </p>
         </motion.div>
 
-        <motion.div variants={fadeUp} className="rounded-[4px] ring-1 ring-border bg-card">
+        <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card">
           <div className="flex items-center gap-3 p-3.5">
-            <div className="flex size-8 items-center justify-center rounded-[4px] bg-foreground/5">
+            <div className="flex size-8 items-center justify-center rounded-[8px] bg-foreground/5">
               <XBrandIcon size={20} className="text-foreground" />
             </div>
             <div className="flex-1">
-              <h3 className="text-[13px] font-medium">Not connected</h3>
-              <p className="text-[11px] text-muted-foreground">
+              <h3 className="text-[14px] font-medium">Not connected</h3>
+              <p className="text-[12px] text-muted-foreground">
                 Authorize an X account to start collecting feedback for this workspace.
               </p>
             </div>
@@ -336,17 +336,17 @@ export function XIntegrationPanel() {
           </div>
 
           <div className="border-t border-border bg-muted/30 px-3.5 py-2">
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[12px] text-muted-foreground">
               Median will subscribe to inbound mentions and replies on the connected account.
             </p>
           </div>
         </motion.div>
 
-        <motion.div variants={fadeUp} className="flex items-start gap-3 rounded-[4px] ring-1 ring-border bg-card px-3.5 py-3">
+        <motion.div variants={fadeUp} className="flex items-start gap-3 rounded-[8px] ring-1 ring-border gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card px-3.5 py-3">
           <HugeiconsIcon icon={InformationCircleIcon} size={16} strokeWidth={1.8} className="mt-0.5 shrink-0 text-muted-foreground" />
           <div>
-            <p className="text-[13px] font-medium text-foreground">Use your brand account</p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
+            <p className="text-[14px] font-medium text-foreground">Use your brand account</p>
+            <p className="mt-0.5 text-[12px] text-muted-foreground">
               When authorizing, sign in with your company or product account on X &mdash; not a personal one.
               Median monitors mentions and replies directed at the connected account, so it should be the
               account your customers interact with.

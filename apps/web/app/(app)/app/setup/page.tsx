@@ -134,11 +134,11 @@ export default function WorkspaceSetupPage() {
           <Logo symbolOnly className="size-9" />
         </div>
 
-        <div className="rounded-[4px] bg-card p-5 ring-1 ring-border">
-          <h1 className="text-center text-[15px] font-semibold">
+        <div className="rounded-[8px] gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card p-5 ring-1 ring-border">
+          <h1 className="text-center text-[16px] font-semibold">
             Create your workspace
           </h1>
-          <p className="mt-1 text-center text-[13px] text-muted-foreground">
+          <p className="mt-1 text-center text-[14px] text-muted-foreground">
             Name your workspace to get started
           </p>
 
@@ -156,7 +156,7 @@ export default function WorkspaceSetupPage() {
             className="mt-5 flex flex-col gap-3"
           >
             <div className="flex flex-col gap-1">
-              <label className="text-[13px] font-medium">
+              <label className="text-[14px] font-medium">
                 Logo{" "}
                 <span className="font-normal text-muted-foreground">
                   (optional)
@@ -165,7 +165,7 @@ export default function WorkspaceSetupPage() {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="group flex size-12 items-center justify-center overflow-hidden rounded-[4px] bg-background ring-1 ring-border transition-colors hover:bg-accent"
+                className="group flex size-12 items-center justify-center overflow-hidden rounded-[8px] bg-background ring-1 ring-border transition-colors hover:bg-accent"
               >
                 {iconPreview ? (
                   <img
@@ -190,7 +190,7 @@ export default function WorkspaceSetupPage() {
                     setIconPreview(null)
                     if (fileInputRef.current) fileInputRef.current.value = ""
                   }}
-                  className="w-fit text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+                  className="w-fit text-[12px] text-muted-foreground transition-colors hover:text-foreground"
                 >
                   Remove
                 </button>
@@ -200,7 +200,7 @@ export default function WorkspaceSetupPage() {
             <div className="flex flex-col gap-1">
               <label
                 htmlFor="workspace-name"
-                className="text-[13px] font-medium"
+                className="text-[14px] font-medium"
               >
                 Workspace name
               </label>
@@ -222,16 +222,16 @@ export default function WorkspaceSetupPage() {
                   }
                 }}
                 autoFocus
-                className="h-9 rounded-[4px] bg-background px-3 text-[13px] ring-1 ring-border transition-all outline-none placeholder:text-muted-foreground focus:ring-foreground/30"
+                className="h-9 rounded-[8px] bg-background px-3 text-[14px] ring-1 ring-border transition-all outline-none placeholder:text-muted-foreground focus:ring-foreground/30"
               />
             </div>
 
-            {error && <p className="text-[12px] text-destructive">{error}</p>}
+            {error && <p className="text-[13px] text-destructive">{error}</p>}
 
             <button
               type="submit"
               disabled={loading || isAuthLoading || !isAuthenticated || !name.trim()}
-              className="mt-1 flex h-9 items-center justify-center rounded-[4px] bg-primary text-[13px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+              className="mt-1 flex h-9 items-center justify-center rounded-[8px] bg-primary text-[14px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
             >
               {loading ? <Spinner /> : "Create workspace"}
             </button>

@@ -32,7 +32,7 @@ export function Providers({
                 position="bottom-center"
                 toastOptions={{
                   className:
-                    "!bg-background !text-foreground !border-border !shadow-lg !rounded-[6px] !text-[13px] !font-medium",
+                    "!bg-background !text-foreground !border-border !shadow-lg !rounded-[10px] !text-[14px] !font-medium",
                   classNames: {
                     success: "[&>[data-icon]]:!text-emerald-500",
                     error: "[&>[data-icon]]:!text-red-500",
@@ -55,7 +55,7 @@ export function Providers({
               position="bottom-center"
               toastOptions={{
                 className:
-                  "!bg-background !text-foreground !border-border !shadow-lg !rounded-[6px] !text-[13px] !font-medium",
+                  "!bg-background !text-foreground !border-border !shadow-lg !rounded-[10px] !text-[14px] !font-medium",
               }}
             />
           </ThemeProvider>

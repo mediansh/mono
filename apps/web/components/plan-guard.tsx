@@ -68,12 +68,12 @@ export function PlanGuard({ children }: { children: React.ReactNode }) {
           transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
           className="flex max-w-sm flex-col items-center gap-4 text-center"
         >
-          <div className="flex size-10 items-center justify-center rounded-[4px] bg-foreground/5">
+          <div className="flex size-10 items-center justify-center rounded-[8px] bg-foreground/5">
             <HugeiconsIcon icon={CreditCardIcon} size={20} strokeWidth={1.8} className="text-muted-foreground" />
           </div>
           <div>
-            <h2 className="text-[14px] font-semibold">Choose a plan to continue</h2>
-            <p className="mt-1 text-[12px] text-muted-foreground">
+            <h2 className="text-[15px] font-semibold">Choose a plan to continue</h2>
+            <p className="mt-1 text-[13px] text-muted-foreground">
               You need an active plan to use Median. Start free with $0.50 in
               monthly credits, or pick a paid plan with a {STARTER_TRIAL_DAYS}-day
               free trial.
@@ -82,7 +82,7 @@ export function PlanGuard({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={() => navigate("/app/billing")}
-            className="flex h-8 items-center gap-1.5 rounded-[4px] bg-primary px-3.5 text-[12px] font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="flex h-8 items-center gap-1.5 rounded-[8px] bg-primary px-3.5 text-[13px] font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
             View plans
           </button>

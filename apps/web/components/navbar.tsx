@@ -56,7 +56,7 @@ export function Navbar() {
             <>
               <SignInButton mode="redirect">
                 <button
-                  className="text-navbar-accent hover:bg-navbar-accent/10 rounded-[4px] px-3.5 py-1 text-sm font-medium transition-colors"
+                  className="text-navbar-accent hover:bg-navbar-accent/10 rounded-[8px] px-3.5 py-1 text-sm font-medium transition-colors"
                   type="button"
                 >
                   Sign in
@@ -64,7 +64,7 @@ export function Navbar() {
               </SignInButton>
               <SignUpButton mode="redirect">
                 <button
-                  className="bg-navbar-accent hover:bg-navbar-accent/85 rounded-[4px] px-3.5 py-1 text-sm font-medium text-white transition-colors"
+                  className="bg-navbar-accent hover:bg-navbar-accent/85 rounded-[8px] px-3.5 py-1 text-sm font-medium text-white transition-colors"
                   type="button"
                 >
                   Get started
@@ -75,7 +75,7 @@ export function Navbar() {
             <>
               <Link
                 href="/app"
-                className="text-navbar-accent hover:bg-navbar-accent/10 rounded-[4px] px-3.5 py-1 text-sm font-medium transition-colors"
+                className="text-navbar-accent hover:bg-navbar-accent/10 rounded-[8px] px-3.5 py-1 text-sm font-medium transition-colors"
               >
                 Dashboard
               </Link>
@@ -88,7 +88,7 @@ export function Navbar() {
         <div className="ml-auto md:hidden">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger
-              className="text-navbar-foreground/70 hover:bg-navbar-accent/10 rounded-[4px] p-1.5 transition-colors"
+              className="text-navbar-foreground/70 hover:bg-navbar-accent/10 rounded-[8px] p-1.5 transition-colors"
               aria-label="Open menu"
             >
               <List size={20} />
@@ -104,7 +104,7 @@ export function Navbar() {
                     key={link.label}
                     href={link.href}
                     onClick={() => setMobileOpen(false)}
-                    className="text-navbar-foreground/70 hover:bg-navbar-accent/10 flex items-center gap-1 rounded-[4px] px-3 py-2 text-sm font-medium transition-colors"
+                    className="text-navbar-foreground/70 hover:bg-navbar-accent/10 flex items-center gap-1 rounded-[8px] px-3 py-2 text-sm font-medium transition-colors"
                   >
                     {link.label}
                     {link.hasDropdown && <CaretDown size={14} />}
@@ -118,7 +118,7 @@ export function Navbar() {
                   <>
                     <SignInButton mode="redirect">
                       <button
-                        className="text-navbar-accent hover:bg-navbar-accent/10 rounded-[4px] px-3.5 py-2 text-sm font-medium transition-colors"
+                        className="text-navbar-accent hover:bg-navbar-accent/10 rounded-[8px] px-3.5 py-2 text-sm font-medium transition-colors"
                         type="button"
                         onClick={() => setMobileOpen(false)}
                       >
@@ -127,7 +127,7 @@ export function Navbar() {
                     </SignInButton>
                     <SignUpButton mode="redirect">
                       <button
-                        className="bg-navbar-accent hover:bg-navbar-accent/85 rounded-[4px] px-3.5 py-2 text-sm font-medium text-white transition-colors"
+                        className="bg-navbar-accent hover:bg-navbar-accent/85 rounded-[8px] px-3.5 py-2 text-sm font-medium text-white transition-colors"
                         type="button"
                         onClick={() => setMobileOpen(false)}
                       >
@@ -140,7 +140,7 @@ export function Navbar() {
                     <Link
                       href="/app"
                       onClick={() => setMobileOpen(false)}
-                      className="text-navbar-accent hover:bg-navbar-accent/10 rounded-[4px] px-3.5 py-2 text-sm font-medium transition-colors"
+                      className="text-navbar-accent hover:bg-navbar-accent/10 rounded-[8px] px-3.5 py-2 text-sm font-medium transition-colors"
                     >
                       Dashboard
                     </Link>

@@ -28,7 +28,7 @@ function encodeMentions(input: string): string {
 
 function MentionChip({ name }: { name: string }) {
   return (
-    <span className="mention-chip mx-px inline-flex items-baseline rounded-[4px] bg-primary/10 px-1 py-px text-[12px] font-medium text-primary">
+    <span className="mention-chip mx-px inline-flex items-baseline rounded-[8px] bg-current/15 px-1 py-px text-[13px] font-medium text-current">
       @{name}
     </span>
   )
@@ -39,15 +39,15 @@ export function TaskCommentBody({ markdown, className }: Props) {
   return (
     <div
       className={cn(
-        "max-w-none text-[13px] leading-relaxed text-foreground",
+        "max-w-none text-[14px] leading-relaxed text-current",
         "[&_p]:my-1",
-        "[&_h1]:my-2 [&_h1]:text-[16px] [&_h1]:font-semibold",
-        "[&_h2]:my-2 [&_h2]:text-[14px] [&_h2]:font-semibold",
-        "[&_h3]:my-1 [&_h3]:text-[13px] [&_h3]:font-semibold",
+        "[&_h1]:my-2 [&_h1]:text-[17px] [&_h1]:font-semibold",
+        "[&_h2]:my-2 [&_h2]:text-[15px] [&_h2]:font-semibold",
+        "[&_h3]:my-1 [&_h3]:text-[14px] [&_h3]:font-semibold",
         "[&_strong]:font-semibold",
         "[&_em]:italic",
-        "[&_code]:rounded-[3px] [&_code]:bg-sidebar-accent [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[12px]",
-        "[&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-[6px] [&_pre]:bg-sidebar-accent [&_pre]:p-2 [&_pre]:font-mono [&_pre]:text-[12px]",
+        "[&_code]:rounded-[6px] [&_code]:bg-sidebar-accent [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[13px]",
+        "[&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-[10px] [&_pre]:bg-sidebar-accent [&_pre]:p-2 [&_pre]:font-mono [&_pre]:text-[13px]",
         "[&_pre_code]:bg-transparent [&_pre_code]:p-0",
         "[&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2",
         "[&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5",

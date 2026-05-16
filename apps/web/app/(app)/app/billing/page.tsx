@@ -143,14 +143,14 @@ function ChartTooltip({
     ? new Date(timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" })
     : null
   return (
-    <div className="rounded-[4px] border border-border bg-card px-2.5 py-1.5 shadow-sm">
+    <div className="rounded-[8px] border border-border bg-card px-2.5 py-1.5 shadow-sm">
       {dateLabel && (
-        <p className="mb-1 text-[11px] font-medium text-foreground">{dateLabel}</p>
+        <p className="mb-1 text-[12px] font-medium text-foreground">{dateLabel}</p>
       )}
       {payload.map((entry) => (
         <div
           key={entry.name}
-          className="flex items-center gap-1.5 text-[11px] text-muted-foreground"
+          className="flex items-center gap-1.5 text-[12px] text-muted-foreground"
         >
           <div
             className="size-1.5 rounded-full"
@@ -191,7 +191,7 @@ function CreditsProgressCard({
     : null
 
   return (
-    <div className="relative overflow-hidden rounded-[6px] p-5 ring-1 ring-border">
+    <div className="relative overflow-hidden rounded-[10px] p-5 ring-1 ring-border">
       {/* subtle foreground gradient — adapts to theme */}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.05]"
@@ -203,28 +203,28 @@ function CreditsProgressCard({
       <div className="relative">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground">
+            <div className="flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground">
               <Coins size={13} weight="bold" />
               Credits used this cycle
             </div>
             <div className="mt-1.5 flex items-baseline gap-2">
-              <span className="text-[26px] font-bold tracking-tight">
+              <span className="text-[27px] font-bold tracking-tight">
                 {formatCurrency(used)}
               </span>
-              <span className="text-[12px] text-muted-foreground">
+              <span className="text-[13px] text-muted-foreground">
                 of {formatCurrency(budget)}
               </span>
             </div>
           </div>
           <div className="flex flex-col items-end gap-0.5">
             <span
-              className={`text-[18px] font-semibold tabular-nums ${
+              className={`text-[19px] font-semibold tabular-nums ${
                 inOverage ? "text-amber-500" : "text-foreground"
               }`}
             >
               {percent}%
             </span>
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-[11px] text-muted-foreground">
               {monthLabel}
             </span>
           </div>
@@ -245,7 +245,7 @@ function CreditsProgressCard({
           />
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[12px] text-muted-foreground">
           <div className="flex items-center gap-3">
             {!inOverage && (
               <span>
@@ -476,20 +476,20 @@ export default function BillingPage() {
                 weight="bold"
                 className="text-foreground"
               />
-              <h2 className="text-[14px] font-semibold">Billing</h2>
+              <h2 className="text-[15px] font-semibold">Billing</h2>
             </div>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">
+            <p className="mt-0.5 text-[13px] text-muted-foreground">
               Usage, plans, and billing for your workspace.
             </p>
           </motion.div>
           <motion.div
             variants={fadeUp}
-            className="rounded-[4px] bg-destructive/5 p-4 ring-1 ring-destructive/20"
+            className="rounded-[8px] bg-destructive/5 p-4 ring-1 ring-destructive/20"
           >
-            <p className="text-[13px] font-medium text-foreground">
+            <p className="text-[14px] font-medium text-foreground">
               Billing data is unavailable
             </p>
-            <p className="mt-1 text-[12px] text-muted-foreground">{error}</p>
+            <p className="mt-1 text-[13px] text-muted-foreground">{error}</p>
           </motion.div>
         </div>
       </Stagger>
@@ -519,9 +519,9 @@ export default function BillingPage() {
           <div>
             <div className="flex items-center gap-2">
               <CreditCard size={16} weight="bold" className="text-foreground" />
-              <h2 className="text-[14px] font-semibold">Billing</h2>
+              <h2 className="text-[15px] font-semibold">Billing</h2>
             </div>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">
+            <p className="mt-0.5 text-[13px] text-muted-foreground">
               Credits, usage, and plans for your workspace.
             </p>
           </div>
@@ -530,7 +530,7 @@ export default function BillingPage() {
               href="https://docs.median.sh/pricing"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex h-7 items-center gap-1.5 rounded-[4px] px-2.5 text-[12px] font-medium whitespace-nowrap text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="flex h-7 items-center gap-1.5 rounded-[8px] px-2.5 text-[13px] font-medium whitespace-nowrap text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               Learn more
               <ArrowUpRight size={11} weight="bold" />
@@ -541,7 +541,7 @@ export default function BillingPage() {
                 !dashboard.canManageBilling ||
                 managingBilling
               }
-              className="flex h-7 items-center gap-1.5 rounded-[4px] bg-card px-2.5 text-[12px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-7 items-center gap-1.5 rounded-[8px] gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card px-2.5 text-[13px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
             >
               Manage billing
               <ArrowUpRight size={11} weight="bold" />
@@ -552,22 +552,22 @@ export default function BillingPage() {
         {error && (
           <motion.div
             variants={fadeUp}
-            className="mb-6 rounded-[4px] bg-destructive/5 p-3 ring-1 ring-destructive/20"
+            className="mb-6 rounded-[8px] bg-destructive/5 p-3 ring-1 ring-destructive/20"
           >
-            <p className="text-[12px] font-medium text-foreground">Billing data is unavailable</p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">{error}</p>
+            <p className="text-[13px] font-medium text-foreground">Billing data is unavailable</p>
+            <p className="mt-0.5 text-[12px] text-muted-foreground">{error}</p>
           </motion.div>
         )}
 
         {dashboard.isLegacyBilling && (
           <motion.div
             variants={fadeUp}
-            className="mb-6 rounded-[4px] bg-muted/40 p-3 ring-1 ring-border"
+            className="mb-6 rounded-[8px] bg-muted/40 p-3 ring-1 ring-border"
           >
-            <p className="text-[12px] font-medium text-foreground">
+            <p className="text-[13px] font-medium text-foreground">
               You're on legacy billing until your next renewal
             </p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
+            <p className="mt-0.5 text-[12px] text-muted-foreground">
               We'll migrate your workspace to credit-based billing automatically on your next billing cycle. Until then, your current legacy subscription remains active and charges continue on your existing schedule.
             </p>
           </motion.div>
@@ -576,12 +576,12 @@ export default function BillingPage() {
         {!dashboard.canManageBilling && (
           <motion.div
             variants={fadeUp}
-            className="mb-6 rounded-[4px] bg-muted/40 p-3 ring-1 ring-border"
+            className="mb-6 rounded-[8px] bg-muted/40 p-3 ring-1 ring-border"
           >
-            <p className="text-[12px] font-medium text-foreground">
+            <p className="text-[13px] font-medium text-foreground">
               Billing changes are limited to workspace admins
             </p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
+            <p className="mt-0.5 text-[12px] text-muted-foreground">
               You can still review usage and plan details from this page.
             </p>
           </motion.div>
@@ -603,40 +603,40 @@ export default function BillingPage() {
           variants={fadeUp}
           className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3"
         >
-          <div className="rounded-[4px] p-3 ring-1 ring-border">
-            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <div className="rounded-[8px] p-3 ring-1 ring-border">
+            <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
               <CreditCard size={11} weight="bold" />
               Current plan
             </div>
-            <p className="mt-0.5 text-[15px] font-semibold">
+            <p className="mt-0.5 text-[16px] font-semibold">
               {currentPlan?.name ?? dashboard.currentPlanName}
             </p>
           </div>
-          <div className="rounded-[4px] p-3 ring-1 ring-border">
-            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <div className="rounded-[8px] p-3 ring-1 ring-border">
+            <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
               <Sparkle size={11} weight="bold" />
               AI usage
             </div>
             <div className="mt-0.5 flex items-baseline gap-1">
-              <p className="text-[15px] font-semibold">
+              <p className="text-[16px] font-semibold">
                 {formatCurrency(dashboard.summary.aiSpend)}
               </p>
-              <span className="text-[11px] text-muted-foreground">
+              <span className="text-[12px] text-muted-foreground">
                 · {dashboard.summary.aiCalls.toLocaleString()} call
                 {dashboard.summary.aiCalls === 1 ? "" : "s"}
               </span>
             </div>
           </div>
-          <div className="col-span-2 rounded-[4px] p-3 ring-1 ring-border md:col-span-1">
-            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <div className="col-span-2 rounded-[8px] p-3 ring-1 ring-border md:col-span-1">
+            <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
               <Lightning size={11} weight="bold" />
               Events
             </div>
             <div className="mt-0.5 flex items-baseline gap-1">
-              <p className="text-[15px] font-semibold">
+              <p className="text-[16px] font-semibold">
                 {dashboard.summary.eventCount.toLocaleString()}
               </p>
-              <span className="text-[11px] text-muted-foreground">
+              <span className="text-[12px] text-muted-foreground">
                 · {formatCurrency(dashboard.summary.eventCost)}
               </span>
             </div>
@@ -646,16 +646,16 @@ export default function BillingPage() {
         {/* Single combined chart: daily credits consumed */}
         <motion.div
           variants={fadeUp}
-          className="mb-6 rounded-[4px] p-4 ring-1 ring-border"
+          className="mb-6 rounded-[8px] p-4 ring-1 ring-border"
         >
           <div className="mb-3 flex items-center justify-between">
             <div>
-              <h3 className="text-[13px] font-medium">Credit consumption</h3>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">
+              <h3 className="text-[14px] font-medium">Credit consumption</h3>
+              <p className="mt-0.5 text-[12px] text-muted-foreground">
                 Daily credits used (cumulative)
               </p>
             </div>
-            <span className="text-[11px] text-muted-foreground">
+            <span className="text-[12px] text-muted-foreground">
               {dashboard.monthLabel}
             </span>
           </div>
@@ -718,7 +718,7 @@ export default function BillingPage() {
               </AreaChart>
             </ResponsiveContainer>
           </div>
-          <div className="mt-2 flex items-center justify-center gap-3 text-[11px] text-muted-foreground">
+          <div className="mt-2 flex items-center justify-center gap-3 text-[12px] text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <span
                 className="size-1.5 rounded-full"
@@ -734,7 +734,7 @@ export default function BillingPage() {
         </motion.div>
 
         <motion.div variants={fadeUp} className="mb-6">
-          <h3 className="mb-3 text-[13px] font-medium">Plans</h3>
+          <h3 className="mb-3 text-[14px] font-medium">Plans</h3>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {dashboard.plans.map((plan) => {
               const isCurrent = plan.id === dashboard.currentPlanId
@@ -748,38 +748,38 @@ export default function BillingPage() {
               return (
                 <div
                   key={plan.id}
-                  className={`relative flex flex-col rounded-[6px] p-5 ring-1 transition-colors ${
+                  className={`relative flex flex-col rounded-[10px] p-5 ring-1 transition-colors ${
                     isCurrent
                       ? "bg-card ring-foreground/20"
                       : "ring-border hover:ring-foreground/15"
                   }`}
                 >
                   {isCurrent && (
-                    <div className="absolute -top-2 right-3 flex items-center gap-1 rounded-full bg-foreground px-2 py-0.5 text-[10px] font-medium text-background">
+                    <div className="absolute -top-2 right-3 flex items-center gap-1 rounded-full bg-foreground px-2 py-0.5 text-[11px] font-medium text-background">
                       <Crown size={10} weight="fill" />
                       Current
                     </div>
                   )}
 
                   <div className="flex items-baseline justify-between">
-                    <h4 className="text-[14px] font-semibold">{plan.name}</h4>
+                    <h4 className="text-[15px] font-semibold">{plan.name}</h4>
                     {plan.trialDays > 0 && (
-                      <span className="text-[10px] text-muted-foreground">
+                      <span className="text-[11px] text-muted-foreground">
                         {plan.trialDays}-day trial
                       </span>
                     )}
                   </div>
 
                   <div className="mt-3 flex items-baseline gap-1">
-                    <span className="text-[28px] font-bold tracking-tight">
+                    <span className="text-[29px] font-bold tracking-tight">
                       ${plan.price}
                     </span>
-                    <span className="text-[12px] text-muted-foreground">
+                    <span className="text-[13px] text-muted-foreground">
                       /month
                     </span>
                   </div>
 
-                  <div className="mt-1 flex items-center gap-1.5 text-[12px] text-foreground/80">
+                  <div className="mt-1 flex items-center gap-1.5 text-[13px] text-foreground/80">
                     <Coins size={12} weight="bold" className="text-foreground/60" />
                     <span>
                       <span className="font-medium text-foreground">
@@ -793,7 +793,7 @@ export default function BillingPage() {
                   </div>
 
                   {plan.hasPrioritySupport && (
-                    <div className="mt-1.5 flex items-center gap-1.5 text-[12px] text-foreground/80">
+                    <div className="mt-1.5 flex items-center gap-1.5 text-[13px] text-foreground/80">
                       <Star size={12} weight="bold" className="text-foreground/60" />
                       <span>Priority support</span>
                     </div>
@@ -804,7 +804,7 @@ export default function BillingPage() {
                   <button
                     onClick={() => handlePlanSubscribeClick(plan.id)}
                     disabled={isDisabled}
-                    className={`flex h-8 items-center justify-center rounded-[4px] text-[12px] font-medium transition-colors ${
+                    className={`flex h-8 items-center justify-center rounded-[8px] text-[13px] font-medium transition-colors ${
                       isDisabled
                         ? "cursor-default bg-muted text-muted-foreground"
                         : "bg-primary text-primary-foreground hover:bg-primary/90"
@@ -820,13 +820,13 @@ export default function BillingPage() {
 
         <motion.div
           variants={fadeUp}
-          className="mb-6 flex items-start gap-3 rounded-[4px] p-3.5 ring-1 ring-border"
+          className="mb-6 flex items-start gap-3 rounded-[8px] p-3.5 ring-1 ring-border"
         >
           <div className="min-w-0 flex-1">
-            <p className="text-[13px] font-medium text-foreground">
+            <p className="text-[14px] font-medium text-foreground">
               Hard cap usage at plan credits
             </p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
+            <p className="mt-0.5 text-[12px] text-muted-foreground">
               {dashboard.overagesToggleLocked
                 ? "Your plan does not support paid overages. Usage is hard-capped at your monthly credits — upgrade to enable overages."
                 : "When enabled, AI task generation pauses and integrations stop ingesting events once your monthly credits are spent. The task board stays available — Linear, GitHub, and Discord just won't sync until the next cycle or an upgrade."}
@@ -847,16 +847,16 @@ export default function BillingPage() {
         {showCreditsWarning && (
           <motion.div
             variants={fadeUp}
-            className="mb-6 flex items-start gap-2.5 rounded-[4px] bg-amber-500/5 p-3 ring-1 ring-amber-500/20"
+            className="mb-6 flex items-start gap-2.5 rounded-[8px] bg-amber-500/5 p-3 ring-1 ring-amber-500/20"
           >
             <Warning size={14} weight="fill" className="mt-0.5 shrink-0 text-amber-500" />
             <div>
-              <p className="text-[12px] font-medium text-foreground">
+              <p className="text-[13px] font-medium text-foreground">
                 {dashboard.disableOveragesWhenExhausted
                   ? "You've used all your credits this cycle"
                   : "You have credit overages this cycle"}
               </p>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">
+              <p className="mt-0.5 text-[12px] text-muted-foreground">
                 {dashboard.disableOveragesWhenExhausted
                   ? dashboard.summary.creditsOverage > 0
                     ? `${formatCurrency(dashboard.summary.creditsOverage)} in usage beyond your ${formatCurrency(dashboard.summary.creditsBudget)} credit budget. Ingest is paused — overages are disabled. Upgrade your plan to resume.`
@@ -869,7 +869,7 @@ export default function BillingPage() {
 
         <motion.div
           variants={fadeUp}
-          className="flex items-center gap-1.5 text-[11px] text-muted-foreground"
+          className="flex items-center gap-1.5 text-[12px] text-muted-foreground"
         >
           <Info size={12} className="shrink-0" />
           <span>
@@ -907,7 +907,7 @@ export default function BillingPage() {
               type="button"
               onClick={() => setConfirmDisableOveragesOpen(false)}
               disabled={disableOveragesPending}
-              className="flex h-8 flex-1 items-center justify-center rounded-[4px] ring-1 ring-border text-[13px] font-medium transition-colors hover:bg-muted disabled:opacity-50"
+              className="flex h-8 flex-1 items-center justify-center rounded-[8px] ring-1 ring-border text-[14px] font-medium transition-colors hover:bg-muted disabled:opacity-50"
             >
               Cancel
             </button>
@@ -918,7 +918,7 @@ export default function BillingPage() {
                 await applyDisableOveragesChange(true)
                 setConfirmDisableOveragesOpen(false)
               }}
-              className="flex h-8 flex-1 items-center justify-center rounded-[4px] bg-primary text-[13px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+              className="flex h-8 flex-1 items-center justify-center rounded-[8px] bg-primary text-[14px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
             >
               {disableOveragesPending ? "Disabling..." : "Disable overages"}
             </button>
@@ -966,7 +966,7 @@ export default function BillingPage() {
               type="button"
               onClick={() => setOverageConfirmPlanId(null)}
               disabled={pendingPlanId !== null}
-              className="flex h-8 flex-1 items-center justify-center rounded-[4px] ring-1 ring-border text-[13px] font-medium transition-colors hover:bg-muted disabled:opacity-50"
+              className="flex h-8 flex-1 items-center justify-center rounded-[8px] ring-1 ring-border text-[14px] font-medium transition-colors hover:bg-muted disabled:opacity-50"
             >
               Cancel
             </button>
@@ -978,7 +978,7 @@ export default function BillingPage() {
                 await handleAttachPlan(overageConfirmPlan.id)
                 setOverageConfirmPlanId(null)
               }}
-              className="flex h-8 flex-1 items-center justify-center rounded-[4px] bg-primary text-[13px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+              className="flex h-8 flex-1 items-center justify-center rounded-[8px] bg-primary text-[14px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
             >
               {pendingPlanId === overageConfirmPlan?.id
                 ? "Working..."

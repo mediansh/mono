@@ -169,12 +169,12 @@ function AssigneePickerList({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search members..."
-          className="w-full bg-transparent text-[12px] outline-none placeholder:text-muted-foreground/50"
+          className="w-full bg-transparent text-[13px] outline-none placeholder:text-muted-foreground/50"
         />
       </div>
       <div className="max-h-[240px] overflow-y-auto py-1">
         {filtered.length === 0 ? (
-          <div className="px-2 py-3 text-center text-[11px] text-muted-foreground">
+          <div className="px-2 py-3 text-center text-[12px] text-muted-foreground">
             No members
           </div>
         ) : (
@@ -185,7 +185,7 @@ function AssigneePickerList({
                 key={m.userId}
                 type="button"
                 onClick={() => onToggle(m)}
-                className="flex w-full items-center gap-2 rounded-[4px] px-2 py-1.5 text-left text-[12px] hover:bg-accent"
+                className="flex w-full items-center gap-2 rounded-[8px] px-2 py-1.5 text-left text-[13px] hover:bg-accent"
               >
                 <AssigneeAvatar assignee={m} size={20} />
                 <span className="min-w-0 flex-1 truncate">{m.name}</span>
@@ -240,7 +240,7 @@ export function AssigneeContextSubmenu({
       </ContextMenuSubTrigger>
       <ContextMenuSubContent>
         {(members ?? []).length === 0 ? (
-          <div className="px-2 py-1.5 text-[12px] text-muted-foreground">
+          <div className="px-2 py-1.5 text-[13px] text-muted-foreground">
             No members
           </div>
         ) : (
