@@ -27,10 +27,19 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { SidebarLeftIcon } from "@hugeicons/core-free-icons"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
+const SIDEBAR_WIDTH_COOKIE_NAME = "sidebar_width"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
-const SIDEBAR_WIDTH = "13rem"
+const SIDEBAR_WIDTH_DEFAULT = 208 // 13rem at 16px
+const SIDEBAR_WIDTH_MIN = 180
+const SIDEBAR_WIDTH_MAX = 480
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
+
+function clampSidebarWidth(value: number) {
+  if (!Number.isFinite(value)) return SIDEBAR_WIDTH_DEFAULT
+  return Math.min(SIDEBAR_WIDTH_MAX, Math.max(SIDEBAR_WIDTH_MIN, value))
+}
+
 type SidebarContextProps = {
   state: "expanded" | "collapsed"
   open: boolean
@@ -39,6 +48,10 @@ type SidebarContextProps = {
   setOpenMobile: (open: boolean) => void
   isMobile: boolean
   toggleSidebar: () => void
+  width: number
+  setWidth: (width: number) => void
+  isResizing: boolean
+  setIsResizing: (resizing: boolean) => void
 }
 
 const SidebarContext = React.createContext<SidebarContextProps | null>(null)
@@ -67,6 +80,24 @@ function SidebarProvider({
 }) {
   const isMobile = useIsMobile()
   const [openMobile, setOpenMobile] = React.useState(false)
+  const [width, _setWidth] = React.useState(SIDEBAR_WIDTH_DEFAULT)
+  const [isResizing, setIsResizing] = React.useState(false)
+
+  // Hydrate width from cookie after mount to avoid SSR mismatch.
+  React.useEffect(() => {
+    const match = document.cookie.match(/(?:^|;\s*)sidebar_width=(\d+(?:\.\d+)?)/)
+    if (match && match[1]) {
+      const parsed = parseFloat(match[1])
+      const clamped = clampSidebarWidth(parsed)
+      _setWidth(clamped)
+    }
+  }, [])
+
+  const setWidth = React.useCallback((value: number) => {
+    const clamped = clampSidebarWidth(value)
+    _setWidth(clamped)
+    document.cookie = `${SIDEBAR_WIDTH_COOKIE_NAME}=${clamped}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+  }, [])
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
@@ -105,23 +136,40 @@ function SidebarProvider({
       openMobile,
       setOpenMobile,
       toggleSidebar,
+      width,
+      setWidth,
+      isResizing,
+      setIsResizing,
     }),
-    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
+    [
+      state,
+      open,
+      setOpen,
+      isMobile,
+      openMobile,
+      setOpenMobile,
+      toggleSidebar,
+      width,
+      setWidth,
+      isResizing,
+    ]
   )
 
   return (
     <SidebarContext.Provider value={contextValue}>
       <div
         data-slot="sidebar-wrapper"
+        data-resizing={isResizing ? "true" : undefined}
         style={
           {
-            "--sidebar-width": SIDEBAR_WIDTH,
+            "--sidebar-width": `${width}px`,
             "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
             ...style,
           } as React.CSSProperties
         }
         className={cn(
           "group/sidebar-wrapper flex min-h-svh w-full overflow-hidden has-data-[variant=inset]:h-svh has-data-[variant=inset]:min-h-0 has-data-[variant=inset]:bg-sidebar has-data-[variant=inset]:p-1.5",
+          isResizing && "select-none [&_*]:!cursor-col-resize",
           className
         )}
         {...props}
@@ -145,7 +193,7 @@ function Sidebar({
   variant?: "sidebar" | "floating" | "inset"
   collapsible?: "offcanvas" | "icon" | "none"
 }) {
-  const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+  const { isMobile, state, openMobile, setOpenMobile, isResizing } = useSidebar()
 
   if (collapsible === "none") {
     return (
@@ -202,6 +250,7 @@ function Sidebar({
         data-slot="sidebar-gap"
         className={cn(
           "relative w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear",
+          isResizing && "!transition-none",
           "group-data-[collapsible=offcanvas]:w-0",
           "group-data-[side=right]:rotate-180",
           variant === "floating" || variant === "inset"
@@ -214,6 +263,7 @@ function Sidebar({
         data-side={side}
         className={cn(
           "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)] data-[side=right]:right-0 data-[side=right]:group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)] md:flex",
+          isResizing && "!transition-none",
           // Adjust the padding for floating and inset variants.
           variant === "floating" || variant === "inset"
             ? "p-0 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(0)))]"
@@ -229,8 +279,112 @@ function Sidebar({
         >
           {children}
         </div>
+        <SidebarResizeHandle side={side} />
       </div>
     </div>
+  )
+}
+
+function SidebarResizeHandle({ side }: { side: "left" | "right" }) {
+  const { setWidth, setIsResizing, state } = useSidebar()
+  const startRef = React.useRef<{ x: number; width: number } | null>(null)
+
+  const onPointerDown = React.useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      // Only react to primary button / touch / pen
+      if (event.button !== 0) return
+      // Don't allow resizing while the sidebar is in icon-collapsed mode.
+      if (state === "collapsed") return
+
+      event.preventDefault()
+      const startX = event.clientX
+      // Read the live computed width so we drag from wherever the user is now.
+      const wrapper = (event.currentTarget.closest(
+        "[data-slot='sidebar-wrapper']"
+      ) as HTMLElement | null)
+      const cssVar = wrapper
+        ? getComputedStyle(wrapper).getPropertyValue("--sidebar-width").trim()
+        : ""
+      const initialWidth = cssVar.endsWith("px")
+        ? parseFloat(cssVar)
+        : SIDEBAR_WIDTH_DEFAULT
+      startRef.current = { x: startX, width: initialWidth }
+      setIsResizing(true)
+
+      const handleMove = (ev: PointerEvent) => {
+        const start = startRef.current
+        if (!start) return
+        const delta = ev.clientX - start.x
+        const next = side === "left" ? start.width + delta : start.width - delta
+        setWidth(next)
+      }
+      const handleUp = () => {
+        startRef.current = null
+        setIsResizing(false)
+        window.removeEventListener("pointermove", handleMove)
+        window.removeEventListener("pointerup", handleUp)
+        window.removeEventListener("pointercancel", handleUp)
+      }
+      window.addEventListener("pointermove", handleMove)
+      window.addEventListener("pointerup", handleUp)
+      window.addEventListener("pointercancel", handleUp)
+    },
+    [setWidth, setIsResizing, side, state]
+  )
+
+  const onDoubleClick = React.useCallback(() => {
+    setWidth(SIDEBAR_WIDTH_DEFAULT)
+  }, [setWidth])
+
+  const onKeyDown = React.useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      const step = event.shiftKey ? 24 : 8
+      const dir = side === "left" ? 1 : -1
+      if (event.key === "ArrowLeft") {
+        event.preventDefault()
+        const wrapper = (event.currentTarget.closest(
+          "[data-slot='sidebar-wrapper']"
+        ) as HTMLElement | null)
+        const cssVar = wrapper
+          ? getComputedStyle(wrapper).getPropertyValue("--sidebar-width").trim()
+          : ""
+        const current = cssVar.endsWith("px") ? parseFloat(cssVar) : SIDEBAR_WIDTH_DEFAULT
+        setWidth(current - step * dir)
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault()
+        const wrapper = (event.currentTarget.closest(
+          "[data-slot='sidebar-wrapper']"
+        ) as HTMLElement | null)
+        const cssVar = wrapper
+          ? getComputedStyle(wrapper).getPropertyValue("--sidebar-width").trim()
+          : ""
+        const current = cssVar.endsWith("px") ? parseFloat(cssVar) : SIDEBAR_WIDTH_DEFAULT
+        setWidth(current + step * dir)
+      }
+    },
+    [setWidth, side]
+  )
+
+  return (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize sidebar"
+      tabIndex={0}
+      data-slot="sidebar-resize-handle"
+      onPointerDown={onPointerDown}
+      onDoubleClick={onDoubleClick}
+      onKeyDown={onKeyDown}
+      className={cn(
+        "absolute inset-y-0 z-20 hidden w-1.5 cursor-col-resize touch-none select-none md:block",
+        side === "left" ? "-right-0.5" : "-left-0.5",
+        // Hide while in icon-collapsed mode — toggling is the right interaction there.
+        "group-data-[collapsible=icon]:hidden group-data-[collapsible=offcanvas]:hidden",
+        // Subtle hover affordance: a 1px guide line that appears on hover/focus/drag.
+        "after:absolute after:inset-y-0 after:left-1/2 after:w-px after:-translate-x-1/2 after:bg-transparent after:transition-colors hover:after:bg-sidebar-border focus-visible:after:bg-sidebar-ring focus-visible:outline-none",
+        "group-data-[resizing=true]/sidebar-wrapper:after:bg-sidebar-ring"
+      )}
+    />
   )
 }
 
