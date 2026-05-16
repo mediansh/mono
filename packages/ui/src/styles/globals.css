@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "gradient-border-plugin";
 
 @custom-variant dark (&:is(.dark *));
 @source "../../../apps/**/*.{ts,tsx}";
@@ -47,6 +48,9 @@
   --navbar-accent: #252728;
   --toolbar: #f7f7f7;
   --toolbar-foreground: #252728;
+  --gradient-border-angle: to bottom;
+  --gradient-border-from: rgba(0, 0, 0, 0.06);
+  --gradient-border-to: rgba(0, 0, 0, 0);
 }
 
 .dark {
@@ -88,6 +92,9 @@
   --navbar-accent: #f7f7f4;
   --toolbar: #141414;
   --toolbar-foreground: #f7f7f4;
+  --gradient-border-angle: to bottom;
+  --gradient-border-from: rgba(255, 255, 255, 0.14);
+  --gradient-border-to: rgba(255, 255, 255, 0);
 }
 
 @theme inline {
