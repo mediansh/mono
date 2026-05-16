@@ -789,17 +789,17 @@ export function NewTaskModal({
               <div className="px-5 pt-5 pb-0">
                 {/* Tab switcher and send button row */}
                 <div className="mb-3 flex items-center justify-between gap-2">
-                  <div className="inline-flex items-center gap-0.5 rounded-[10px] p-0.5 ring-1 ring-border">
+                  <div className="inline-flex items-center gap-0.5 rounded-[10px] bg-muted p-0.5">
                     <button
                       type="button"
                       onClick={() => setActiveTab("manual")}
-                      className={`flex items-center gap-1.5 rounded-[8px] px-2 py-1 text-[12px] font-medium transition-colors ${
+                      className={`flex items-center gap-1.5 rounded-[8px] px-2.5 py-1 text-[12px] font-medium transition-colors ${
                         activeTab === "manual"
-                          ? "bg-accent text-foreground"
+                          ? "bg-card text-foreground shadow-sm ring-1 ring-border"
                           : "text-muted-foreground hover:text-foreground"
                       }`}
                     >
-                      <PencilSimple size={12} />
+                      <PencilSimple size={12} weight={activeTab === "manual" ? "fill" : "regular"} />
                       Manual
                     </button>
                     <button
@@ -808,13 +808,13 @@ export function NewTaskModal({
                         setActiveTab("ai")
                         trackAIPromptTabSelected()
                       }}
-                      className={`flex items-center gap-1.5 rounded-[8px] px-2 py-1 text-[12px] font-medium transition-colors ${
+                      className={`flex items-center gap-1.5 rounded-[8px] px-2.5 py-1 text-[12px] font-medium transition-colors ${
                         activeTab === "ai"
-                          ? "bg-accent text-foreground"
+                          ? "bg-card text-foreground shadow-sm ring-1 ring-border"
                           : "text-muted-foreground hover:text-foreground"
                       }`}
                     >
-                      <Sparkle size={12} />
+                      <Sparkle size={12} weight={activeTab === "ai" ? "fill" : "regular"} />
                       AI Prompt
                     </button>
                   </div>
@@ -913,15 +913,15 @@ export function NewTaskModal({
 
               {/* ── Bottom toolbar ── */}
               {activeTab === "manual" ? (
-                <div className="border-t border-border">
+                <div>
                   {error ? (
                     <div className="px-4 pt-2">
                       <span className="text-[12px] text-red-500">{error}</span>
                     </div>
                   ) : null}
 
-                  {/* Row 1 — Properties strip */}
-                  <div className="flex flex-wrap items-center gap-1.5 px-4 pt-3 pb-2">
+                  {/* Row 1 — Properties strip (floats inside the body, no top border) */}
+                  <div className="flex flex-wrap items-center gap-1.5 px-4 pt-1 pb-3">
                     {/* Status */}
                     <DropdownMenu>
                       <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent">
@@ -1084,14 +1084,14 @@ export function NewTaskModal({
                     </button>
                   </div>
 
-                  {/* Row 2 — Action strip */}
-                  <div className="flex flex-wrap items-center justify-end gap-2 px-4 pt-1 pb-3">
-                    {/* Create more — restored hollow-circle pill */}
+                  {/* Row 2 — Action strip (separator above) */}
+                  <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-4 pt-3 pb-3">
+                    {/* Create more — hollow-circle pill, sized to match Create */}
                     <button
                       type="button"
                       onClick={() => setCreateMore(!createMore)}
                       title="Keep the modal open after creating"
-                      className={`flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent ${
+                      className={`flex items-center gap-1.5 rounded-[8px] px-3.5 py-2 text-[13px] font-medium whitespace-nowrap ring-1 ring-border transition-colors hover:bg-accent ${
                         createMore
                           ? "text-foreground"
                           : "text-muted-foreground"
