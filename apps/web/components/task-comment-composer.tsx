@@ -38,8 +38,13 @@ const MentionWithMarkdown = Mention.extend({
   },
 })
 import { useQuery } from "convex/react"
-import { PaperPlaneRight } from "@phosphor-icons/react"
+import { Info, PaperPlaneRight } from "@phosphor-icons/react"
 import { cn } from "@workspace/ui/lib/utils"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@workspace/ui/components/tooltip"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
 import { AssigneeAvatar } from "@/components/assignee-picker"
@@ -75,7 +80,7 @@ type SuggestionState = {
 }
 
 const editorContentClass = cn(
-  "min-h-[28px] max-w-[100%] max-h-[180px] overflow-y-auto px-2.5 py-1.5 text-[13.5px] leading-relaxed text-foreground focus:outline-none",
+  "min-h-[24px] max-w-[100%] max-h-[160px] overflow-y-auto px-2.5 py-1 text-[13.5px] leading-relaxed text-foreground focus:outline-none",
   "[&_p]:my-1 [&_p]:leading-relaxed",
   "[&_h1]:my-2 [&_h1]:text-[17px] [&_h1]:font-semibold",
   "[&_h2]:my-2 [&_h2]:text-[15px] [&_h2]:font-semibold",
@@ -379,13 +384,30 @@ export const TaskCommentComposer = forwardRef<CommentComposerHandle, Props>(
       <div className="relative">
         <div
           className={cn(
-            "group/composer flex items-end gap-1.5 rounded-[18px] border border-sidebar-border bg-muted/40 pr-1.5 pl-0.5 py-1 transition-colors focus-within:border-ring/40 focus-within:bg-background",
+            "group/composer flex items-center gap-1 rounded-full border border-sidebar-border bg-muted/40 pr-1 pl-1 py-0.5 transition-colors focus-within:border-ring/40 focus-within:bg-background",
             disabled && "opacity-60"
           )}
           onKeyDown={onKeyDown}
         >
           <div ref={hostRef} className="min-w-0 flex-1" />
-          <div className="flex shrink-0 items-center gap-1 pb-1">
+          <div className="flex shrink-0 items-center gap-0.5 self-end pb-0.5">
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    aria-label="Comment shortcuts"
+                    className="inline-flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-foreground"
+                  />
+                }
+              >
+                <Info size={13} />
+              </TooltipTrigger>
+              <TooltipContent side="top" align="end">
+                ⌘↵ to send · @ to mention · Markdown supported
+              </TooltipContent>
+            </Tooltip>
             {onCancel ? (
               <button
                 type="button"
@@ -417,11 +439,7 @@ export const TaskCommentComposer = forwardRef<CommentComposerHandle, Props>(
           <p className="mt-1 px-2 text-[10.5px] text-destructive">
             {submitError}
           </p>
-        ) : (
-          <p className="mt-1 px-2 text-[10.5px] text-muted-foreground/70">
-            ⌘↵ to send · @ to mention · Markdown supported
-          </p>
-        )}
+        ) : null}
         <MentionSuggestionDropdown
           state={suggestion}
           members={filteredMembers}
