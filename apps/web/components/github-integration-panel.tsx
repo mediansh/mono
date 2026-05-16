@@ -332,7 +332,7 @@ export function GitHubIntegrationPanel() {
             </p>
           </motion.div>
 
-          <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border shine bg-card">
+          <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card">
             <div className="flex items-center gap-3 p-3.5">
               <div className="flex size-8 items-center justify-center rounded-[8px] bg-foreground/5">
                 <GitHubBrandIcon size={20} className="text-foreground" />
@@ -373,7 +373,7 @@ export function GitHubIntegrationPanel() {
         </motion.div>
 
         {/* Connection status card */}
-        <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border shine bg-card">
+        <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card">
           <div className="flex items-center gap-3 p-3.5">
             <div className="flex size-8 items-center justify-center rounded-[8px] bg-foreground/5">
               <GitHubBrandIcon size={20} className="text-foreground" />
@@ -410,7 +410,7 @@ export function GitHubIntegrationPanel() {
         </motion.div>
 
         {/* Repositories */}
-        <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border shine bg-card">
+        <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card">
           <div className="border-b border-border px-3.5 py-2.5">
             <h3 className="text-[14px] font-medium">Repositories</h3>
             <p className="mt-0.5 text-[12px] text-muted-foreground">
@@ -494,7 +494,7 @@ export function GitHubIntegrationPanel() {
         </motion.div>
 
         {/* Automations */}
-        <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border shine bg-card">
+        <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card">
           <div className="border-b border-border px-3.5 py-2.5">
             <h3 className="text-[14px] font-medium">Automations</h3>
             <p className="mt-0.5 text-[12px] text-muted-foreground">

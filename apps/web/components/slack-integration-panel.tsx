@@ -411,7 +411,7 @@ export function SlackIntegrationPanel() {
             {/* Connection status card */}
             <motion.div
               variants={fadeUp}
-              className="rounded-[8px] shine bg-card ring-1 ring-border"
+              className="rounded-[8px] gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card ring-1 ring-border"
             >
               <div className="flex items-center gap-3 p-3.5">
                 <div className="flex size-8 items-center justify-center rounded-[8px] bg-muted ring-1 ring-border">
@@ -451,7 +451,7 @@ export function SlackIntegrationPanel() {
             {/* Feature request notifications */}
             <motion.div
               variants={fadeUp}
-              className="rounded-[8px] shine bg-card ring-1 ring-border"
+              className="rounded-[8px] gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card ring-1 ring-border"
             >
               <div className="flex items-center gap-3 border-b border-border px-3.5 py-2.5">
                 <PaperPlaneTilt size={15} className="text-muted-foreground" />
@@ -519,7 +519,7 @@ export function SlackIntegrationPanel() {
             {/* Feedback collection */}
             <motion.div
               variants={fadeUp}
-              className="rounded-[8px] shine bg-card ring-1 ring-border"
+              className="rounded-[8px] gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card ring-1 ring-border"
             >
               <div className="flex items-center gap-3 border-b border-border px-3.5 py-2.5">
                 <Info size={15} className="text-muted-foreground" />
@@ -636,7 +636,7 @@ export function SlackIntegrationPanel() {
             {feedbackCollectionEnabled ? (
               <motion.div
                 variants={fadeUp}
-                className="rounded-[8px] shine bg-card ring-1 ring-border"
+                className="rounded-[8px] gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card ring-1 ring-border"
               >
                 <div className="flex items-center gap-3 border-b border-border px-3.5 py-2.5">
                   <TextT size={15} className="text-muted-foreground" />
@@ -670,7 +670,7 @@ export function SlackIntegrationPanel() {
             {feedbackCollectionEnabled ? (
               <motion.div
                 variants={fadeUp}
-                className="rounded-[8px] shine bg-card ring-1 ring-border"
+                className="rounded-[8px] gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card ring-1 ring-border"
               >
                 <div className="flex items-center gap-3 border-b border-border px-3.5 py-2.5">
                   <PaperPlaneTilt size={15} className="text-muted-foreground" />
@@ -790,7 +790,7 @@ export function SlackIntegrationPanel() {
         {/* Connection card */}
         <motion.div
           variants={fadeUp}
-          className="rounded-[8px] shine bg-card ring-1 ring-border"
+          className="rounded-[8px] gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card ring-1 ring-border"
         >
           <div className="flex items-center gap-3 p-3.5">
             <div className="flex size-8 items-center justify-center rounded-[8px] bg-muted ring-1 ring-border">
@@ -826,7 +826,7 @@ export function SlackIntegrationPanel() {
         {/* Info card */}
         <motion.div
           variants={fadeUp}
-          className="flex items-start gap-2.5 rounded-[8px] shine bg-card px-3.5 py-3 ring-1 ring-border"
+          className="flex items-start gap-2.5 rounded-[8px] gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card px-3.5 py-3 ring-1 ring-border"
         >
           <Info size={14} className="mt-0.5 shrink-0 text-muted-foreground" />
           <div className="min-w-0 flex-1">

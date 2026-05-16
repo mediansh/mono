@@ -608,7 +608,7 @@ function EmptyBoardState({ onCreateTask }: { onCreateTask: () => void }) {
         initial={{ opacity: 0, y: 12, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
-        className="w-full max-w-sm rounded-[8px] shine bg-card p-5 text-center ring-1 ring-border"
+        className="w-full max-w-sm rounded-[8px] gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card p-5 text-center ring-1 ring-border"
       >
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
@@ -670,7 +670,7 @@ function HiddenColumnsToolbar({
             <button
               key={status}
               onClick={() => setSelectedColumn(status)}
-              className="flex items-center gap-1.5 rounded-[8px] bg-sidebar px-2 py-1 text-[13px] text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground dark:shine bg-card"
+              className="flex items-center gap-1.5 rounded-[8px] bg-sidebar px-2 py-1 text-[13px] text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground dark:gradient-border dark:gradient-border-to-tl dark:gradient-border-from-neutral-700 dark:gradient-border-via-neutral-800 dark:gradient-border-to-neutral-600 bg-card"
             >
               {getStatusIcon(status, 12)}
               {col.label}
@@ -2628,7 +2628,7 @@ const KanbanCard = memo(function KanbanCard({
         {...attributes}
         {...listeners}
         onClick={handleClick}
-        className={`group relative cursor-pointer rounded-[8px] bg-background ring-1 ring-border transition-[background-color,box-shadow,opacity] duration-150 select-none hover:bg-accent/20 dark:shine bg-card ${isMobile ? "" : "touch-none"} ${isSelected ? "bg-primary/[0.06] ring-2 ring-primary/40" : ""} ${hidden ? "!ring-0" : ""}`}
+        className={`group relative cursor-pointer rounded-[8px] bg-background ring-1 ring-border transition-[background-color,box-shadow,opacity] duration-150 select-none hover:bg-accent/20 dark:gradient-border dark:gradient-border-to-tl dark:gradient-border-from-neutral-700 dark:gradient-border-via-neutral-800 dark:gradient-border-to-neutral-600 bg-card ${isMobile ? "" : "touch-none"} ${isSelected ? "bg-primary/[0.06] ring-2 ring-primary/40" : ""} ${hidden ? "!ring-0" : ""}`}
       >
         {/* Checkbox overlay */}
         <div
@@ -4989,7 +4989,7 @@ export function KanbanBoard() {
             {/* Main content — shrinks to make room for the side panel */}
             <div className="flex min-w-0 flex-1 flex-col">
               {!canManageTasks ? (
-                <div className="mx-4 mt-4 rounded-[8px] shine bg-card px-3 py-3 text-[14px] text-muted-foreground ring-1 ring-border">
+                <div className="mx-4 mt-4 rounded-[8px] gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card px-3 py-3 text-[14px] text-muted-foreground ring-1 ring-border">
                   You’re in guest mode. Tasks are read-only in this workspace.
                 </div>
               ) : null}

@@ -335,7 +335,7 @@ export default function MembersSettingsPage() {
       </motion.div>
 
       {/* Invite card */}
-      <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border shine bg-card">
+      <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card">
         {/* Invite mode tabs */}
         <div className="flex items-center gap-1 border-b border-border px-3.5 pt-4 pb-0">
           <button
@@ -445,7 +445,7 @@ export default function MembersSettingsPage() {
             Pending invites
             <span className="ml-1.5 text-muted-foreground">({invites.length})</span>
           </h3>
-          <div className="rounded-[8px] ring-1 ring-border shine bg-card">
+          <div className="rounded-[8px] ring-1 ring-border gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card">
             <div className="divide-y divide-border">
               {invites.map((invite) => (
                 <div
@@ -495,7 +495,7 @@ export default function MembersSettingsPage() {
           Members
           <span className="ml-1.5 text-muted-foreground">({members.length})</span>
         </h3>
-        <div className="rounded-[8px] ring-1 ring-border shine bg-card">
+        <div className="rounded-[8px] ring-1 ring-border gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card">
           <div className="divide-y divide-border">
             {members.map((member) => (
               <div

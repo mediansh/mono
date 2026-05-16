@@ -496,7 +496,7 @@ export function RequestsPage() {
         </div>
 
         <div className="ml-auto flex items-center gap-1">
-          <div className="flex h-7 w-[200px] items-center gap-1.5 rounded-[8px] shine bg-card px-2 ring-1 ring-border focus-within:ring-foreground/30 sm:w-[240px]">
+          <div className="flex h-7 w-[200px] items-center gap-1.5 rounded-[8px] gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card px-2 ring-1 ring-border focus-within:ring-foreground/30 sm:w-[240px]">
             <MagnifyingGlass size={12} className="text-muted-foreground" />
             <input
               ref={searchInputRef}
@@ -857,7 +857,7 @@ function RequestDetail({
             <h3 className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
               Description
             </h3>
-            <div className="rounded-[8px] shine bg-card p-3 text-[14px] leading-relaxed whitespace-pre-wrap text-foreground/90 ring-1 ring-border">
+            <div className="rounded-[8px] gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card p-3 text-[14px] leading-relaxed whitespace-pre-wrap text-foreground/90 ring-1 ring-border">
               {task.description}
             </div>
           </section>
@@ -882,7 +882,7 @@ function RequestDetail({
               {task.attachments.map((att, idx) => (
                 <li
                   key={`${att.storageId}-${idx}`}
-                  className="flex items-center gap-1.5 rounded-[8px] shine bg-card px-2 py-1 text-[12px] text-muted-foreground ring-1 ring-border"
+                  className="flex items-center gap-1.5 rounded-[8px] gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card px-2 py-1 text-[12px] text-muted-foreground ring-1 ring-border"
                 >
                   <span className="truncate max-w-[180px]">{att.name}</span>
                 </li>
@@ -926,7 +926,7 @@ function SourceRow({ source }: { source: TaskSource }) {
   const themeFollowing = THEME_FOLLOWING_SOURCES.has(source.platform)
   const safeUrl = sanitizeExternalUrl(source.url)
   const rowClassName =
-    "flex items-center gap-2 rounded-[8px] shine bg-card p-2 ring-1 ring-border transition-colors hover:ring-foreground/30"
+    "flex items-center gap-2 rounded-[8px] gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card p-2 ring-1 ring-border transition-colors hover:ring-foreground/30"
   const inner = (
     <>
       <span
@@ -1171,7 +1171,7 @@ function NoMatchesState({ onClear }: { onClear: () => void }) {
       <p className="text-[14px] font-medium">No requests match your filters</p>
       <button
         onClick={onClear}
-        className="rounded-[8px] shine bg-card px-2.5 py-1 text-[13px] font-medium ring-1 ring-border transition-colors hover:bg-accent"
+        className="rounded-[8px] gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card px-2.5 py-1 text-[13px] font-medium ring-1 ring-border transition-colors hover:bg-accent"
       >
         Clear filters
       </button>

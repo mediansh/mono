@@ -134,7 +134,7 @@ export default function EarlyAccessPage() {
           </Link>
         </div>
 
-        <div className="rounded-[8px] shine bg-card p-5 ring-1 ring-border">
+        <div className="rounded-[8px] gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card p-5 ring-1 ring-border">
           <h1 className="text-center text-[16px] font-semibold">Enter your access code</h1>
           <p className="mt-1 text-center text-[14px] text-muted-foreground">
             Median is in early access. Enter your invite code to continue.

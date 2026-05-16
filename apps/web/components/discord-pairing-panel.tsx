@@ -297,7 +297,7 @@ export function DiscordPairingPanel() {
           </motion.div>
 
           {/* Connection status card */}
-          <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border shine bg-card">
+          <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card">
             <div className="flex items-center gap-3 p-3.5">
               <div className="flex size-8 items-center justify-center rounded-[8px] bg-[#5865F2]/10">
                 <DiscordBrandIcon size={20} className="text-[#5865F2]" />
@@ -338,7 +338,7 @@ export function DiscordPairingPanel() {
           {/* Additional context */}
           <motion.div
             variants={fadeUp}
-            className="rounded-[8px] ring-1 ring-border shine bg-card"
+            className="rounded-[8px] ring-1 ring-border gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card"
           >
             <div className="flex items-center gap-3 border-b border-border px-3.5 py-2.5">
               <TextT size={15} className="text-muted-foreground" />
@@ -366,7 +366,7 @@ export function DiscordPairingPanel() {
           {/* Respond for me */}
           <motion.div
             variants={fadeUp}
-            className="rounded-[8px] ring-1 ring-border shine bg-card"
+            className="rounded-[8px] ring-1 ring-border gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card"
           >
             <div className="flex items-center gap-3 border-b border-border px-3.5 py-2.5">
               <EyeSlash size={15} className="text-muted-foreground" />
@@ -395,7 +395,7 @@ export function DiscordPairingPanel() {
 
           <motion.div
             variants={fadeUp}
-            className="rounded-[8px] ring-1 ring-border shine bg-card"
+            className="rounded-[8px] ring-1 ring-border gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card"
           >
             <div className="flex items-center gap-3 border-b border-border px-3.5 py-2.5">
               <PaperPlaneTilt size={15} className="text-muted-foreground" />
@@ -500,7 +500,7 @@ export function DiscordPairingPanel() {
         </motion.div>
 
         {/* Connection card with pairing form */}
-        <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border shine bg-card">
+        <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card">
           <div className="flex items-center gap-3 p-3.5">
             <div className="flex size-8 items-center justify-center rounded-[8px] bg-[#5865F2]/10">
               <DiscordBrandIcon size={20} className="text-[#5865F2]" />
@@ -544,7 +544,7 @@ export function DiscordPairingPanel() {
         </motion.div>
 
         {/* Invite bot */}
-        <motion.div variants={fadeUp} className="flex items-center justify-between rounded-[8px] ring-1 ring-border shine bg-card px-3.5 py-3">
+        <motion.div variants={fadeUp} className="flex items-center justify-between rounded-[8px] ring-1 ring-border gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card px-3.5 py-3">
           <div>
             <p className="text-[14px] font-medium text-foreground">Don&apos;t have the bot yet?</p>
             <p className="mt-0.5 text-[12px] text-muted-foreground">

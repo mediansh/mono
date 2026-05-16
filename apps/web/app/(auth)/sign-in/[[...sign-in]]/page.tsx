@@ -136,7 +136,7 @@ export default function SignInPage() {
         </div>
 
         {/* Card */}
-        <div className="rounded-[8px] shine bg-card p-5 ring-1 ring-border">
+        <div className="rounded-[8px] gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card p-5 ring-1 ring-border">
           {stage === "initial" && (
             <>
               <h1 className="text-center text-[16px] font-semibold">Sign in to Median</h1>
