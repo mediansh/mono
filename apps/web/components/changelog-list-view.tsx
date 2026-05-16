@@ -1,31 +1,31 @@
 "use client"
 
 import Link from "next/link"
-import { usePreloadedQuery, type Preloaded } from "convex/react"
 import { motion } from "motion/react"
 import { Sparkle } from "@phosphor-icons/react"
 import { LandingFooter } from "@/components/landing-footer"
 import { LandingNavbar } from "@/components/landing-navbar"
-import { TiptapContent } from "@/components/tiptap-content"
-import type { api } from "@/convex/_generated/api"
+import { NotraContent } from "@/components/notra-content"
 
 const ease = [0.25, 0.1, 0.25, 1] as const
 
+export type ChangelogListEntry = {
+  id: string
+  href: string
+  title: string
+  markdown: string
+  publishedAt: number
+}
+
 function formatDate(ms: number) {
-  return new Date(ms).toLocaleDateString(undefined, {
+  return new Date(ms).toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
     year: "numeric",
   })
 }
 
-export function ChangelogListView({
-  preloaded,
-}: {
-  preloaded: Preloaded<typeof api.changelogEntries.listPublished>
-}) {
-  const entries = usePreloadedQuery(preloaded)
-
+export function ChangelogListView({ entries }: { entries: ChangelogListEntry[] }) {
   return (
     <motion.main
       initial={{ opacity: 0 }}
@@ -57,30 +57,20 @@ export function ChangelogListView({
           ) : (
             <div className="divide-y divide-foreground/[0.06]">
               {entries.map((entry) => (
-                <section key={entry._id} className="py-12 first:pt-0">
+                <section key={entry.id} className="py-12 first:pt-0">
                   <div className="flex items-baseline justify-between gap-4">
                     <Link
-                      href={`/changelog/${entry.slug}`}
+                      href={`/changelog/${entry.href}`}
                       className="text-3xl font-semibold tracking-tight text-foreground transition-colors hover:text-foreground/70"
                     >
-                      {entry.version ? `v${entry.version}` : entry.title}
+                      {entry.title}
                     </Link>
                     <p className="shrink-0 text-xs uppercase tracking-wider text-muted-foreground/60">
                       {formatDate(entry.publishedAt)}
                     </p>
                   </div>
-                  {entry.version && (
-                    <p className="mt-2 text-sm font-medium text-muted-foreground">
-                      {entry.title}
-                    </p>
-                  )}
-                  {entry.excerpt && (
-                    <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                      {entry.excerpt}
-                    </p>
-                  )}
                   <div className="mt-2">
-                    <TiptapContent json={entry.content} />
+                    <NotraContent markdown={entry.markdown} />
                   </div>
                 </section>
               ))}
