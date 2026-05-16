@@ -95,7 +95,7 @@ export default function SignUpPage() {
         </div>
 
         {/* Card */}
-        <div className="rounded-[8px] bg-card p-5 ring-1 ring-border">
+        <div className="rounded-[8px] shine bg-card p-5 ring-1 ring-border">
           {stage === "initial" && (
             <>
               <h1 className="text-center text-[16px] font-semibold">Create your account</h1>

@@ -153,7 +153,7 @@ export default function ApiKeysSettingsPage() {
       </Dialog>
 
       {/* Generate card */}
-      <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border bg-card">
+      <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border shine bg-card">
         <div className="p-5">
           <div className="flex flex-col gap-3">
             <div>
@@ -193,7 +193,7 @@ export default function ApiKeysSettingsPage() {
             Active keys
             <span className="ml-1.5 text-muted-foreground">({apiKeys.length})</span>
           </h3>
-          <div className="rounded-[8px] ring-1 ring-border bg-card">
+          <div className="rounded-[8px] ring-1 ring-border shine bg-card">
             <div className="divide-y divide-border">
               {apiKeys.map((key) => (
                 <div

@@ -10,16 +10,15 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default:
-          "bg-primary text-primary-foreground [a]:hover:bg-primary/80 shadow-[0_1px_0_#ffffff20_inset,0_1px_2px_#00000040,0_2px_4px_-1px_#00000026] hover:shadow-[0_1px_0_#ffffff25_inset,0_1px_2px_#00000050,0_3px_6px_-1px_#00000033] active:scale-[0.985] active:shadow-[0_1px_0_#ffffff10_inset,0_1px_1px_#00000033] dark:shadow-[0_0.5px_0_#ffffff35_inset,0_1px_1px_#ffffff20_inset,0_2px_3px_-1px_#00000080,0_4px_8px_-2px_#00000060] dark:hover:shadow-[0_0.5px_0_#ffffff45_inset,0_1px_1px_#ffffff25_inset,0_2px_4px_-1px_#00000099,0_5px_10px_-2px_#00000070] dark:active:shadow-[0_0.5px_0_#ffffff20_inset,0_1px_2px_-1px_#00000060]",
+        default: "shine bg-primary text-primary-foreground [a]:hover:bg-primary/80",
         outline:
-          "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+          "shine border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80 aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+          "shine bg-secondary text-secondary-foreground hover:bg-secondary/80 aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
         ghost:
           "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
         destructive:
-          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
+          "shine bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {

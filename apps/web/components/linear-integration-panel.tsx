@@ -421,7 +421,7 @@ export function LinearIntegrationPanel() {
             </p>
           </motion.div>
 
-          <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border bg-card">
+          <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border shine bg-card">
             <div className="flex items-center gap-3 p-3.5">
               <div className="flex size-8 items-center justify-center rounded-[8px] bg-[#5E6AD2]/10">
                 <LinearBrandMark size={20} />
@@ -481,7 +481,7 @@ export function LinearIntegrationPanel() {
             </div>
           </motion.div>
 
-          <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border bg-card">
+          <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border shine bg-card">
             <div className="flex items-center justify-between gap-3 border-b border-border px-3.5 py-2.5">
               <h3 className="text-[14px] font-medium">Status mapping</h3>
               {hasMappingChanges && (
@@ -595,7 +595,7 @@ export function LinearIntegrationPanel() {
           </p>
         </motion.div>
 
-        <div className="rounded-[8px] ring-1 ring-border bg-card">
+        <div className="rounded-[8px] ring-1 ring-border shine bg-card">
           <div className="flex items-center gap-3 p-3.5">
             <div className="flex size-8 items-center justify-center rounded-[8px] bg-[#5E6AD2]/10">
               <LinearBrandMark size={20} />

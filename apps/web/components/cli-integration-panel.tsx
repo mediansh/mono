@@ -59,7 +59,7 @@ export function CliIntegrationPanel() {
         </motion.div>
 
         {/* Quick start */}
-        <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border bg-card">
+        <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border shine bg-card">
           <div className="border-b border-border px-3.5 py-2.5">
             <h3 className="text-[14px] font-medium">Quick start</h3>
           </div>

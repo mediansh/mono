@@ -220,7 +220,7 @@ export function XIntegrationPanel() {
             </p>
           </motion.div>
 
-          <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border bg-card">
+          <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border shine bg-card">
             <div className="flex items-center gap-3 p-3.5">
               <div className="flex size-8 items-center justify-center overflow-hidden rounded-[8px] bg-foreground/5">
                 {integration.profileImageUrl ? (
@@ -259,7 +259,7 @@ export function XIntegrationPanel() {
             </div>
           </motion.div>
 
-          <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border bg-card">
+          <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border shine bg-card">
             <div className="flex items-center gap-3 border-b border-border px-3.5 py-2.5">
               <HugeiconsIcon icon={TextIcon} size={15} strokeWidth={1.8} className="text-muted-foreground" />
               <div className="flex-1">
@@ -318,7 +318,7 @@ export function XIntegrationPanel() {
           </p>
         </motion.div>
 
-        <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border bg-card">
+        <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border shine bg-card">
           <div className="flex items-center gap-3 p-3.5">
             <div className="flex size-8 items-center justify-center rounded-[8px] bg-foreground/5">
               <XBrandIcon size={20} className="text-foreground" />
@@ -342,7 +342,7 @@ export function XIntegrationPanel() {
           </div>
         </motion.div>
 
-        <motion.div variants={fadeUp} className="flex items-start gap-3 rounded-[8px] ring-1 ring-border bg-card px-3.5 py-3">
+        <motion.div variants={fadeUp} className="flex items-start gap-3 rounded-[8px] ring-1 ring-border shine bg-card px-3.5 py-3">
           <HugeiconsIcon icon={InformationCircleIcon} size={16} strokeWidth={1.8} className="mt-0.5 shrink-0 text-muted-foreground" />
           <div>
             <p className="text-[14px] font-medium text-foreground">Use your brand account</p>

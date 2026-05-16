@@ -94,7 +94,7 @@ export default function LabelsSettingsPage() {
       </motion.div>
 
       {/* Labels card */}
-      <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border bg-card">
+      <motion.div variants={fadeUp} className="rounded-[8px] ring-1 ring-border shine bg-card">
         <div className="p-5">
           <div className="flex flex-col gap-2">
             <AnimatePresence initial={false}>

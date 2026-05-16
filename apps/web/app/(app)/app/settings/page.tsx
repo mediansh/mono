@@ -166,7 +166,7 @@ export default function GeneralSettingsPage() {
 
       {/* Workspace profile card */}
       <motion.form variants={fadeUp} onSubmit={handleSave}>
-        <div className="rounded-[8px] ring-1 ring-border bg-card">
+        <div className="rounded-[8px] ring-1 ring-border shine bg-card">
           {/* Logo section */}
           <div className="flex items-center gap-3 border-b border-border p-3.5">
             <input
@@ -303,7 +303,7 @@ export default function GeneralSettingsPage() {
                 value={deleteConfirm}
                 onChange={(e) => setDeleteConfirm(e.target.value)}
                 placeholder={currentWorkspace.name}
-                className="h-8 rounded-[8px] ring-1 ring-border bg-card px-3 text-[14px] outline-none transition-colors placeholder:text-muted-foreground focus:ring-foreground/30"
+                className="h-8 rounded-[8px] ring-1 ring-border shine bg-card px-3 text-[14px] outline-none transition-colors placeholder:text-muted-foreground focus:ring-foreground/30"
               />
             </div>
             <div className="flex gap-2">

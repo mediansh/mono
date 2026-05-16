@@ -206,7 +206,7 @@ function CreateWorkspaceModal({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="group flex size-11 items-center justify-center overflow-hidden rounded-[8px] bg-card ring-1 ring-border transition-colors hover:bg-muted"
+              className="group flex size-11 items-center justify-center overflow-hidden rounded-[8px] shine bg-card ring-1 ring-border transition-colors hover:bg-muted"
             >
               {iconPreview ? (
                 <img
@@ -252,7 +252,7 @@ function CreateWorkspaceModal({
                 if (error) setError("")
               }}
               autoFocus
-              className="h-8 rounded-[8px] bg-card px-2.5 text-[14px] ring-1 ring-border outline-none transition-all placeholder:text-muted-foreground focus:ring-foreground/30"
+              className="h-8 rounded-[8px] shine bg-card px-2.5 text-[14px] ring-1 ring-border outline-none transition-all placeholder:text-muted-foreground focus:ring-foreground/30"
             />
           </div>
 
@@ -309,7 +309,7 @@ function ContactModal({
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
             <label className="text-[14px] font-medium">Email</label>
-            <div className="group flex items-center gap-2 rounded-[8px] bg-card px-2.5 py-1.5 ring-1 ring-border">
+            <div className="group flex items-center gap-2 rounded-[8px] shine bg-card px-2.5 py-1.5 ring-1 ring-border">
               <code className="flex-1 select-all font-mono text-[14px]">
                 {CONTACT_EMAIL}
               </code>
@@ -340,7 +340,7 @@ function ContactModal({
               href={DISCORD_INVITE_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="group flex items-center gap-2 rounded-[8px] bg-card px-2.5 py-1.5 ring-1 ring-border transition-colors hover:bg-muted"
+              className="group flex items-center gap-2 rounded-[8px] shine bg-card px-2.5 py-1.5 ring-1 ring-border transition-colors hover:bg-muted"
             >
               <span style={{ lineHeight: 0 }}>
                 <DiscordIcon size={14} />
