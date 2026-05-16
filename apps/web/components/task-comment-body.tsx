@@ -28,7 +28,7 @@ function encodeMentions(input: string): string {
 
 function MentionChip({ name }: { name: string }) {
   return (
-    <span className="mention-chip mx-px inline-flex items-baseline rounded-[8px] bg-primary/10 px-1 py-px text-[13px] font-medium text-primary">
+    <span className="mention-chip mx-px inline-flex items-baseline rounded-[8px] bg-current/15 px-1 py-px text-[13px] font-medium text-current">
       @{name}
     </span>
   )
