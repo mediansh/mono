@@ -384,13 +384,13 @@ export const TaskCommentComposer = forwardRef<CommentComposerHandle, Props>(
       <div className="relative">
         <div
           className={cn(
-            "group/composer flex items-center gap-1 rounded-full border border-sidebar-border bg-muted/40 pr-1 pl-1 py-0.5 transition-colors focus-within:border-ring/40 focus-within:bg-background",
+            "group/composer flex items-end gap-1 rounded-[20px] border border-sidebar-border bg-muted/40 pr-1 pl-1 py-1 transition-colors focus-within:border-ring/40 focus-within:bg-background",
             disabled && "opacity-60"
           )}
           onKeyDown={onKeyDown}
         >
           <div ref={hostRef} className="min-w-0 flex-1" />
-          <div className="flex shrink-0 items-center gap-0.5 self-end pb-0.5">
+          <div className="flex shrink-0 items-center gap-0.5">
             <Tooltip>
               <TooltipTrigger
                 render={

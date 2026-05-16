@@ -39,7 +39,7 @@ export function TaskCommentBody({ markdown, className }: Props) {
   return (
     <div
       className={cn(
-        "max-w-none text-[14px] leading-relaxed text-foreground",
+        "max-w-none text-[14px] leading-relaxed text-current",
         "[&_p]:my-1",
         "[&_h1]:my-2 [&_h1]:text-[17px] [&_h1]:font-semibold",
         "[&_h2]:my-2 [&_h2]:text-[15px] [&_h2]:font-semibold",
