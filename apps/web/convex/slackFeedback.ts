@@ -1,6 +1,7 @@
 import { generateText } from "ai"
 import { trackLLMGeneration, trackFeedbackProcessing } from "./posthog"
 import { AI_MODEL_IDS, AI_MODELS, getAiModelForPlan } from "../lib/ai"
+import { normalizeExtractedFeedbackPayload } from "../lib/ai-normalizers"
 import { safeTrackAiUsage } from "../lib/billing/autumn"
 import { getAiCostForTokens } from "../lib/billing/config"
 import { Workpool, vOnCompleteArgs } from "@convex-dev/workpool"
@@ -351,13 +352,62 @@ function truncateText(text: string | null | undefined, maxChars: number) {
   return `${value.slice(0, Math.max(0, maxChars - 3)).trim()}...`
 }
 
-function extractJsonObject(text: string) {
-  const start = text.indexOf("{")
-  const end = text.lastIndexOf("}")
-  if (start === -1 || end === -1 || end <= start) {
-    throw new Error("Model did not return a JSON object.")
+function extractFirstJsonValue(text: string): unknown {
+  for (let start = 0; start < text.length; start += 1) {
+    const opening = text[start]
+    if (opening !== "{" && opening !== "[") {
+      continue
+    }
+
+    const closing = opening === "{" ? "}" : "]"
+    const stack = [closing]
+    let inString = false
+    let escaped = false
+
+    for (let index = start + 1; index < text.length; index += 1) {
+      const char = text[index]
+
+      if (inString) {
+        if (escaped) {
+          escaped = false
+        } else if (char === "\\") {
+          escaped = true
+        } else if (char === '"') {
+          inString = false
+        }
+        continue
+      }
+
+      if (char === '"') {
+        inString = true
+        continue
+      }
+
+      if (char === "{" || char === "[") {
+        stack.push(char === "{" ? "}" : "]")
+        continue
+      }
+
+      if (char === "}" || char === "]") {
+        if (stack[stack.length - 1] !== char) {
+          break
+        }
+
+        stack.pop()
+
+        if (stack.length === 0) {
+          const candidate = text.slice(start, index + 1)
+          try {
+            return JSON.parse(candidate)
+          } catch {
+            break
+          }
+        }
+      }
+    }
   }
-  return text.slice(start, end + 1)
+
+  throw new Error("Model did not return a JSON object.")
 }
 
 function isMessageAfterCursor(
@@ -939,7 +989,7 @@ export const processFeedbackWindow = internalAction({
       })
 
       const classification = feedbackClassificationSchema.parse(
-        JSON.parse(extractJsonObject(classifierResult.text))
+        extractFirstJsonValue(classifierResult.text)
       )
 
       logInfo("Slack feedback classified", {
@@ -1012,7 +1062,10 @@ export const processFeedbackWindow = internalAction({
         "Priority may be urgent, high, medium, low, or none.",
         `Allowed labels: ${labelsText}`,
         "Only use labels from the allowed list. Use an empty array when none apply.",
-        'Return valid structured output only with action items shaped like {"action":"create",...} or {"action":"update","taskCode":"MDN-123",...}.',
+        "Return valid JSON only. No markdown. No code fences. No commentary.",
+        'Always return a single JSON object with exactly one top-level key "actions" whose value is an array. Each entry is either {"action":"create","title":"...","description":"..." or null,"priority":"medium" or null,"labels":[]} or {"action":"update","taskCode":"MDN-123","title":"...","description":"..." or null,"priority":"medium" or null,"labels":[]}.',
+        "Every action must include all of: action, title, description (string or null), priority (string or null), and labels (array). Do not invent extra fields.",
+        'Empty result must be {"actions":[]} — never a bare array or a bare object.',
       ]
 
       if (feedbackWindow.integration.additionalContext) {
@@ -1077,7 +1130,9 @@ export const processFeedbackWindow = internalAction({
         extractorDurationMs = Date.now() - extractorStart
         extractorUsage = extractorResult.usage
         const parsedExtraction = extractedFeedbackTasksSchema.safeParse(
-          JSON.parse(extractJsonObject(extractorResult.text))
+          normalizeExtractedFeedbackPayload(
+            extractFirstJsonValue(extractorResult.text)
+          )
         )
         if (parsedExtraction.success) {
           extracted = parsedExtraction.data
