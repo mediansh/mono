@@ -1187,7 +1187,7 @@ const SortableListRow = memo(function SortableListRow({
         {...listeners}
         onClick={handleClick}
         onAnimationEnd={() => setHasAnimated(true)}
-        className={`group flex cursor-pointer items-center gap-3 border-b border-l-2 border-border px-3 py-2 transition-[background-color,box-shadow,opacity] duration-150 select-none hover:bg-accent/40 ${isMobile ? "" : "touch-none"} ${PRIORITY_ACCENT[task.priority]} ${isSelected ? "bg-primary/[0.06] hover:bg-primary/[0.10]" : "bg-background"}`}
+        className={`group flex cursor-pointer items-center gap-3 border-b border-l-2 border-border px-3 py-2 transition-[background-color,box-shadow,opacity] duration-150 select-none hover:bg-accent/40 ${isMobile ? "" : "touch-none"} ${PRIORITY_ACCENT[task.priority]} ${isSelected ? "bg-primary/[0.06] hover:bg-primary/[0.10]" : "bg-white dark:bg-background"}`}
       >
         {/* Checkbox */}
         <div
