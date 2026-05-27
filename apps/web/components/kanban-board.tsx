@@ -49,6 +49,11 @@ import {
   At,
   Sparkle,
 } from "@phosphor-icons/react"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@workspace/ui/components/tooltip"
 import { NewTaskModal } from "@/components/new-task-modal"
 import {
   AssigneeContextSubmenu,
@@ -2533,29 +2538,33 @@ function BulkActionToolbar({
         <div className="mx-1 h-5 w-px bg-border" />
 
         {/* Clean Up */}
-        <button
-          onClick={onCleanUp}
-          disabled={isCleaningUp}
-          className="flex items-center gap-1.5 rounded-[10px] px-2.5 py-1.5 text-[13px] font-medium text-foreground/70 transition-all hover:bg-foreground/[0.06] hover:text-foreground active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40"
-        >
-          {isCleaningUp ? (
-            <SpinnerGap size={13} className="animate-spin" />
-          ) : (
-            <Sparkle size={13} />
-          )}
-          <span>{isCleaningUp ? "Cleaning..." : "Clean Up"}</span>
-        </button>
-
-        <div className="mx-1 h-5 w-px bg-border" />
+        <Tooltip>
+          <TooltipTrigger
+            onClick={onCleanUp}
+            disabled={isCleaningUp}
+            className="flex items-center justify-center rounded-[10px] p-1.5 text-foreground/70 transition-all hover:bg-foreground/[0.06] hover:text-foreground active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40"
+          >
+            {isCleaningUp ? (
+              <SpinnerGap size={14} className="animate-spin" />
+            ) : (
+              <Sparkle size={14} />
+            )}
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            {isCleaningUp ? "Cleaning..." : "Clean Up"}
+          </TooltipContent>
+        </Tooltip>
 
         {/* Delete */}
-        <button
-          onClick={onDelete}
-          className="flex items-center gap-1.5 rounded-[10px] px-2.5 py-1.5 text-[13px] font-medium text-destructive/80 transition-all hover:bg-destructive/10 hover:text-destructive active:scale-[0.97]"
-        >
-          <Trash size={13} />
-          <span>Delete</span>
-        </button>
+        <Tooltip>
+          <TooltipTrigger
+            onClick={onDelete}
+            className="flex items-center justify-center rounded-[10px] p-1.5 text-destructive/80 transition-all hover:bg-destructive/10 hover:text-destructive active:scale-[0.97]"
+          >
+            <Trash size={14} />
+          </TooltipTrigger>
+          <TooltipContent side="top">Delete</TooltipContent>
+        </Tooltip>
       </div>
     </motion.div>,
     document.body
