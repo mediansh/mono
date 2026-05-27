@@ -14,7 +14,7 @@ export const AI_MODEL_IDS = {
   feedbackClassifier: "google/gemini-3.1-flash-lite",
   feedbackExtractor: "google/gemini-3-flash-preview",
   taskGeneration: "google/gemini-3.1-flash-lite",
-  taskCleanup: "google/gemini-3.1-flash-lite",
+  taskCleanup: "google/gemini-2.5-flash-lite",
 } as const satisfies Record<
   "feedbackClassifier" | "feedbackExtractor" | "taskGeneration" | "taskCleanup",
   TrackedAiModel
