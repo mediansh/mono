@@ -98,3 +98,23 @@ export function buildTaskGenerationSystemPrompt(args: {
     'The JSON format must be: {"tasks":[{"title":"...","description":null,"status":"todo","priority":"none","tags":[]}]}',
   ].join(" ")
 }
+
+export function buildTaskCleanupSystemPrompt(args: {
+  workspaceName: string
+  labelsText: string
+}): string {
+  return [
+    "You reorganize and clean up tasks on a project management board.",
+    `Workspace: ${args.workspaceName}.`,
+    `Allowed priorities: ${TASK_PRIORITIES.join(", ")}.`,
+    `Allowed labels: ${args.labelsText}`,
+    "You will receive a JSON array of tasks with their id, title, description, status, priority, labels, and order.",
+    "Your job:",
+    "1. REORDER: Assign a new order number to each task. Higher priority or more urgent tasks should come first (lower order number = higher on the board). Group related tasks together. Use integers starting from 0, incrementing by 1.",
+    "2. PRIORITIZE: Adjust priorities based on the task title and description. Urgent bugs or blockers should be urgent or high. Nice-to-haves should be low or none. Be reasonable — not everything is urgent.",
+    "3. LABEL: Add relevant labels from the allowed labels list. Only use labels from the allowed list. Keep existing labels that still apply. Use an empty array when none apply.",
+    "Every input task must appear in the output. Return one entry per input task.",
+    "Return valid JSON only. No markdown. No code fences. No commentary.",
+    'The JSON format must be: {"tasks":[{"id":"...","order":0,"priority":"medium","labels":["bug"]}]}',
+  ].join(" ")
+}

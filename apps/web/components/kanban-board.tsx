@@ -47,6 +47,7 @@ import {
   DotsThree,
   Users,
   At,
+  Sparkle,
 } from "@phosphor-icons/react"
 import { NewTaskModal } from "@/components/new-task-modal"
 import {
@@ -2375,6 +2376,8 @@ function BulkActionToolbar({
   onChangePriority,
   onChangeLabels,
   onChangeAssignees,
+  onCleanUp,
+  isCleaningUp,
   onDelete,
   onClearSelection,
 }: {
@@ -2385,6 +2388,8 @@ function BulkActionToolbar({
   onChangePriority: (priority: Priority) => void
   onChangeLabels: (labels: string[]) => void
   onChangeAssignees: (assignees: TaskAssignee[]) => void
+  onCleanUp: () => void
+  isCleaningUp: boolean
   onDelete: () => void
   onClearSelection: () => void
 }) {
@@ -2511,6 +2516,23 @@ function BulkActionToolbar({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {/* Divider */}
+      <div className="mx-0.5 h-5 w-px bg-border" />
+
+      {/* Clean Up */}
+      <button
+        onClick={onCleanUp}
+        disabled={isCleaningUp}
+        className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[13px] font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {isCleaningUp ? (
+          <SpinnerGap size={13} className="animate-spin" />
+        ) : (
+          <Sparkle size={13} />
+        )}
+        <span>{isCleaningUp ? "Cleaning..." : "Clean Up"}</span>
+      </button>
 
       {/* Divider */}
       <div className="mx-0.5 h-5 w-px bg-border" />
@@ -3092,6 +3114,8 @@ function ColumnBoardView({
   onDeleteTask,
   onBulkUpdateTasks,
   onBulkDeleteTasks,
+  onCleanUp,
+  isCleaningUp,
   onAddTask,
 }: {
   tasks: Task[]
@@ -3112,6 +3136,8 @@ function ColumnBoardView({
     updates: Partial<Pick<Task, "status" | "priority" | "labels" | "assignees">>
   ) => void
   onBulkDeleteTasks: (taskIds: string[]) => void
+  onCleanUp: (taskIds: string[]) => void
+  isCleaningUp: boolean
   onAddTask: (status: Status) => void
 }) {
   const visibleColumns = COLUMNS.filter((c) => !hiddenColumns.includes(c.id))
@@ -3253,6 +3279,10 @@ function ColumnBoardView({
     onBulkDeleteTasks(Array.from(selectedTaskIds))
     handleClearSelection()
   }, [selectedTaskIds, onBulkDeleteTasks, handleClearSelection])
+
+  const handleCleanUp = useCallback(() => {
+    onCleanUp(Array.from(selectedTaskIds))
+  }, [selectedTaskIds, onCleanUp])
 
   const isMobile = useIsMobile()
   const pointerSensor = useSensor(PointerSensor, {
@@ -3509,6 +3539,8 @@ function ColumnBoardView({
           onChangePriority={handleBulkChangePriority}
           onChangeLabels={handleBulkChangeLabels}
           onChangeAssignees={handleBulkChangeAssignees}
+          onCleanUp={handleCleanUp}
+          isCleaningUp={isCleaningUp}
           onDelete={handleBulkDelete}
           onClearSelection={handleClearSelection}
         />
@@ -3576,6 +3608,8 @@ function ListView({
   onDeleteTask,
   onBulkUpdateTasks,
   onBulkDeleteTasks,
+  onCleanUp,
+  isCleaningUp,
   onAddTask,
 }: {
   tasks: Task[]
@@ -3598,6 +3632,8 @@ function ListView({
     updates: Partial<Pick<Task, "status" | "priority" | "labels" | "assignees">>
   ) => void
   onBulkDeleteTasks: (taskIds: string[]) => void
+  onCleanUp: (taskIds: string[]) => void
+  isCleaningUp: boolean
   onAddTask: (status: Status) => void
 }) {
   const visibleColumns = COLUMNS.filter((c) => !hiddenColumns.includes(c.id))
@@ -3747,6 +3783,10 @@ function ListView({
     handleClearSelection()
   }, [selectedTaskIds, onBulkDeleteTasks, handleClearSelection])
 
+  const handleCleanUp = useCallback(() => {
+    onCleanUp(Array.from(selectedTaskIds))
+  }, [selectedTaskIds, onCleanUp])
+
   const isMobile = useIsMobile()
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 5 },
@@ -3864,6 +3904,8 @@ function ListView({
           onChangePriority={handleBulkChangePriority}
           onChangeLabels={handleBulkChangeLabels}
           onChangeAssignees={handleBulkChangeAssignees}
+          onCleanUp={handleCleanUp}
+          isCleaningUp={isCleaningUp}
           onDelete={handleBulkDelete}
           onClearSelection={handleClearSelection}
         />
@@ -4981,6 +5023,121 @@ export function KanbanBoard() {
       })
   }
 
+  const [isCleaningUp, setIsCleaningUp] = useState(false)
+
+  async function handleCleanUpTasks(taskIds: string[]) {
+    if (!workspaceId || !canManageTasks) return
+
+    const validIds = taskIds.filter((id) => !id.startsWith("optimistic:"))
+    if (validIds.length === 0) return
+
+    const allTasks =
+      getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
+    const selectedTasks = allTasks.filter((t) => validIds.includes(t._id))
+    if (selectedTasks.length === 0) return
+
+    setIsCleaningUp(true)
+    const toastId = toast.loading("Cleaning up tasks...")
+
+    try {
+      const response = await fetch("/api/tasks/cleanup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workspaceId,
+          tasks: selectedTasks.map((t) => ({
+            id: t._id,
+            title: t.title,
+            description: t.description ?? null,
+            status: t.status,
+            priority: t.priority,
+            labels: t.labels ?? [],
+            order: t.order,
+          })),
+        }),
+      })
+
+      const payload = await response.json()
+
+      if (!response.ok) {
+        if (response.status === 402 && payload?.code === "credits_exhausted") {
+          toast.error(payload?.error ?? "Credits exhausted.", { id: toastId })
+          return
+        }
+        throw new Error(payload?.error || "Cleanup failed.")
+      }
+
+      const cleanedTasks: Array<{
+        id: string
+        order: number
+        priority: string
+        labels: string[]
+      }> = payload.tasks
+
+      // Apply optimistic updates
+      lastLocalChangeRef.current = Date.now()
+      updateWorkspaceTasks(workspaceId, (tasks) =>
+        tasks.map((task) => {
+          const cleaned = cleanedTasks.find((c) => c.id === task._id)
+          if (!cleaned) return task
+          return {
+            ...task,
+            order: cleaned.order,
+            priority: cleaned.priority as Task["priority"],
+            labels: cleaned.labels,
+          }
+        })
+      )
+
+      // Apply reorder
+      const realIds = validIds.filter((id) => !isDevTask(id))
+      if (realIds.length > 0) {
+        const reorderChanges = cleanedTasks
+          .filter((t) => !isDevTask(t.id))
+          .map((t) => ({
+            taskId: t.id as Id<"tasks">,
+            status: selectedTasks.find((st) => st._id === t.id)!.status,
+            order: t.order,
+          }))
+
+        await reorderTasks({ workspaceId, changes: reorderChanges })
+
+        // Apply priority + label changes
+        const updates = cleanedTasks.filter((t) => {
+          if (isDevTask(t.id)) return false
+          const orig = selectedTasks.find((st) => st._id === t.id)
+          return (
+            orig &&
+            (orig.priority !== t.priority ||
+              JSON.stringify(orig.labels ?? []) !== JSON.stringify(t.labels))
+          )
+        })
+
+        await Promise.all(
+          updates.map((t) =>
+            updateTask({
+              taskId: t.id as Id<"tasks">,
+              priority: t.priority as Task["priority"],
+              labels: t.labels,
+            })
+          )
+        )
+      }
+
+      toast.success(
+        `Cleaned up ${selectedTasks.length} task${selectedTasks.length > 1 ? "s" : ""}.`,
+        { id: toastId }
+      )
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Cleanup failed.",
+        { id: toastId }
+      )
+    } finally {
+      setIsCleaningUp(false)
+    }
+  }
+
   const labelConfig = useMemo<LabelConfig>(() => {
     const wsLabels = currentWorkspace?.labels
     const labels =
@@ -5085,6 +5242,8 @@ export function KanbanBoard() {
                     onDeleteTask={handleDeleteTask}
                     onBulkUpdateTasks={handleBulkUpdateTasks}
                     onBulkDeleteTasks={handleBulkDeleteTasks}
+                    onCleanUp={handleCleanUpTasks}
+                    isCleaningUp={isCleaningUp}
                     onAddTask={handleAddTask}
                   />
                 ) : (
@@ -5102,6 +5261,8 @@ export function KanbanBoard() {
                     onDeleteTask={handleDeleteTask}
                     onBulkUpdateTasks={handleBulkUpdateTasks}
                     onBulkDeleteTasks={handleBulkDeleteTasks}
+                    onCleanUp={handleCleanUpTasks}
+                    isCleaningUp={isCleaningUp}
                     onAddTask={handleAddTask}
                   />
                 )}

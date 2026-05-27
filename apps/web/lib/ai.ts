@@ -14,8 +14,9 @@ export const AI_MODEL_IDS = {
   feedbackClassifier: "google/gemini-3.1-flash-lite",
   feedbackExtractor: "google/gemini-3-flash-preview",
   taskGeneration: "google/gemini-3.1-flash-lite",
+  taskCleanup: "google/gemini-3.1-flash-lite",
 } as const satisfies Record<
-  "feedbackClassifier" | "feedbackExtractor" | "taskGeneration",
+  "feedbackClassifier" | "feedbackExtractor" | "taskGeneration" | "taskCleanup",
   TrackedAiModel
 >
 
@@ -23,6 +24,7 @@ export const AI_MODELS: Record<keyof typeof AI_MODEL_IDS, LanguageModel> = {
   feedbackClassifier: openrouter(AI_MODEL_IDS.feedbackClassifier),
   feedbackExtractor: openrouter(AI_MODEL_IDS.feedbackExtractor),
   taskGeneration: openrouter(AI_MODEL_IDS.taskGeneration),
+  taskCleanup: openrouter(AI_MODEL_IDS.taskCleanup),
 }
 
 // The fallback model used when a workspace's plan disallows the advanced tier.
