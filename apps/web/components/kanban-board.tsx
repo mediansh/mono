@@ -2395,157 +2395,169 @@ function BulkActionToolbar({
 }) {
   const labelConfig = useLabelConfig()
 
+  const triggerClass =
+    "flex items-center gap-1.5 rounded-[10px] px-2.5 py-1.5 text-[13px] font-medium text-foreground/70 transition-all hover:bg-foreground/[0.06] hover:text-foreground active:scale-[0.97]"
+
   return createPortal(
-    <div className="fixed bottom-6 left-1/2 z-50 scrollbar-hide flex w-[calc(100%-2rem)] max-w-fit -translate-x-1/2 items-center gap-1.5 overflow-x-auto rounded-[8px] border-2 border-border bg-popover px-3 py-2 shadow-none">
-      {/* Selection count & clear */}
-      <div className="mr-1 flex items-center gap-2 border-r border-border pr-2">
-        <span className="text-[13px] font-semibold text-foreground tabular-nums">
-          {selectedCount} selected
-        </span>
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 12 }}
+      transition={{ duration: 0.18, ease: "easeOut" }}
+      className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2"
+    >
+      <div className="scrollbar-hide flex max-w-[calc(100vw-2rem)] items-center gap-0.5 overflow-x-auto rounded-[14px] border border-border bg-card px-2 py-1.5 shadow-xl shadow-black/20 ring-1 ring-black/[0.03]">
+        {/* Selection count & clear */}
+        <div className="mr-0.5 flex items-center gap-1.5 rounded-[10px] bg-foreground/[0.06] px-2.5 py-1.5">
+          <span className="text-[13px] font-semibold text-foreground tabular-nums">
+            {selectedCount}
+          </span>
+          <span className="text-[12px] text-muted-foreground">selected</span>
+          <button
+            onClick={onClearSelection}
+            className="ml-0.5 rounded-full p-0.5 text-muted-foreground/50 transition-colors hover:bg-foreground/10 hover:text-foreground"
+            title="Clear selection"
+          >
+            <X size={12} weight="bold" />
+          </button>
+        </div>
+
+        <div className="mx-1 h-5 w-px bg-border" />
+
+        {/* Status */}
+        <DropdownMenu>
+          <DropdownMenuTrigger className={triggerClass}>
+            {getStatusIcon("todo", 13)}
+            <span>Status</span>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align="center">
+            {ALL_STATUSES.map((s) => (
+              <DropdownMenuItem key={s} onClick={() => onChangeStatus(s)}>
+                <div className="flex items-center gap-2">
+                  {getStatusIcon(s, 14)}
+                  <span>{STATUS_LABELS[s]}</span>
+                </div>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Priority */}
+        <DropdownMenu>
+          <DropdownMenuTrigger className={triggerClass}>
+            {getPriorityIcon("medium", 13)}
+            <span>Priority</span>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align="center">
+            {ALL_PRIORITIES.map((p) => (
+              <DropdownMenuItem key={p} onClick={() => onChangePriority(p)}>
+                <div className="flex items-center gap-2">
+                  {getPriorityIcon(p, 14)}
+                  <span>{PRIORITY_LABELS[p]}</span>
+                </div>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Labels */}
+        <DropdownMenu>
+          <DropdownMenuTrigger className={triggerClass}>
+            <Tag size={13} />
+            <span>Label</span>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align="center">
+            {labelConfig.names.map((label) => (
+              <DropdownMenuItem
+                key={label}
+                onClick={() => onChangeLabels([label])}
+              >
+                <div className="flex items-center gap-2 capitalize">
+                  <div
+                    className="size-2.5 rounded-full"
+                    style={{
+                      backgroundColor: labelConfig.colors[label] ?? "#888",
+                    }}
+                  />
+                  <span>{label}</span>
+                </div>
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => onChangeLabels([])}>
+              <div className="flex items-center gap-2">
+                <XCircle size={12} className="text-muted-foreground" />
+                <span>Clear labels</span>
+              </div>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Assignees */}
+        <DropdownMenu>
+          <DropdownMenuTrigger className={triggerClass}>
+            {commonAssignees.length > 0 ? (
+              <AssigneeStack
+                assignees={commonAssignees}
+                size={16}
+                max={3}
+                ringColorClass="ring-card"
+              />
+            ) : (
+              <Users size={13} />
+            )}
+            <span>
+              {commonAssignees.length === 0
+                ? "Assignees"
+                : commonAssignees.length === 1
+                  ? commonAssignees[0]!.name
+                  : `${commonAssignees.length} assignees`}
+            </span>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align="center" className="p-0">
+            <AssigneePickerContent
+              workspaceId={workspaceId}
+              assignees={commonAssignees}
+              onChange={onChangeAssignees}
+            />
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => onChangeAssignees([])}>
+              <div className="flex items-center gap-2">
+                <XCircle size={12} className="text-muted-foreground" />
+                <span>Clear assignees</span>
+              </div>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <div className="mx-1 h-5 w-px bg-border" />
+
+        {/* Clean Up */}
         <button
-          onClick={onClearSelection}
-          className="rounded-[8px] p-0.5 text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
-          title="Clear selection"
+          onClick={onCleanUp}
+          disabled={isCleaningUp}
+          className="flex items-center gap-1.5 rounded-[10px] px-2.5 py-1.5 text-[13px] font-medium text-foreground/70 transition-all hover:bg-foreground/[0.06] hover:text-foreground active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40"
         >
-          <X size={13} />
+          {isCleaningUp ? (
+            <SpinnerGap size={13} className="animate-spin" />
+          ) : (
+            <Sparkle size={13} />
+          )}
+          <span>{isCleaningUp ? "Cleaning..." : "Clean Up"}</span>
+        </button>
+
+        <div className="mx-1 h-5 w-px bg-border" />
+
+        {/* Delete */}
+        <button
+          onClick={onDelete}
+          className="flex items-center gap-1.5 rounded-[10px] px-2.5 py-1.5 text-[13px] font-medium text-destructive/80 transition-all hover:bg-destructive/10 hover:text-destructive active:scale-[0.97]"
+        >
+          <Trash size={13} />
+          <span>Delete</span>
         </button>
       </div>
-
-      {/* Status */}
-      <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[13px] font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
-          {getStatusIcon("todo", 13)}
-          <span>Status</span>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent side="top" align="center">
-          {ALL_STATUSES.map((s) => (
-            <DropdownMenuItem key={s} onClick={() => onChangeStatus(s)}>
-              <div className="flex items-center gap-2">
-                {getStatusIcon(s, 14)}
-                <span>{STATUS_LABELS[s]}</span>
-              </div>
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {/* Priority */}
-      <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[13px] font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
-          {getPriorityIcon("medium", 13)}
-          <span>Priority</span>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent side="top" align="center">
-          {ALL_PRIORITIES.map((p) => (
-            <DropdownMenuItem key={p} onClick={() => onChangePriority(p)}>
-              <div className="flex items-center gap-2">
-                {getPriorityIcon(p, 14)}
-                <span>{PRIORITY_LABELS[p]}</span>
-              </div>
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {/* Labels */}
-      <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[13px] font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
-          <Tag size={13} />
-          <span>Label</span>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent side="top" align="center">
-          {labelConfig.names.map((label) => (
-            <DropdownMenuItem
-              key={label}
-              onClick={() => onChangeLabels([label])}
-            >
-              <div className="flex items-center gap-2 capitalize">
-                <div
-                  className="size-2.5 rounded-[8px]"
-                  style={{
-                    backgroundColor: labelConfig.colors[label] ?? "#888",
-                  }}
-                />
-                <span>{label}</span>
-              </div>
-            </DropdownMenuItem>
-          ))}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => onChangeLabels([])}>
-            <div className="flex items-center gap-2">
-              <XCircle size={12} className="text-muted-foreground" />
-              <span>Clear labels</span>
-            </div>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {/* Assignees */}
-      <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[13px] font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
-          {commonAssignees.length > 0 ? (
-            <AssigneeStack
-              assignees={commonAssignees}
-              size={16}
-              max={3}
-              ringColorClass="ring-popover"
-            />
-          ) : (
-            <Users size={13} />
-          )}
-          <span>
-            {commonAssignees.length === 0
-              ? "Assignees"
-              : commonAssignees.length === 1
-                ? commonAssignees[0]!.name
-                : `${commonAssignees.length} assignees`}
-          </span>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent side="top" align="center" className="p-0">
-          <AssigneePickerContent
-            workspaceId={workspaceId}
-            assignees={commonAssignees}
-            onChange={onChangeAssignees}
-          />
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => onChangeAssignees([])}>
-            <div className="flex items-center gap-2">
-              <XCircle size={12} className="text-muted-foreground" />
-              <span>Clear assignees</span>
-            </div>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {/* Divider */}
-      <div className="mx-0.5 h-5 w-px bg-border" />
-
-      {/* Clean Up */}
-      <button
-        onClick={onCleanUp}
-        disabled={isCleaningUp}
-        className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[13px] font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {isCleaningUp ? (
-          <SpinnerGap size={13} className="animate-spin" />
-        ) : (
-          <Sparkle size={13} />
-        )}
-        <span>{isCleaningUp ? "Cleaning..." : "Clean Up"}</span>
-      </button>
-
-      {/* Divider */}
-      <div className="mx-0.5 h-5 w-px bg-border" />
-
-      {/* Delete */}
-      <button
-        onClick={onDelete}
-        className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[13px] font-medium text-destructive transition-colors hover:bg-destructive/10"
-      >
-        <Trash size={13} />
-        <span>Delete</span>
-      </button>
-    </div>,
+    </motion.div>,
     document.body
   )
 }
