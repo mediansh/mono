@@ -5134,23 +5134,17 @@ export function KanbanBoard() {
         return result
       })
 
-      // Send the full task list to reorderTasks (same pattern as bulk status change)
+      toast.success(
+        `Cleaned up ${selectedTasks.length} task${selectedTasks.length > 1 ? "s" : ""}.`,
+        { id: toastId }
+      )
+
+      // Fire mutations in background (optimistic update already applied above)
       const realIds = validIds.filter((id) => !isDevTask(id))
       if (realIds.length > 0) {
         const freshTasks =
           getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
-        await reorderTasks({
-          workspaceId,
-          changes: freshTasks
-            .filter((item) => !isDevTask(item._id))
-            .map((item) => ({
-              taskId: item._id as Id<"tasks">,
-              status: item.status,
-              order: item.order,
-            })),
-        })
 
-        // Apply priority + label changes
         const updates = cleanedTasks.filter((t) => {
           if (isDevTask(t.id)) return false
           const orig = selectedTasks.find((st) => st._id === t.id)
@@ -5161,21 +5155,26 @@ export function KanbanBoard() {
           )
         })
 
-        await Promise.all(
-          updates.map((t) =>
+        void Promise.all([
+          reorderTasks({
+            workspaceId,
+            changes: freshTasks
+              .filter((item) => !isDevTask(item._id))
+              .map((item) => ({
+                taskId: item._id as Id<"tasks">,
+                status: item.status,
+                order: item.order,
+              })),
+          }),
+          ...updates.map((t) =>
             updateTask({
               taskId: t.id as Id<"tasks">,
               priority: t.priority as Task["priority"],
               labels: t.labels,
             })
-          )
-        )
+          ),
+        ])
       }
-
-      toast.success(
-        `Cleaned up ${selectedTasks.length} task${selectedTasks.length > 1 ? "s" : ""}.`,
-        { id: toastId }
-      )
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Cleanup failed.",
