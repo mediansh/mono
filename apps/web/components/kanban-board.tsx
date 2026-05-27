@@ -5074,33 +5074,60 @@ export function KanbanBoard() {
         labels: string[]
       }> = payload.tasks
 
-      // Apply optimistic updates
+      // Sort cleaned tasks by the AI's order so they appear in the right sequence
+      const sortedCleaned = [...cleanedTasks].sort((a, b) => a.order - b.order)
+      const cleanedIdSet = new Set(sortedCleaned.map((t) => t.id))
+
+      // Apply optimistic update: place cleaned tasks at the top of their status
+      // columns (in the AI's order), then non-cleaned tasks below
       lastLocalChangeRef.current = Date.now()
-      updateWorkspaceTasks(workspaceId, (tasks) =>
-        tasks.map((task) => {
-          const cleaned = cleanedTasks.find((c) => c.id === task._id)
+      updateWorkspaceTasks(workspaceId, (tasks) => {
+        const updated = tasks.map((task) => {
+          const cleaned = sortedCleaned.find((c) => c.id === task._id)
           if (!cleaned) return task
           return {
             ...task,
-            order: cleaned.order,
             priority: cleaned.priority as Task["priority"],
             labels: cleaned.labels,
           }
         })
-      )
 
-      // Apply reorder
+        // For each status column, put cleaned tasks first (in AI order), then rest
+        const result: typeof updated = []
+        for (const col of COLUMNS) {
+          const colTasks = updated.filter((t) => t.status === col.id)
+          const cleaned = colTasks.filter((t) => cleanedIdSet.has(t._id))
+          const rest = colTasks.filter((t) => !cleanedIdSet.has(t._id))
+          // Sort cleaned by AI order
+          cleaned.sort((a, b) => {
+            const aIdx = sortedCleaned.findIndex((c) => c.id === a._id)
+            const bIdx = sortedCleaned.findIndex((c) => c.id === b._id)
+            return aIdx - bIdx
+          })
+          const merged = [...cleaned, ...rest]
+          merged.forEach((t, i) => {
+            t.order = i
+          })
+          result.push(...merged)
+        }
+        return result
+      })
+
+      // Send the full task list to reorderTasks (same pattern as bulk status change)
       const realIds = validIds.filter((id) => !isDevTask(id))
       if (realIds.length > 0) {
-        const reorderChanges = cleanedTasks
-          .filter((t) => !isDevTask(t.id))
-          .map((t) => ({
-            taskId: t.id as Id<"tasks">,
-            status: selectedTasks.find((st) => st._id === t.id)!.status,
-            order: t.order,
-          }))
-
-        await reorderTasks({ workspaceId, changes: reorderChanges })
+        const freshTasks =
+          getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
+        await reorderTasks({
+          workspaceId,
+          changes: freshTasks
+            .filter((item) => !isDevTask(item._id))
+            .map((item) => ({
+              taskId: item._id as Id<"tasks">,
+              status: item.status,
+              order: item.order,
+            })),
+        })
 
         // Apply priority + label changes
         const updates = cleanedTasks.filter((t) => {
