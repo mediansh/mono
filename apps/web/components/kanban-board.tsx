@@ -47,7 +47,13 @@ import {
   DotsThree,
   Users,
   At,
+  Sparkle,
 } from "@phosphor-icons/react"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@workspace/ui/components/tooltip"
 import { NewTaskModal } from "@/components/new-task-modal"
 import {
   AssigneeContextSubmenu,
@@ -1187,7 +1193,7 @@ const SortableListRow = memo(function SortableListRow({
         {...listeners}
         onClick={handleClick}
         onAnimationEnd={() => setHasAnimated(true)}
-        className={`group flex cursor-pointer items-center gap-3 border-b border-l-2 border-border px-3 py-2 transition-[background-color,box-shadow,opacity] duration-150 select-none hover:bg-accent/40 ${isMobile ? "" : "touch-none"} ${PRIORITY_ACCENT[task.priority]} ${isSelected ? "bg-primary/[0.06] hover:bg-primary/[0.10]" : "bg-background"}`}
+        className={`group flex cursor-pointer items-center gap-3 border-b border-l-2 border-border px-3 py-2 transition-[background-color,box-shadow,opacity] duration-150 select-none hover:bg-accent/40 ${isMobile ? "" : "touch-none"} ${PRIORITY_ACCENT[task.priority]} ${isSelected ? "bg-primary/[0.06] hover:bg-primary/[0.10]" : "bg-white dark:bg-background"}`}
       >
         {/* Checkbox */}
         <div
@@ -2375,6 +2381,8 @@ function BulkActionToolbar({
   onChangePriority,
   onChangeLabels,
   onChangeAssignees,
+  onCleanUp,
+  isCleaningUp,
   onDelete,
   onClearSelection,
 }: {
@@ -2385,145 +2393,180 @@ function BulkActionToolbar({
   onChangePriority: (priority: Priority) => void
   onChangeLabels: (labels: string[]) => void
   onChangeAssignees: (assignees: TaskAssignee[]) => void
+  onCleanUp: () => void
+  isCleaningUp: boolean
   onDelete: () => void
   onClearSelection: () => void
 }) {
   const labelConfig = useLabelConfig()
 
+  const triggerClass =
+    "flex items-center gap-1.5 rounded-[10px] px-2.5 py-1.5 text-[13px] font-medium text-foreground/70 transition-all hover:bg-foreground/[0.06] hover:text-foreground active:scale-[0.97]"
+
   return createPortal(
-    <div className="fixed bottom-6 left-1/2 z-50 scrollbar-hide flex w-[calc(100%-2rem)] max-w-fit -translate-x-1/2 items-center gap-1.5 overflow-x-auto rounded-[8px] border-2 border-border bg-popover px-3 py-2 shadow-none">
-      {/* Selection count & clear */}
-      <div className="mr-1 flex items-center gap-2 border-r border-border pr-2">
-        <span className="text-[13px] font-semibold text-foreground tabular-nums">
-          {selectedCount} selected
-        </span>
-        <button
-          onClick={onClearSelection}
-          className="rounded-[8px] p-0.5 text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
-          title="Clear selection"
-        >
-          <X size={13} />
-        </button>
-      </div>
-
-      {/* Status */}
-      <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[13px] font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
-          {getStatusIcon("todo", 13)}
-          <span>Status</span>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent side="top" align="center">
-          {ALL_STATUSES.map((s) => (
-            <DropdownMenuItem key={s} onClick={() => onChangeStatus(s)}>
-              <div className="flex items-center gap-2">
-                {getStatusIcon(s, 14)}
-                <span>{STATUS_LABELS[s]}</span>
-              </div>
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {/* Priority */}
-      <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[13px] font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
-          {getPriorityIcon("medium", 13)}
-          <span>Priority</span>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent side="top" align="center">
-          {ALL_PRIORITIES.map((p) => (
-            <DropdownMenuItem key={p} onClick={() => onChangePriority(p)}>
-              <div className="flex items-center gap-2">
-                {getPriorityIcon(p, 14)}
-                <span>{PRIORITY_LABELS[p]}</span>
-              </div>
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {/* Labels */}
-      <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[13px] font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
-          <Tag size={13} />
-          <span>Label</span>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent side="top" align="center">
-          {labelConfig.names.map((label) => (
-            <DropdownMenuItem
-              key={label}
-              onClick={() => onChangeLabels([label])}
-            >
-              <div className="flex items-center gap-2 capitalize">
-                <div
-                  className="size-2.5 rounded-[8px]"
-                  style={{
-                    backgroundColor: labelConfig.colors[label] ?? "#888",
-                  }}
-                />
-                <span>{label}</span>
-              </div>
-            </DropdownMenuItem>
-          ))}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => onChangeLabels([])}>
-            <div className="flex items-center gap-2">
-              <XCircle size={12} className="text-muted-foreground" />
-              <span>Clear labels</span>
-            </div>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {/* Assignees */}
-      <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[13px] font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
-          {commonAssignees.length > 0 ? (
-            <AssigneeStack
-              assignees={commonAssignees}
-              size={16}
-              max={3}
-              ringColorClass="ring-popover"
-            />
-          ) : (
-            <Users size={13} />
-          )}
-          <span>
-            {commonAssignees.length === 0
-              ? "Assignees"
-              : commonAssignees.length === 1
-                ? commonAssignees[0]!.name
-                : `${commonAssignees.length} assignees`}
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 12 }}
+      transition={{ duration: 0.18, ease: "easeOut" }}
+      className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2"
+    >
+      <div className="scrollbar-hide flex max-w-[calc(100vw-2rem)] items-center gap-0.5 overflow-x-auto rounded-[14px] border border-border bg-card px-2 py-1.5 shadow-xl shadow-black/20 ring-1 ring-black/[0.03]">
+        {/* Selection count & clear */}
+        <div className="mr-0.5 flex items-center gap-1.5 rounded-[10px] bg-foreground/[0.06] px-2.5 py-1.5">
+          <span className="text-[13px] font-semibold text-foreground tabular-nums">
+            {selectedCount}
           </span>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent side="top" align="center" className="p-0">
-          <AssigneePickerContent
-            workspaceId={workspaceId}
-            assignees={commonAssignees}
-            onChange={onChangeAssignees}
-          />
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => onChangeAssignees([])}>
-            <div className="flex items-center gap-2">
-              <XCircle size={12} className="text-muted-foreground" />
-              <span>Clear assignees</span>
-            </div>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+          <span className="text-[12px] text-muted-foreground">selected</span>
+          <button
+            onClick={onClearSelection}
+            className="ml-0.5 rounded-full p-0.5 text-muted-foreground/50 transition-colors hover:bg-foreground/10 hover:text-foreground"
+            title="Clear selection"
+          >
+            <X size={12} weight="bold" />
+          </button>
+        </div>
 
-      {/* Divider */}
-      <div className="mx-0.5 h-5 w-px bg-border" />
+        <div className="mx-1 h-5 w-px bg-border" />
 
-      {/* Delete */}
-      <button
-        onClick={onDelete}
-        className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[13px] font-medium text-destructive transition-colors hover:bg-destructive/10"
-      >
-        <Trash size={13} />
-        <span>Delete</span>
-      </button>
-    </div>,
+        {/* Status */}
+        <DropdownMenu>
+          <DropdownMenuTrigger className={triggerClass}>
+            {getStatusIcon("todo", 13)}
+            <span>Status</span>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align="center">
+            {ALL_STATUSES.map((s) => (
+              <DropdownMenuItem key={s} onClick={() => onChangeStatus(s)}>
+                <div className="flex items-center gap-2">
+                  {getStatusIcon(s, 14)}
+                  <span>{STATUS_LABELS[s]}</span>
+                </div>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Priority */}
+        <DropdownMenu>
+          <DropdownMenuTrigger className={triggerClass}>
+            {getPriorityIcon("medium", 13)}
+            <span>Priority</span>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align="center">
+            {ALL_PRIORITIES.map((p) => (
+              <DropdownMenuItem key={p} onClick={() => onChangePriority(p)}>
+                <div className="flex items-center gap-2">
+                  {getPriorityIcon(p, 14)}
+                  <span>{PRIORITY_LABELS[p]}</span>
+                </div>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Labels */}
+        <DropdownMenu>
+          <DropdownMenuTrigger className={triggerClass}>
+            <Tag size={13} />
+            <span>Label</span>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align="center">
+            {labelConfig.names.map((label) => (
+              <DropdownMenuItem
+                key={label}
+                onClick={() => onChangeLabels([label])}
+              >
+                <div className="flex items-center gap-2 capitalize">
+                  <div
+                    className="size-2.5 rounded-full"
+                    style={{
+                      backgroundColor: labelConfig.colors[label] ?? "#888",
+                    }}
+                  />
+                  <span>{label}</span>
+                </div>
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => onChangeLabels([])}>
+              <div className="flex items-center gap-2">
+                <XCircle size={12} className="text-muted-foreground" />
+                <span>Clear labels</span>
+              </div>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Assignees */}
+        <DropdownMenu>
+          <DropdownMenuTrigger className={triggerClass}>
+            {commonAssignees.length > 0 ? (
+              <AssigneeStack
+                assignees={commonAssignees}
+                size={16}
+                max={3}
+                ringColorClass="ring-card"
+              />
+            ) : (
+              <Users size={13} />
+            )}
+            <span>
+              {commonAssignees.length === 0
+                ? "Assignees"
+                : commonAssignees.length === 1
+                  ? commonAssignees[0]!.name
+                  : `${commonAssignees.length} assignees`}
+            </span>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align="center" className="p-0">
+            <AssigneePickerContent
+              workspaceId={workspaceId}
+              assignees={commonAssignees}
+              onChange={onChangeAssignees}
+            />
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => onChangeAssignees([])}>
+              <div className="flex items-center gap-2">
+                <XCircle size={12} className="text-muted-foreground" />
+                <span>Clear assignees</span>
+              </div>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <div className="mx-1 h-5 w-px bg-border" />
+
+        {/* Clean Up */}
+        <Tooltip>
+          <TooltipTrigger
+            onClick={onCleanUp}
+            disabled={isCleaningUp}
+            className="flex items-center justify-center rounded-[10px] p-1.5 text-foreground/70 transition-all hover:bg-foreground/[0.06] hover:text-foreground active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40"
+          >
+            {isCleaningUp ? (
+              <SpinnerGap size={14} className="animate-spin" />
+            ) : (
+              <Sparkle size={14} />
+            )}
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            {isCleaningUp ? "Cleaning..." : "Clean Up"}
+          </TooltipContent>
+        </Tooltip>
+
+        {/* Delete */}
+        <Tooltip>
+          <TooltipTrigger
+            onClick={onDelete}
+            className="flex items-center justify-center rounded-[10px] p-1.5 text-destructive/80 transition-all hover:bg-destructive/10 hover:text-destructive active:scale-[0.97]"
+          >
+            <Trash size={14} />
+          </TooltipTrigger>
+          <TooltipContent side="top">Delete</TooltipContent>
+        </Tooltip>
+      </div>
+    </motion.div>,
     document.body
   )
 }
@@ -3092,6 +3135,8 @@ function ColumnBoardView({
   onDeleteTask,
   onBulkUpdateTasks,
   onBulkDeleteTasks,
+  onCleanUp,
+  isCleaningUp,
   onAddTask,
 }: {
   tasks: Task[]
@@ -3112,6 +3157,8 @@ function ColumnBoardView({
     updates: Partial<Pick<Task, "status" | "priority" | "labels" | "assignees">>
   ) => void
   onBulkDeleteTasks: (taskIds: string[]) => void
+  onCleanUp: (taskIds: string[]) => void
+  isCleaningUp: boolean
   onAddTask: (status: Status) => void
 }) {
   const visibleColumns = COLUMNS.filter((c) => !hiddenColumns.includes(c.id))
@@ -3253,6 +3300,10 @@ function ColumnBoardView({
     onBulkDeleteTasks(Array.from(selectedTaskIds))
     handleClearSelection()
   }, [selectedTaskIds, onBulkDeleteTasks, handleClearSelection])
+
+  const handleCleanUp = useCallback(() => {
+    onCleanUp(Array.from(selectedTaskIds))
+  }, [selectedTaskIds, onCleanUp])
 
   const isMobile = useIsMobile()
   const pointerSensor = useSensor(PointerSensor, {
@@ -3509,6 +3560,8 @@ function ColumnBoardView({
           onChangePriority={handleBulkChangePriority}
           onChangeLabels={handleBulkChangeLabels}
           onChangeAssignees={handleBulkChangeAssignees}
+          onCleanUp={handleCleanUp}
+          isCleaningUp={isCleaningUp}
           onDelete={handleBulkDelete}
           onClearSelection={handleClearSelection}
         />
@@ -3576,6 +3629,8 @@ function ListView({
   onDeleteTask,
   onBulkUpdateTasks,
   onBulkDeleteTasks,
+  onCleanUp,
+  isCleaningUp,
   onAddTask,
 }: {
   tasks: Task[]
@@ -3598,6 +3653,8 @@ function ListView({
     updates: Partial<Pick<Task, "status" | "priority" | "labels" | "assignees">>
   ) => void
   onBulkDeleteTasks: (taskIds: string[]) => void
+  onCleanUp: (taskIds: string[]) => void
+  isCleaningUp: boolean
   onAddTask: (status: Status) => void
 }) {
   const visibleColumns = COLUMNS.filter((c) => !hiddenColumns.includes(c.id))
@@ -3747,6 +3804,10 @@ function ListView({
     handleClearSelection()
   }, [selectedTaskIds, onBulkDeleteTasks, handleClearSelection])
 
+  const handleCleanUp = useCallback(() => {
+    onCleanUp(Array.from(selectedTaskIds))
+  }, [selectedTaskIds, onCleanUp])
+
   const isMobile = useIsMobile()
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 5 },
@@ -3864,6 +3925,8 @@ function ListView({
           onChangePriority={handleBulkChangePriority}
           onChangeLabels={handleBulkChangeLabels}
           onChangeAssignees={handleBulkChangeAssignees}
+          onCleanUp={handleCleanUp}
+          isCleaningUp={isCleaningUp}
           onDelete={handleBulkDelete}
           onClearSelection={handleClearSelection}
         />
@@ -4981,6 +5044,151 @@ export function KanbanBoard() {
       })
   }
 
+  const [isCleaningUp, setIsCleaningUp] = useState(false)
+
+  async function handleCleanUpTasks(taskIds: string[]) {
+    if (!workspaceId || !canManageTasks) return
+
+    const validIds = taskIds.filter((id) => !id.startsWith("optimistic:"))
+    if (validIds.length === 0) return
+
+    const allTasks =
+      getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
+    const selectedTasks = allTasks.filter((t) => validIds.includes(t._id))
+    if (selectedTasks.length === 0) return
+    const previousTasks = allTasks.map((task) => ({ ...task }))
+
+    setIsCleaningUp(true)
+    const toastId = toast.loading("Cleaning up tasks...")
+
+    try {
+      const response = await fetch("/api/tasks/cleanup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workspaceId,
+          tasks: selectedTasks.map((t) => ({
+            id: t._id,
+            title: t.title,
+            description: t.description ?? null,
+            status: t.status,
+            priority: t.priority,
+            labels: t.labels ?? [],
+            order: t.order,
+          })),
+        }),
+      })
+
+      const payload = await response.json()
+
+      if (!response.ok) {
+        if (response.status === 402 && payload?.code === "credits_exhausted") {
+          toast.error(payload?.error ?? "Credits exhausted.", { id: toastId })
+          return
+        }
+        throw new Error(payload?.error || "Cleanup failed.")
+      }
+
+      const cleanedTasks: Array<{
+        id: string
+        order: number
+        priority: string
+        labels: string[]
+      }> = payload.tasks
+
+      // Sort cleaned tasks by the AI's order so they appear in the right sequence
+      const sortedCleaned = [...cleanedTasks].sort((a, b) => a.order - b.order)
+      const cleanedById = new Map(sortedCleaned.map((task) => [task.id, task]))
+      const cleanedIdSet = new Set(sortedCleaned.map((t) => t.id))
+
+      // Apply optimistic update: place cleaned tasks at the top of their status
+      // columns (in the AI's order), then non-cleaned tasks below
+      lastLocalChangeRef.current = Date.now()
+      updateWorkspaceTasks(workspaceId, (tasks) => {
+        const updated = tasks.map((task) => {
+          const cleaned = cleanedById.get(task._id)
+          if (!cleaned) return { ...task }
+          return {
+            ...task,
+            priority: cleaned.priority as Task["priority"],
+            labels: cleaned.labels,
+          }
+        })
+
+        // For each status column, put cleaned tasks first (in AI order), then rest
+        const result: typeof updated = []
+        for (const col of COLUMNS) {
+          const colTasks = updated.filter((t) => t.status === col.id)
+          const cleaned = colTasks.filter((t) => cleanedIdSet.has(t._id))
+          const rest = colTasks.filter((t) => !cleanedIdSet.has(t._id))
+          // Sort cleaned by AI order
+          cleaned.sort((a, b) => {
+            const aIdx = sortedCleaned.findIndex((c) => c.id === a._id)
+            const bIdx = sortedCleaned.findIndex((c) => c.id === b._id)
+            return aIdx - bIdx
+          })
+          const merged = [...cleaned, ...rest]
+          result.push(...merged.map((t, i) => ({ ...t, order: i })))
+        }
+        return result
+      })
+
+      toast.success(
+        `Cleaned up ${selectedTasks.length} task${selectedTasks.length > 1 ? "s" : ""}.`,
+        { id: toastId }
+      )
+
+      // Fire mutations in background (optimistic update already applied above)
+      const realIds = validIds.filter((id) => !isDevTask(id))
+      if (realIds.length > 0) {
+        const freshTasks =
+          getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
+
+        const updates = cleanedTasks.filter((t) => {
+          if (isDevTask(t.id)) return false
+          const orig = selectedTasks.find((st) => st._id === t.id)
+          return (
+            orig &&
+            (orig.priority !== t.priority ||
+              JSON.stringify(orig.labels ?? []) !== JSON.stringify(t.labels))
+          )
+        })
+
+        void Promise.all([
+          reorderTasks({
+            workspaceId,
+            changes: freshTasks
+              .filter((item) => !isDevTask(item._id))
+              .map((item) => ({
+                taskId: item._id as Id<"tasks">,
+                status: item.status,
+                order: item.order,
+              })),
+          }),
+          ...updates.map((t) =>
+            updateTask({
+              taskId: t.id as Id<"tasks">,
+              priority: t.priority as Task["priority"],
+              labels: t.labels,
+            })
+          ),
+        ]).catch((error) => {
+          console.error("Task cleanup sync failed", error)
+          lastLocalChangeRef.current = Date.now()
+          updateWorkspaceTasks(workspaceId, () => previousTasks)
+          toast.error("Cleanup changes failed to sync. Reverted local changes.")
+        })
+      }
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Cleanup failed.",
+        { id: toastId }
+      )
+    } finally {
+      setIsCleaningUp(false)
+    }
+  }
+
   const labelConfig = useMemo<LabelConfig>(() => {
     const wsLabels = currentWorkspace?.labels
     const labels =
@@ -5085,6 +5293,8 @@ export function KanbanBoard() {
                     onDeleteTask={handleDeleteTask}
                     onBulkUpdateTasks={handleBulkUpdateTasks}
                     onBulkDeleteTasks={handleBulkDeleteTasks}
+                    onCleanUp={handleCleanUpTasks}
+                    isCleaningUp={isCleaningUp}
                     onAddTask={handleAddTask}
                   />
                 ) : (
@@ -5102,6 +5312,8 @@ export function KanbanBoard() {
                     onDeleteTask={handleDeleteTask}
                     onBulkUpdateTasks={handleBulkUpdateTasks}
                     onBulkDeleteTasks={handleBulkDeleteTasks}
+                    onCleanUp={handleCleanUpTasks}
+                    isCleaningUp={isCleaningUp}
                     onAddTask={handleAddTask}
                   />
                 )}

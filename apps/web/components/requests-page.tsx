@@ -1,10 +1,10 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties } from "react"
 import { createPortal } from "react-dom"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AnimatePresence, motion } from "motion/react"
-import { useQuery } from "convex/react"
+import { useMutation, useQuery } from "convex/react"
 import {
   MagnifyingGlass,
   CheckCircle,
@@ -17,6 +17,11 @@ import {
   Check,
   DotsSixVertical,
   ArrowsDownUp,
+  WarningCircle,
+  CellSignalFull,
+  CellSignalMedium,
+  CellSignalLow,
+  Minus,
 } from "@phosphor-icons/react"
 import {
   DropdownMenu,
@@ -28,7 +33,7 @@ import {
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu"
 import { api } from "@/convex/_generated/api"
-import type { Doc } from "@/convex/_generated/dataModel"
+import type { Doc, Id } from "@/convex/_generated/dataModel"
 import { useWorkspace } from "@/components/workspace-provider"
 import {
   useLocalFirstStore,
@@ -52,12 +57,14 @@ import {
   SOURCE_CONFIG,
 } from "@/lib/task-sources"
 import {
+  DEFAULT_WORKSPACE_LABELS,
   REQUEST_SOURCES,
   formatTaskDate,
   type RequestSource,
   type TaskPriority,
   type TaskSource,
 } from "@/lib/task-board"
+import { TaskCommentsPanel } from "@/components/task-comments-panel"
 
 type RequestTask = Doc<"tasks">
 
@@ -79,20 +86,31 @@ const PRIORITY_LABEL: Record<TaskPriority, string> = {
   none: "No priority",
 }
 
-const PRIORITY_COLOR: Record<TaskPriority, string> = {
-  urgent: "text-red-500",
-  high: "text-orange-500",
-  medium: "text-yellow-600",
-  low: "text-blue-500",
-  none: "text-muted-foreground",
-}
-
 const PRIORITY_RANK: Record<TaskPriority, number> = {
   urgent: 0,
   high: 1,
   medium: 2,
   low: 3,
   none: 4,
+}
+
+const LABEL_COLOR_MAP = Object.fromEntries(
+  DEFAULT_WORKSPACE_LABELS.map((l) => [l.name, l.color])
+)
+
+function getPriorityIcon(priority: TaskPriority, size = 14) {
+  switch (priority) {
+    case "urgent":
+      return <WarningCircle size={size} weight="fill" className="text-red-500" />
+    case "high":
+      return <CellSignalFull size={size} className="text-orange-500" />
+    case "medium":
+      return <CellSignalMedium size={size} className="text-yellow-500" />
+    case "low":
+      return <CellSignalLow size={size} className="text-blue-400" />
+    case "none":
+      return <Minus size={size} className="text-muted-foreground" />
+  }
 }
 
 type SortKey = "newest" | "oldest" | "priority" | "title"
@@ -102,6 +120,37 @@ const SORT_LABEL: Record<SortKey, string> = {
   oldest: "Oldest first",
   priority: "Priority",
   title: "Title (A–Z)",
+}
+
+const COMMENT_SPLIT_STORAGE_KEY = "median_task_comment_split_v1"
+const COMMENT_SPLIT_DEFAULT = 0.5
+const COMMENT_SPLIT_MIN = 0.25
+const COMMENT_SPLIT_MAX = 0.75
+
+function clampCommentSplit(ratio: number): number {
+  if (!Number.isFinite(ratio)) return COMMENT_SPLIT_DEFAULT
+  return Math.min(Math.max(ratio, COMMENT_SPLIT_MIN), COMMENT_SPLIT_MAX)
+}
+
+function loadCommentSplitRatio(): number {
+  if (typeof window === "undefined") return COMMENT_SPLIT_DEFAULT
+  try {
+    const raw = window.localStorage.getItem(COMMENT_SPLIT_STORAGE_KEY)
+    if (!raw) return COMMENT_SPLIT_DEFAULT
+    const parsed = Number(raw)
+    return clampCommentSplit(parsed)
+  } catch {
+    return COMMENT_SPLIT_DEFAULT
+  }
+}
+
+function saveCommentSplitRatio(ratio: number) {
+  if (typeof window === "undefined") return
+  try {
+    window.localStorage.setItem(COMMENT_SPLIT_STORAGE_KEY, String(ratio))
+  } catch {
+    // ignore
+  }
 }
 
 const LIST_PANE_WIDTH_KEY = "requests:listPaneWidth"
@@ -601,7 +650,7 @@ export function RequestsPage() {
 
         {/* Detail pane */}
         <section
-          className={`relative min-h-0 flex-1 overflow-y-auto bg-background ${
+          className={`relative min-h-0 flex-1 overflow-hidden bg-background ${
             userPickedId ? "flex" : "hidden md:flex"
           } flex-col`}
         >
@@ -787,8 +836,84 @@ function RequestDetail({
   onBack: () => void
 }) {
   const sources = getTaskSources(task)
+
+  const [commentSplitRatio, setCommentSplitRatio] = useState<number>(() =>
+    loadCommentSplitRatio()
+  )
+  const [commentHeight, setCommentHeight] = useState(0)
+  const [isSplitResizing, setIsSplitResizing] = useState(false)
+  const splitContainerRef = useRef<HTMLDivElement | null>(null)
+
+  const markTaskMentionsRead = useMutation(
+    api.taskComments.markTaskMentionsRead
+  )
+
+  useEffect(() => {
+    void markTaskMentionsRead({
+      workspaceId: task.workspaceId as Id<"workspaces">,
+      taskId: task._id as Id<"tasks">,
+    }).catch(() => {})
+  }, [task._id, task.workspaceId, markTaskMentionsRead])
+
+  useEffect(() => {
+    if (isSplitResizing) return
+    saveCommentSplitRatio(commentSplitRatio)
+  }, [isSplitResizing, commentSplitRatio])
+
+  useEffect(() => {
+    const container = splitContainerRef.current
+    if (!container) return
+    const element = container
+
+    function updateCommentHeight() {
+      setCommentHeight(
+        element.getBoundingClientRect().height * commentSplitRatio
+      )
+    }
+
+    updateCommentHeight()
+    const observer = new ResizeObserver(updateCommentHeight)
+    observer.observe(element)
+
+    return () => observer.disconnect()
+  }, [commentSplitRatio])
+
+  const handleSplitResizeStart = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      event.preventDefault()
+      const container = splitContainerRef.current
+      if (!container) return
+      const rect = container.getBoundingClientRect()
+      if (rect.height <= 0) return
+
+      setIsSplitResizing(true)
+      const previousUserSelect = document.body.style.userSelect
+      const previousCursor = document.body.style.cursor
+      document.body.style.userSelect = "none"
+      document.body.style.cursor = "row-resize"
+
+      function onMove(ev: PointerEvent) {
+        const offsetY = rect.bottom - ev.clientY
+        const nextRatio = clampCommentSplit(offsetY / rect.height)
+        setCommentSplitRatio(nextRatio)
+      }
+
+      function onUp() {
+        setIsSplitResizing(false)
+        document.body.style.userSelect = previousUserSelect
+        document.body.style.cursor = previousCursor
+        window.removeEventListener("pointermove", onMove)
+        window.removeEventListener("pointerup", onUp)
+      }
+
+      window.addEventListener("pointermove", onMove)
+      window.addEventListener("pointerup", onUp)
+    },
+    []
+  )
+
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex flex-1 flex-col overflow-hidden">
       {/* Mobile back button */}
       <div className="flex items-center gap-2 border-b border-border bg-toolbar px-3 py-2 md:hidden">
         <button
@@ -803,93 +928,161 @@ function RequestDetail({
         </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-5">
-        {/* Title row */}
-        <div className="flex items-start gap-3">
-          <div className="flex-1">
-            <h2 className="text-[19px] font-semibold leading-tight tracking-tight text-foreground">
-              {task.title}
-            </h2>
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-muted-foreground">
-              <span className="hidden font-mono md:inline">{task.taskCode}</span>
-              <span>{formatTaskDate(task._creationTime, task.createdAtLabel)}</span>
-              <span>
-                Priority:{" "}
-                <span className={PRIORITY_COLOR[task.priority as TaskPriority]}>
-                  {PRIORITY_LABEL[task.priority as TaskPriority]}
-                </span>
-              </span>
-            </div>
-          </div>
+      {/* ── Header: Title + Meta ── */}
+      <div className="px-4 pt-4 pb-2 md:px-5 md:pt-5">
+        <h2 className="text-[17px] leading-snug font-semibold tracking-tight break-words text-foreground">
+          {task.title}
+        </h2>
+        <div className="mt-1.5 flex items-center gap-2 text-[12px] text-muted-foreground/60">
+          <span className="hidden font-mono md:inline">{task.taskCode}</span>
+          <span className="hidden text-muted-foreground/30 md:inline">·</span>
+          <span>{formatTaskDate(task._creationTime, task.createdAtLabel)}</span>
         </div>
+      </div>
+
+      {/* ── Properties row ── */}
+      <div className="flex flex-wrap items-center gap-1 px-4 pb-3">
+        {/* Priority */}
+        <span className="flex items-center gap-1.5 rounded-[8px] px-2 py-1.5 text-[12px] font-medium text-foreground/80">
+          {getPriorityIcon(task.priority as TaskPriority, 12)}
+          <span>{PRIORITY_LABEL[task.priority as TaskPriority]}</span>
+        </span>
 
         {/* Labels */}
         {task.labels && task.labels.length > 0 && (
-          <div className="mt-4 flex flex-wrap items-center gap-1.5">
-            {task.labels.map((label) => (
-              <span
-                key={label}
-                className="rounded-[8px] bg-muted px-1.5 py-0.5 text-[11px] font-medium capitalize text-muted-foreground"
-              >
-                {label}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Sources block */}
-        {sources.length > 0 && (
-          <section className="mt-5">
-            <h3 className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Sources
-            </h3>
-            <ul className="flex flex-col gap-1.5">
-              {sources.map((src) => (
-                <SourceRow key={`${src.platform}-${src.url}-${src.author}`} source={src} />
+          <span className="flex items-center gap-1.5 rounded-[8px] px-2 py-1.5 text-[12px] font-medium text-foreground/80">
+            <div className="flex -space-x-0.5">
+              {task.labels.map((label) => (
+                <div
+                  key={label}
+                  className="size-2 rounded-full ring-1 ring-background"
+                  style={{
+                    backgroundColor: LABEL_COLOR_MAP[label] ?? "#888",
+                  }}
+                />
               ))}
-            </ul>
-          </section>
-        )}
-
-        {/* Description */}
-        {task.description && task.description.trim().length > 0 ? (
-          <section className="mt-5">
-            <h3 className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Description
-            </h3>
-            <div className="rounded-[8px] gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card p-3 text-[14px] leading-relaxed whitespace-pre-wrap text-foreground/90 ring-1 ring-border">
-              {task.description}
             </div>
-          </section>
-        ) : (
-          <section className="mt-5">
-            <h3 className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Description
-            </h3>
-            <p className="text-[13px] italic text-muted-foreground">
-              No description provided.
-            </p>
-          </section>
+            <span className="capitalize">
+              {task.labels.length === 1
+                ? task.labels[0]
+                : `${task.labels.length} labels`}
+            </span>
+          </span>
         )}
 
-        {/* Attachments preview (read-only links) */}
-        {task.attachments && task.attachments.length > 0 && (
-          <section className="mt-5">
-            <h3 className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Attachments
-            </h3>
-            <ul className="flex flex-wrap gap-1.5">
-              {task.attachments.map((att, idx) => (
-                <li
-                  key={`${att.storageId}-${idx}`}
-                  className="flex items-center gap-1.5 rounded-[8px] gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card px-2 py-1 text-[12px] text-muted-foreground ring-1 ring-border"
-                >
-                  <span className="truncate max-w-[180px]">{att.name}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
+        {/* Sources as compact chips */}
+        {sources.map((src) => {
+          const safeUrl = sanitizeExternalUrl(src.url)
+          const chipContent = (
+            <>
+              <SourceGlyph platform={src.platform} size={12} />
+              <span className="truncate max-w-[120px]">{src.author}</span>
+              {safeUrl && (
+                <LinkIcon size={10} className="shrink-0 text-muted-foreground/50" />
+              )}
+            </>
+          )
+          const chipClass =
+            "flex items-center gap-1.5 rounded-[8px] px-2 py-1.5 text-[12px] font-medium text-foreground/80 transition-colors hover:bg-muted"
+          return safeUrl ? (
+            <a
+              key={`${src.platform}-${src.url}-${src.author}`}
+              href={safeUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={chipClass}
+            >
+              {chipContent}
+            </a>
+          ) : (
+            <span
+              key={`${src.platform}-${src.url}-${src.author}`}
+              className={chipClass}
+            >
+              {chipContent}
+            </span>
+          )
+        })}
+      </div>
+
+      {/* Divider */}
+      <div className="border-t border-border" />
+
+      {/* ── Split body: Description + Comments ── */}
+      <div
+        ref={splitContainerRef}
+        className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
+        style={
+          {
+            "--comment-height": `${commentHeight}px`,
+          } as CSSProperties
+        }
+      >
+        {/* Scrollable description + attachments */}
+        <div
+          className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-4"
+          style={{
+            paddingBottom: "calc(var(--comment-height) + 32px)",
+          }}
+        >
+          <div className="flex-1">
+            {task.description && task.description.trim().length > 0 ? (
+              <span className="block break-words whitespace-pre-wrap text-[14px] leading-relaxed text-foreground/80">
+                {task.description}
+              </span>
+            ) : (
+              <span className="text-[14px] text-muted-foreground/40">
+                No description provided.
+              </span>
+            )}
+          </div>
+
+          {task.attachments && task.attachments.length > 0 && (
+            <div className="mt-4 border-t border-border pt-4">
+              <ul className="flex flex-wrap gap-1.5">
+                {task.attachments.map((att, idx) => (
+                  <li
+                    key={`${att.storageId}-${idx}`}
+                    className="flex items-center gap-1.5 rounded-[8px] bg-muted px-2 py-1 text-[12px] text-muted-foreground ring-1 ring-border"
+                  >
+                    <span className="truncate max-w-[180px]">{att.name}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+
+        {/* Floating Comments card */}
+        <div
+          className="pointer-events-none absolute right-3 bottom-3 left-3"
+          style={{ height: `${commentSplitRatio * 100}%` }}
+        >
+          <div className="pointer-events-auto flex h-full min-h-[180px] flex-col overflow-hidden rounded-[16px] border border-border bg-card shadow-xl shadow-black/20 ring-1 ring-black/[0.03]">
+            <div
+              onPointerDown={handleSplitResizeStart}
+              role="separator"
+              aria-orientation="horizontal"
+              aria-label="Resize comments card"
+              className="group relative flex h-3 shrink-0 cursor-row-resize items-center justify-center"
+            >
+              <div
+                className={`h-1 w-9 rounded-full transition-colors ${
+                  isSplitResizing
+                    ? "bg-primary"
+                    : "bg-muted-foreground/30 group-hover:bg-muted-foreground/60"
+                }`}
+              />
+            </div>
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              <TaskCommentsPanel
+                workspaceId={task.workspaceId as Id<"workspaces">}
+                taskId={task._id as Id<"tasks">}
+                canComment={canManageTasks}
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Action footer */}
@@ -918,53 +1111,6 @@ function RequestDetail({
         </button>
       </div>
     </div>
-  )
-}
-
-function SourceRow({ source }: { source: TaskSource }) {
-  const cfg = SOURCE_CONFIG[source.platform]
-  const themeFollowing = THEME_FOLLOWING_SOURCES.has(source.platform)
-  const safeUrl = sanitizeExternalUrl(source.url)
-  const rowClassName =
-    "flex items-center gap-2 rounded-[8px] gradient-border gradient-border-to-tl gradient-border-from-neutral-700 gradient-border-via-neutral-800 gradient-border-to-neutral-600 bg-card p-2 ring-1 ring-border transition-colors hover:ring-foreground/30"
-  const inner = (
-    <>
-      <span
-        className={`flex size-7 shrink-0 items-center justify-center rounded-[8px] ${themeFollowing ? "bg-foreground/10" : ""}`}
-        style={themeFollowing ? undefined : { backgroundColor: cfg.bg }}
-      >
-        <SourceGlyph platform={source.platform} size={14} />
-      </span>
-      <div className="flex min-w-0 flex-1 flex-col leading-tight">
-        <span className="text-[13px] font-medium text-foreground">
-          {cfg.label} · {source.author}
-        </span>
-        {safeUrl && (
-          <span className="truncate text-[12px] text-muted-foreground">
-            {safeUrl}
-          </span>
-        )}
-      </div>
-      {safeUrl && (
-        <LinkIcon size={12} className="shrink-0 text-muted-foreground" />
-      )}
-    </>
-  )
-  return (
-    <li>
-      {safeUrl ? (
-        <a
-          href={safeUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={rowClassName}
-        >
-          {inner}
-        </a>
-      ) : (
-        <div className={rowClassName}>{inner}</div>
-      )}
-    </li>
   )
 }
 

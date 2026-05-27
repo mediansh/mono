@@ -3,6 +3,7 @@ export const AUTUMN_CREDITS_FEATURE_ID = "credits"
 export const AUTUMN_TRACKED_AI_MODELS = [
   "google/gemini-3.1-flash-lite",
   "google/gemini-3-flash-preview",
+  "google/gemini-2.5-flash-lite",
   "openai/gpt-oss-120b",
 ] as const
 
@@ -19,6 +20,10 @@ export const AI_TOKEN_PRICING_PER_MILLION: Record<
   "google/gemini-3-flash-preview": {
     input: 0.8,
     output: 4.8,
+  },
+  "google/gemini-2.5-flash-lite": {
+    input: 0.075,
+    output: 0.3,
   },
   "openai/gpt-oss-120b": {
     input: 0.56,
@@ -116,6 +121,7 @@ export function getAiCostForTokens(args: {
 const TRACKED_MODEL_DISPLAY_NAMES: Record<TrackedAiModel, string> = {
   "google/gemini-3.1-flash-lite": "Google Gemini 3.1 Flash Lite",
   "google/gemini-3-flash-preview": "Google Gemini 3 Flash Preview",
+  "google/gemini-2.5-flash-lite": "Google Gemini 2.5 Flash Lite",
   "openai/gpt-oss-120b": "OpenAI GPT-OSS 120B",
 }
 

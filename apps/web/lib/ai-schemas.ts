@@ -39,6 +39,19 @@ export const extractedFeedbackTasksSchema = z.object({
   actions: z.array(extractedFeedbackActionSchema).max(5),
 })
 
+export const cleanedUpTasksSchema = z.object({
+  tasks: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        order: z.number().int().min(0),
+        priority: z.enum(TASK_PRIORITIES),
+        labels: z.array(z.string()).max(5),
+      })
+    )
+    .min(1),
+})
+
 export const generatedTasksSchema = z.object({
   tasks: z
     .array(
