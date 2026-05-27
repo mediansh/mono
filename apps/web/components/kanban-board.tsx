@@ -5056,6 +5056,7 @@ export function KanbanBoard() {
       getLocalFirstStoreSnapshot().tasksByWorkspace[workspaceId] ?? []
     const selectedTasks = allTasks.filter((t) => validIds.includes(t._id))
     if (selectedTasks.length === 0) return
+    const previousTasks = allTasks.map((task) => ({ ...task }))
 
     setIsCleaningUp(true)
     const toastId = toast.loading("Cleaning up tasks...")
@@ -5097,6 +5098,7 @@ export function KanbanBoard() {
 
       // Sort cleaned tasks by the AI's order so they appear in the right sequence
       const sortedCleaned = [...cleanedTasks].sort((a, b) => a.order - b.order)
+      const cleanedById = new Map(sortedCleaned.map((task) => [task.id, task]))
       const cleanedIdSet = new Set(sortedCleaned.map((t) => t.id))
 
       // Apply optimistic update: place cleaned tasks at the top of their status
@@ -5104,8 +5106,8 @@ export function KanbanBoard() {
       lastLocalChangeRef.current = Date.now()
       updateWorkspaceTasks(workspaceId, (tasks) => {
         const updated = tasks.map((task) => {
-          const cleaned = sortedCleaned.find((c) => c.id === task._id)
-          if (!cleaned) return task
+          const cleaned = cleanedById.get(task._id)
+          if (!cleaned) return { ...task }
           return {
             ...task,
             priority: cleaned.priority as Task["priority"],
@@ -5126,10 +5128,7 @@ export function KanbanBoard() {
             return aIdx - bIdx
           })
           const merged = [...cleaned, ...rest]
-          merged.forEach((t, i) => {
-            t.order = i
-          })
-          result.push(...merged)
+          result.push(...merged.map((t, i) => ({ ...t, order: i })))
         }
         return result
       })
@@ -5173,7 +5172,12 @@ export function KanbanBoard() {
               labels: t.labels,
             })
           ),
-        ])
+        ]).catch((error) => {
+          console.error("Task cleanup sync failed", error)
+          lastLocalChangeRef.current = Date.now()
+          updateWorkspaceTasks(workspaceId, () => previousTasks)
+          toast.error("Cleanup changes failed to sync. Reverted local changes.")
+        })
       }
     } catch (err) {
       toast.error(

@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties } from "react"
 import { createPortal } from "react-dom"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AnimatePresence, motion } from "motion/react"
@@ -840,6 +840,7 @@ function RequestDetail({
   const [commentSplitRatio, setCommentSplitRatio] = useState<number>(() =>
     loadCommentSplitRatio()
   )
+  const [commentHeight, setCommentHeight] = useState(0)
   const [isSplitResizing, setIsSplitResizing] = useState(false)
   const splitContainerRef = useRef<HTMLDivElement | null>(null)
 
@@ -858,6 +859,24 @@ function RequestDetail({
     if (isSplitResizing) return
     saveCommentSplitRatio(commentSplitRatio)
   }, [isSplitResizing, commentSplitRatio])
+
+  useEffect(() => {
+    const container = splitContainerRef.current
+    if (!container) return
+    const element = container
+
+    function updateCommentHeight() {
+      setCommentHeight(
+        element.getBoundingClientRect().height * commentSplitRatio
+      )
+    }
+
+    updateCommentHeight()
+    const observer = new ResizeObserver(updateCommentHeight)
+    observer.observe(element)
+
+    return () => observer.disconnect()
+  }, [commentSplitRatio])
 
   const handleSplitResizeStart = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
@@ -993,12 +1012,17 @@ function RequestDetail({
       <div
         ref={splitContainerRef}
         className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
+        style={
+          {
+            "--comment-height": `${commentHeight}px`,
+          } as CSSProperties
+        }
       >
         {/* Scrollable description + attachments */}
         <div
           className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-4"
           style={{
-            paddingBottom: `calc(${commentSplitRatio * 100}% + 32px)`,
+            paddingBottom: "calc(var(--comment-height) + 32px)",
           }}
         >
           <div className="flex-1">

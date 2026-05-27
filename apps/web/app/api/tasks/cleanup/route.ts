@@ -23,12 +23,19 @@ const requestSchema = z.object({
     .array(
       z.object({
         id: z.string().min(1),
-        title: z.string(),
-        description: z.string().nullable().optional(),
-        status: z.string(),
-        priority: z.string(),
-        labels: z.array(z.string()),
-        order: z.number(),
+        title: z.string().min(1).max(200),
+        description: z.string().max(2000).nullable().optional(),
+        status: z.enum([
+          "requests",
+          "todo",
+          "in_progress",
+          "ready",
+          "shipped",
+          "archive",
+        ]),
+        priority: z.enum(["urgent", "high", "medium", "low", "none"]),
+        labels: z.array(z.string().min(1).max(100)).max(10),
+        order: z.number().int().min(0).max(10000),
       })
     )
     .min(1)
@@ -42,6 +49,19 @@ function extractJsonObject(text: string) {
     throw new Error("Model did not return a JSON object.")
   }
   return text.slice(start, end + 1)
+}
+
+function cleanedTasksLengthMatchesInput(
+  outputTaskCounts: Map<string, number>,
+  inputTaskIds: Set<string>
+) {
+  if (outputTaskCounts.size !== inputTaskIds.size) return false
+
+  for (const id of inputTaskIds) {
+    if (outputTaskCounts.get(id) !== 1) return false
+  }
+
+  return true
 }
 
 async function generateAndValidateCleanup({
@@ -211,12 +231,32 @@ export const POST = withAxiom(async (request: Request) => {
     })
 
     const inputTaskIds = new Set(tasks.map((t) => t.id))
-    const cleanedTasks = validatedObject.tasks
-      .filter((t) => inputTaskIds.has(t.id))
-      .map((t) => ({
-        ...t,
-        labels: t.labels.filter((label) => availableLabels.includes(label)),
-      }))
+    const outputTaskCounts = new Map<string, number>()
+    for (const task of validatedObject.tasks) {
+      outputTaskCounts.set(task.id, (outputTaskCounts.get(task.id) ?? 0) + 1)
+    }
+
+    const hasOneToOneTaskMapping =
+      validatedObject.tasks.length === tasks.length &&
+      cleanedTasksLengthMatchesInput(outputTaskCounts, inputTaskIds)
+
+    if (!hasOneToOneTaskMapping) {
+      logger.warn("AI task cleanup returned mismatched task ids", {
+        userId,
+        workspaceId,
+        inputTaskCount: tasks.length,
+        outputTaskCount: validatedObject.tasks.length,
+      })
+      return NextResponse.json(
+        { error: "AI cleanup returned an invalid task mapping." },
+        { status: 502 }
+      )
+    }
+
+    const cleanedTasks = validatedObject.tasks.map((t) => ({
+      ...t,
+      labels: t.labels.filter((label) => availableLabels.includes(label)),
+    }))
 
     const durationMs = Date.now() - start
 
