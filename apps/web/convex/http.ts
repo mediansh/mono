@@ -4,6 +4,7 @@ import { githubInstallCallback, githubWebhook } from "./github"
 import { linearWebhook } from "./linear"
 import { slackOAuthCallback, slackEventsWebhook, slackInteractivity } from "./slack"
 import { statusEndpoint } from "./status"
+import { listTasksHttp, listTasksHttpOptions } from "./tasksApi"
 import { xOAuthCallback, xWebhook } from "./x"
 
 const http = httpRouter()
@@ -84,6 +85,18 @@ http.route({
   path: "/api/feedback",
   method: "OPTIONS",
   handler: submitFeedbackHttpOptions,
+})
+
+http.route({
+  path: "/api/tasks",
+  method: "GET",
+  handler: listTasksHttp,
+})
+
+http.route({
+  path: "/api/tasks",
+  method: "OPTIONS",
+  handler: listTasksHttpOptions,
 })
 
 export default http

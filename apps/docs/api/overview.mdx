@@ -3,7 +3,14 @@ title: "Overview"
 description: "Submit feedback to Median from anywhere over HTTP."
 ---
 
-The Median HTTP API lets you forward customer feedback into a workspace from your own apps, embeds, or scripts. Median ingests the submission, optionally classifies it as product feedback, and turns it into tasks on your board.
+The Median HTTP API lets you work with a workspace from your own apps, embeds, or scripts. Read tasks straight off your taskboard, or forward customer feedback in for Median to turn into tasks.
+
+## Endpoints
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | [`/api/tasks`](/api/tasks-list) | Read tasks from the taskboard, filtered by phase. |
+| `POST` | [`/api/feedback`](/api/feedback-submit) | Submit a piece of feedback for Median to triage into tasks. |
 
 ## Base URL
 
@@ -13,10 +20,10 @@ https://api.median.sh
 
 ## Conventions
 
-- Requests and responses use JSON (`Content-Type: application/json`).
+- Responses use JSON (`Content-Type: application/json`); `POST` bodies are JSON too.
 - Authenticate with a workspace API key — see [Authentication](/api/authentication).
 - Times are Unix milliseconds.
-- Successful submissions return `202 Accepted` while processing happens asynchronously.
+- Reads return `200 OK`. Feedback submissions return `202 Accepted` while processing happens asynchronously.
 
 ## Error shape
 
