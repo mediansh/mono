@@ -1,0 +1,143 @@
+---
+title: "List tasks"
+description: "GET /api/tasks — read tasks from your taskboard, filtered by phase."
+---
+
+Return tasks from a workspace's taskboard. You choose exactly which phases
+(board columns) to include, and every task in the response uses the same
+schema regardless of which phase it lives in.
+
+## Endpoint
+
+```
+GET https://api.median.sh/api/tasks
+```
+
+## Headers
+
+| Header | Required | Description |
+| --- | --- | --- |
+| `Authorization` | Yes (or `apiKey` query param) | `Bearer <your-api-key>` |
+
+## Phases
+
+A task's phase is the board column it sits in. The valid phases, in board
+order, are:
+
+`requests` · `todo` · `in_progress` · `ready` · `shipped` · `archive`
+
+## Query parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `phases` | string | No | Comma-separated list of phases to include, e.g. `todo,in_progress`. When omitted, tasks from **all** phases are returned. |
+| `phase` | string (repeatable) | No | Alternative to `phases`. Repeat the parameter to pass several phases: `?phase=todo&phase=ready`. Merged with `phases` when both are present. |
+| `priority` | string | No | Only return tasks with this priority. One of `urgent`, `high`, `medium`, `low`, `none`. |
+| `label` | string | No | Only return tasks carrying this label. |
+| `limit` | integer | No | Maximum number of tasks to return. Defaults to `200`, capped at `500`. |
+| `apiKey` | string | No | API key, if not sent via the `Authorization` header. |
+
+Passing a phase or priority that isn't in the list above returns `400`.
+
+## Examples
+
+Fetch every task currently in the `todo` and `in_progress` phases:
+
+```bash
+curl "https://api.median.sh/api/tasks?phases=todo,in_progress" \
+  -H "Authorization: Bearer mdn_live_xxx..."
+```
+
+Fetch all incoming feature requests:
+
+```bash
+curl "https://api.median.sh/api/tasks?phases=requests&label=feature" \
+  -H "Authorization: Bearer mdn_live_xxx..."
+```
+
+Using the repeatable `phase` form and a body-less key:
+
+```bash
+curl "https://api.median.sh/api/tasks?phase=ready&phase=shipped&apiKey=mdn_live_xxx..."
+```
+
+## Response
+
+`200 OK` with the matching tasks. Tasks are ordered by phase (board order),
+then by their position within the phase.
+
+```json
+{
+  "workspace": {
+    "id": "k17c9...",
+    "name": "Median",
+    "prefix": "MED"
+  },
+  "phases": ["todo", "in_progress"],
+  "count": 2,
+  "tasks": [
+    {
+      "id": "j57d2...",
+      "taskCode": "MED-196",
+      "taskNumber": 196,
+      "title": "Export with GitHub Repository Integration",
+      "description": null,
+      "phase": "todo",
+      "status": "todo",
+      "priority": "medium",
+      "labels": ["feature"],
+      "project": "Median V1",
+      "order": 0,
+      "assignee": { "name": "Abdul", "avatar": "" },
+      "assignees": [],
+      "source": null,
+      "sources": [],
+      "createdAt": 1710000000000,
+      "updatedAt": 1710003600000
+    }
+  ]
+}
+```
+
+### Top-level fields
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `workspace` | object | The workspace the API key belongs to (`id`, `name`, `prefix`). |
+| `phases` | string[] | The phases that were requested. Reflects all phases when none were specified. |
+| `count` | integer | Number of tasks in `tasks`. |
+| `tasks` | object[] | The matching tasks, each using the schema below. |
+
+### Task schema
+
+Every entry in `tasks` has the same fields:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | string | Convex document id for the task. |
+| `taskCode` | string | Human-readable code, e.g. `MED-196`. |
+| `taskNumber` | integer | Numeric portion of the task code. |
+| `title` | string | Task title. |
+| `description` | string \| null | Task description, or `null` when empty. |
+| `phase` | string | The board column the task is in (same value as `status`). |
+| `status` | string | Alias of `phase`, for parity with the CLI and dashboard. |
+| `priority` | string | `urgent`, `high`, `medium`, `low`, or `none`. |
+| `labels` | string[] | Labels applied to the task. |
+| `project` | string | Project the task belongs to. |
+| `order` | number | Sort position of the task within its phase. |
+| `assignee` | object \| null | Legacy single assignee (`name`, `avatar`), or `null`. |
+| `assignees` | object[] | Assigned members (`userId`, `name`, `imageUrl`). Empty when none. |
+| `source` | object \| null | Primary origin of the task (`platform`, `url`, `author`), or `null`. |
+| `sources` | object[] | All origins for the task. Empty when none. |
+| `createdAt` | integer | Creation time, Unix milliseconds. |
+| `updatedAt` | integer \| null | Last update time, Unix milliseconds, or `null`. |
+
+## Errors
+
+See [Overview → Error shape](/api/overview#error-shape).
+
+| Status | Reason |
+| --- | --- |
+| `400` | An unknown phase or priority was supplied, or `limit` was not a positive integer. |
+| `401` | API key missing, invalid, or revoked. |
+| `405` | Wrong HTTP method (only `GET` and `OPTIONS` are accepted). |

@@ -37,6 +37,7 @@ import type * as status from "../status.js";
 import type * as taskComments from "../taskComments.js";
 import type * as taskSourceUtils from "../taskSourceUtils.js";
 import type * as tasks from "../tasks.js";
+import type * as tasksApi from "../tasksApi.js";
 import type * as users from "../users.js";
 import type * as waitlist from "../waitlist.js";
 import type * as workspaces from "../workspaces.js";
@@ -79,6 +80,7 @@ declare const fullApi: ApiFromModules<{
   taskComments: typeof taskComments;
   taskSourceUtils: typeof taskSourceUtils;
   tasks: typeof tasks;
+  tasksApi: typeof tasksApi;
   users: typeof users;
   waitlist: typeof waitlist;
   workspaces: typeof workspaces;
