@@ -708,6 +708,10 @@ export default defineSchema({
       )
     ),
     createdAtLabel: v.optional(v.string()),
+    // Arbitrary developer-supplied JSON forwarded through the public API. It is
+    // fed to the AI alongside the feedback text and surfaced in the task
+    // information panel.
+    customData: v.optional(v.any()),
     attachments: v.optional(
       v.array(
         v.object({

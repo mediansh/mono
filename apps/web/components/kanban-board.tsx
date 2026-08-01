@@ -68,6 +68,7 @@ import {
   type TaskAttachment,
 } from "@/components/task-attachments"
 import { TaskCommentsPanel } from "@/components/task-comments-panel"
+import { TaskInfoPanel } from "@/components/task-info-panel"
 import { LoadingState } from "@/components/loading-state"
 import {
   Dialog,
@@ -218,10 +219,6 @@ function useLabelConfig() {
   return useContext(LabelConfigContext)
 }
 
-const BoardMountedContext = createContext(false)
-function useBoardMounted() {
-  return useContext(BoardMountedContext)
-}
 
 const UnreadMentionsContext = createContext<Record<string, number>>({})
 function useUnreadMentionCount(taskId: string): number {
@@ -1109,8 +1106,6 @@ const ListRowContent = memo(function ListRowContent({ task }: { task: Task }) {
 
 const SortableListRow = memo(function SortableListRow({
   task,
-  rowIndex,
-  groupDelay,
   isSelected,
   hasSelection,
   isDraggedAway,
@@ -1121,8 +1116,6 @@ const SortableListRow = memo(function SortableListRow({
   onDelete,
 }: {
   task: Task
-  rowIndex: number
-  groupDelay: number
   isSelected: boolean
   hasSelection: boolean
   isDraggedAway: boolean
@@ -1132,7 +1125,6 @@ const SortableListRow = memo(function SortableListRow({
   onUpdate: (taskId: string, updates: Partial<Task>) => void
   onDelete: (taskId: string) => void
 }) {
-  const boardMounted = useBoardMounted()
   const isMobile = useIsMobile()
   const {
     attributes,
@@ -1148,8 +1140,6 @@ const SortableListRow = memo(function SortableListRow({
     disabled: !canManageTasks || isMobile,
   })
 
-  const [hasAnimated, setHasAnimated] = useState(boardMounted)
-  const rowDelay = groupDelay + Math.min(rowIndex, 8) * 0.02
   // Keep the row's layout slot in place while dragging — only fade.
   // Collapsing height/padding makes siblings reflow under dnd-kit's measurements
   // and produces the jittery over-target behavior we used to see.
@@ -1159,9 +1149,6 @@ const SortableListRow = memo(function SortableListRow({
     opacity: isDragging ? 0 : isDraggedAway ? 0.4 : undefined,
     pointerEvents: isDragging || isDraggedAway ? "none" : undefined,
     willChange: transform ? "transform" : undefined,
-    ...(!hasAnimated && !isDragging
-      ? { animation: `kanban-row-in 0.25s ease-out ${rowDelay}s both` }
-      : {}),
   }
 
   const handleClick = useCallback(
@@ -1192,7 +1179,6 @@ const SortableListRow = memo(function SortableListRow({
         {...attributes}
         {...listeners}
         onClick={handleClick}
-        onAnimationEnd={() => setHasAnimated(true)}
         className={`group flex cursor-pointer items-center gap-3 border-b border-l-2 border-border px-3 py-2 transition-[background-color,box-shadow,opacity] duration-150 select-none hover:bg-accent/40 ${isMobile ? "" : "touch-none"} ${PRIORITY_ACCENT[task.priority]} ${isSelected ? "bg-primary/[0.06] hover:bg-primary/[0.10]" : "bg-white dark:bg-background"}`}
       >
         {/* Checkbox */}
@@ -1452,8 +1438,6 @@ function ListGroup({
                         )}
                         <SortableListRow
                           task={task}
-                          rowIndex={rowIndex}
-                          groupDelay={groupIndex * 0.04}
                           isSelected={selectedTaskIds.has(task.id)}
                           hasSelection={hasSelection}
                           isDraggedAway={draggedTaskIds.has(task.id)}
@@ -2276,6 +2260,11 @@ function TaskDetailSidePanel({
                       {uploading ? "Uploading..." : "Attach files"}
                     </button>
                   </div>
+
+                  {/* Everything stored on this task, including API custom data */}
+                  <div className="mt-4">
+                    <TaskInfoPanel task={task} />
+                  </div>
                 </div>
 
                 {/* Floating Comments card — sits on top of the description */}
@@ -2608,8 +2597,6 @@ function SourceIcons({ task }: { task: Pick<Task, "source" | "sources"> }) {
 
 const KanbanCard = memo(function KanbanCard({
   task,
-  cardIndex,
-  columnIndex,
   isSelected,
   hasSelection,
   isDraggedAway,
@@ -2620,8 +2607,6 @@ const KanbanCard = memo(function KanbanCard({
   onDelete,
 }: {
   task: Task
-  cardIndex: number
-  columnIndex: number
   isSelected: boolean
   hasSelection: boolean
   isDraggedAway: boolean
@@ -2632,7 +2617,6 @@ const KanbanCard = memo(function KanbanCard({
   onDelete: (taskId: string) => void
 }) {
   const { colors: labelColors } = useLabelConfig()
-  const boardMounted = useBoardMounted()
   const isMobile = useIsMobile()
   const activeAgent = getActiveAgent(task)
   const {
@@ -2678,27 +2662,9 @@ const KanbanCard = memo(function KanbanCard({
     [onToggleSelect, task.id]
   )
 
-  // Stagger: column delay + per-card delay (cap at 8 cards to avoid long waits)
-  const staggerDelay = columnIndex * 0.06 + Math.min(cardIndex, 8) * 0.03
-
   return (
     <ContextMenu>
       <ContextMenuTrigger
-        render={
-          <motion.div
-            initial={boardMounted ? false : { opacity: 0, y: 8, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={
-              boardMounted
-                ? { duration: 0 }
-                : {
-                    duration: 0.25,
-                    delay: staggerDelay,
-                    ease: [0.25, 0.1, 0.25, 1],
-                  }
-            }
-          />
-        }
         ref={setNodeRef}
         style={style}
         {...attributes}
@@ -2893,8 +2859,6 @@ function KanbanColumn({
                   )}
                   <KanbanCard
                     task={task}
-                    cardIndex={cardIndex}
-                    columnIndex={columnIndex}
                     isSelected={selectedTaskIds.has(task.id)}
                     hasSelection={hasSelection}
                     isDraggedAway={draggedTaskIds.has(task.id)}
@@ -4399,7 +4363,6 @@ export function KanbanBoard() {
   const [modalDefaultStatus, setModalDefaultStatus] = useState<Status>("todo")
   const [hiddenColumns, setHiddenColumns] = useState<Status[]>([])
   const [isCleaningDemoTasks, setIsCleaningDemoTasks] = useState(false)
-  const [boardMounted, setBoardMounted] = useState(false)
   const [filter, setFilter] = useState<BoardFilterState>(EMPTY_FILTER_STATE)
   const { user: clerkUser } = useUser()
   const currentUserId = clerkUser?.id ?? null
@@ -4427,11 +4390,6 @@ export function KanbanBoard() {
     setTaskPanelWidth(loadTaskPanelWidth())
   }, [])
 
-  // Mark board as mounted after initial render to suppress entry animations on subsequent updates
-  useEffect(() => {
-    const timer = setTimeout(() => setBoardMounted(true), 800)
-    return () => clearTimeout(timer)
-  }, [])
   const [hasFetchedTasks, setHasFetchedTasks] = useState(false)
   const cleanedWorkspaceIds = useState(() => new Set<string>())[0]
   const lastLoadedWorkspaceIdRef = useRef<string | null>(null)
@@ -5242,7 +5200,7 @@ export function KanbanBoard() {
     : null
 
   return (
-    <BoardMountedContext.Provider value={boardMounted}>
+    <>
       <LabelConfigContext.Provider value={labelConfig}>
         <UnreadMentionsContext.Provider value={unreadMentionsMap}>
           <div className="flex h-full">
@@ -5342,6 +5300,6 @@ export function KanbanBoard() {
           </div>
         </UnreadMentionsContext.Provider>
       </LabelConfigContext.Provider>
-    </BoardMountedContext.Provider>
+    </>
   )
 }

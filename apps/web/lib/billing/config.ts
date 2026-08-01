@@ -1,6 +1,7 @@
 export const AUTUMN_CREDITS_FEATURE_ID = "credits"
 
 export const AUTUMN_TRACKED_AI_MODELS = [
+  "openai/gpt-5.6-luna",
   "google/gemini-3.1-flash-lite",
   "google/gemini-3-flash-preview",
   "google/gemini-2.5-flash-lite",
@@ -13,6 +14,13 @@ export const AI_TOKEN_PRICING_PER_MILLION: Record<
   TrackedAiModel,
   { input: number; output: number }
 > = {
+  // NOTE: confirm these rates against the OpenRouter model page before relying
+  // on them for invoicing — they drive `getAiCostForTokens` and therefore every
+  // credit deduction for the advanced tier.
+  "openai/gpt-5.6-luna": {
+    input: 1.25,
+    output: 10,
+  },
   "google/gemini-3.1-flash-lite": {
     input: 0.4,
     output: 2.4,
@@ -119,6 +127,7 @@ export function getAiCostForTokens(args: {
 }
 
 const TRACKED_MODEL_DISPLAY_NAMES: Record<TrackedAiModel, string> = {
+  "openai/gpt-5.6-luna": "OpenAI GPT-5.6 Luna",
   "google/gemini-3.1-flash-lite": "Google Gemini 3.1 Flash Lite",
   "google/gemini-3-flash-preview": "Google Gemini 3 Flash Preview",
   "google/gemini-2.5-flash-lite": "Google Gemini 2.5 Flash Lite",

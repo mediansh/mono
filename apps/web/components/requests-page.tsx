@@ -65,6 +65,7 @@ import {
   type TaskSource,
 } from "@/lib/task-board"
 import { TaskCommentsPanel } from "@/components/task-comments-panel"
+import { TaskInfoPanel } from "@/components/task-info-panel"
 
 type RequestTask = Doc<"tasks">
 
@@ -1051,6 +1052,11 @@ function RequestDetail({
               </ul>
             </div>
           )}
+
+          {/* Everything stored on this request, including API custom data */}
+          <div className="mt-4">
+            <TaskInfoPanel task={task} />
+          </div>
         </div>
 
         {/* Floating Comments card */}

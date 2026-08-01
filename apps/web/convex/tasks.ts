@@ -68,6 +68,7 @@ const taskInputValidator = v.object({
   labels: v.array(v.string()),
   source: v.optional(taskSourceValidator),
   createdAtLabel: v.optional(v.string()),
+  customData: v.optional(v.any()),
   attachments: v.optional(v.array(attachmentValidator)),
   assignees: v.optional(v.array(assigneeValidator)),
 })
@@ -97,6 +98,7 @@ type CreateTaskInput = {
     author: string
   }
   createdAtLabel?: string
+  customData?: unknown
   attachments?: {
     storageId: Id<"_storage">
     name: string
@@ -115,6 +117,7 @@ type FeedbackTaskUpdateInput = {
   description?: string
   priority?: "urgent" | "high" | "medium" | "low" | "none"
   labels: string[]
+  customData?: unknown
 }
 
 type FeedbackTaskOperationInput =
@@ -461,6 +464,7 @@ async function insertTasksForWorkspace(
       source: taskInput.source,
       sources: taskInput.source ? [taskInput.source] : undefined,
       createdAtLabel: taskInput.createdAtLabel,
+      customData: taskInput.customData ?? undefined,
       attachments: taskInput.attachments ?? undefined,
     })
 
@@ -668,6 +672,23 @@ function mergeLabels(currentLabels: string[], nextLabels: string[]) {
   return Array.from(new Set([...currentLabels, ...nextLabels]))
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return (
+    typeof value === "object" && value !== null && !Array.isArray(value)
+  )
+}
+
+// Custom data arriving with new feedback is folded into whatever the task
+// already carries. Two objects are shallow-merged (newest keys win); anything
+// else replaces the previous value outright.
+function mergeCustomData(current: unknown, incoming: unknown) {
+  if (incoming === undefined) return current
+  if (isPlainObject(current) && isPlainObject(incoming)) {
+    return { ...current, ...incoming }
+  }
+  return incoming
+}
+
 async function applyFeedbackTaskOperations(
   ctx: MutationCtx,
   workspaceId: Id<"workspaces">,
@@ -728,13 +749,19 @@ async function applyFeedbackTaskOperations(
       ? getHigherPriority(task.priority, operation.priority)
       : task.priority
     const nextLabels = mergeLabels(task.labels, operation.labels)
+    const nextCustomData = mergeCustomData(task.customData, operation.customData)
+    const customDataChanged =
+      operation.customData !== undefined &&
+      JSON.stringify(nextCustomData ?? null) !==
+        JSON.stringify(task.customData ?? null)
 
     const hasChanges =
       nextTitle !== task.title ||
       nextDescription !== (task.description ?? undefined) ||
       nextPriority !== task.priority ||
       nextLabels.length !== task.labels.length ||
-      nextLabels.some((label, index) => label !== task.labels[index])
+      nextLabels.some((label, index) => label !== task.labels[index]) ||
+      customDataChanged
 
     if (!hasChanges) {
       continue
@@ -745,6 +772,7 @@ async function applyFeedbackTaskOperations(
       description: nextDescription,
       priority: nextPriority,
       labels: nextLabels,
+      customData: nextCustomData,
       updatedAt: Date.now(),
     })
 
@@ -1113,6 +1141,7 @@ export const createTasksFromApiFeedbackInternal = internalMutation({
           description: v.optional(v.string()),
           priority: v.optional(taskPriorityValidator),
           labels: v.array(v.string()),
+          customData: v.optional(v.any()),
         })
       )
     ),

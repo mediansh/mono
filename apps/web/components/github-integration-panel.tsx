@@ -527,7 +527,7 @@ export function GitHubIntegrationPanel() {
             <div className="flex items-center gap-3 px-3.5 py-3">
               <div className="min-w-0 flex-1">
                 <p className="text-[14px] text-foreground">Commit automation</p>
-                <p className="mt-0.5 text-[12px] text-muted-foreground">Default-branch commits set Shipped. Other branches set In Progress.</p>
+                <p className="mt-0.5 text-[12px] text-muted-foreground">Every pushed commit is scanned — by task code, then by AI against your board. Default-branch commits set Shipped. Other branches set In Progress.</p>
               </div>
               <Switch
                 checked={integration.commitAutomationEnabled}

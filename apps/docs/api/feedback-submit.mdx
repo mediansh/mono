@@ -25,7 +25,8 @@ POST https://api.median.sh/api/feedback
 | `content` | string | Yes | The feedback text. 1–10,000 characters. |
 | `author` | string | No | A label for who submitted the feedback (email, handle, etc.). Stored on the resulting task. |
 | `sourceUrl` | string | No | URL where the feedback originated (e.g. the page the user was on). |
-| `metadata` | object | No | Arbitrary JSON stored alongside the request for your own debugging. |
+| `customData` | object | No | Arbitrary JSON about the user, environment, or app state. It is given to the AI as context and stored on every task the submission produces. |
+| `metadata` | object | No | Alias for `customData`, kept for backwards compatibility. Ignored when `customData` is present. |
 | `classify` | boolean | No | When `true`, an LLM classifier first decides whether the submission is real product feedback. Off-topic submissions are rejected without creating tasks. Defaults to `false`. |
 | `apiKey` | string | No | API key, if not sent via the `Authorization` header. |
 
@@ -39,9 +40,36 @@ curl -X POST https://api.median.sh/api/feedback \
     "content": "I tried to export the report as CSV but the button does nothing in Safari 17.",
     "author": "alex@example.com",
     "sourceUrl": "https://app.example.com/reports/42",
+    "customData": {
+      "plan": "scale",
+      "appVersion": "2.14.0",
+      "browser": "Safari 17.2",
+      "orgId": "org_8812"
+    },
     "classify": true
   }'
 ```
+
+## Custom data
+
+`customData` accepts any JSON you want to travel with the submission. Median
+does three things with it:
+
+1. **Feeds it to the AI.** The object is included in the classifier and
+   extractor prompts, so the resulting task can name the plan, version, route,
+   or account tier the report came from — detail the free-text feedback usually
+   omits.
+2. **Stores it on the task.** Every task created or updated by the submission
+   carries the same custom data. Object values are shallow-merged when later
+   feedback updates an existing task, so newest keys win.
+3. **Shows it in the app.** It appears in the **Information** panel on both the
+   Requests tab and the task board, and is returned as `customData` by
+   [List tasks](/api/tasks-list).
+
+Custom data is treated strictly as context — never as instructions to the
+model — and is truncated at 4,000 characters of serialized JSON before it
+reaches a prompt. Keep it to facts that help triage, and don't send secrets:
+anyone who can see the task can see its custom data.
 
 ## Response
 

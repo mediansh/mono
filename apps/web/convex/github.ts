@@ -1,4 +1,6 @@
+import { generateText, Output } from "ai"
 import { v } from "convex/values"
+import { z } from "zod"
 import {
   action,
   httpAction,
@@ -7,6 +9,7 @@ import {
   internalQuery,
   mutation,
   query,
+  type ActionCtx,
 } from "./_generated/server"
 import type { Doc, Id } from "./_generated/dataModel"
 import { internal } from "./_generated/api"
@@ -15,6 +18,8 @@ import {
   requireWorkspaceAccess,
   requireWorkspaceAdminAccess,
 } from "./permissions"
+import { getAiModelForPlan } from "../lib/ai"
+import { getAiCostForTokens } from "../lib/billing/config"
 import { STATUS_ORDER, type TaskStatus } from "../lib/task-board"
 import {
   buildAppFallbackUrl,
@@ -26,6 +31,36 @@ const GITHUB_API_URL = "https://api.github.com"
 const GITHUB_INSTALL_STATE_TTL_MS = 1000 * 60 * 15
 const GITHUB_CALLBACK_PATH = "/github/callback"
 const GITHUB_WEBHOOK_PATH = "/github/webhook"
+
+// ── AI commit matching ──
+// A push can carry many commits. Every commit that doesn't already name a task
+// code is scanned by the AI in a SINGLE request per push, so a 30-commit merge
+// costs one call rather than thirty.
+const COMMIT_MATCH_MAX_COMMITS = 40
+const COMMIT_MATCH_MAX_MESSAGE_LENGTH = 400
+const COMMIT_MATCH_MAX_TASKS = 80
+// Below this the model is guessing — the match is dropped rather than moving
+// someone's task across the board on a hunch.
+const COMMIT_MATCH_MIN_CONFIDENCE = 0.75
+// Statuses a commit can plausibly be implementing. Shipped/archived work is
+// done, and `requests` are untriaged so they stay out of commit automation.
+const COMMIT_MATCH_TASK_STATUSES: TaskStatus[] = [
+  "todo",
+  "in_progress",
+  "ready",
+]
+
+const commitTaskMatchesSchema = z.object({
+  matches: z
+    .array(
+      z.object({
+        sha: z.string().min(1),
+        taskCode: z.string().min(1),
+        confidence: z.number().min(0).max(1),
+      })
+    )
+    .max(COMMIT_MATCH_MAX_COMMITS),
+})
 
 type GitHubRepository = {
   id: string
@@ -1430,6 +1465,184 @@ export const listTasksByCodes = internalQuery({
   },
 })
 
+// Compact snapshot of the tasks a commit could plausibly be implementing.
+// Only the fields the matcher needs are returned so the prompt stays small.
+export const listTasksForCommitMatching = internalQuery({
+  args: {
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args) => {
+    const workspace = await ctx.db.get(args.workspaceId)
+    if (!workspace) return null
+
+    const statuses = new Set<string>(COMMIT_MATCH_TASK_STATUSES)
+    const tasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .collect()
+
+    return {
+      workspaceName: workspace.name,
+      tasks: tasks
+        .filter((task) => statuses.has(task.status))
+        .sort(
+          (a, b) =>
+            (b.updatedAt ?? b._creationTime) - (a.updatedAt ?? a._creationTime)
+        )
+        .slice(0, COMMIT_MATCH_MAX_TASKS)
+        .map((task) => ({
+          taskId: task._id,
+          taskCode: task.taskCode,
+          title: task.title,
+          description: task.description ?? null,
+          status: task.status,
+          labels: task.labels,
+        })),
+    }
+  },
+})
+
+type CommitMatchCandidate = {
+  sha: string
+  message: string
+}
+
+type CommitTaskMatch = {
+  sha: string
+  taskId: Id<"tasks">
+  taskCode: string
+  confidence: number
+}
+
+// Asks the model, in one request, which of the pushed commits implement which
+// board tasks. Returns an empty list (never throws) so a matcher failure can
+// never take down webhook ingestion.
+async function matchCommitsToTasksWithAi(
+  ctx: ActionCtx,
+  args: {
+    workspaceId: Id<"workspaces">
+    repositoryFullName: string
+    commits: CommitMatchCandidate[]
+  }
+): Promise<{ matches: CommitTaskMatch[]; cost: number }> {
+  const empty = { matches: [] as CommitTaskMatch[], cost: 0 }
+
+  if (args.commits.length === 0) return empty
+  if (!process.env.OPENROUTER_API_KEY) return empty
+
+  const snapshot = await ctx.runQuery(
+    internal.github.listTasksForCommitMatching,
+    { workspaceId: args.workspaceId }
+  )
+  if (!snapshot || snapshot.tasks.length === 0) return empty
+  const { workspaceName, tasks } = snapshot
+
+  const planStatus = (await ctx.runAction(
+    internal.billing.getWorkspacePlanStatusInternal,
+    { workspaceId: args.workspaceId }
+  )) as { hasActivePlan: boolean; currentPlanId: string | null }
+
+  if (!planStatus.hasActivePlan) return empty
+
+  const selection = getAiModelForPlan("commitMatcher", planStatus.currentPlanId)
+  const tasksByCode = new Map(
+    tasks.map((task) => [task.taskCode.toUpperCase(), task] as const)
+  )
+  const commitShas = new Set(args.commits.map((commit) => commit.sha))
+
+  const system = [
+    "You match git commits to open tasks on a product team's task board.",
+    `The product is ${workspaceName}.`,
+    "For each commit, decide whether it implements, fixes, or materially advances one of the listed tasks.",
+    "Match on what the commit actually changes, not on shared vocabulary — two items mentioning 'auth' are not a match unless the commit does the task's work.",
+    "A commit may match at most one task. A task may be matched by several commits. Most commits match nothing — return an empty list when nothing matches.",
+    "confidence is your probability that the match is correct: use 0.9+ only when the commit unmistakably does the task's work, and below 0.7 when you are guessing.",
+    "Use the exact sha and taskCode strings given to you. Never invent either.",
+  ].join(" ")
+
+  const taskLines = tasks
+    .map((task) =>
+      [
+        `${task.taskCode} | ${task.status} | ${task.title}`,
+        task.labels.length > 0 ? `labels: ${task.labels.join(", ")}` : null,
+        task.description
+          ? `description: ${task.description.slice(0, 400)}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" | ")
+    )
+    .join("\n")
+
+  const commitLines = args.commits
+    .map(
+      (commit) =>
+        `${commit.sha} | ${commit.message.slice(0, COMMIT_MATCH_MAX_MESSAGE_LENGTH).replace(/\s+/g, " ")}`
+    )
+    .join("\n")
+
+  try {
+    const result = await generateText({
+      model: selection.model,
+      system,
+      prompt: [
+        `Repository: ${args.repositoryFullName}`,
+        "Open tasks:",
+        taskLines,
+        "Commits pushed:",
+        commitLines,
+      ].join("\n\n"),
+      experimental_output: Output.object({ schema: commitTaskMatchesSchema }),
+    })
+
+    const cost = getAiCostForTokens({
+      model: selection.modelId,
+      inputTokens: result.usage?.inputTokens,
+      outputTokens: result.usage?.outputTokens,
+    })
+
+    await ctx.runAction(internal.billingTracking.trackAiUsage, {
+      workspaceId: args.workspaceId,
+      workspaceName,
+      model: selection.modelId,
+      inputTokens: result.usage?.inputTokens,
+      outputTokens: result.usage?.outputTokens,
+      properties: {
+        feature: "github_commit_matcher",
+        repository: args.repositoryFullName,
+        commit_count: args.commits.length,
+      },
+    })
+
+    // One match per commit, high confidence only, and both ids must be ones we
+    // actually handed the model.
+    const seenShas = new Set<string>()
+    const matches: CommitTaskMatch[] = []
+    for (const match of result.experimental_output.matches) {
+      if (match.confidence < COMMIT_MATCH_MIN_CONFIDENCE) continue
+      if (!commitShas.has(match.sha) || seenShas.has(match.sha)) continue
+      const task = tasksByCode.get(match.taskCode.trim().toUpperCase())
+      if (!task) continue
+      seenShas.add(match.sha)
+      matches.push({
+        sha: match.sha,
+        taskId: task.taskId,
+        taskCode: task.taskCode,
+        confidence: match.confidence,
+      })
+    }
+
+    return { matches, cost }
+  } catch (error) {
+    logError("Commit matcher failed", error, {
+      workspaceId: args.workspaceId,
+      repository: args.repositoryFullName,
+      commitCount: args.commits.length,
+    })
+    return empty
+  }
+}
+
 export const getLinkedTaskSnapshot = internalQuery({
   args: {
     taskId: v.id("tasks"),
@@ -2292,7 +2505,10 @@ export const processPushWebhook = internalAction({
       })
     ),
   },
-  handler: async (ctx, args): Promise<{ matchedTaskCount: number }> => {
+  handler: async (
+    ctx,
+    args
+  ): Promise<{ matchedTaskCount: number; aiMatchedCommitCount: number }> => {
     const integration: Doc<"githubWorkspaceIntegrations"> | null =
       await ctx.runQuery(internal.github.getGitHubIntegrationById, {
         integrationId: args.integrationId,
@@ -2302,44 +2518,106 @@ export const processPushWebhook = internalAction({
     }
 
     if (integration.commitAutomationEnabled === false) {
-      return { matchedTaskCount: 0 }
+      return { matchedTaskCount: 0, aiMatchedCommitCount: 0 }
     }
 
+    const commitsBySha = new Map(
+      args.commits.map((commit) => [commit.sha, commit] as const)
+    )
+
+    const linkCommitToTask = async (
+      commit: { sha: string; url?: string },
+      taskId: Id<"tasks">
+    ) => {
+      await ctx.runMutation(internal.github.recordGitHubDevelopmentRef, {
+        workspaceId: integration.workspaceId,
+        taskId,
+        refType: "commit",
+        githubRepositoryId: args.githubRepositoryId,
+        githubRepositoryFullName: args.githubRepositoryFullName,
+        githubObjectId: `commit:${commit.sha}`,
+        commitSha: commit.sha,
+        url: commit.url,
+        state: args.isDefaultBranch ? "default_branch" : "branch_push",
+        isDefaultBranch: args.isDefaultBranch,
+      })
+
+      await ctx.runMutation(internal.github.applyGitHubDerivedTaskStatus, {
+        taskId,
+        status: args.isDefaultBranch ? "shipped" : "in_progress",
+      })
+    }
+
+    // Pass 1 — commits that spell out a task code are matched exactly.
     let matchedTaskCount = 0
+    const unmatchedCommits: CommitMatchCandidate[] = []
+
     for (const commit of args.commits) {
       const taskCodes = extractTaskCodes(commit.message)
-      if (taskCodes.length === 0) continue
+      if (taskCodes.length === 0) {
+        unmatchedCommits.push({ sha: commit.sha, message: commit.message })
+        continue
+      }
 
       const tasks = await ctx.runQuery(internal.github.listTasksByCodes, {
         workspaceId: integration.workspaceId,
         taskCodes,
       })
 
-      for (const task of tasks) {
-        await ctx.runMutation(internal.github.recordGitHubDevelopmentRef, {
-          workspaceId: integration.workspaceId,
-          taskId: task._id,
-          refType: "commit",
-          githubRepositoryId: args.githubRepositoryId,
-          githubRepositoryFullName: args.githubRepositoryFullName,
-          githubObjectId: `commit:${commit.sha}`,
-          commitSha: commit.sha,
-          url: commit.url,
-          state: args.isDefaultBranch ? "default_branch" : "branch_push",
-          isDefaultBranch: args.isDefaultBranch,
-        })
+      // A code that matches nothing on the board still deserves an AI look —
+      // the commit may describe real work under a stale or mistyped code.
+      if (tasks.length === 0) {
+        unmatchedCommits.push({ sha: commit.sha, message: commit.message })
+        continue
+      }
 
-        await ctx.runMutation(internal.github.applyGitHubDerivedTaskStatus, {
-          taskId: task._id,
-          status: args.isDefaultBranch ? "shipped" : "in_progress",
-        })
+      for (const task of tasks) {
+        await linkCommitToTask(commit, task._id)
       }
 
       matchedTaskCount += tasks.length
     }
 
+    // Pass 2 — everything else goes to the AI in one request per push.
+    const { matches, cost } = await matchCommitsToTasksWithAi(ctx, {
+      workspaceId: integration.workspaceId,
+      repositoryFullName: args.githubRepositoryFullName,
+      commits: unmatchedCommits.slice(0, COMMIT_MATCH_MAX_COMMITS),
+    })
+
+    for (const match of matches) {
+      const commit = commitsBySha.get(match.sha)
+      if (!commit) continue
+      await linkCommitToTask(commit, match.taskId)
+      matchedTaskCount += 1
+    }
+
+    if (matches.length > 0) {
+      const summary = matches
+        .map((match) => `${match.sha.slice(0, 7)} → ${match.taskCode}`)
+        .join(", ")
+      await ctx.runMutation(internal.logs.recordWorkspaceLog, {
+        workspaceId: integration.workspaceId,
+        category: "tasks",
+        type: "task_updated",
+        message: `AI matched ${matches.length} commit${matches.length === 1 ? "" : "s"} to tasks: ${summary}`,
+        source: "github",
+        cost: cost > 0 ? cost : undefined,
+      })
+    }
+
+    if (unmatchedCommits.length > COMMIT_MATCH_MAX_COMMITS) {
+      logInfo("Commit matcher capped commits for this push", {
+        workspaceId: integration.workspaceId,
+        repository: args.githubRepositoryFullName,
+        scanned: COMMIT_MATCH_MAX_COMMITS,
+        skipped: unmatchedCommits.length - COMMIT_MATCH_MAX_COMMITS,
+      })
+    }
+
     return {
       matchedTaskCount,
+      aiMatchedCommitCount: matches.length,
     }
   },
 })

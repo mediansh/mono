@@ -92,6 +92,7 @@ then by their position within the phase.
       "assignees": [],
       "source": null,
       "sources": [],
+      "customData": { "plan": "scale", "appVersion": "2.14.0" },
       "createdAt": 1710000000000,
       "updatedAt": 1710003600000
     }
@@ -129,6 +130,7 @@ Every entry in `tasks` has the same fields:
 | `assignees` | object[] | Assigned members (`userId`, `name`, `imageUrl`). Empty when none. |
 | `source` | object \| null | Primary origin of the task (`platform`, `url`, `author`), or `null`. |
 | `sources` | object[] | All origins for the task. Empty when none. |
+| `customData` | any \| null | Custom data attached when the task was created via [Submit feedback](/api/feedback-submit), or `null`. |
 | `createdAt` | integer | Creation time, Unix milliseconds. |
 | `updatedAt` | integer \| null | Last update time, Unix milliseconds, or `null`. |
 

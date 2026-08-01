@@ -211,17 +211,6 @@
   }
 }
 
-@keyframes kanban-row-in {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 @keyframes loading-ui-classic-fade {
   0% {
     opacity: 1;

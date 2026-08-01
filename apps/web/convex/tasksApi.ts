@@ -106,6 +106,7 @@ function formatTask(task: Doc<"tasks">) {
     assignees: task.assignees ?? [],
     source: task.source ?? null,
     sources: task.sources ?? [],
+    customData: task.customData ?? null,
     createdAt: task._creationTime,
     updatedAt: task.updatedAt ?? null,
   }
