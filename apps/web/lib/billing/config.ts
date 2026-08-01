@@ -14,12 +14,9 @@ export const AI_TOKEN_PRICING_PER_MILLION: Record<
   TrackedAiModel,
   { input: number; output: number }
 > = {
-  // NOTE: confirm these rates against the OpenRouter model page before relying
-  // on them for invoicing — they drive `getAiCostForTokens` and therefore every
-  // credit deduction for the advanced tier.
   "openai/gpt-5.6-luna": {
-    input: 1.25,
-    output: 10,
+    input: 1,
+    output: 6,
   },
   "google/gemini-3.1-flash-lite": {
     input: 0.4,
