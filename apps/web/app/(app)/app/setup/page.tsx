@@ -7,7 +7,6 @@ import { motion } from "motion/react"
 import { Facehash } from "facehash"
 import { api } from "@/convex/_generated/api"
 import { useWorkspace } from "@/components/workspace-provider"
-import { useInstantNavigation } from "@/hooks/use-instant-navigation"
 import { useWorkspaceOptimisticMutations } from "@/hooks/use-workspace-optimistic-mutations"
 import { Logo } from "@/components/logo"
 import { trackWorkspaceCreated } from "@/lib/analytics"
@@ -33,7 +32,6 @@ function Spinner() {
 }
 
 export default function WorkspaceSetupPage() {
-  const { navigate } = useInstantNavigation()
   const generateUploadUrl = useMutation(api.workspaces.generateUploadUrl)
   const attachScalePlan = useAction(api.earlyAccess.attachScaleForCurrentUser)
   const { createWorkspaceOptimistic } = useWorkspaceOptimisticMutations()
@@ -98,14 +96,10 @@ export default function WorkspaceSetupPage() {
       attachScalePlan({ workspaceId }).catch((planError) => {
         console.error("[early-access] Failed to attach Scale plan", planError)
       })
-      // Hard reload to /app. Client-side navigation here was racing with the
-      // WorkspaceProvider's reactive query update and occasionally bouncing
-      // the user back to /app/setup. A full reload guarantees a fresh state.
-      if (typeof window !== "undefined") {
-        window.location.replace("/app")
-      } else {
-        navigate("/app")
-      }
+      // WorkspaceGuard redirects to /app once the live workspaces query updates.
+      // Avoid window.location here — a full page unload while the form is still
+      // dirty (we call preventDefault on submit) triggers Chrome's "Leave site?"
+      // confirmation dialog.
     } catch {
       setError("Failed to create workspace. Please try again.")
       setLoading(false)
